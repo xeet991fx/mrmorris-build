@@ -22,7 +22,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     // Debug log
-    console.log("🚀 Making request to:", config.baseURL + config.url);
+    console.log("🚀 Making request to:", (config.baseURL || '') + (config.url || ''));
 
     // Get token from localStorage or cookies
     const token =
