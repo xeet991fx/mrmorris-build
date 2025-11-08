@@ -128,7 +128,7 @@ function ResetPasswordContent() {
               Password Reset!
             </h2>
             <p className="text-slate-400 mb-6">
-              Your password has been successfully reset. You're now logged in!
+              Your password has been successfully reset. You&apos;re now logged in!
             </p>
 
             <motion.div

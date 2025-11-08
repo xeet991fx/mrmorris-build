@@ -60,7 +60,7 @@ function DashboardContent() {
               Welcome back, {user?.name}!
             </h2>
             <p className="text-slate-400">
-              You're successfully logged in to your MrMorris dashboard.
+              You&apos;re successfully logged in to your MrMorris dashboard.
             </p>
           </div>
 
@@ -137,11 +137,11 @@ function DashboardContent() {
             >
               <Card className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 backdrop-blur-xl border-violet-500/20 p-6 h-full">
                 <h3 className="text-xl font-semibold text-white mb-4">
-                  🎉 You're All Set!
+                  🎉 You&apos;re All Set!
                 </h3>
                 <p className="text-slate-300 mb-6">
                   Your account is fully configured and ready to use. Start
-                  exploring MrMorris's autonomous marketing features.
+                  exploring MrMorris&apos;s autonomous marketing features.
                 </p>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-slate-300">

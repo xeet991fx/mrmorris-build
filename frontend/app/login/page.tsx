@@ -223,7 +223,7 @@ export default function LoginPage() {
               className="mt-8 pt-6 border-t border-slate-800/50"
             >
               <p className="text-center text-slate-400 text-sm">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link
                   href="/register"
                   className="text-violet-400 hover:text-violet-300 font-medium transition-colors"

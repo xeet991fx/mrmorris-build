@@ -97,13 +97,13 @@ export default function RegisterPage() {
                 Check Your Email!
               </h2>
               <p className="text-slate-400 mb-6">
-                We've sent a verification link to your email address. Please
+                We&apos;ve sent a verification link to your email address. Please
                 click the link to verify your account.
               </p>
 
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-slate-300">
-                  Didn't receive the email? Check your spam folder or{" "}
+                  Didn&apos;t receive the email? Check your spam folder or{" "}
                   <button className="text-violet-400 hover:text-violet-300 transition-colors">
                     resend verification email
                   </button>
