@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(nul)",
+      "Bash(dir /s \"C:\\Users\\imkum\\SDE\\MrMorris\")",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias \"@/*\" --eslint)",
+      "Bash(npx create-next-app:*)",
+      "Bash(dir:*)",
+      "Bash(npm install)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_close",
+      "Bash(npm install:*)",
+      "Bash(timeout:*)",
+      "mcp__playwright__browser_evaluate",
+      "Bash(NUL)",
+      "Bash(move app frontendapp)",
+      "Bash(move:*)",
+      "Bash(move public frontendpublic)",
+      "Bash(npm run dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill /F /PID 32912)",
+      "Bash(taskkill //F //PID 32912)",
+      "Bash(curl:*)",
+      "Bash(taskkill //F //PID 33748)",
+      "Bash(git rm:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git add:*)",
+      "Bash(npx @playwright/mcp@latest)",
+      "Bash(cat:*)",
+      "Bash(npx next:*)",
+      "Bash(taskkill:*)",
+      "Bash(test:*)",
+      "Bash(node test-email.js:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
+}

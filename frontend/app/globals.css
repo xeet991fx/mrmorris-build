@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 210 50% 5%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 50% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 50% 5%;
+    --primary: 354 75% 62%;
+    --primary-foreground: 210 50% 5%;
+    --secondary: 0 0% 88%;
+    --secondary-foreground: 210 50% 5%;
+    --muted: 240 5% 88%;
+    --muted-foreground: 0 0% 67%;
+    --accent: 240 5% 88%;
+    --accent-foreground: 210 50% 5%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 354 75% 62%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 210 50% 5%;
+    --foreground: 240 6% 88%;
+    --card: 210 50% 7%;
+    --card-foreground: 240 6% 88%;
+    --popover: 210 50% 7%;
+    --popover-foreground: 240 6% 88%;
+    --primary: 354 75% 62%;
+    --primary-foreground: 210 50% 5%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 240 6% 88%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 8% 67%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 240 6% 88%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 354 75% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+    font-weight: 300;
+    letter-spacing: 0.02em;
+  }
+  h1 {
+    font-size: 3.5rem;
+  }
+  h2 {
+    font-size: 2.75rem;
+  }
+  h3 {
+    font-size: 2rem;
+  }
+  h4 {
+    font-size: 1.5rem;
+  }
+  h5 {
+    font-size: 1.25rem;
+  }
+  h6 {
+    font-size: 1.125rem;
+  }
+  @media (max-width: 768px) {
+    h1 {
+      font-size: 2.5rem;
+    }
+    h2 {
+      font-size: 2rem;
+    }
+    h3 {
+      font-size: 1.5rem;
+    }
+  }
+}
+
+:root {
+  --font-heading: 'Bitcount Grid Single', monospace;
+}
