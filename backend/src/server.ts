@@ -27,6 +27,20 @@ app.use(cookieParser());
 // Initialize Passport
 app.use(passport.initialize());
 
+// Middleware to ensure database connection in serverless environment
+app.use(async (req: Request, res: Response, next: any) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("Database connection error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Database connection failed",
+    });
+  }
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/waitlist", waitlistRoutes);

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import app from '../backend/src/server';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  return app(req, res);
-}
+// Export the Express app as a Vercel serverless function
+// Vercel will automatically handle the conversion
+export default app;
