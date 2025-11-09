@@ -50,6 +50,19 @@ app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({ status: "ok", message: "Server is running" });
 });
 
+// Debug endpoint to check environment
+app.get("/debug", (req: Request, res: Response) => {
+  res.status(200).json({
+    status: "ok",
+    env: {
+      hasMongoUri: !!process.env.MONGODB_URI,
+      mongoUriPrefix: process.env.MONGODB_URI?.substring(0, 20) + "...",
+      nodeEnv: process.env.NODE_ENV,
+      isVercel: process.env.VERCEL,
+    },
+  });
+});
+
 // 404 handler
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Route not found" });
