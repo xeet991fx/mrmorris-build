@@ -27,6 +27,24 @@ app.use(cookieParser());
 // Initialize Passport
 app.use(passport.initialize());
 
+// Health check endpoint (before DB middleware)
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ status: "ok", message: "Server is running" });
+});
+
+// Debug endpoint to check environment (before DB middleware)
+app.get("/debug", (req: Request, res: Response) => {
+  res.status(200).json({
+    status: "ok",
+    env: {
+      hasMongoUri: !!process.env.MONGODB_URI,
+      mongoUriPrefix: process.env.MONGODB_URI?.substring(0, 20) + "...",
+      nodeEnv: process.env.NODE_ENV,
+      isVercel: process.env.VERCEL,
+    },
+  });
+});
+
 // Middleware to ensure database connection in serverless environment
 app.use(async (req: Request, res: Response, next: any) => {
   try {
@@ -44,24 +62,6 @@ app.use(async (req: Request, res: Response, next: any) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/waitlist", waitlistRoutes);
-
-// Health check endpoint
-app.get("/health", (req: Request, res: Response) => {
-  res.status(200).json({ status: "ok", message: "Server is running" });
-});
-
-// Debug endpoint to check environment
-app.get("/debug", (req: Request, res: Response) => {
-  res.status(200).json({
-    status: "ok",
-    env: {
-      hasMongoUri: !!process.env.MONGODB_URI,
-      mongoUriPrefix: process.env.MONGODB_URI?.substring(0, 20) + "...",
-      nodeEnv: process.env.NODE_ENV,
-      isVercel: process.env.VERCEL,
-    },
-  });
-});
 
 // 404 handler
 app.use((req: Request, res: Response) => {
