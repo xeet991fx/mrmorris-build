@@ -21,8 +21,15 @@ const axiosInstance = axios.create({
 // Request interceptor - Attach JWT token to requests
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Debug log
+    // Debug log - More detailed
     console.log("🚀 Making request to:", (config.baseURL || '') + (config.url || ''));
+    console.log("📋 Request config:", {
+      method: config.method,
+      url: config.url,
+      baseURL: config.baseURL,
+      headers: config.headers,
+      data: config.data
+    });
 
     // Get token from localStorage or cookies
     const token =
@@ -37,6 +44,7 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error("❌ Request error:", error);
     return Promise.reject(error);
   }
 );
@@ -44,9 +52,26 @@ axiosInstance.interceptors.request.use(
 // Response interceptor - Handle errors globally
 axiosInstance.interceptors.response.use(
   (response) => {
+    console.log("✅ Response received:", {
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data
+    });
     return response;
   },
   (error) => {
+    console.error("❌ Response error:", {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        baseURL: error.config?.baseURL
+      }
+    });
+
     // Handle 401 Unauthorized - Clear token and redirect to login
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {

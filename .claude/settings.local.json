@@ -40,7 +40,9 @@
       "Bash(npx next:*)",
       "Bash(taskkill:*)",
       "Bash(test:*)",
-      "Bash(node test-email.js:*)"
+      "Bash(node test-email.js:*)",
+      "Bash(tasklist:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []
