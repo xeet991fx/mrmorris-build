@@ -20,6 +20,8 @@
 /build
 /frontend/build
 /backend/dist
+/dist
+/.vercel
 
 # misc
 .DS_Store
