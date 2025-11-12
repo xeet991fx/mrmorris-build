@@ -6,11 +6,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 // Debug log - only in development
 if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   console.log("🔍 API_URL:", API_URL);
-  console.log("🔍 Full baseURL:", `${API_URL}`);
+  console.log("🔍 Full baseURL:", `${API_URL}/api`);
 }
 
 const axiosInstance = axios.create({
-  baseURL: `${API_URL}`,
+  baseURL: `${API_URL}/api`,
   headers: {
     "Content-Type": "application/json",
   },
