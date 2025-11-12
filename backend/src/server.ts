@@ -6,6 +6,7 @@ import connectDB from "./config/database";
 import passport from "./config/passport";
 import waitlistRoutes from "./routes/waitlist";
 import authRoutes from "./routes/auth";
+import projectRoutes from "./routes/project";
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use(async (req: Request, res: Response, next: any) => {
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/waitlist", waitlistRoutes);
+app.use("/api/projects", projectRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -80,6 +82,7 @@ const startServer = async () => {
       console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:3000"}`);
       console.log(`🔑 Auth endpoints: http://localhost:${PORT}/api/auth`);
       console.log(`📋 Waitlist endpoints: http://localhost:${PORT}/api/waitlist`);
+      console.log(`📁 Project endpoints: http://localhost:${PORT}/api/projects`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);

@@ -44,7 +44,9 @@
       "Bash(tasklist:*)",
       "Bash(node -e:*)",
       "Bash(git commit:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(npm run build:*)",
+      "Bash(mcp list:*)"
     ],
     "deny": [],
     "ask": []

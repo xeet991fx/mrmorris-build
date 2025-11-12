@@ -17,16 +17,20 @@ export function ProtectedRoute({
   const { isAuthenticated, isLoading, getCurrentUser } = useAuthStore();
 
   useEffect(() => {
-    // Check if user is authenticated on mount
-    getCurrentUser();
-  }, [getCurrentUser]);
+    // Check authentication and redirect if needed
+    const checkAuth = async () => {
+      await getCurrentUser();
 
-  useEffect(() => {
-    // Redirect to login if not authenticated
-    if (!isLoading && !isAuthenticated) {
-      router.push(redirectTo);
-    }
-  }, [isAuthenticated, isLoading, router, redirectTo]);
+      // After getCurrentUser completes, check if still not authenticated
+      const { isAuthenticated: currentAuth, isLoading: currentLoading } = useAuthStore.getState();
+
+      if (!currentLoading && !currentAuth) {
+        router.push(redirectTo);
+      }
+    };
+
+    checkAuth();
+  }, [getCurrentUser, router, redirectTo]);
 
   // Show loading state
   if (isLoading) {

@@ -36,7 +36,7 @@ function AuthCallbackContent() {
         await fetchUser();
 
         toast.success("Successfully logged in with Google!");
-        router.push("/dashboard");
+        router.push("/projects");
       } catch (error) {
         console.error("Callback error:", error);
         toast.error("Failed to complete authentication.");

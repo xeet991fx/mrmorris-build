@@ -33,7 +33,7 @@ function VerifyEmailContent() {
 
         // Redirect to dashboard after 2 seconds
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/projects");
         }, 2000);
       } catch (error: any) {
         setStatus("error");

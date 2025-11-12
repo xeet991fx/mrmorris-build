@@ -30,7 +30,7 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
       toast.success("Welcome back!");
-      router.push("/dashboard");
+      router.push("/projects");
     } catch (error: any) {
       const message = error.response?.data?.error || "Login failed";
       toast.error(message);
