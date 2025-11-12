@@ -3,14 +3,14 @@ import Cookies from "js-cookie";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// Debug log
-if (typeof window !== "undefined") {
+// Debug log - only in development
+if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   console.log("🔍 API_URL:", API_URL);
-  console.log("🔍 Full baseURL:", `${API_URL}/api`);
+  console.log("🔍 Full baseURL:", `${API_URL}`);
 }
 
 const axiosInstance = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: `${API_URL}`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -21,15 +21,15 @@ const axiosInstance = axios.create({
 // Request interceptor - Attach JWT token to requests
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Debug log - More detailed
-    console.log("🚀 Making request to:", (config.baseURL || '') + (config.url || ''));
-    console.log("📋 Request config:", {
-      method: config.method,
-      url: config.url,
-      baseURL: config.baseURL,
-      headers: config.headers,
-      data: config.data
-    });
+    // Debug log - Only in development
+    if (process.env.NODE_ENV === "development") {
+      console.log("🚀 Making request to:", (config.baseURL || '') + (config.url || ''));
+      console.log("📋 Request config:", {
+        method: config.method,
+        url: config.url,
+        baseURL: config.baseURL,
+      });
+    }
 
     // Get token from localStorage or cookies
     const token =
@@ -44,7 +44,9 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error("❌ Request error:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("❌ Request error:", error);
+    }
     return Promise.reject(error);
   }
 );
@@ -52,25 +54,28 @@ axiosInstance.interceptors.request.use(
 // Response interceptor - Handle errors globally
 axiosInstance.interceptors.response.use(
   (response) => {
-    console.log("✅ Response received:", {
-      status: response.status,
-      statusText: response.statusText,
-      data: response.data
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("✅ Response received:", {
+        status: response.status,
+        statusText: response.statusText,
+      });
+    }
     return response;
   },
   (error) => {
-    console.error("❌ Response error:", {
-      message: error.message,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        baseURL: error.config?.baseURL
-      }
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.error("❌ Response error:", {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          baseURL: error.config?.baseURL
+        }
+      });
+    }
 
     // Handle 401 Unauthorized - Clear token and redirect to login
     if (error.response?.status === 401) {
@@ -79,8 +84,8 @@ axiosInstance.interceptors.response.use(
         localStorage.removeItem("user");
         Cookies.remove("token");
 
-        // Only redirect if not already on auth pages
-        const authPages = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"];
+        // Only redirect if not already on auth pages (including auth callback)
+        const authPages = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/auth"];
         const currentPath = window.location.pathname;
 
         if (!authPages.some(page => currentPath.startsWith(page))) {

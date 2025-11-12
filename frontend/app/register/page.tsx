@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const { register: registerUser, isLoading } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState<string>("");
 
   const {
     register,
@@ -50,10 +51,11 @@ export default function RegisterPage() {
       "bg-green-500",
     ];
 
+    // Fix off-by-one error: use strength directly as index (0-5 range)
     return {
       strength: (strength / 5) * 100,
-      label: labels[strength - 1] || "",
-      color: colors[strength - 1] || "",
+      label: strength > 0 ? labels[strength - 1] : "Too Weak",
+      color: strength > 0 ? colors[strength - 1] : "bg-gray-500",
     };
   };
 
@@ -63,9 +65,21 @@ export default function RegisterPage() {
     try {
       await registerUser(data.email, data.password, data.name);
       toast.success("Registration successful!");
+      setRegisteredEmail(data.email);
       setRegistrationSuccess(true);
     } catch (error: any) {
       const message = error.response?.data?.error || "Registration failed";
+      toast.error(message);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      const authApi = await import("@/lib/api/auth");
+      await authApi.resendVerification(registeredEmail);
+      toast.success("Verification email sent! Please check your inbox.");
+    } catch (error: any) {
+      const message = error.response?.data?.error || "Failed to resend email";
       toast.error(message);
     }
   };
@@ -104,7 +118,10 @@ export default function RegisterPage() {
               <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-slate-300">
                   Didn&apos;t receive the email? Check your spam folder or{" "}
-                  <button className="text-violet-400 hover:text-violet-300 transition-colors">
+                  <button
+                    onClick={handleResendVerification}
+                    className="text-violet-400 hover:text-violet-300 transition-colors underline"
+                  >
                     resend verification email
                   </button>
                 </p>
