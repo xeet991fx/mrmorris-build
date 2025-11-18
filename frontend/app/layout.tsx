@@ -1,12 +1,18 @@
 import type { Metadata } from "next"
-import { Manrope } from "next/font/google"
-import "@fontsource/bitcount-grid-single/300.css"
+import { Inter, Poppins } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 
-const manrope = Manrope({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
+})
+
+const poppins = Poppins({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-heading",
   display: "swap",
 })
 
@@ -37,7 +43,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${manrope.variable} font-body`}>
+      <body className={`${inter.variable} ${poppins.variable} font-body`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

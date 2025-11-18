@@ -10,8 +10,7 @@ const steps = [
     title: "Set Your Goals",
     description:
       "Tell MrMorris what you want to achieve: \"Increase demo bookings by 30% this quarter\" or \"Generate 500 qualified leads.\" It asks clarifying questions to understand constraints and priorities.",
-    circleGradient: "from-blue-600 to-cyan-500",
-    iconGradient: "from-blue-500/20 to-cyan-500/20",
+    iconColor: "text-cyan-500",
   },
   {
     icon: Cog,
@@ -19,8 +18,7 @@ const steps = [
     title: "MrMorris Strategizes & Executes",
     description:
       "The system creates a complete multi-channel strategy, allocates budget, defines KPIs, builds campaigns, creates content, and launches everything—all autonomously. You approve once, it handles the rest.",
-    circleGradient: "from-purple-600 to-pink-500",
-    iconGradient: "from-purple-500/20 to-pink-500/20",
+    iconColor: "text-violet-500",
   },
   {
     icon: TrendingUp,
@@ -28,8 +26,7 @@ const steps = [
     title: "Continuous Optimization & Learning",
     description:
       "MrMorris monitors performance 24/7, adjusts bids, reallocates budget, tests new variations, and scales winners in real-time. It learns from every campaign and gets smarter over time.",
-    circleGradient: "from-emerald-600 to-teal-500",
-    iconGradient: "from-emerald-500/20 to-teal-500/20",
+    iconColor: "text-emerald-500",
   },
 ]
 
@@ -41,12 +38,12 @@ export function HowItWorks() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.25 }}
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             How{" "}
-            <span className="bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#9ACD32] via-[#8AB82E] to-[#7BA628] bg-clip-text text-transparent">
               It Works
             </span>
           </h2>
@@ -62,7 +59,7 @@ export function HowItWorks() {
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.2 }}
+              transition={{ duration: 0.25, delay: index * 0.2 }}
               className="relative mb-12 flex flex-col gap-8 md:flex-row md:items-center"
             >
               {/* Connector Line */}
@@ -72,8 +69,8 @@ export function HowItWorks() {
 
               {/* Step Number Circle */}
               <div className="flex-shrink-0">
-                <div className={`flex h-28 w-28 items-center justify-center rounded-full border-4 border-primary/20 bg-gradient-to-br ${step.circleGradient} shadow-lg`}>
-                  <span className="text-3xl font-bold text-white">{step.number}</span>
+                <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-neutral-700/50 bg-neutral-800/50 shadow-lg">
+                  <span className="text-3xl font-bold text-neutral-300">{step.number}</span>
                 </div>
               </div>
 
@@ -84,9 +81,7 @@ export function HowItWorks() {
 
               {/* Content */}
               <div className="flex-1 rounded-xl border-2 border-border bg-card p-6 shadow-lg backdrop-blur hover:border-primary/50 transition-colors">
-                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${step.iconGradient} shadow-md`}>
-                  <step.icon className="h-7 w-7 text-foreground" />
-                </div>
+                <step.icon className={`mb-4 h-8 w-8 ${step.iconColor}`} />
                 <h3 className="mb-3 text-2xl font-bold">{step.title}</h3>
                 <p className="text-muted-foreground">{step.description}</p>
               </div>

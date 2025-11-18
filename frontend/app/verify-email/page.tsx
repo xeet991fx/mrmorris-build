@@ -48,14 +48,14 @@ function VerifyEmailContent() {
   }, [searchParams, verifyEmail, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-2xl p-8">
+        <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8">
           {status === "loading" && (
             <div className="text-center">
               <motion.div
@@ -63,12 +63,12 @@ function VerifyEmailContent() {
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="mb-6 inline-block"
               >
-                <Loader2 className="w-16 h-16 text-violet-500" />
+                <Loader2 className="w-16 h-16 text-[#9ACD32]" />
               </motion.div>
               <h2 className="text-2xl font-bold text-white mb-2">
                 Verifying Your Email
               </h2>
-              <p className="text-slate-400">Please wait...</p>
+              <p className="text-neutral-400">Please wait...</p>
             </div>
           )}
 
@@ -92,18 +92,18 @@ function VerifyEmailContent() {
               <h2 className="text-2xl font-bold text-white mb-2">
                 Email Verified!
               </h2>
-              <p className="text-slate-400 mb-6">{message}</p>
+              <p className="text-neutral-400 mb-6">{message}</p>
 
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <p className="text-sm text-slate-500 mb-4">
+                <p className="text-sm text-neutral-500 mb-4">
                   Redirecting to dashboard...
                 </p>
                 <Link href="/dashboard">
-                  <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                  <Button className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90">
                     Go to Dashboard
                   </Button>
                 </Link>
@@ -131,19 +131,19 @@ function VerifyEmailContent() {
               <h2 className="text-2xl font-bold text-white mb-2">
                 Verification Failed
               </h2>
-              <p className="text-slate-400 mb-6">{message}</p>
+              <p className="text-neutral-400 mb-6">{message}</p>
 
               <div className="space-y-3">
                 <Link href="/register">
                   <Button
                     variant="outline"
-                    className="w-full border-slate-700 text-slate-300 hover:bg-slate-800"
+                    className="w-full border-neutral-800 text-neutral-300 hover:bg-neutral-900"
                   >
                     Create New Account
                   </Button>
                 </Link>
                 <Link href="/login">
-                  <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                  <Button className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90">
                     Back to Login
                   </Button>
                 </Link>
@@ -159,8 +159,8 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <Loader2 className="w-16 h-16 text-violet-500 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black">
+        <Loader2 className="w-16 h-16 text-[#9ACD32] animate-spin" />
       </div>
     }>
       <VerifyEmailContent />

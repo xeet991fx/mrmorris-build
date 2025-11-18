@@ -66,7 +66,7 @@ export default function Step7Advanced({ data, onComplete, onBack, isLoading }: S
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Advanced Settings</h2>
-        <p className="text-slate-400">
+        <p className="text-neutral-400">
           Fine-tune your marketing automation preferences
         </p>
       </div>
@@ -133,7 +133,7 @@ export default function Step7Advanced({ data, onComplete, onBack, isLoading }: S
             <h3 className="text-lg font-semibold text-white mb-2">
               You are Almost Done!
             </h3>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-neutral-300">
               Click Complete Setup to finish onboarding. MrMorris will analyze
               your information and start creating your personalized marketing
               strategy.
@@ -147,7 +147,7 @@ export default function Step7Advanced({ data, onComplete, onBack, isLoading }: S
           type="button"
           onClick={onBack}
           disabled={isLoading}
-          className="px-6 py-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 hover:text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700/50 text-neutral-300 hover:text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </button>

@@ -88,14 +88,14 @@ export default function RegisterPage() {
     return (
       <>
         <Toaster position="top-right" />
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-12">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
             className="w-full max-w-md"
           >
-            <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-2xl p-8 text-center">
+            <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8 text-center">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -110,17 +110,17 @@ export default function RegisterPage() {
               <h2 className="text-2xl font-bold text-white mb-2">
                 Check Your Email!
               </h2>
-              <p className="text-slate-400 mb-6">
+              <p className="text-neutral-400 mb-6">
                 We&apos;ve sent a verification link to your email address. Please
                 click the link to verify your account.
               </p>
 
-              <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 mb-6">
-                <p className="text-sm text-slate-300">
+              <div className="bg-neutral-900/50 border border-neutral-800/50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-neutral-300">
                   Didn&apos;t receive the email? Check your spam folder or{" "}
                   <button
                     onClick={handleResendVerification}
-                    className="text-violet-400 hover:text-violet-300 transition-colors underline"
+                    className="text-[#9ACD32] hover:text-[#9ACD32]/80 transition-colors underline"
                   >
                     resend verification email
                   </button>
@@ -128,7 +128,7 @@ export default function RegisterPage() {
               </div>
 
               <Link href="/login">
-                <Button className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
+                <Button className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90">
                   Go to Login
                 </Button>
               </Link>
@@ -142,11 +142,11 @@ export default function RegisterPage() {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-12 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12 relative overflow-hidden">
         {/* Animated background gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-violet-600/20 to-transparent rounded-full blur-3xl"
+            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, 100, 0],
               y: [0, 50, 0],
@@ -159,7 +159,7 @@ export default function RegisterPage() {
             }}
           />
           <motion.div
-            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-600/20 to-transparent rounded-full blur-3xl"
+            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, -100, 0],
               y: [0, -50, 0],
@@ -180,7 +180,7 @@ export default function RegisterPage() {
           className="w-full max-w-md relative z-10"
         >
           {/* Glass card */}
-          <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-2xl p-8">
+          <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8">
             {/* Header */}
             <div className="text-center mb-8">
               <motion.div
@@ -188,10 +188,10 @@ export default function RegisterPage() {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.1, duration: 0.5 }}
               >
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent mb-2">
+                <h1 className="text-3xl font-bold text-white mb-2">
                   Create Account
                 </h1>
-                <p className="text-slate-400">
+                <p className="text-neutral-400">
                   Join MrMorris and start automating
                 </p>
               </motion.div>
@@ -207,18 +207,18 @@ export default function RegisterPage() {
               >
                 <label
                   htmlFor="name"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-sm font-medium text-neutral-300 mb-2"
                 >
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500" />
                   <Input
                     {...register("name")}
                     id="name"
                     type="text"
                     placeholder="John Doe"
-                    className="pl-10 bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-violet-500/20 transition-all"
+                    className="pl-10 bg-neutral-900/50 border-neutral-800/50 text-white placeholder:text-neutral-500 focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
                   />
                 </div>
                 {errors.name && (
@@ -240,18 +240,18 @@ export default function RegisterPage() {
               >
                 <label
                   htmlFor="email"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-sm font-medium text-neutral-300 mb-2"
                 >
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500" />
                   <Input
                     {...register("email")}
                     id="email"
                     type="email"
                     placeholder="you@example.com"
-                    className="pl-10 bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-violet-500/20 transition-all"
+                    className="pl-10 bg-neutral-900/50 border-neutral-800/50 text-white placeholder:text-neutral-500 focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
                   />
                 </div>
                 {errors.email && (
@@ -273,23 +273,23 @@ export default function RegisterPage() {
               >
                 <label
                   htmlFor="password"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-sm font-medium text-neutral-300 mb-2"
                 >
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500" />
                   <Input
                     {...register("password")}
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Create a strong password"
-                    className="pl-10 pr-10 bg-slate-800/50 border-slate-700/50 text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-violet-500/20 transition-all"
+                    className="pl-10 pr-10 bg-neutral-900/50 border-neutral-800/50 text-white placeholder:text-neutral-500 focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5" />
@@ -307,7 +307,7 @@ export default function RegisterPage() {
                     className="mt-2"
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="flex-1 h-1 bg-slate-700 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1 bg-neutral-800 rounded-full overflow-hidden">
                         <motion.div
                           className={`h-full ${passwordStrength.color}`}
                           initial={{ width: 0 }}
@@ -315,7 +315,7 @@ export default function RegisterPage() {
                           transition={{ duration: 0.3 }}
                         />
                       </div>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-neutral-400">
                         {passwordStrength.label}
                       </span>
                     </div>
@@ -342,7 +342,7 @@ export default function RegisterPage() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold py-6 rounded-lg shadow-lg shadow-violet-500/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90 text-white font-semibold py-6 rounded-lg shadow-lg shadow-primary/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {isLoading ? (
                     <>
@@ -364,13 +364,13 @@ export default function RegisterPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.5 }}
-              className="mt-8 pt-6 border-t border-slate-800/50"
+              className="mt-8 pt-6 border-t border-neutral-900/50"
             >
-              <p className="text-center text-slate-400 text-sm">
+              <p className="text-center text-neutral-400 text-sm">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="text-violet-400 hover:text-violet-300 font-medium transition-colors"
+                  className="text-[#9ACD32] hover:text-[#9ACD32]/80 font-medium transition-colors"
                 >
                   Sign in
                 </Link>
@@ -386,7 +386,7 @@ export default function RegisterPage() {
             >
               <Link
                 href="/"
-                className="block text-center text-slate-500 hover:text-slate-400 text-sm transition-colors"
+                className="block text-center text-neutral-500 hover:text-neutral-400 text-sm transition-colors"
               >
                 ← Back to Home
               </Link>

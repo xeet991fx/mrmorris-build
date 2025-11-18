@@ -27,7 +27,7 @@ const faqs = [
   {
     question: "What kind of results can we expect?",
     answer:
-      "Early agency partners report 40% average ROI improvement, 60% reduction in manual campaign management time, and the ability to manage 3x more clients with the same team. Results vary based on your current setup and how much autonomy you grant the system.",
+      "Early startup partners report 40% average ROI improvement, 60% reduction in manual campaign management time, and the ability to achieve 3x faster growth with the same resources. Results vary based on your current setup and how much autonomy you grant the system.",
   },
   {
     question: "Is our data secure?",
@@ -37,7 +37,7 @@ const faqs = [
   {
     question: "How much does it cost?",
     answer:
-      "Pricing is tailored to agency size and needs. We offer flexible plans based on the number of clients you manage and campaign spend under management. Join the waitlist to get early access pricing and a personalized demo.",
+      "Pricing is tailored to your startup stage and needs. We offer flexible plans based on your monthly marketing spend and team size. Join the waitlist to get early access pricing, startup-friendly rates, and a personalized demo.",
   },
   {
     question: "Can I try it before committing?",
@@ -54,12 +54,12 @@ export function FAQ() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.25 }}
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             Frequently Asked{" "}
-            <span className="bg-gradient-to-r from-[#eb5160] to-[#b7999c] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] bg-clip-text text-transparent">
               Questions
             </span>
           </h2>
@@ -75,9 +75,9 @@ export function FAQ() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.05 }}
+              transition={{ duration: 0.25, delay: index * 0.05 }}
             >
-              <Card className="border-2 bg-card/50 backdrop-blur transition-all hover:border-primary/30 hover:shadow-md">
+              <Card className="border-2 bg-card/50 backdrop-blur transition-all hover:border-primary/30 hover:shadow-lg">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">{faq.question}</CardTitle>
                 </CardHeader>

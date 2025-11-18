@@ -7,35 +7,31 @@ import { Card, CardContent } from "@/components/ui/card"
 const problems = [
   {
     icon: Clock,
-    title: "24/7 Manual Monitoring",
+    title: "Founders Stretched Too Thin",
     description:
-      "Agency teams are stuck monitoring campaigns around the clock, missing optimization opportunities during off-hours and weekends.",
-    color: "from-orange-500 to-red-500",
+      "Small teams are stuck monitoring campaigns manually, missing optimization opportunities while they sleep. You can't be everywhere at once.",
     iconColor: "text-orange-500",
   },
   {
     icon: Users,
-    title: "Limited Scalability",
+    title: "Can't Compete With Bigger Budgets",
     description:
-      "Agencies hit growth ceilings because they can't manage more clients without hiring more people—eating into margins.",
-    color: "from-purple-500 to-pink-500",
-    iconColor: "text-purple-500",
+      "Well-funded competitors have 10-person marketing teams. You have limited resources and can't afford to hire expensive specialists.",
+    iconColor: "text-blue-500",
   },
   {
     icon: TrendingDown,
-    title: "Slow Optimization Cycles",
+    title: "Burning Precious Runway",
     description:
-      "By the time teams analyze data, make decisions, and implement changes, valuable budget and opportunities are already lost.",
-    color: "from-yellow-500 to-amber-500",
-    iconColor: "text-yellow-600",
+      "By the time you analyze data and make changes, valuable budget is already wasted. Every dollar matters when resources are limited.",
+    iconColor: "text-red-500",
   },
   {
     icon: AlertCircle,
-    title: "Reactive Crisis Management",
+    title: "No Room for Expensive Mistakes",
     description:
-      "Issues like budget overspend, negative sentiment spikes, or underperforming ads are discovered too late, damaging client results.",
-    color: "from-red-500 to-rose-500",
-    iconColor: "text-red-500",
+      "Budget overspend, negative sentiment, or underperforming ads discovered too late can burn through months of runway and damage your brand.",
+    iconColor: "text-yellow-500",
   },
 ]
 
@@ -47,18 +43,18 @@ export function ProblemStatement() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.25 }}
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-            Marketing Agencies Are{" "}
-            <span className="bg-gradient-to-r from-[#eb5160] to-[#b7999c] bg-clip-text text-transparent">
-              Hitting a Wall
+            Startups Face an{" "}
+            <span className="bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] bg-clip-text text-transparent">
+              Impossible Choice
             </span>
           </h2>
           <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-            Managing multi-channel campaigns for multiple clients is overwhelming. Your team
-            is stretched thin, and traditional tools only add more manual work.
+            Scale marketing effectively or preserve your runway. Your lean team is stretched thin,
+            and you can't afford to hire expensive specialists or waste precious budget.
           </p>
         </motion.div>
 
@@ -69,13 +65,11 @@ export function ProblemStatement() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              transition={{ duration: 0.25, delay: index * 0.1 }}
             >
               <Card className="h-full border-2 bg-card/50 backdrop-blur transition-all hover:border-primary/50 hover:shadow-lg">
                 <CardContent className="p-6">
-                  <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${problem.color} shadow-lg`}>
-                    <problem.icon className={`h-7 w-7 text-white`} />
-                  </div>
+                  <problem.icon className={`mb-4 h-8 w-8 ${problem.iconColor}`} />
                   <h3 className="mb-2 text-xl font-semibold">{problem.title}</h3>
                   <p className="text-muted-foreground">{problem.description}</p>
                 </CardContent>

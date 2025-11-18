@@ -22,7 +22,7 @@ export default function ProgressIndicator({
   completedSteps,
 }: ProgressIndicatorProps) {
   return (
-    <div className="w-full py-8">
+    <div className="w-full py-6">
       <div className="flex items-center justify-between max-w-4xl mx-auto px-4">
         {STEPS.map((step, index) => {
           const isCompleted = completedSteps.includes(step.number);
@@ -35,12 +35,12 @@ export default function ProgressIndicator({
               <div className="flex flex-col items-center relative z-10">
                 <div
                   className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300",
+                    "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300",
                     isCompleted
-                      ? "bg-green-500 border-green-500"
+                      ? "bg-[#9ACD32] border-[#9ACD32]"
                       : isCurrent
-                      ? "bg-gradient-to-br from-violet-500 to-purple-500 border-violet-500"
-                      : "bg-slate-800 border-slate-700"
+                      ? "bg-[#9ACD32] border-[#9ACD32]"
+                      : "bg-neutral-700 border-neutral-600"
                   )}
                 >
                   {isCompleted ? (
@@ -49,13 +49,13 @@ export default function ProgressIndicator({
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", stiffness: 500 }}
                     >
-                      <CheckIcon className="w-6 h-6 text-white" />
+                      <CheckIcon className="w-5 h-5 text-white" />
                     </motion.div>
                   ) : (
                     <span
                       className={cn(
-                        "text-sm font-bold",
-                        isCurrent ? "text-white" : "text-slate-500"
+                        "text-sm font-semibold",
+                        isCurrent ? "text-neutral-900" : "text-neutral-400"
                       )}
                     >
                       {step.number}
@@ -66,7 +66,7 @@ export default function ProgressIndicator({
                 {/* Pulsing Ring for Current Step */}
                 {isCurrent && (
                   <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-violet-500"
+                    className="absolute inset-0 rounded-full border-2 border-[#9ACD32]/50"
                     animate={{
                       scale: [1, 1.3, 1],
                       opacity: [0.5, 0, 0.5],
@@ -84,10 +84,10 @@ export default function ProgressIndicator({
                   className={cn(
                     "mt-2 text-xs font-medium text-center",
                     isCurrent
-                      ? "text-white"
+                      ? "text-[#9ACD32]"
                       : isCompleted
-                      ? "text-green-400"
-                      : "text-slate-500"
+                      ? "text-[#9ACD32]"
+                      : "text-neutral-400"
                   )}
                 >
                   {step.label}
@@ -97,14 +97,14 @@ export default function ProgressIndicator({
               {/* Connector Line */}
               {!isLast && (
                 <div className="flex-1 h-0.5 mx-2 relative -top-4">
-                  <div className="absolute inset-0 bg-slate-700" />
+                  <div className="absolute inset-0 bg-neutral-600" />
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-violet-500 to-purple-500"
+                    className="absolute inset-0 bg-[#9ACD32]"
                     initial={{ scaleX: 0 }}
                     animate={{
                       scaleX: isCompleted ? 1 : 0,
                     }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
                     style={{ transformOrigin: "left" }}
                   />
                 </div>

@@ -9,6 +9,8 @@ import {
   FolderIcon,
   PlusIcon,
   ArrowRightOnRectangleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -22,6 +24,7 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuthStore();
   const { projects, fetchProjects, setCurrentProject } = useProjectStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarLocked, setIsSidebarLocked] = useState(false);
 
   // Fetch projects on mount with error handling
   useEffect(() => {
@@ -58,47 +61,96 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
     return pathname.includes(projectId);
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ isExpanded, onClose }: { isExpanded: boolean; onClose?: () => void }) => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="p-6 border-b border-slate-800/50">
+      <div className={cn(
+        "border-b border-neutral-700/50 transition-all duration-150 relative group",
+        isExpanded ? "px-5 py-4" : "px-3 py-4"
+      )}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">M</span>
+          <div className="w-7 h-7 bg-[#9ACD32] rounded-md flex items-center justify-center flex-shrink-0 shadow-sm">
+            <span className="text-neutral-900 font-bold text-sm">M</span>
           </div>
-          <h1 className="text-xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+          <motion.h1
+            initial={false}
+            animate={{
+              opacity: isExpanded ? 1 : 0,
+              width: isExpanded ? "auto" : 0,
+            }}
+            transition={{ duration: 0.15 }}
+            className="text-base font-semibold text-white overflow-hidden whitespace-nowrap"
+          >
             MrMorris
-          </h1>
+          </motion.h1>
         </div>
+        {/* Close Button - Appears on hover */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-neutral-700 text-neutral-400 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+            aria-label="Close sidebar"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Projects Section */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+      <div className="flex-1 overflow-y-auto px-3 py-4">
+        <div className={cn(
+          "flex items-center mb-3 transition-all duration-150",
+          isExpanded ? "justify-between" : "justify-center"
+        )}>
+          <motion.h2
+            initial={false}
+            animate={{
+              opacity: isExpanded ? 1 : 0,
+              width: isExpanded ? "auto" : 0,
+            }}
+            transition={{ duration: 0.15 }}
+            className="text-xs font-semibold text-neutral-500 uppercase tracking-wide overflow-hidden whitespace-nowrap"
+          >
             Projects
-          </h2>
+          </motion.h2>
           <button
             onClick={handleCreateProject}
-            className="p-1.5 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-violet-400 transition-all"
+            className="p-1 rounded hover:bg-neutral-700/50 text-neutral-400 hover:text-white transition-all"
             aria-label="Create new project"
+            title={!isExpanded ? "Create new project" : ""}
           >
-            <PlusIcon className="w-5 h-5" />
+            <PlusIcon className="w-4 h-4" />
           </button>
         </div>
 
         {/* Projects List */}
-        <div className="space-y-2">
+        <div className="space-y-0.5">
           {projects.length === 0 ? (
-            <div className="text-center py-8">
-              <FolderIcon className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-sm text-slate-500">No projects yet</p>
-              <button
-                onClick={handleCreateProject}
-                className="mt-3 text-sm text-violet-400 hover:text-violet-300 transition-colors"
+            <div className={cn(
+              "text-center transition-all",
+              isExpanded ? "py-8" : "py-4"
+            )}>
+              <FolderIcon className={cn(
+                "text-neutral-500 mx-auto mb-3",
+                isExpanded ? "w-5 h-5" : "w-4 h-4"
+              )} />
+              <motion.div
+                initial={false}
+                animate={{
+                  opacity: isExpanded ? 1 : 0,
+                  height: isExpanded ? "auto" : 0,
+                }}
+                transition={{ duration: 0.15 }}
+                className="overflow-hidden"
               >
-                Create your first project
-              </button>
+                <p className="text-xs text-neutral-500">No projects yet</p>
+                <button
+                  onClick={handleCreateProject}
+                  className="mt-3 text-xs text-white hover:text-neutral-300 transition-colors"
+                >
+                  Create your first project
+                </button>
+              </motion.div>
             </div>
           ) : (
             projects.map((project) => (
@@ -106,37 +158,28 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
                 key={project._id}
                 onClick={() => handleProjectClick(project)}
                 className={cn(
-                  "w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left group",
+                  "w-full flex items-center gap-2 rounded-md transition-all text-left group",
+                  isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
                   isProjectActive(project._id)
-                    ? "bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/50"
-                    : "hover:bg-slate-800/30 border border-transparent"
+                    ? "bg-neutral-700/70 text-white"
+                    : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
                 )}
+                title={!isExpanded ? project.name : ""}
               >
-                <div
-                  className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                    isProjectActive(project._id)
-                      ? "bg-gradient-to-br from-violet-500 to-purple-500"
-                      : "bg-slate-800/50 group-hover:bg-slate-700/50"
-                  )}
+                <FolderIcon className="w-4 h-4 flex-shrink-0" />
+                <motion.div
+                  initial={false}
+                  animate={{
+                    opacity: isExpanded ? 1 : 0,
+                    width: isExpanded ? "auto" : 0,
+                  }}
+                  transition={{ duration: 0.15 }}
+                  className="flex-1 min-w-0 overflow-hidden"
                 >
-                  <FolderIcon className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={cn(
-                      "font-medium truncate",
-                      isProjectActive(project._id)
-                        ? "text-white"
-                        : "text-slate-300 group-hover:text-white"
-                    )}
-                  >
+                  <p className="text-sm font-normal truncate">
                     {project.name}
                   </p>
-                  <p className="text-xs text-slate-500 truncate">
-                    {project.onboardingCompleted ? "Setup Complete" : "Setup Pending"}
-                  </p>
-                </div>
+                </motion.div>
               </button>
             ))
           )}
@@ -144,22 +187,47 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* User Section */}
-      <div className="p-4 border-t border-slate-800/50">
-        <div className="flex items-center gap-3 mb-3 p-3 rounded-lg bg-slate-800/30">
-          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+      <div className="p-3 border-t border-neutral-700/50">
+        <div className={cn(
+          "flex items-center gap-2 mb-2 rounded-md hover:bg-neutral-700/30 transition-colors cursor-pointer",
+          isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center"
+        )}>
+          <div className="w-6 h-6 bg-[#9ACD32] rounded-full flex items-center justify-center text-neutral-900 text-xs font-semibold flex-shrink-0 shadow-sm">
             {user?.name?.charAt(0).toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-white truncate">{user?.name}</p>
-            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-          </div>
+          <motion.div
+            initial={false}
+            animate={{
+              opacity: isExpanded ? 1 : 0,
+              width: isExpanded ? "auto" : 0,
+            }}
+            transition={{ duration: 0.15 }}
+            className="flex-1 min-w-0 overflow-hidden"
+          >
+            <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+            <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
+          </motion.div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-white transition-all"
+          className={cn(
+            "w-full flex items-center gap-2 rounded-md hover:bg-neutral-700/30 text-neutral-400 hover:text-white transition-all",
+            isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center"
+          )}
+          title={!isExpanded ? "Logout" : ""}
         >
-          <ArrowRightOnRectangleIcon className="w-5 h-5" />
-          <span className="font-medium">Logout</span>
+          <ArrowRightOnRectangleIcon className="w-4 h-4 flex-shrink-0" />
+          <motion.span
+            initial={false}
+            animate={{
+              opacity: isExpanded ? 1 : 0,
+              width: isExpanded ? "auto" : 0,
+            }}
+            transition={{ duration: 0.15 }}
+            className="text-sm font-normal overflow-hidden whitespace-nowrap"
+          >
+            Logout
+          </motion.span>
         </button>
       </div>
     </div>
@@ -168,33 +236,39 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        {/* Mobile Header */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-800/50">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">M</span>
-              </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
-                MrMorris
-              </h1>
+      <div className="min-h-screen bg-neutral-900">
+        {/* Header with Toggle Button and Page Name - Thin Bar */}
+        <div
+          className={cn(
+            "fixed top-0 left-0 right-0 z-40 bg-neutral-900 transition-all duration-150",
+            isSidebarOpen ? "lg:left-[280px]" : "lg:left-0"
+          )}
+        >
+          <div className="flex items-center px-4 py-2.5">
+            <div className={cn(
+              "flex items-center gap-3 transition-all duration-150",
+              isSidebarOpen ? "opacity-0 w-0" : "opacity-100"
+            )}>
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-1.5 rounded-md hover:bg-neutral-700/50 text-neutral-400 hover:text-white transition-all duration-100"
+                aria-label="Open sidebar"
+              >
+                <Bars3Icon className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-white transition-all"
-              aria-label="Toggle sidebar"
-            >
-              {isSidebarOpen ? (
-                <XMarkIcon className="w-6 h-6" />
-              ) : (
-                <Bars3Icon className="w-6 h-6" />
-              )}
-            </button>
+            <h1 className={cn(
+              "text-base font-medium text-white transition-all duration-150",
+              isSidebarOpen ? "ml-0" : "ml-3"
+            )}>
+              {pathname === '/projects' ? 'Projects' :
+               pathname.startsWith('/projects/') ? projects.find(p => pathname.includes(p._id))?.name || 'Project' :
+               'Dashboard'}
+            </h1>
           </div>
         </div>
 
-        {/* Mobile Sidebar Overlay */}
+        {/* Mobile Sidebar Overlay (< lg screens) */}
         <AnimatePresence>
           {isSidebarOpen && (
             <>
@@ -202,7 +276,7 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="lg:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
+                className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
                 onClick={() => setIsSidebarOpen(false)}
               />
               <motion.aside
@@ -210,22 +284,38 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
                 animate={{ x: 0 }}
                 exit={{ x: -280 }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="lg:hidden fixed top-0 left-0 bottom-0 w-[280px] bg-slate-900/95 backdrop-blur-xl border-r border-slate-800/50 z-50"
+                className="lg:hidden fixed top-0 left-0 bottom-0 w-[280px] bg-neutral-800/50 backdrop-blur-xl border-r border-neutral-700/50 z-50 shadow-2xl"
               >
-                <SidebarContent />
+                <SidebarContent isExpanded={true} onClose={() => setIsSidebarOpen(false)} />
               </motion.aside>
             </>
           )}
         </AnimatePresence>
 
-        {/* Desktop Sidebar */}
-        <aside className="hidden lg:block fixed top-0 left-0 bottom-0 w-[280px] bg-slate-900/50 backdrop-blur-xl border-r border-slate-800/50">
-          <SidebarContent />
-        </aside>
+        {/* Desktop Sidebar (>= lg screens) - Pushes content */}
+        <motion.aside
+          initial={false}
+          animate={{
+            width: isSidebarOpen ? 280 : 0,
+          }}
+          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+          className="hidden lg:block fixed top-0 left-0 bottom-0 bg-neutral-800/50 backdrop-blur-xl border-r border-neutral-700/50 z-30 overflow-hidden shadow-xl"
+        >
+          <div className="w-[280px]">
+            <SidebarContent isExpanded={true} onClose={() => setIsSidebarOpen(false)} />
+          </div>
+        </motion.aside>
 
         {/* Main Content */}
-        <main className="lg:ml-[280px] pt-[72px] lg:pt-0">
-          <div className="min-h-screen">{children}</div>
+        <main className="min-h-screen">
+          <div
+            className={cn(
+              "min-h-screen transition-all duration-150 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
+            )}
+          >
+            {children}
+          </div>
         </main>
       </div>
     </>

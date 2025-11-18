@@ -78,7 +78,7 @@ export default function ConfirmDialog({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-md bg-neutral-950/95 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl overflow-hidden"
             >
               {/* Header */}
               <div className="flex items-start gap-4 p-6">
@@ -91,11 +91,11 @@ export default function ConfirmDialog({
                   <Dialog.Title className="text-xl font-bold text-white mb-2">
                     {title}
                   </Dialog.Title>
-                  <p className="text-sm text-slate-400">{message}</p>
+                  <p className="text-sm text-neutral-400">{message}</p>
                 </div>
                 <button
                   onClick={onClose}
-                  className="flex-shrink-0 p-2 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-white transition-all"
+                  className="flex-shrink-0 p-2 rounded-lg hover:bg-neutral-900/50 text-neutral-400 hover:text-white transition-all"
                 >
                   <XMarkIcon className="w-5 h-5" />
                 </button>
@@ -106,7 +106,7 @@ export default function ConfirmDialog({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 px-4 py-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 hover:text-white rounded-lg font-medium transition-all"
+                  className="flex-1 px-4 py-3 bg-neutral-900/50 hover:bg-neutral-800/50 border border-neutral-800/50 text-neutral-300 hover:text-white rounded-lg font-medium transition-all"
                 >
                   {cancelText}
                 </button>

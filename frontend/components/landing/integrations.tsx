@@ -39,12 +39,12 @@ export function Integrations() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.25 }}
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             Integrates With Your{" "}
-            <span className="bg-gradient-to-r from-[#eb5160] to-[#b7999c] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] bg-clip-text text-transparent">
               Entire Stack
             </span>
           </h2>
@@ -59,7 +59,7 @@ export function Integrations() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.25, delay: 0.2 }}
             className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
           >
             {integrations.map((integration, index) => {
@@ -70,17 +70,17 @@ export function Integrations() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  transition={{ duration: 0.2, delay: index * 0.05 }}
                   className="group relative flex flex-col items-center justify-center rounded-lg border-2 border-border bg-card p-6 transition-all hover:border-primary/50 hover:shadow-lg"
                 >
-                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#eb5160]/5 to-[#b7999c]/5">
+                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#9ACD32]/5 to-[#8AB82E]/5">
                     <Icon className="h-7 w-7" style={{ color: integration.color }} />
                   </div>
                   <p className="text-center text-sm font-semibold">{integration.name}</p>
                   <p className="text-xs text-muted-foreground">{integration.category}</p>
 
                   {/* Hover effect */}
-                  <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-[#eb5160]/5 to-[#b7999c]/5 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-[#9ACD32]/5 to-[#8AB82E]/5 opacity-0 transition-opacity group-hover:opacity-100" />
                 </motion.div>
               )
             })}
@@ -90,7 +90,7 @@ export function Integrations() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            transition={{ duration: 0.25, delay: 0.6 }}
             className="mt-12 text-center"
           >
             <p className="text-muted-foreground">
