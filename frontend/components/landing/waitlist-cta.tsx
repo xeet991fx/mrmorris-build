@@ -40,23 +40,23 @@ export function WaitlistCTA() {
   }
 
   return (
-    <section id="waitlist" className="py-24 bg-gradient-to-br from-[#eb5160]/10 via-[#b7999c]/10 to-[#dfe0e2]/10">
+    <section id="waitlist" className="py-24 bg-gradient-to-br from-[#9ACD32]/10 via-[#8AB82E]/10 to-[#7BA628]/10">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.25 }}
           className="mx-auto max-w-3xl text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-            Ready to Transform Your{" "}
-            <span className="bg-gradient-to-r from-[#eb5160] to-[#b7999c] bg-clip-text text-transparent">
-              Marketing Agency?
+            Ready to Scale Your{" "}
+            <span className="bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] bg-clip-text text-transparent">
+              Startup's Growth?
             </span>
           </h2>
           <p className="mb-10 text-lg text-muted-foreground">
-            Join the waitlist to get early access, exclusive pricing, and a personalized demo
+            Join the waitlist to get early access, startup-friendly pricing, and a personalized demo
             of MrMorris in action.
           </p>
 

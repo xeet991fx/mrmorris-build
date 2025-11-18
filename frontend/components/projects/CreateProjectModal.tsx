@@ -78,16 +78,16 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-md bg-neutral-950/95 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl overflow-hidden"
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-slate-800/50">
+              <div className="flex items-center justify-between p-6 border-b border-neutral-900/50">
                 <Dialog.Title className="text-2xl font-bold text-white">
                   Create New Project
                 </Dialog.Title>
                 <button
                   onClick={handleClose}
-                  className="p-2 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-white transition-all"
+                  className="p-2 rounded-lg hover:bg-neutral-900/50 text-neutral-400 hover:text-white transition-all"
                 >
                   <XMarkIcon className="w-6 h-6" />
                 </button>
@@ -98,7 +98,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                 <div>
                   <label
                     htmlFor="name"
-                    className="block text-sm font-medium text-slate-300 mb-2"
+                    className="block text-sm font-medium text-neutral-300 mb-2"
                   >
                     Project Name
                   </label>
@@ -107,7 +107,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                     id="name"
                     type="text"
                     placeholder="e.g., My Marketing Campaign"
-                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg text-white placeholder:text-slate-500 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all outline-none"
+                    className="w-full px-4 py-3 bg-neutral-900/50 border border-neutral-800/50 rounded-lg text-white placeholder:text-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                     autoFocus
                   />
                   {errors.name && (
@@ -119,7 +119,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                       {errors.name.message}
                     </motion.p>
                   )}
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-neutral-500">
                     Give your project a descriptive name (3-100 characters)
                   </p>
                 </div>
@@ -129,14 +129,14 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="flex-1 px-4 py-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 hover:text-white rounded-lg font-medium transition-all"
+                    className="flex-1 px-4 py-3 bg-neutral-900/50 hover:bg-neutral-800/50 border border-neutral-800/50 text-neutral-300 hover:text-white rounded-lg font-medium transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg shadow-violet-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-primary to-primary hover:from-primary/90 hover:to-primary/90 text-white font-semibold rounded-lg shadow-lg shadow-primary/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLoading ? "Creating..." : "Create"}
                   </button>

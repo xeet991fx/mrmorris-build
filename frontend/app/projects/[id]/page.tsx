@@ -59,10 +59,10 @@ export default function ProjectPage() {
 
   if (isInitialLoading || !currentProject) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Loading project...</p>
+          <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-neutral-400">Loading project...</p>
         </div>
       </div>
     );
@@ -107,20 +107,20 @@ export default function ProjectPage() {
 
   return (
     <>
-      <div className="min-h-screen p-8">
+      <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
         {/* Breadcrumb */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="mb-6 flex items-center gap-2 text-sm"
+          className="mb-5 flex items-center gap-2 text-sm"
         >
           <button
             onClick={() => router.push("/projects")}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-neutral-400 hover:text-white transition-colors"
           >
             Projects
           </button>
-          <ChevronRightIcon className="w-4 h-4 text-slate-600" />
+          <ChevronRightIcon className="w-3.5 h-3.5 text-neutral-600" />
           <span className="text-white font-medium">{currentProject.name}</span>
         </motion.div>
 
@@ -132,49 +132,49 @@ export default function ProjectPage() {
             className="flex items-center justify-center min-h-[500px]"
           >
             <div className="max-w-2xl w-full">
-              <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-12 text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-violet-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <ClipboardDocumentCheckIcon className="w-10 h-10 text-violet-400" />
+              <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-700/50 rounded-xl p-10 text-center shadow-sm">
+                <div className="w-16 h-16 bg-neutral-700/50 rounded-xl flex items-center justify-center mx-auto mb-5">
+                  <ClipboardDocumentCheckIcon className="w-8 h-8 text-white" />
                 </div>
 
-                <h2 className="text-3xl font-bold text-white mb-3">
+                <h2 className="text-2xl font-bold text-white mb-2">
                   Complete Your Project Setup
                 </h2>
-                <p className="text-slate-400 mb-8 text-lg">
+                <p className="text-sm text-neutral-400 mb-6">
                   Help us understand your business better by completing a quick
                   onboarding process. This will enable autonomous marketing
                   features.
                 </p>
 
                 {progress > 0 && (
-                  <div className="mb-8">
+                  <div className="mb-6">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-400">Progress</span>
-                      <span className="text-sm font-medium text-violet-400">
+                      <span className="text-xs text-neutral-500">Progress</span>
+                      <span className="text-xs font-medium text-white">
                         {progress}%
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-neutral-700 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${progress}%` }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                        className="h-full bg-gradient-to-r from-violet-500 to-purple-500"
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className="h-full bg-[#9ACD32]"
                       />
                     </div>
                   </div>
                 )}
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
                     onClick={() => setIsWizardOpen(true)}
-                    className="px-8 py-4 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg shadow-violet-500/25 transition-all transform hover:scale-105"
+                    className="px-6 py-2.5 bg-[#9ACD32] text-neutral-900 font-medium text-sm rounded-lg shadow-sm hover:shadow hover:bg-[#8AB82E] transition-all"
                   >
                     {progress > 0 ? "Continue Setup" : "Start Setup"}
                   </button>
                   <button
                     onClick={() => router.push("/projects")}
-                    className="px-8 py-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 hover:text-white rounded-lg font-medium transition-all"
+                    className="px-6 py-2.5 bg-neutral-700/50 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 hover:text-white rounded-lg text-sm font-medium transition-all"
                   >
                     Skip for Now
                   </button>
@@ -189,21 +189,21 @@ export default function ProjectPage() {
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-8 flex items-start justify-between"
+              className="mb-6 flex items-start justify-between"
             >
               <div>
-                <h1 className="text-4xl font-bold text-white mb-2">
+                <h1 className="text-3xl font-bold text-white mb-1">
                   {currentProject.name}
                 </h1>
-                <p className="text-slate-400">
+                <p className="text-sm text-neutral-400">
                   Created {format(new Date(currentProject.createdAt), "MMMM d, yyyy")}
                 </p>
               </div>
               <button
                 onClick={() => setIsWizardOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 hover:text-white rounded-lg font-medium transition-all"
+                className="flex items-center gap-2 px-3 py-1.5 bg-neutral-700/50 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 hover:text-white rounded-lg text-sm font-medium transition-all"
               >
-                <PencilIcon className="w-4 h-4" />
+                <PencilIcon className="w-3.5 h-3.5" />
                 Edit Setup
               </button>
             </motion.div>
@@ -213,14 +213,14 @@ export default function ProjectPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid md:grid-cols-2 gap-6"
+              className="grid md:grid-cols-2 gap-4"
             >
               {/* Business Overview Card */}
               {onboardingData?.business && (
                 <OverviewCard
                   icon={BuildingOfficeIcon}
                   title="Business Overview"
-                  color="violet"
+                  color="red"
                   onEdit={() => setIsWizardOpen(true)}
                 >
                   <DataRow label="Business Name" value={onboardingData.business.name} />
@@ -387,38 +387,36 @@ interface OverviewCardProps {
 
 function OverviewCard({ icon: Icon, title, color, children, onEdit }: OverviewCardProps) {
   const colorClasses = {
-    violet: "from-violet-500 to-purple-500",
-    blue: "from-blue-500 to-cyan-500",
-    cyan: "from-cyan-500 to-teal-500",
-    pink: "from-pink-500 to-rose-500",
-    amber: "from-amber-500 to-orange-500",
-    red: "from-red-500 to-rose-500",
-    slate: "from-slate-500 to-slate-600",
+    violet: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+    pink: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+    amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    red: "bg-red-500/10 text-red-400 border-red-500/20",
+    slate: "bg-neutral-700 text-white border-neutral-600",
   };
 
   return (
     <motion.div
-      whileHover={{ scale: 1.02, y: -4 }}
-      transition={{ type: "spring", stiffness: 300 }}
-      className="bg-slate-900/50 backdrop-blur-xl border border-slate-800/50 rounded-xl p-6 hover:border-violet-500/50 transition-all"
+      whileHover={{ scale: 1.01, y: -2 }}
+      transition={{ type: "tween", duration: 0.15 }}
+      className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-700/50 rounded-xl p-5 hover:border-neutral-600/50 transition-all duration-150 shadow-sm"
     >
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-12 h-12 bg-gradient-to-br ${colorClasses[color]} rounded-lg flex items-center justify-center`}
-          >
-            <Icon className="w-6 h-6 text-white" />
+        <div className="flex items-center gap-2.5">
+          <div className={`w-9 h-9 ${colorClasses[color]} border rounded-lg flex items-center justify-center`}>
+            <Icon className="w-4 h-4" />
           </div>
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <h3 className="text-base font-semibold text-white">{title}</h3>
         </div>
         <button
           onClick={onEdit}
-          className="p-2 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-white transition-all"
+          className="p-1.5 rounded-md hover:bg-neutral-700/50 text-neutral-400 hover:text-white transition-all"
         >
-          <PencilIcon className="w-4 h-4" />
+          <PencilIcon className="w-3.5 h-3.5" />
         </button>
       </div>
-      <div className="space-y-3">{children}</div>
+      <div className="space-y-2.5">{children}</div>
     </motion.div>
   );
 }
@@ -434,8 +432,8 @@ function DataRow({ label, value, multiline = false }: DataRowProps) {
 
   return (
     <div className={multiline ? "space-y-1" : "flex items-start justify-between gap-4"}>
-      <span className="text-sm text-slate-500 flex-shrink-0">{label}</span>
-      <span className={`text-sm text-slate-300 ${multiline ? "" : "text-right"}`}>
+      <span className="text-xs text-neutral-500 flex-shrink-0">{label}</span>
+      <span className={`text-xs text-neutral-300 font-medium ${multiline ? "" : "text-right"}`}>
         {value}
       </span>
     </div>

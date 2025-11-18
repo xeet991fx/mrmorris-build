@@ -210,7 +210,7 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             aria-hidden="true"
           />
 
@@ -222,18 +222,18 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-4xl bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-2xl shadow-2xl overflow-hidden"
+                className="w-full max-w-4xl bg-neutral-800/95 backdrop-blur-xl border border-neutral-700/50 rounded-xl shadow-2xl overflow-hidden"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-800/50">
-                  <Dialog.Title className="text-2xl font-bold text-white">
+                <div className="flex items-center justify-between p-5 border-b border-neutral-700/50">
+                  <Dialog.Title className="text-xl font-semibold text-white">
                     Project Setup
                   </Dialog.Title>
                   <button
                     onClick={handleClose}
-                    className="p-2 rounded-lg hover:bg-slate-800/50 text-slate-400 hover:text-white transition-all"
+                    className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-400 hover:text-white transition-all"
                   >
-                    <XMarkIcon className="w-6 h-6" />
+                    <XMarkIcon className="w-5 h-5" />
                   </button>
                 </div>
 
@@ -311,12 +311,12 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
                 </div>
 
                 {/* Footer with Draft Save Notice */}
-                <div className="p-6 border-t border-slate-800/50 bg-slate-900/50">
+                <div className="p-5 border-t border-neutral-700/50 bg-neutral-800/50">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-neutral-400">
                       Your progress is automatically saved as you go
                     </p>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <div className="flex items-center gap-2 text-xs text-neutral-400">
                       <span>Step {currentStep} of 7</span>
                     </div>
                   </div>

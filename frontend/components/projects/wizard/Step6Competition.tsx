@@ -31,7 +31,7 @@ export default function Step6Competition({ data, onNext, onBack }: Step6Props) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-white mb-2">Competition & Inspiration</h2>
-        <p className="text-slate-400">
+        <p className="text-neutral-400">
           Help us understand your competitive landscape
         </p>
       </div>
@@ -72,8 +72,8 @@ export default function Step6Competition({ data, onNext, onBack }: Step6Props) {
         />
       </FormField>
 
-      <div className="bg-slate-800/30 border border-slate-700/50 rounded-lg p-4">
-        <p className="text-sm text-slate-400">
+      <div className="bg-neutral-800/30 border border-neutral-700/50 rounded-lg p-4">
+        <p className="text-sm text-neutral-400">
           💡 <strong className="text-white">Tip:</strong> Understanding your
           competition and inspirations helps us create more effective marketing
           strategies that differentiate your brand.
@@ -84,13 +84,13 @@ export default function Step6Competition({ data, onNext, onBack }: Step6Props) {
         <button
           type="button"
           onClick={onBack}
-          className="px-6 py-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 hover:text-white rounded-lg font-medium transition-all"
+          className="px-6 py-3 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700/50 text-neutral-300 hover:text-white rounded-lg font-medium transition-all"
         >
           Back
         </button>
         <button
           type="submit"
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg shadow-violet-500/25 transition-all transform hover:scale-[1.02]"
+          className="flex-1 px-6 py-3 bg-[#9ACD32] hover:bg-[#8AB82E] text-neutral-900 font-semibold rounded-lg shadow-lg shadow-sm transition-all transform hover:scale-[1.02]"
         >
           Continue
         </button>

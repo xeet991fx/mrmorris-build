@@ -23,7 +23,7 @@ const features = [
       "Adjusts bids and reallocates spend in real-time",
       "Scales winning campaigns automatically",
     ],
-    color: "from-yellow-500 to-orange-500",
+    iconColor: "text-amber-500",
   },
   {
     icon: Brain,
@@ -36,7 +36,7 @@ const features = [
       "Adapts strategies based on your business context",
       "Improves performance over time without retraining",
     ],
-    color: "from-purple-600 to-pink-600",
+    iconColor: "text-purple-500",
   },
   {
     icon: LineChart,
@@ -49,7 +49,7 @@ const features = [
       "Forecasts budget needs and ROI",
       "Surfaces hidden patterns in your data",
     ],
-    color: "from-blue-500 to-cyan-500",
+    iconColor: "text-blue-500",
   },
   {
     icon: MessageSquare,
@@ -62,7 +62,7 @@ const features = [
       "Approve proactive recommendations instantly",
       "No dashboards or SQL required",
     ],
-    color: "from-green-500 to-emerald-500",
+    iconColor: "text-emerald-500",
   },
   {
     icon: Shuffle,
@@ -75,7 +75,7 @@ const features = [
       "Personalizes based on behavior triggers",
       "Scales personalization across thousands of customers",
     ],
-    color: "from-pink-500 to-rose-500",
+    iconColor: "text-pink-500",
   },
   {
     icon: Target,
@@ -88,7 +88,7 @@ const features = [
       "Nurtures cold leads with personalized sequences",
       "Closes the loop on every opportunity",
     ],
-    color: "from-indigo-500 to-purple-500",
+    iconColor: "text-cyan-500",
   },
 ]
 
@@ -100,12 +100,12 @@ export function CoreFeatures() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.25 }}
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             Powerful Features That{" "}
-            <span className="bg-gradient-to-r from-[#eb5160] to-[#b7999c] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] bg-clip-text text-transparent">
               Work Autonomously
             </span>
           </h2>
@@ -122,13 +122,11 @@ export function CoreFeatures() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              transition={{ duration: 0.25, delay: index * 0.1 }}
             >
               <Card className="group h-full border-2 bg-card/50 backdrop-blur transition-all hover:border-primary/50 hover:shadow-xl">
                 <CardHeader>
-                  <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color} shadow-lg transition-transform group-hover:scale-110`}>
-                    <feature.icon className="h-7 w-7 text-white" />
-                  </div>
+                  <feature.icon className={`mb-4 h-8 w-8 ${feature.iconColor}`} />
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
                   <CardDescription className="text-base">
                     {feature.description}

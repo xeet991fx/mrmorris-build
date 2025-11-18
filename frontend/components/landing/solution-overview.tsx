@@ -9,36 +9,31 @@ const agents = [
     icon: Brain,
     name: "Orchestrator Agent",
     description: "Coordinates all agents and makes strategic decisions",
-    color: "from-purple-600 to-pink-600",
-    iconColor: "text-purple-100",
+    iconColor: "text-indigo-500",
   },
   {
     icon: Workflow,
     name: "Content Agent",
     description: "Creates and optimizes ad copy, emails, and landing pages",
-    color: "from-blue-600 to-cyan-500",
-    iconColor: "text-blue-100",
+    iconColor: "text-violet-500",
   },
   {
     icon: BarChart3,
     name: "Campaign Agent",
     description: "Manages multi-channel campaign execution and budgets",
-    color: "from-emerald-600 to-teal-500",
-    iconColor: "text-emerald-100",
+    iconColor: "text-sky-500",
   },
   {
     icon: Bot,
     name: "Analytics Agent",
     description: "Analyzes performance and provides predictive insights",
-    color: "from-amber-600 to-orange-500",
-    iconColor: "text-amber-100",
+    iconColor: "text-teal-500",
   },
   {
     icon: Users,
     name: "Customer Agent",
     description: "Tracks customer journeys and orchestrates personalization",
-    color: "from-rose-600 to-pink-500",
-    iconColor: "text-rose-100",
+    iconColor: "text-rose-500",
   },
 ]
 
@@ -50,12 +45,12 @@ export function SolutionOverview() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.25 }}
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             Meet Your{" "}
-            <span className="bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[#9ACD32] via-[#8AB82E] to-[#7BA628] bg-clip-text text-transparent">
               Autonomous Marketing Team
             </span>
           </h2>
@@ -72,15 +67,11 @@ export function SolutionOverview() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              transition={{ duration: 0.25, delay: index * 0.1 }}
             >
               <Card className="h-full border-2 bg-card/50 backdrop-blur transition-all hover:border-primary/50 hover:shadow-lg">
                 <CardHeader>
-                  <div
-                    className={`mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br ${agent.color} shadow-lg`}
-                  >
-                    <agent.icon className={`h-8 w-8 ${agent.iconColor}`} />
-                  </div>
+                  <agent.icon className={`mb-4 h-8 w-8 ${agent.iconColor}`} />
                   <CardTitle className="text-xl">{agent.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -95,8 +86,8 @@ export function SolutionOverview() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="mt-16 rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-[#eb5160]/5 to-[#b7999c]/5 p-8 text-center backdrop-blur"
+          transition={{ duration: 0.25, delay: 0.6 }}
+          className="mt-16 rounded-2xl border-2 border-[#9ACD32]/20 bg-gradient-to-br from-[#9ACD32]/5 to-[#8AB82E]/5 p-8 text-center backdrop-blur"
         >
           <h3 className="mb-4 text-2xl font-bold">
             Agents That Learn, Collaborate & Execute Autonomously
