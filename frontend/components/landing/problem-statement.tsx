@@ -54,7 +54,7 @@ export function ProblemStatement() {
           </h2>
           <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
             Scale marketing effectively or preserve your runway. Your lean team is stretched thin,
-            and you can't afford to hire expensive specialists or waste precious budget.
+            and you can&apos;t afford to hire expensive specialists or waste precious budget.
           </p>
         </motion.div>
 

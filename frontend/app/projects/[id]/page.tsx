@@ -28,7 +28,7 @@ export default function ProjectPage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Memoize project to prevent unnecessary rerenders
-  const stableProject = useMemo(() => currentProject, [currentProject?._id]);
+  const stableProject = useMemo(() => currentProject, [currentProject]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -55,7 +55,7 @@ export default function ProjectPage() {
     return () => {
       cancelled = true; // Cancel pending operations
     };
-  }, [projectId]); // Remove fetchProject from deps
+  }, [projectId, fetchProject]);
 
   if (isInitialLoading || !currentProject) {
     return (

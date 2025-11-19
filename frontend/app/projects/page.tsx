@@ -96,7 +96,7 @@ export default function ProjectsPage() {
               </h2>
               <p className="text-sm text-neutral-400 mb-6">
                 Get started with autonomous marketing by creating your first
-                project. We'll guide you through a simple setup process.
+                project. We&apos;ll guide you through a simple setup process.
               </p>
               <button
                 onClick={() => setIsCreateModalOpen(true)}

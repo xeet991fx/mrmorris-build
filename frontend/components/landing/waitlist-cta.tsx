@@ -52,7 +52,7 @@ export function WaitlistCTA() {
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
             Ready to Scale Your{" "}
             <span className="bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] bg-clip-text text-transparent">
-              Startup's Growth?
+              Startup&apos;s Growth?
             </span>
           </h2>
           <p className="mb-10 text-lg text-muted-foreground">
