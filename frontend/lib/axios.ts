@@ -5,8 +5,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 // Debug log - only in development
 if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-  console.log("🔍 API_URL:", API_URL);
+  console.log("=== AXIOS CONFIGURATION DEBUG ===");
+  console.log("🔍 NEXT_PUBLIC_API_URL (env var):", process.env.NEXT_PUBLIC_API_URL);
+  console.log("🔍 API_URL (final value):", API_URL);
   console.log("🔍 Full baseURL:", `${API_URL}/api`);
+  console.log("🔍 Is env var undefined?", process.env.NEXT_PUBLIC_API_URL === undefined);
+  console.log("================================");
 }
 
 const axiosInstance = axios.create({
