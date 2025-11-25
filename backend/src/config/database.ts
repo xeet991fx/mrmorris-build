@@ -42,9 +42,11 @@ const connectDB = async (): Promise<typeof mongoose> => {
     const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of 30s
+      serverSelectionTimeoutMS: 30000, // Timeout after 30s
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-      connectTimeoutMS: 10000, // Give up initial connection after 10s
+      connectTimeoutMS: 30000, // Give up initial connection after 30s
+      retryWrites: true,
+      retryReads: true,
     };
 
     console.log("🔄 Creating new database connection...");

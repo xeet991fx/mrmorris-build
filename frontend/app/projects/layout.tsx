@@ -214,13 +214,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-<<<<<<< HEAD
-      {/* Projects Section - Takes remaining space */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 min-h-0">
-=======
       {/* Workspaces Section */}
       <div className="flex-1 overflow-y-auto px-3 py-4">
->>>>>>> 16301171ceea8c16a92d49a7a69cb6a24615a939
         <div className={cn(
           "flex items-center mb-3 transition-all duration-150",
           isExpanded ? "justify-between" : "justify-center"
@@ -274,63 +269,63 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             >
               <div className="space-y-0.5">
                 {workspaces.length === 0 ? (
-            <div className={cn(
-              "text-center transition-all",
-              isExpanded ? "py-8" : "py-4"
-            )}>
-              <FolderIcon className={cn(
-                "text-neutral-500 mx-auto mb-3",
-                isExpanded ? "w-5 h-5" : "w-4 h-4"
-              )} />
-              <motion.div
-                initial={false}
-                animate={{
-                  opacity: isExpanded ? 1 : 0,
-                  height: isExpanded ? "auto" : 0,
-                }}
-                transition={{ duration: 0.15 }}
-                className="overflow-hidden"
-              >
-                <p className="text-xs text-neutral-500">No workspaces yet</p>
-                <button
-                  onClick={handleCreateWorkspace}
-                  className="mt-3 text-xs text-white hover:text-neutral-300 transition-colors"
-                >
-                  Create your first workspace
-                </button>
-              </motion.div>
-            </div>
-          ) : (
-            workspaces.map((workspace) => (
-              <button
-                key={workspace._id}
-                onClick={() => handleWorkspaceClick(workspace)}
-                className={cn(
-                  "w-full flex items-center gap-2 rounded-md transition-all text-left group",
-                  isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
-                  isWorkspaceActive(workspace._id)
-                    ? "bg-neutral-700/70 text-white"
-                    : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+                  <div className={cn(
+                    "text-center transition-all",
+                    isExpanded ? "py-8" : "py-4"
+                  )}>
+                    <FolderIcon className={cn(
+                      "text-neutral-500 mx-auto mb-3",
+                      isExpanded ? "w-5 h-5" : "w-4 h-4"
+                    )} />
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        opacity: isExpanded ? 1 : 0,
+                        height: isExpanded ? "auto" : 0,
+                      }}
+                      transition={{ duration: 0.15 }}
+                      className="overflow-hidden"
+                    >
+                      <p className="text-xs text-neutral-500">No workspaces yet</p>
+                      <button
+                        onClick={handleCreateWorkspace}
+                        className="mt-3 text-xs text-white hover:text-neutral-300 transition-colors"
+                      >
+                        Create your first workspace
+                      </button>
+                    </motion.div>
+                  </div>
+                ) : (
+                  workspaces.map((workspace) => (
+                    <button
+                      key={workspace._id}
+                      onClick={() => handleWorkspaceClick(workspace)}
+                      className={cn(
+                        "w-full flex items-center gap-2 rounded-md transition-all text-left group",
+                        isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
+                        isWorkspaceActive(workspace._id)
+                          ? "bg-neutral-700/70 text-white"
+                          : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+                      )}
+                      title={!isExpanded ? workspace.name : ""}
+                    >
+                      <FolderIcon className="w-4 h-4 flex-shrink-0" />
+                      <motion.div
+                        initial={false}
+                        animate={{
+                          opacity: isExpanded ? 1 : 0,
+                          width: isExpanded ? "auto" : 0,
+                        }}
+                        transition={{ duration: 0.15 }}
+                        className="flex-1 min-w-0 overflow-hidden"
+                      >
+                        <p className="text-sm font-normal truncate">
+                          {workspace.name}
+                        </p>
+                      </motion.div>
+                    </button>
+                  ))
                 )}
-                title={!isExpanded ? workspace.name : ""}
-              >
-                <FolderIcon className="w-4 h-4 flex-shrink-0" />
-                <motion.div
-                  initial={false}
-                  animate={{
-                    opacity: isExpanded ? 1 : 0,
-                    width: isExpanded ? "auto" : 0,
-                  }}
-                  transition={{ duration: 0.15 }}
-                  className="flex-1 min-w-0 overflow-hidden"
-                >
-                  <p className="text-sm font-normal truncate">
-                    {workspace.name}
-                  </p>
-                </motion.div>
-              </button>
-            ))
-          )}
               </div>
             </motion.div>
           )}
@@ -416,8 +411,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
               isSidebarOpen ? "ml-0" : "ml-3"
             )}>
               {pathname === '/projects' ? 'Workspaces' :
-               pathname.startsWith('/projects/') ? workspaces.find(w => pathname.includes(w._id))?.name || 'Workspace' :
-               'Dashboard'}
+                pathname.startsWith('/projects/') ? workspaces.find(w => pathname.includes(w._id))?.name || 'Workspace' :
+                  'Dashboard'}
             </h1>
           </div>
         </div>
