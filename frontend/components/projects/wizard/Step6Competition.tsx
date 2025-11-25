@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { FireIcon, StarIcon } from "@heroicons/react/24/outline";
 import FormField from "@/components/forms/FormField";
 import TagsInput from "@/components/forms/TagsInput";
-import { step6Schema, type Step6Input } from "@/lib/validations/project";
+import { step6Schema, type Step6Input } from "@/lib/validations/workspace";
 
 interface Step6Props {
   data?: any;
@@ -18,6 +18,7 @@ export default function Step6Competition({ data, onNext, onBack }: Step6Props) {
     formState: { errors },
   } = useForm<Step6Input>({
     resolver: zodResolver(step6Schema),
+    mode: "onTouched",
     defaultValues: {
       competition: data || {},
     },

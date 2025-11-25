@@ -4,7 +4,7 @@ import { TagIcon, MegaphoneIcon, ChartBarIcon } from "@heroicons/react/24/outlin
 import FormField from "@/components/forms/FormField";
 import RadioGroup from "@/components/forms/RadioGroup";
 import TextInput from "@/components/forms/TextInput";
-import { step5Schema, type Step5Input } from "@/lib/validations/project";
+import { step5Schema, type Step5Input } from "@/lib/validations/workspace";
 
 interface Step5Props {
   data?: any;
@@ -32,6 +32,7 @@ export default function Step5OfferCTA({ data, onNext, onBack }: Step5Props) {
     formState: { errors },
   } = useForm<Step5Input>({
     resolver: zodResolver(step5Schema),
+    mode: "onTouched",
     defaultValues: {
       offer: data || {},
     },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,55 +11,169 @@ import {
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
 
-function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
+const MOBILE_SIDEBAR_WIDTH = 280;
+const MIN_SIDEBAR_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 500;
+const DEFAULT_SIDEBAR_WIDTH = 280;
+
+function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
-  const { projects, fetchProjects, setCurrentProject } = useProjectStore();
+  const { workspaces, fetchWorkspaces, setCurrentWorkspace } = useWorkspaceStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarLocked, setIsSidebarLocked] = useState(false);
 
-  // Fetch projects on mount with error handling
+  // Use lazy initialization to read from localStorage synchronously (fixes flicker bug)
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedWidth = localStorage.getItem('sidebarWidth');
+      if (savedWidth) {
+        const width = parseInt(savedWidth);
+        if (width >= MIN_SIDEBAR_WIDTH && width <= MAX_SIDEBAR_WIDTH) {
+          return width;
+        }
+      }
+    }
+    return DEFAULT_SIDEBAR_WIDTH;
+  });
+
+  const [isResizing, setIsResizing] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [isWorkspacesCollapsed, setIsWorkspacesCollapsed] = useState(false);
+
+  // Use ref to track current width for localStorage save (fixes stale closure bug)
+  const sidebarWidthRef = useRef(sidebarWidth);
+
+  // Update ref whenever sidebarWidth changes
   useEffect(() => {
-    const loadProjects = async () => {
+    sidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
+
+  // Track desktop/mobile breakpoint
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+
+    // Set initial value
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Fetch workspaces on mount with error handling
+  useEffect(() => {
+    const loadWorkspaces = async () => {
       try {
-        await fetchProjects();
+        await fetchWorkspaces();
       } catch (error) {
-        console.error("Failed to fetch projects:", error);
-        // User will still see the UI, just with no projects
+        console.error("Failed to fetch workspaces:", error);
+        // User will still see the UI, just with no workspaces
         // Toast notification already handled by the store
       }
     };
 
-    loadProjects();
-  }, [fetchProjects]);
+    loadWorkspaces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogout = async () => {
     await logout();
     router.push("/login");
   };
 
-  const handleProjectClick = (project: any) => {
-    setCurrentProject(project);
-    router.push(`/projects/${project._id}`);
+  const handleWorkspaceClick = (workspace: any) => {
+    setCurrentWorkspace(workspace);
+    router.push(`/projects/${workspace._id}`);
     setIsSidebarOpen(false);
   };
 
-  const handleCreateProject = () => {
+  const handleCreateWorkspace = () => {
     router.push("/projects");
     setIsSidebarOpen(false);
   };
 
-  const isProjectActive = (projectId: string) => {
-    return pathname.includes(projectId);
+  const isWorkspaceActive = (workspaceId: string) => {
+    return pathname.includes(workspaceId);
   };
+
+  // Handle sidebar resize
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  // Resize effect - using requestAnimationFrame for smooth updates
+  useEffect(() => {
+    let rafId: number | null = null;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      // Cancel previous frame if still pending
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+
+      // Schedule update on next frame for smooth 60fps updates
+      rafId = requestAnimationFrame(() => {
+        // Clamp width between min and max (fixes boundary bug)
+        const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, e.clientX));
+        setSidebarWidth(newWidth);
+      });
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+        // Use ref to get latest width (fixes stale closure bug)
+        localStorage.setItem('sidebarWidth', sidebarWidthRef.current.toString());
+
+        // Cancel any pending frame
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      }
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+
+      // Clean up any pending animation frame
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+    };
+  }, [isResizing]); // Only depend on isResizing, not sidebarWidth
+
+  // Cleanup body styles on unmount (fixes stuck cursor bug)
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, []);
 
   const SidebarContent = ({ isExpanded, onClose }: { isExpanded: boolean; onClose?: () => void }) => (
     <div className="flex flex-col h-full">
@@ -100,36 +214,61 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* Projects Section */}
+      {/* Workspaces Section */}
       <div className="flex-1 overflow-y-auto px-3 py-4">
         <div className={cn(
           "flex items-center mb-3 transition-all duration-150",
           isExpanded ? "justify-between" : "justify-center"
         )}>
-          <motion.h2
-            initial={false}
-            animate={{
-              opacity: isExpanded ? 1 : 0,
-              width: isExpanded ? "auto" : 0,
-            }}
-            transition={{ duration: 0.15 }}
-            className="text-xs font-semibold text-neutral-500 uppercase tracking-wide overflow-hidden whitespace-nowrap"
-          >
-            Projects
-          </motion.h2>
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            {isExpanded && (
+              <button
+                onClick={() => setIsWorkspacesCollapsed(!isWorkspacesCollapsed)}
+                className="p-0.5 rounded hover:bg-neutral-700/50 text-neutral-500 hover:text-white transition-all"
+                aria-label={isWorkspacesCollapsed ? "Expand workspaces" : "Collapse workspaces"}
+              >
+                <ChevronDownIcon
+                  className={cn(
+                    "w-3.5 h-3.5 transition-transform duration-200",
+                    isWorkspacesCollapsed && "-rotate-90"
+                  )}
+                />
+              </button>
+            )}
+            <motion.h2
+              initial={false}
+              animate={{
+                opacity: isExpanded ? 1 : 0,
+                width: isExpanded ? "auto" : 0,
+              }}
+              transition={{ duration: 0.15 }}
+              className="text-xs font-semibold text-neutral-500 uppercase tracking-wide overflow-hidden whitespace-nowrap"
+            >
+              Workspaces
+            </motion.h2>
+          </div>
           <button
-            onClick={handleCreateProject}
+            onClick={handleCreateWorkspace}
             className="p-1 rounded hover:bg-neutral-700/50 text-neutral-400 hover:text-white transition-all"
-            aria-label="Create new project"
-            title={!isExpanded ? "Create new project" : ""}
+            aria-label="Create new workspace"
+            title={!isExpanded ? "Create new workspace" : ""}
           >
             <PlusIcon className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Projects List */}
-        <div className="space-y-0.5">
-          {projects.length === 0 ? (
+        {/* Workspaces List */}
+        <AnimatePresence initial={false}>
+          {!isWorkspacesCollapsed && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="space-y-0.5">
+                {workspaces.length === 0 ? (
             <div className={cn(
               "text-center transition-all",
               isExpanded ? "py-8" : "py-4"
@@ -147,28 +286,28 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                <p className="text-xs text-neutral-500">No projects yet</p>
+                <p className="text-xs text-neutral-500">No workspaces yet</p>
                 <button
-                  onClick={handleCreateProject}
+                  onClick={handleCreateWorkspace}
                   className="mt-3 text-xs text-white hover:text-neutral-300 transition-colors"
                 >
-                  Create your first project
+                  Create your first workspace
                 </button>
               </motion.div>
             </div>
           ) : (
-            projects.map((project) => (
+            workspaces.map((workspace) => (
               <button
-                key={project._id}
-                onClick={() => handleProjectClick(project)}
+                key={workspace._id}
+                onClick={() => handleWorkspaceClick(workspace)}
                 className={cn(
                   "w-full flex items-center gap-2 rounded-md transition-all text-left group",
                   isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
-                  isProjectActive(project._id)
+                  isWorkspaceActive(workspace._id)
                     ? "bg-neutral-700/70 text-white"
                     : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
                 )}
-                title={!isExpanded ? project.name : ""}
+                title={!isExpanded ? workspace.name : ""}
               >
                 <FolderIcon className="w-4 h-4 flex-shrink-0" />
                 <motion.div
@@ -181,13 +320,16 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
                   className="flex-1 min-w-0 overflow-hidden"
                 >
                   <p className="text-sm font-normal truncate">
-                    {project.name}
+                    {workspace.name}
                   </p>
                 </motion.div>
               </button>
             ))
           )}
-        </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* User Section */}
@@ -244,9 +386,12 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Header with Toggle Button and Page Name - Thin Bar */}
         <div
           className={cn(
-            "fixed top-0 left-0 right-0 z-40 bg-neutral-900 transition-all duration-150",
-            isSidebarOpen ? "lg:left-[280px]" : "lg:left-0"
+            "fixed top-0 left-0 right-0 z-40 bg-neutral-900",
+            !isResizing && "lg:transition-all lg:duration-200 lg:ease-out"
           )}
+          style={{
+            left: isSidebarOpen && isDesktop ? `${sidebarWidth}px` : '0',
+          }}
         >
           <div className="flex items-center px-4 py-2.5">
             <div className={cn(
@@ -265,8 +410,8 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
               "text-base font-medium text-white transition-all duration-150",
               isSidebarOpen ? "ml-0" : "ml-3"
             )}>
-              {pathname === '/projects' ? 'Projects' :
-               pathname.startsWith('/projects/') ? projects.find(p => pathname.includes(p._id))?.name || 'Project' :
+              {pathname === '/projects' ? 'Workspaces' :
+               pathname.startsWith('/projects/') ? workspaces.find(w => pathname.includes(w._id))?.name || 'Workspace' :
                'Dashboard'}
             </h1>
           </div>
@@ -284,11 +429,12 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => setIsSidebarOpen(false)}
               />
               <motion.aside
-                initial={{ x: -280 }}
+                initial={{ x: -MOBILE_SIDEBAR_WIDTH }}
                 animate={{ x: 0 }}
-                exit={{ x: -280 }}
+                exit={{ x: -MOBILE_SIDEBAR_WIDTH }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="lg:hidden fixed top-0 left-0 bottom-0 w-[280px] bg-neutral-800/50 backdrop-blur-xl border-r border-neutral-700/50 z-50 shadow-2xl"
+                className="lg:hidden fixed top-0 left-0 bottom-0 bg-neutral-800/50 backdrop-blur-xl border-r border-neutral-700/50 z-50 shadow-2xl"
+                style={{ width: `${MOBILE_SIDEBAR_WIDTH}px` }}
               >
                 <SidebarContent isExpanded={true} onClose={() => setIsSidebarOpen(false)} />
               </motion.aside>
@@ -297,26 +443,42 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
 
         {/* Desktop Sidebar (>= lg screens) - Pushes content */}
-        <motion.aside
-          initial={false}
-          animate={{
-            width: isSidebarOpen ? 280 : 0,
+        <aside
+          className={cn(
+            "hidden lg:block fixed top-0 left-0 bottom-0 bg-neutral-800/50 backdrop-blur-xl border-r border-neutral-700/50 z-30 overflow-hidden shadow-xl",
+            !isResizing && "transition-all duration-200 ease-out"
+          )}
+          style={{
+            width: isSidebarOpen ? `${sidebarWidth}px` : 0
           }}
-          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-          className="hidden lg:block fixed top-0 left-0 bottom-0 bg-neutral-800/50 backdrop-blur-xl border-r border-neutral-700/50 z-30 overflow-hidden shadow-xl"
         >
-          <div className="w-[280px]">
+          <div style={{ width: `${sidebarWidth}px` }}>
             <SidebarContent isExpanded={true} onClose={() => setIsSidebarOpen(false)} />
           </div>
-        </motion.aside>
+
+          {/* Resize Handle - Desktop only */}
+          {isSidebarOpen && (
+            <div className="absolute top-0 right-0 bottom-0 w-1 flex items-center justify-center">
+              <div
+                onMouseDown={handleMouseDown}
+                className="absolute top-1/2 right-0 -translate-y-1/2 w-3 h-12 flex items-center justify-center cursor-col-resize group"
+              >
+                <div className="w-0.5 h-8 bg-neutral-600 group-hover:bg-neutral-500 transition-colors rounded-full" />
+              </div>
+            </div>
+          )}
+        </aside>
 
         {/* Main Content */}
         <main className="min-h-screen">
           <div
             className={cn(
-              "min-h-screen transition-all duration-150 ease-[cubic-bezier(0.4,0,0.2,1)]",
-              isSidebarOpen ? "lg:ml-[280px]" : "lg:ml-0"
+              "min-h-screen",
+              !isResizing && "lg:transition-all lg:duration-200 lg:ease-out"
             )}
+            style={{
+              marginLeft: isSidebarOpen && isDesktop ? `${sidebarWidth}px` : '0',
+            }}
           >
             {children}
           </div>
@@ -326,10 +488,10 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function ProjectsLayout({ children }: { children: React.ReactNode }) {
+export default function WorkspacesLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute>
-      <ProjectsLayoutContent>{children}</ProjectsLayoutContent>
+      <WorkspacesLayoutContent>{children}</WorkspacesLayoutContent>
     </ProtectedRoute>
   );
 }

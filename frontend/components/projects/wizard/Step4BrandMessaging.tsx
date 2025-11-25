@@ -11,7 +11,7 @@ import {
 import FormField from "@/components/forms/FormField";
 import RadioGroup from "@/components/forms/RadioGroup";
 import Textarea from "@/components/forms/Textarea";
-import { step4Schema, type Step4Input } from "@/lib/validations/project";
+import { step4Schema, type Step4Input } from "@/lib/validations/workspace";
 
 interface Step4Props {
   data?: any;
@@ -36,6 +36,7 @@ export default function Step4BrandMessaging({ data, onNext, onBack }: Step4Props
     formState: { errors },
   } = useForm<Step4Input>({
     resolver: zodResolver(step4Schema),
+    mode: "onTouched",
     defaultValues: {
       brand: data || {},
     },

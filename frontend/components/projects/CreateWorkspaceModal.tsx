@@ -7,18 +7,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useProjectStore } from "@/store/useProjectStore";
-import { createProjectSchema, type CreateProjectInput } from "@/lib/validations/project";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+import { createWorkspaceSchema, type CreateWorkspaceInput } from "@/lib/validations/workspace";
 import toast from "react-hot-toast";
 
-interface CreateProjectModalProps {
+interface CreateWorkspaceModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
+export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspaceModalProps) {
   const router = useRouter();
-  const { createProject, isLoading } = useProjectStore();
+  const { createWorkspace, isLoading } = useWorkspaceStore();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const {
@@ -26,21 +26,21 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<CreateProjectInput>({
-    resolver: zodResolver(createProjectSchema),
+  } = useForm<CreateWorkspaceInput>({
+    resolver: zodResolver(createWorkspaceSchema),
   });
 
-  const onSubmit = async (data: CreateProjectInput) => {
+  const onSubmit = async (data: CreateWorkspaceInput) => {
     try {
-      const project = await createProject(data.name);
-      toast.success("Project created successfully!");
+      const workspace = await createWorkspace(data.name);
+      toast.success("Workspace created successfully!");
       reset();
       onClose();
 
-      // Redirect to project page to start onboarding
-      router.push(`/projects/${project._id}`);
+      // Redirect to workspace page to start onboarding
+      router.push(`/projects/${workspace._id}`);
     } catch (error: any) {
-      const message = error.response?.data?.error || "Failed to create project";
+      const message = error.response?.data?.error || "Failed to create workspace";
       toast.error(message);
     }
   };
@@ -83,7 +83,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-neutral-900/50">
                 <Dialog.Title className="text-2xl font-bold text-white">
-                  Create New Project
+                  Create New Workspace
                 </Dialog.Title>
                 <button
                   onClick={handleClose}
@@ -100,7 +100,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                     htmlFor="name"
                     className="block text-sm font-medium text-neutral-300 mb-2"
                   >
-                    Project Name
+                    Workspace Name
                   </label>
                   <input
                     {...register("name")}
@@ -120,7 +120,7 @@ export default function CreateProjectModal({ isOpen, onClose }: CreateProjectMod
                     </motion.p>
                   )}
                   <p className="mt-2 text-xs text-neutral-500">
-                    Give your project a descriptive name (3-100 characters)
+                    Give your workspace a descriptive name (3-100 characters)
                   </p>
                 </div>
 

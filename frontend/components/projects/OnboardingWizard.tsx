@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog } from "@headlessui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { XMarkIcon, ArrowLeftIcon, ArrowRightIcon, CheckIcon } from "@heroicons/react/24/outline";
-import { useProjectStore } from "@/store/useProjectStore";
-import type { Project, OnboardingData } from "@/lib/api/project";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+import type { Workspace, OnboardingData } from "@/lib/api/workspace";
 import ProgressIndicator from "./ProgressIndicator";
 import toast from "react-hot-toast";
 
@@ -21,28 +21,16 @@ import Step7Advanced from "./wizard/Step7Advanced";
 interface OnboardingWizardProps {
   isOpen: boolean;
   onClose: () => void;
-  project: Project;
+  workspace: Workspace;
 }
 
-export default function OnboardingWizard({ isOpen, onClose, project }: OnboardingWizardProps) {
+export default function OnboardingWizard({ isOpen, onClose, workspace }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState<"forward" | "backward">("forward");
-  const [formData, setFormData] = useState<OnboardingData>(project.onboardingData || {});
+  const [formData, setFormData] = useState<OnboardingData>(workspace.onboardingData || {});
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-  const { saveOnboarding, isLoading } = useProjectStore();
+  const { saveOnboarding, isLoading } = useWorkspaceStore();
 
-  // Debug: Log component mount and unmount
-  useEffect(() => {
-    console.log("🎬 OnboardingWizard mounted");
-    return () => {
-      console.log("💥 OnboardingWizard unmounting");
-    };
-  }, []);
-
-  // Debug: Log whenever currentStep changes
-  useEffect(() => {
-    console.log("🔥 currentStep changed to:", currentStep);
-  }, [currentStep]);
 
   // Initialize completed steps and form data ONLY when wizard opens
   const initializedRef = useRef(false);
@@ -58,9 +46,7 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    console.log("🚀 Initializing wizard with project data");
-
-    if (project.onboardingData) {
+    if (workspace.onboardingData) {
       const completed: number[] = [];
 
       // Helper function to check if section has meaningful data
@@ -77,47 +63,37 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
         });
       };
 
-      if (hasData(project.onboardingData.business)) completed.push(1);
-      if (hasData(project.onboardingData.goals)) completed.push(2);
-      if (hasData(project.onboardingData.channels)) completed.push(3);
-      if (hasData(project.onboardingData.brand)) completed.push(4);
-      if (hasData(project.onboardingData.offer)) completed.push(5);
-      if (hasData(project.onboardingData.competition)) completed.push(6);
-      if (hasData(project.onboardingData.advanced)) completed.push(7);
+      if (hasData(workspace.onboardingData.business)) completed.push(1);
+      if (hasData(workspace.onboardingData.goals)) completed.push(2);
+      if (hasData(workspace.onboardingData.channels)) completed.push(3);
+      if (hasData(workspace.onboardingData.brand)) completed.push(4);
+      if (hasData(workspace.onboardingData.offer)) completed.push(5);
+      if (hasData(workspace.onboardingData.competition)) completed.push(6);
+      if (hasData(workspace.onboardingData.advanced)) completed.push(7);
 
       setCompletedSteps(completed);
-      setFormData(project.onboardingData);
+      setFormData(workspace.onboardingData);
     }
-  }, [isOpen, project.onboardingData]); // Initialize on open, but use ref to prevent re-init
+  }, [isOpen, workspace.onboardingData]); // Initialize on open, but use ref to prevent re-init
 
   const handleNext = async (stepData: any, isValid: boolean = true) => {
-    console.log("🚀 handleNext called with:", { stepData, isValid, currentStep });
-
     if (!isValid) {
-      console.log("⚠️ Validation failed, stopping here");
       return;
     }
 
     // Update form data
     const updatedData = { ...formData, ...stepData };
-    console.log("📝 Updated form data:", updatedData);
     setFormData(updatedData);
 
     // Mark step as completed
     if (!completedSteps.includes(currentStep)) {
-      console.log("✔️ Marking step", currentStep, "as completed");
       setCompletedSteps([...completedSteps, currentStep]);
     }
 
     // Save draft
-    console.log("💾 Attempting to save draft...");
     try {
-      await saveOnboarding(project._id, updatedData, currentStep);
-      console.log("✅ Draft saved successfully");
-      // Optional: show success toast
-      // toast.success("Draft saved");
+      await saveOnboarding(workspace._id, updatedData, currentStep);
     } catch (error) {
-      console.error("❌ Failed to save draft:", error);
       toast.error("Failed to save draft. Please try again.");
       // Don't navigate if save failed
       return;
@@ -125,14 +101,8 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
 
     // Move to next step or complete
     if (currentStep < 7) {
-      console.log("➡️ Moving to next step:", currentStep + 1);
       setDirection("forward");
-      setCurrentStep(prev => {
-        console.log("🔄 Updating step from", prev, "to", prev + 1);
-        return prev + 1;
-      });
-    } else {
-      console.log("🏁 Reached final step");
+      setCurrentStep(prev => prev + 1);
     }
   };
 
@@ -149,8 +119,8 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
 
     try {
       // Pass complete=true to mark onboarding as complete
-      await saveOnboarding(project._id, updatedData, 7, true);
-      toast.success("Project setup completed successfully!");
+      await saveOnboarding(workspace._id, updatedData, 7, true);
+      toast.success("Workspace setup completed successfully!");
       onClose();
     } catch (error) {
       toast.error("Failed to complete setup. Please try again.");
@@ -180,7 +150,7 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
 
   const slideVariants = {
     enter: (direction: "forward" | "backward") => ({
-      x: direction === "forward" ? 1000 : -1000,
+      x: direction === "forward" ? 50 : -50,
       opacity: 0,
     }),
     center: {
@@ -188,7 +158,7 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
       opacity: 1,
     },
     exit: (direction: "forward" | "backward") => ({
-      x: direction === "forward" ? -1000 : 1000,
+      x: direction === "forward" ? -50 : 50,
       opacity: 0,
     }),
   };
@@ -227,7 +197,7 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-neutral-700/50">
                   <Dialog.Title className="text-xl font-semibold text-white">
-                    Project Setup
+                    Workspace Setup
                   </Dialog.Title>
                   <button
                     onClick={handleClose}
@@ -251,8 +221,8 @@ export default function OnboardingWizard({ isOpen, onClose, project }: Onboardin
                       animate="center"
                       exit="exit"
                       transition={{
-                        x: { type: "spring", stiffness: 300, damping: 30 },
-                        opacity: { duration: 0.2 },
+                        x: { duration: 0.2, ease: "easeOut" },
+                        opacity: { duration: 0.15 },
                       }}
                       className="p-6"
                     >

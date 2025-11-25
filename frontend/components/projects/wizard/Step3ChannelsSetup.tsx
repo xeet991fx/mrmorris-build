@@ -5,7 +5,7 @@ import FormField from "@/components/forms/FormField";
 import CheckboxGroup from "@/components/forms/CheckboxGroup";
 import TagsInput from "@/components/forms/TagsInput";
 import RadioGroup from "@/components/forms/RadioGroup";
-import { step3Schema, type Step3Input } from "@/lib/validations/project";
+import { step3Schema, type Step3Input } from "@/lib/validations/workspace";
 
 interface Step3Props {
   data?: any;
@@ -41,6 +41,7 @@ export default function Step3ChannelsSetup({ data, onNext, onBack }: Step3Props)
     formState: { errors },
   } = useForm<Step3Input>({
     resolver: zodResolver(step3Schema),
+    mode: "onTouched",
     defaultValues: {
       channels: data || {},
     },
