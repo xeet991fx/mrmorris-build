@@ -182,7 +182,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         "border-b border-neutral-700/50 transition-all duration-150 relative group",
         isExpanded ? "px-5 py-4" : "px-3 py-4"
       )}>
-        <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.push("/projects")}
+          className="flex items-center gap-3 w-full hover:opacity-80 transition-opacity"
+          aria-label="Go to projects"
+        >
           <div className="w-7 h-7 bg-[#9ACD32] rounded-md flex items-center justify-center flex-shrink-0 shadow-sm">
             <span className="text-neutral-900 font-bold text-sm">M</span>
           </div>
@@ -197,7 +201,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
           >
             MrMorris
           </motion.h1>
-        </div>
+        </button>
         {/* Close Button - Appears on hover */}
         {onClose && (
           <button
