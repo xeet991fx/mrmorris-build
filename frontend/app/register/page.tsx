@@ -23,9 +23,24 @@ function RegisterContent() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Backend URL for OAuth
-  const backendUrl = typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000')
-    : 'http://localhost:5000';
+  const getBackendUrl = () => {
+    if (typeof window === 'undefined') return 'http://localhost:5000';
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    console.log('🔍 NEXT_PUBLIC_API_URL:', apiUrl);
+
+    if (!apiUrl) {
+      console.warn('⚠️ NEXT_PUBLIC_API_URL not set, using localhost');
+      return 'http://localhost:5000';
+    }
+
+    // Remove /api suffix if present
+    const backendUrl = apiUrl.replace('/api', '');
+    console.log('🔍 Backend URL for OAuth:', backendUrl);
+    return backendUrl;
+  };
+
+  const backendUrl = getBackendUrl();
 
   // Check for error in URL params
   useEffect(() => {
@@ -94,7 +109,9 @@ function RegisterContent() {
 
   const handleGoogleSignup = () => {
     setIsGoogleLoading(true);
-    window.location.href = `${backendUrl}/api/auth/google`;
+    const googleAuthUrl = `${backendUrl}/api/auth/google`;
+    console.log('🚀 Redirecting to Google OAuth:', googleAuthUrl);
+    window.location.href = googleAuthUrl;
   };
 
   const handleResendVerification = async () => {
