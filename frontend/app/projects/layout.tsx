@@ -65,7 +65,7 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn(
-        "border-b border-neutral-700/50 transition-all duration-150 relative group",
+        "border-b border-neutral-700/50 transition-all duration-150 relative group flex-shrink-0",
         isExpanded ? "px-5 py-4" : "px-3 py-4"
       )}>
         <button
@@ -100,8 +100,8 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* Projects Section */}
-      <div className="flex-1 overflow-y-auto px-3 py-4">
+      {/* Projects Section - Takes remaining space */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 min-h-0">
         <div className={cn(
           "flex items-center mb-3 transition-all duration-150",
           isExpanded ? "justify-between" : "justify-center"
@@ -190,8 +190,8 @@ function ProjectsLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* User Section */}
-      <div className="p-3 border-t border-neutral-700/50">
+      {/* User Section - Pinned to bottom */}
+      <div className="mt-auto p-3 border-t border-neutral-700/50 flex-shrink-0">
         <div className={cn(
           "flex items-center gap-2 mb-2 rounded-md hover:bg-neutral-700/30 transition-colors cursor-pointer",
           isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center"
