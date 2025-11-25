@@ -4,7 +4,7 @@ import { ChartBarIcon, CurrencyDollarIcon, ClockIcon } from "@heroicons/react/24
 import FormField from "@/components/forms/FormField";
 import RadioGroup from "@/components/forms/RadioGroup";
 import NumberInput from "@/components/forms/NumberInput";
-import { step2Schema, type Step2Input } from "@/lib/validations/project";
+import { step2Schema, type Step2Input } from "@/lib/validations/workspace";
 
 interface Step2Props {
   data?: any;
@@ -33,6 +33,7 @@ export default function Step2GoalsMetrics({ data, onNext, onBack }: Step2Props) 
     formState: { errors },
   } = useForm<Step2Input>({
     resolver: zodResolver(step2Schema),
+    mode: "onTouched",
     defaultValues: {
       goals: data || {},
     },

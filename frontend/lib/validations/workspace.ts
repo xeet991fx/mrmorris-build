@@ -208,28 +208,28 @@ export const onboardingDataSchema = z.object({
     .optional(),
 });
 
-// Create project schema
-export const createProjectSchema = z.object({
+// Create workspace schema
+export const createWorkspaceSchema = z.object({
   name: z
     .string()
-    .min(3, "Project name must be at least 3 characters")
-    .max(100, "Project name must be less than 100 characters")
+    .min(3, "Workspace name must be at least 3 characters")
+    .max(100, "Workspace name must be less than 100 characters")
     .trim(),
 });
 
-// Update project schema
-export const updateProjectSchema = z.object({
+// Update workspace schema
+export const updateWorkspaceSchema = z.object({
   name: z
     .string()
-    .min(3, "Project name must be at least 3 characters")
-    .max(100, "Project name must be less than 100 characters")
+    .min(3, "Workspace name must be at least 3 characters")
+    .max(100, "Workspace name must be less than 100 characters")
     .trim()
     .optional(),
 });
 
 // Type exports
-export type CreateProjectInput = z.infer<typeof createProjectSchema>;
-export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
+export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
+export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
 export type OnboardingDataInput = z.infer<typeof onboardingDataSchema>;
 export type Step1Input = z.infer<typeof step1Schema>;
 export type Step2Input = z.infer<typeof step2Schema>;

@@ -40,11 +40,11 @@ export default function LoginPage() {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="min-h-screen flex items-center justify-center bg-neutral-900 px-4 py-12 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12 relative overflow-hidden">
         {/* Animated background gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-[#9ACD32]/5 to-transparent rounded-full blur-3xl"
+            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, 100, 0],
               y: [0, 50, 0],
@@ -57,7 +57,7 @@ export default function LoginPage() {
             }}
           />
           <motion.div
-            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-neutral-900/50 to-transparent rounded-full blur-3xl"
+            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, -100, 0],
               y: [0, -50, 0],
@@ -78,7 +78,7 @@ export default function LoginPage() {
           className="w-full max-w-md relative z-10"
         >
           {/* Glass card */}
-          <div className="bg-neutral-800/70 backdrop-blur-xl border border-neutral-800 rounded-2xl shadow-2xl p-8">
+          <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8">
             {/* Header */}
             <div className="text-center mb-8">
               <motion.div

@@ -63,20 +63,9 @@ export default function ProgressIndicator({
                   )}
                 </div>
 
-                {/* Pulsing Ring for Current Step */}
+                {/* Circular Ripple for Current Step */}
                 {isCurrent && (
-                  <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-[#9ACD32]/50"
-                    animate={{
-                      scale: [1, 1.3, 1],
-                      opacity: [0.5, 0, 0.5],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
+                  <div className="absolute top-0 left-0 w-10 h-10 rounded-full pulse-ring pointer-events-none" />
                 )}
 
                 {/* Step Label */}
