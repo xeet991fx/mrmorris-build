@@ -15,61 +15,61 @@ import {
   PencilIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import OnboardingWizard from "@/components/projects/OnboardingWizard";
 import { format } from "date-fns";
 
-export default function ProjectPage() {
+export default function WorkspacePage() {
   const params = useParams();
   const router = useRouter();
-  const projectId = params.id as string;
-  const { currentProject, fetchProject, isLoading } = useProjectStore();
+  const workspaceId = params.id as string;
+  const { currentWorkspace, fetchWorkspace, isLoading } = useWorkspaceStore();
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  // Memoize project to prevent unnecessary rerenders
-  const stableProject = useMemo(() => currentProject, [currentProject?._id]);
+  // Memoize workspace to prevent unnecessary rerenders
+  const stableWorkspace = useMemo(() => currentWorkspace, [currentWorkspace?._id]);
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!workspaceId) return;
 
     let cancelled = false;
 
-    const loadProject = async () => {
+    const loadWorkspace = async () => {
       try {
-        await fetchProject(projectId);
+        await fetchWorkspace(workspaceId);
         if (!cancelled) {
           setIsInitialLoading(false);
         }
       } catch (error) {
         if (!cancelled) {
-          console.error("Failed to fetch project:", error);
+          console.error("Failed to fetch workspace:", error);
           setIsInitialLoading(false);
           // Error toast already shown by store
         }
       }
     };
 
-    loadProject();
+    loadWorkspace();
 
     return () => {
       cancelled = true; // Cancel pending operations
     };
-  }, [projectId]); // Remove fetchProject from deps
+  }, [workspaceId]); // Remove fetchWorkspace from deps
 
-  if (isInitialLoading || !currentProject) {
+  if (isInitialLoading || !currentWorkspace) {
     return (
       <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-neutral-400">Loading project...</p>
+          <p className="text-sm text-neutral-400">Loading workspace...</p>
         </div>
       </div>
     );
   }
 
-  const onboardingData = currentProject.onboardingData;
-  const isOnboardingComplete = currentProject.onboardingCompleted;
+  const onboardingData = currentWorkspace.onboardingData;
+  const isOnboardingComplete = currentWorkspace.onboardingCompleted;
 
   // Calculate completion percentage
   const calculateProgress = () => {
@@ -118,10 +118,10 @@ export default function ProjectPage() {
             onClick={() => router.push("/projects")}
             className="text-neutral-400 hover:text-white transition-colors"
           >
-            Projects
+            Workspaces
           </button>
           <ChevronRightIcon className="w-3.5 h-3.5 text-neutral-600" />
-          <span className="text-white font-medium">{currentProject.name}</span>
+          <span className="text-white font-medium">{currentWorkspace.name}</span>
         </motion.div>
 
         {!isOnboardingComplete ? (
@@ -138,7 +138,7 @@ export default function ProjectPage() {
                 </div>
 
                 <h2 className="text-2xl font-bold text-white mb-2">
-                  Complete Your Project Setup
+                  Complete Your Workspace Setup
                 </h2>
                 <p className="text-sm text-neutral-400 mb-6">
                   Help us understand your business better by completing a quick
@@ -185,7 +185,7 @@ export default function ProjectPage() {
         ) : (
           /* Onboarding Complete State */
           <div>
-            {/* Project Header */}
+            {/* Workspace Header */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -193,10 +193,10 @@ export default function ProjectPage() {
             >
               <div>
                 <h1 className="text-3xl font-bold text-white mb-1">
-                  {currentProject.name}
+                  {currentWorkspace.name}
                 </h1>
                 <p className="text-sm text-neutral-400">
-                  Created {format(new Date(currentProject.createdAt), "MMMM d, yyyy")}
+                  Created {format(new Date(currentWorkspace.createdAt), "MMMM d, yyyy")}
                 </p>
               </div>
               <button
@@ -368,9 +368,9 @@ export default function ProjectPage() {
 
       {/* Onboarding Wizard - Always render to prevent unmount/remount */}
       <OnboardingWizard
-        isOpen={isWizardOpen && !!stableProject}
+        isOpen={isWizardOpen && !!stableWorkspace}
         onClose={() => setIsWizardOpen(false)}
-        project={stableProject || currentProject}
+        workspace={stableWorkspace || currentWorkspace}
       />
     </>
   );

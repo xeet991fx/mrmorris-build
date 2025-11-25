@@ -6,7 +6,7 @@ import TextInput from "@/components/forms/TextInput";
 import Textarea from "@/components/forms/Textarea";
 import SelectDropdown from "@/components/forms/SelectDropdown";
 import RadioGroup from "@/components/forms/RadioGroup";
-import { step1Schema, type Step1Input } from "@/lib/validations/project";
+import { step1Schema, type Step1Input } from "@/lib/validations/workspace";
 
 interface Step1Props {
   data?: any;

@@ -12,41 +12,41 @@ import {
 } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 import { Menu } from "@headlessui/react";
-import { useProjectStore } from "@/store/useProjectStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
-import CreateProjectModal from "@/components/projects/CreateProjectModal";
+import CreateWorkspaceModal from "@/components/projects/CreateWorkspaceModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
-export default function ProjectsPage() {
+export default function WorkspacesPage() {
   const router = useRouter();
-  const { projects, deleteProject } = useProjectStore();
+  const { workspaces, deleteWorkspace } = useWorkspaceStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [deletingWorkspaceId, setDeletingWorkspaceId] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const handleOpenProject = (projectId: string) => {
-    router.push(`/projects/${projectId}`);
+  const handleOpenWorkspace = (workspaceId: string) => {
+    router.push(`/projects/${workspaceId}`);
   };
 
-  const handleDeleteProject = (projectId: string, projectName: string) => {
-    setProjectToDelete({ id: projectId, name: projectName });
+  const handleDeleteWorkspace = (workspaceId: string, workspaceName: string) => {
+    setWorkspaceToDelete({ id: workspaceId, name: workspaceName });
     setDeleteConfirmOpen(true);
   };
 
-  const confirmDeleteProject = async () => {
-    if (!projectToDelete) return;
+  const confirmDeleteWorkspace = async () => {
+    if (!workspaceToDelete) return;
 
-    setDeletingProjectId(projectToDelete.id);
+    setDeletingWorkspaceId(workspaceToDelete.id);
     try {
-      await deleteProject(projectToDelete.id);
-      toast.success("Project deleted successfully");
+      await deleteWorkspace(workspaceToDelete.id);
+      toast.success("Workspace deleted successfully");
     } catch (error) {
-      toast.error("Failed to delete project");
+      toast.error("Failed to delete workspace");
     } finally {
-      setDeletingProjectId(null);
-      setProjectToDelete(null);
+      setDeletingWorkspaceId(null);
+      setWorkspaceToDelete(null);
     }
   };
 
@@ -75,11 +75,11 @@ export default function ProjectsPage() {
           className="mb-6"
         >
           <p className="text-sm text-neutral-400">
-            Manage your marketing automation projects
+            Manage your marketing automation workspaces
           </p>
         </motion.div>
 
-        {projects.length === 0 ? (
+        {workspaces.length === 0 ? (
           /* Empty State */
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -92,23 +92,23 @@ export default function ProjectsPage() {
                 <RocketLaunchIcon className="w-6 h-6 text-neutral-400" />
               </div>
               <h2 className="text-xl font-semibold text-white mb-2">
-                Create Your First Project
+                Create Your First Workspace
               </h2>
               <p className="text-sm text-neutral-400 mb-6">
                 Get started with autonomous marketing by creating your first
-                project. We'll guide you through a simple setup process.
+                workspace. We'll guide you through a simple setup process.
               </p>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-neutral-900 font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all shadow-sm hover:shadow"
               >
                 <PlusIcon className="w-4 h-4" />
-                Create Project
+                Create Workspace
               </button>
             </div>
           </motion.div>
         ) : (
-          /* Projects Grid */
+          /* Workspaces Grid */
           <div>
             <div className="flex justify-end mb-5">
               <button
@@ -116,7 +116,7 @@ export default function ProjectsPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-neutral-900 font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all shadow-sm hover:shadow"
               >
                 <PlusIcon className="w-4 h-4" />
-                New Project
+                New Workspace
               </button>
             </div>
 
@@ -126,9 +126,9 @@ export default function ProjectsPage() {
               animate="visible"
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
             >
-              {projects.map((project) => (
+              {workspaces.map((workspace) => (
                 <motion.div
-                  key={project._id}
+                  key={workspace._id}
                   variants={itemVariants}
                   className="relative group"
                 >
@@ -145,7 +145,7 @@ export default function ProjectsPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleOpenProject(project._id);
+                                  handleOpenWorkspace(workspace._id);
                                 }}
                                 className={cn(
                                   "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
@@ -164,20 +164,20 @@ export default function ProjectsPage() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteProject(project._id, project.name);
+                                  handleDeleteWorkspace(workspace._id, workspace.name);
                                 }}
-                                disabled={deletingProjectId === project._id}
+                                disabled={deletingWorkspaceId === workspace._id}
                                 className={cn(
                                   "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
                                   active
                                     ? "bg-red-500/20 text-red-400"
                                     : "text-red-400",
-                                  deletingProjectId === project._id &&
+                                  deletingWorkspaceId === workspace._id &&
                                     "opacity-50 cursor-not-allowed"
                                 )}
                               >
                                 <TrashIcon className="w-3.5 h-3.5" />
-                                {deletingProjectId === project._id
+                                {deletingWorkspaceId === workspace._id
                                   ? "Deleting..."
                                   : "Delete"}
                               </button>
@@ -188,17 +188,17 @@ export default function ProjectsPage() {
                     </div>
 
                     {/* Card Content */}
-                    <div onClick={() => handleOpenProject(project._id)}>
+                    <div onClick={() => handleOpenWorkspace(workspace._id)}>
                       <h3 className="text-base font-semibold text-white mb-1 pr-7">
-                        {project.name}
+                        {workspace.name}
                       </h3>
                       <p className="text-xs text-neutral-500 mb-3">
-                        Created {format(new Date(project.createdAt), "MMM d, yyyy")}
+                        Created {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                       </p>
 
                       {/* Status Badge */}
                       <div className="mb-3">
-                        {project.onboardingCompleted ? (
+                        {workspace.onboardingCompleted ? (
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 border border-green-500/20 rounded text-xs font-medium text-green-400">
                             <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
                             Complete
@@ -213,7 +213,7 @@ export default function ProjectsPage() {
 
                       {/* Open Button */}
                       <button className="w-full px-3 py-1.5 bg-neutral-700/50 hover:bg-neutral-700 border border-neutral-700/50 hover:border-neutral-600 text-neutral-300 hover:text-white rounded-md transition-all text-xs font-medium">
-                        Open Project
+                        Open Workspace
                       </button>
                     </div>
                   </div>
@@ -224,8 +224,8 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      {/* Create Project Modal */}
-      <CreateProjectModal
+      {/* Create Workspace Modal */}
+      <CreateWorkspaceModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
       />
@@ -235,12 +235,12 @@ export default function ProjectsPage() {
         isOpen={deleteConfirmOpen}
         onClose={() => {
           setDeleteConfirmOpen(false);
-          setProjectToDelete(null);
+          setWorkspaceToDelete(null);
         }}
-        onConfirm={confirmDeleteProject}
-        title="Delete Project"
-        message={`Are you sure you want to delete "${projectToDelete?.name}"? This action cannot be undone and all project data will be permanently lost.`}
-        confirmText="Delete Project"
+        onConfirm={confirmDeleteWorkspace}
+        title="Delete Workspace"
+        message={`Are you sure you want to delete "${workspaceToDelete?.name}"? This action cannot be undone and all workspace data will be permanently lost.`}
+        confirmText="Delete Workspace"
         cancelText="Cancel"
         variant="danger"
       />

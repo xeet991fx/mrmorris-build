@@ -5,7 +5,7 @@ import { Cog6ToothIcon, DocumentIcon, BuildingOffice2Icon, BoltIcon, CheckCircle
 import FormField from "@/components/forms/FormField";
 import RadioGroup from "@/components/forms/RadioGroup";
 import FileUpload from "@/components/forms/FileUpload";
-import { step7Schema, type Step7Input } from "@/lib/validations/project";
+import { step7Schema, type Step7Input } from "@/lib/validations/workspace";
 
 interface Step7Props {
   data?: any;
@@ -47,6 +47,7 @@ export default function Step7Advanced({ data, onComplete, onBack, isLoading }: S
     formState: { errors },
   } = useForm<Step7Input>({
     resolver: zodResolver(step7Schema),
+    mode: "onTouched",
     defaultValues: {
       advanced: data || {},
     },
