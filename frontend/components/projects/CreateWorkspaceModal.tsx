@@ -37,7 +37,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
       reset();
       onClose();
 
-      // Redirect to workspace page to start onboarding
+      // Redirect to workspace page
       router.push(`/projects/${workspace._id}`);
     } catch (error: any) {
       const message = error.response?.data?.error || "Failed to create workspace";

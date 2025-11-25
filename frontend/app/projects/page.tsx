@@ -192,24 +192,9 @@ export default function WorkspacesPage() {
                       <h3 className="text-base font-semibold text-white mb-1 pr-7">
                         {workspace.name}
                       </h3>
-                      <p className="text-xs text-neutral-500 mb-3">
+                      <p className="text-xs text-neutral-500 mb-4">
                         Created {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                       </p>
-
-                      {/* Status Badge */}
-                      <div className="mb-3">
-                        {workspace.onboardingCompleted ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 border border-green-500/20 rounded text-xs font-medium text-green-400">
-                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                            Complete
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-xs font-medium text-amber-400">
-                            <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                            Pending
-                          </span>
-                        )}
-                      </div>
 
                       {/* Open Button */}
                       <button className="w-full px-3 py-1.5 bg-neutral-700/50 hover:bg-neutral-700 border border-neutral-700/50 hover:border-neutral-600 text-neutral-300 hover:text-white rounded-md transition-all text-xs font-medium">

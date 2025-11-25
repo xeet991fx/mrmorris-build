@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import * as workspaceApi from "@/lib/api/workspace";
-import type { Workspace, OnboardingData } from "@/lib/api/workspace";
+import type { Workspace } from "@/lib/api/workspace";
 
 interface WorkspaceState {
   workspaces: Workspace[];
@@ -15,7 +15,6 @@ interface WorkspaceState {
   fetchWorkspace: (id: string) => Promise<void>;
   updateWorkspace: (id: string, data: { name: string }) => Promise<void>;
   deleteWorkspace: (id: string) => Promise<void>;
-  saveOnboarding: (workspaceId: string, data: OnboardingData, step?: number, complete?: boolean) => Promise<void>;
   setCurrentWorkspace: (workspace: Workspace | null) => void;
   clearError: () => void;
 }
@@ -192,43 +191,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
       },
 
-      /**
-       * Save onboarding data for a workspace
-       */
-      saveOnboarding: async (workspaceId: string, data: OnboardingData, step?: number, complete?: boolean) => {
-        set({ isLoading: true, error: null });
-
-        try {
-          const response = await workspaceApi.saveWorkspaceOnboarding(workspaceId, data, complete);
-
-          if (response.success && response.data) {
-            const updatedWorkspace = response.data.workspace;
-
-            // Update in workspaces list and current workspace
-            set((state) => ({
-              workspaces: state.workspaces.map((w) =>
-                w._id === workspaceId ? updatedWorkspace : w
-              ),
-              currentWorkspace:
-                state.currentWorkspace?._id === workspaceId
-                  ? updatedWorkspace
-                  : state.currentWorkspace,
-              isLoading: false,
-              error: null,
-            }));
-          }
-        } catch (error: any) {
-          const errorMessage =
-            error.response?.data?.error || "Failed to save onboarding data. Please try again.";
-
-          set({
-            error: errorMessage,
-            isLoading: false,
-          });
-
-          throw error;
-        }
-      },
 
       /**
        * Set current workspace (for navigation)

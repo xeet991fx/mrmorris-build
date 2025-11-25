@@ -9,9 +9,9 @@ import {
   FolderIcon,
   PlusIcon,
   ArrowRightOnRectangleIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   ChevronDownIcon,
+  UserGroupIcon,
+  HomeIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -175,6 +175,12 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Check if we're inside a specific workspace
+  const isInsideWorkspace = pathname.startsWith('/projects/') && pathname !== '/projects';
+  const currentWorkspaceFromUrl = isInsideWorkspace
+    ? workspaces.find(w => pathname.includes(w._id))
+    : null;
+
   const SidebarContent = ({ isExpanded, onClose }: { isExpanded: boolean; onClose?: () => void }) => (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -183,24 +189,37 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         isExpanded ? "px-5 py-4" : "px-3 py-4"
       )}>
         <button
-          onClick={() => router.push("/projects")}
-          className="flex items-center gap-3 w-full hover:opacity-80 transition-opacity"
-          aria-label="Go to projects"
+          onClick={() => router.push('/projects')}
+          className={cn(
+            "flex items-center gap-2 min-w-0 transition-colors w-full text-left",
+            isInsideWorkspace && "hover:opacity-80 cursor-pointer"
+          )}
+          disabled={!isInsideWorkspace}
         >
           <div className="w-7 h-7 bg-[#9ACD32] rounded-md flex items-center justify-center flex-shrink-0 shadow-sm">
             <span className="text-neutral-900 font-bold text-sm">M</span>
           </div>
-          <motion.h1
+          <motion.div
             initial={false}
             animate={{
               opacity: isExpanded ? 1 : 0,
               width: isExpanded ? "auto" : 0,
             }}
             transition={{ duration: 0.15 }}
-            className="text-base font-semibold text-white overflow-hidden whitespace-nowrap"
+            className="flex items-center gap-2 overflow-hidden whitespace-nowrap min-w-0"
           >
-            MrMorris
-          </motion.h1>
+            <h1 className="text-base font-semibold text-white">
+              MrMorris
+            </h1>
+            {isInsideWorkspace && currentWorkspaceFromUrl && (
+              <>
+                <span className="text-neutral-500 text-base">/</span>
+                <span className="text-base font-medium text-neutral-300 truncate">
+                  {currentWorkspaceFromUrl.name}
+                </span>
+              </>
+            )}
+          </motion.div>
         </button>
         {/* Close Button - Appears on hover */}
         {onClose && (
@@ -214,7 +233,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* Workspaces Section */}
+      {/* Workspaces Section - Hidden when inside a workspace */}
+      {!isInsideWorkspace && (
       <div className="flex-1 overflow-y-auto px-3 py-4">
         <div className={cn(
           "flex items-center mb-3 transition-all duration-150",
@@ -331,6 +351,83 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
           )}
         </AnimatePresence>
       </div>
+      )}
+
+      {/* CRM Navigation - Shown when inside a workspace */}
+      {isInsideWorkspace && (
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <div className={cn(
+            "flex items-center mb-3 transition-all duration-150",
+            isExpanded ? "justify-start" : "justify-center"
+          )}>
+            <motion.h2
+              initial={false}
+              animate={{
+                opacity: isExpanded ? 1 : 0,
+                width: isExpanded ? "auto" : 0,
+              }}
+              transition={{ duration: 0.15 }}
+              className="text-xs font-semibold text-neutral-500 uppercase tracking-wide overflow-hidden whitespace-nowrap"
+            >
+              CRM
+            </motion.h2>
+          </div>
+
+          <div className="space-y-0.5">
+            {/* Dashboard */}
+            <button
+              onClick={() => router.push(`/projects/${currentWorkspaceFromUrl?._id}`)}
+              className={cn(
+                "w-full flex items-center gap-2 rounded-md transition-all text-left",
+                isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
+                pathname === `/projects/${currentWorkspaceFromUrl?._id}`
+                  ? "bg-neutral-700/70 text-white"
+                  : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+              )}
+              title={!isExpanded ? "Dashboard" : ""}
+            >
+              <HomeIcon className="w-4 h-4 flex-shrink-0" />
+              <motion.span
+                initial={false}
+                animate={{
+                  opacity: isExpanded ? 1 : 0,
+                  width: isExpanded ? "auto" : 0,
+                }}
+                transition={{ duration: 0.15 }}
+                className="text-sm font-normal overflow-hidden whitespace-nowrap"
+              >
+                Dashboard
+              </motion.span>
+            </button>
+
+            {/* Contacts */}
+            <button
+              onClick={() => router.push(`/projects/${currentWorkspaceFromUrl?._id}/contacts`)}
+              className={cn(
+                "w-full flex items-center gap-2 rounded-md transition-all text-left",
+                isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
+                pathname.includes('/contacts')
+                  ? "bg-neutral-700/70 text-white"
+                  : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+              )}
+              title={!isExpanded ? "Contacts" : ""}
+            >
+              <UserGroupIcon className="w-4 h-4 flex-shrink-0" />
+              <motion.span
+                initial={false}
+                animate={{
+                  opacity: isExpanded ? 1 : 0,
+                  width: isExpanded ? "auto" : 0,
+                }}
+                transition={{ duration: 0.15 }}
+                className="text-sm font-normal overflow-hidden whitespace-nowrap"
+              >
+                Contacts
+              </motion.span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* User Section - Pinned to bottom */}
       <div className="mt-auto p-3 border-t border-neutral-700/50 flex-shrink-0">

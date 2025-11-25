@@ -7,6 +7,7 @@ import passport from "./config/passport";
 import waitlistRoutes from "./routes/waitlist";
 import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/project";
+import contactRoutes from "./routes/contact";
 
 dotenv.config();
 
@@ -70,6 +71,7 @@ app.use(async (req: Request, res: Response, next: any) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/waitlist", waitlistRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/workspaces", contactRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
