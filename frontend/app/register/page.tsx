@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -13,7 +13,7 @@ import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { register: registerUser, isLoading } = useAuthStore();
@@ -479,5 +479,22 @@ export default function RegisterPage() {
         </motion.div>
       </div>
     </>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black">
+          <div className="text-center">
+            <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm text-neutral-400">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   );
 }
