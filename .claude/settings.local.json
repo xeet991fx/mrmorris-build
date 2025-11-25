@@ -47,7 +47,14 @@
       "Bash(git push)",
       "Bash(npm run build:*)",
       "Bash(mcp list:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(del \"frontend\\components\\projects\\ProgressIndicator.tsx\")",
+      "Bash(del \"frontend\\components\\projects\\wizard\\Step1BusinessOverview.tsx\")",
+      "Bash(del \"frontend\\components\\projects\\wizard\\Step2GoalsMetrics.tsx\")",
+      "Bash(del \"frontend\\components\\projects\\wizard\\Step3ChannelsSetup.tsx\")",
+      "Bash(del \"frontend\\components\\projects\\wizard\\Step4BrandMessaging.tsx\")",
+      "Bash(del \"frontend\\components\\projects\\wizard\\Step5OfferCTA.tsx\")",
+      "Bash(del \"frontend\\components\\projects\\wizard\\Step6Competition.tsx\")"
     ],
     "deny": [],
     "ask": []
