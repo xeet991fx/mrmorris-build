@@ -28,7 +28,7 @@ export default function WorkspacePage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Memoize workspace to prevent unnecessary rerenders
-  const stableWorkspace = useMemo(() => currentWorkspace, [currentWorkspace?._id]);
+  const stableWorkspace = useMemo(() => currentWorkspace, [currentWorkspace]);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -55,7 +55,8 @@ export default function WorkspacePage() {
     return () => {
       cancelled = true; // Cancel pending operations
     };
-  }, [workspaceId]); // Remove fetchWorkspace from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId]); // fetchWorkspace is stable from zustand store
 
   if (isInitialLoading || !currentWorkspace) {
     return (

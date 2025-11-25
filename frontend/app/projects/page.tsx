@@ -96,7 +96,7 @@ export default function WorkspacesPage() {
               </h2>
               <p className="text-sm text-neutral-400 mb-6">
                 Get started with autonomous marketing by creating your first
-                workspace. We'll guide you through a simple setup process.
+                workspace. We&apos;ll guide you through a simple setup process.
               </p>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
@@ -173,7 +173,7 @@ export default function WorkspacesPage() {
                                     ? "bg-red-500/20 text-red-400"
                                     : "text-red-400",
                                   deletingWorkspaceId === workspace._id &&
-                                    "opacity-50 cursor-not-allowed"
+                                  "opacity-50 cursor-not-allowed"
                                 )}
                               >
                                 <TrashIcon className="w-3.5 h-3.5" />
