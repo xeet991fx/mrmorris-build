@@ -26,16 +26,23 @@ function RegisterContent() {
   const getBackendUrl = () => {
     if (typeof window === 'undefined') return 'http://localhost:5000';
 
+    // Use dedicated backend URL if available (recommended)
+    if (process.env.NEXT_PUBLIC_BACKEND_URL) {
+      console.log('🔍 Using NEXT_PUBLIC_BACKEND_URL:', process.env.NEXT_PUBLIC_BACKEND_URL);
+      return process.env.NEXT_PUBLIC_BACKEND_URL;
+    }
+
+    // Fallback: try to construct from API URL
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     console.log('🔍 NEXT_PUBLIC_API_URL:', apiUrl);
 
     if (!apiUrl) {
-      console.warn('⚠️ NEXT_PUBLIC_API_URL not set, using localhost');
+      console.warn('⚠️ No backend URL configured, using localhost');
       return 'http://localhost:5000';
     }
 
-    // Remove /api suffix if present
-    const backendUrl = apiUrl.replace('/api', '');
+    // Remove /api suffix if present, otherwise use as-is
+    const backendUrl = apiUrl.endsWith('/api') ? apiUrl.slice(0, -4) : apiUrl;
     console.log('🔍 Backend URL for OAuth:', backendUrl);
     return backendUrl;
   };
