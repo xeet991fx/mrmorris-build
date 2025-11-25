@@ -185,7 +185,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn(
-        "border-b border-neutral-700/50 transition-all duration-150 relative group",
+        "border-b border-neutral-700/50 transition-all duration-150 relative group flex-shrink-0",
         isExpanded ? "px-5 py-4" : "px-3 py-4"
       )}>
         <button
@@ -289,63 +289,63 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             >
               <div className="space-y-0.5">
                 {workspaces.length === 0 ? (
-            <div className={cn(
-              "text-center transition-all",
-              isExpanded ? "py-8" : "py-4"
-            )}>
-              <FolderIcon className={cn(
-                "text-neutral-500 mx-auto mb-3",
-                isExpanded ? "w-5 h-5" : "w-4 h-4"
-              )} />
-              <motion.div
-                initial={false}
-                animate={{
-                  opacity: isExpanded ? 1 : 0,
-                  height: isExpanded ? "auto" : 0,
-                }}
-                transition={{ duration: 0.15 }}
-                className="overflow-hidden"
-              >
-                <p className="text-xs text-neutral-500">No workspaces yet</p>
-                <button
-                  onClick={handleCreateWorkspace}
-                  className="mt-3 text-xs text-white hover:text-neutral-300 transition-colors"
-                >
-                  Create your first workspace
-                </button>
-              </motion.div>
-            </div>
-          ) : (
-            workspaces.map((workspace) => (
-              <button
-                key={workspace._id}
-                onClick={() => handleWorkspaceClick(workspace)}
-                className={cn(
-                  "w-full flex items-center gap-2 rounded-md transition-all text-left group",
-                  isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
-                  isWorkspaceActive(workspace._id)
-                    ? "bg-neutral-700/70 text-white"
-                    : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+                  <div className={cn(
+                    "text-center transition-all",
+                    isExpanded ? "py-8" : "py-4"
+                  )}>
+                    <FolderIcon className={cn(
+                      "text-neutral-500 mx-auto mb-3",
+                      isExpanded ? "w-5 h-5" : "w-4 h-4"
+                    )} />
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        opacity: isExpanded ? 1 : 0,
+                        height: isExpanded ? "auto" : 0,
+                      }}
+                      transition={{ duration: 0.15 }}
+                      className="overflow-hidden"
+                    >
+                      <p className="text-xs text-neutral-500">No workspaces yet</p>
+                      <button
+                        onClick={handleCreateWorkspace}
+                        className="mt-3 text-xs text-white hover:text-neutral-300 transition-colors"
+                      >
+                        Create your first workspace
+                      </button>
+                    </motion.div>
+                  </div>
+                ) : (
+                  workspaces.map((workspace) => (
+                    <button
+                      key={workspace._id}
+                      onClick={() => handleWorkspaceClick(workspace)}
+                      className={cn(
+                        "w-full flex items-center gap-2 rounded-md transition-all text-left group",
+                        isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
+                        isWorkspaceActive(workspace._id)
+                          ? "bg-neutral-700/70 text-white"
+                          : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+                      )}
+                      title={!isExpanded ? workspace.name : ""}
+                    >
+                      <FolderIcon className="w-4 h-4 flex-shrink-0" />
+                      <motion.div
+                        initial={false}
+                        animate={{
+                          opacity: isExpanded ? 1 : 0,
+                          width: isExpanded ? "auto" : 0,
+                        }}
+                        transition={{ duration: 0.15 }}
+                        className="flex-1 min-w-0 overflow-hidden"
+                      >
+                        <p className="text-sm font-normal truncate">
+                          {workspace.name}
+                        </p>
+                      </motion.div>
+                    </button>
+                  ))
                 )}
-                title={!isExpanded ? workspace.name : ""}
-              >
-                <FolderIcon className="w-4 h-4 flex-shrink-0" />
-                <motion.div
-                  initial={false}
-                  animate={{
-                    opacity: isExpanded ? 1 : 0,
-                    width: isExpanded ? "auto" : 0,
-                  }}
-                  transition={{ duration: 0.15 }}
-                  className="flex-1 min-w-0 overflow-hidden"
-                >
-                  <p className="text-sm font-normal truncate">
-                    {workspace.name}
-                  </p>
-                </motion.div>
-              </button>
-            ))
-          )}
               </div>
             </motion.div>
           )}
@@ -429,8 +429,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* User Section */}
-      <div className="p-3 border-t border-neutral-700/50">
+      {/* User Section - Pinned to bottom */}
+      <div className="mt-auto p-3 border-t border-neutral-700/50 flex-shrink-0">
         <div className={cn(
           "flex items-center gap-2 mb-2 rounded-md hover:bg-neutral-700/30 transition-colors cursor-pointer",
           isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center"
@@ -508,8 +508,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
               isSidebarOpen ? "ml-0" : "ml-3"
             )}>
               {pathname === '/projects' ? 'Workspaces' :
-               pathname.startsWith('/projects/') ? workspaces.find(w => pathname.includes(w._id))?.name || 'Workspace' :
-               'Dashboard'}
+                pathname.startsWith('/projects/') ? workspaces.find(w => pathname.includes(w._id))?.name || 'Workspace' :
+                  'Dashboard'}
             </h1>
           </div>
         </div>

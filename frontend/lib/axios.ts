@@ -1,16 +1,21 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+// Get base URL from environment variable
+// If NEXT_PUBLIC_API_URL already includes /api, use it as is
+// Otherwise, append /api to the URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 // Debug log - only in development
 if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-  console.log("🔍 API_URL:", API_URL);
-  console.log("🔍 Full baseURL:", `${API_URL}`);
+  console.log("=== AXIOS CONFIGURATION DEBUG ===");
+  console.log("🔍 NEXT_PUBLIC_API_URL (env var):", process.env.NEXT_PUBLIC_API_URL);
+  console.log("🔍 API_URL (final baseURL):", API_URL);
+  console.log("================================");
 }
 
 const axiosInstance = axios.create({
-  baseURL: `${API_URL}`,
+  baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
