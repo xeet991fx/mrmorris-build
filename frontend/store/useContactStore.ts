@@ -1,14 +1,16 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import * as contactApi from "@/lib/api/contact";
+import * as customFieldApi from "@/lib/api/customField";
 import type {
   Contact,
   CreateContactData,
   UpdateContactData,
   ContactQueryParams,
 } from "@/lib/api/contact";
+import type { CustomColumnDefinition } from "@/lib/api/customField";
 
-export type ContactColumn =
+export type BuiltInColumn =
   | "name"
   | "email"
   | "phone"
@@ -19,8 +21,10 @@ export type ContactColumn =
   | "status"
   | "createdAt";
 
+export type ContactColumn = BuiltInColumn | string; // string for custom field keys
+
 // Default column widths in pixels
-export const DEFAULT_COLUMN_WIDTHS: Record<ContactColumn, number> = {
+export const DEFAULT_COLUMN_WIDTHS: Record<BuiltInColumn, number> = {
   name: 192,
   email: 208,
   phone: 144,
@@ -33,13 +37,15 @@ export const DEFAULT_COLUMN_WIDTHS: Record<ContactColumn, number> = {
 };
 
 // Default column order
-export const DEFAULT_COLUMN_ORDER: ContactColumn[] = [
+export const DEFAULT_COLUMN_ORDER: BuiltInColumn[] = [
   "name",
   "email",
   "phone",
   "company",
   "jobTitle",
   "source",
+  "status",
+  "createdAt",
   "notes",
 ];
 
@@ -57,7 +63,7 @@ interface ContactState {
   selectedContacts: string[]; // Contact IDs
   visibleColumns: ContactColumn[];
   columnOrder: ContactColumn[]; // Order of columns
-  columnWidths: Record<ContactColumn, number>; // Custom widths in pixels
+  columnWidths: Record<string, number>; // Custom widths in pixels (dynamic keys)
   editingCell: { contactId: string; column: ContactColumn } | null; // Currently editing cell
   searchQuery: string;
   filters: {
@@ -65,6 +71,9 @@ interface ContactState {
     assignedTo?: string;
     tags?: string[];
   };
+  customColumns: CustomColumnDefinition[]; // Custom field definitions
+  columnLabels: Record<string, string>; // Custom display labels
+  protectedColumns: BuiltInColumn[]; // Cannot be deleted
 
   // Actions
   fetchContacts: (
@@ -104,6 +113,27 @@ interface ContactState {
     value: any
   ) => Promise<void>;
   resetColumnConfiguration: () => void;
+
+  // Custom column actions
+  fetchCustomColumns: (workspaceId: string) => Promise<void>;
+  createCustomColumn: (
+    workspaceId: string,
+    data: customFieldApi.CreateCustomColumnData
+  ) => Promise<void>;
+  updateCustomColumn: (
+    workspaceId: string,
+    fieldId: string,
+    data: customFieldApi.UpdateCustomColumnData
+  ) => Promise<void>;
+  deleteCustomColumn: (
+    workspaceId: string,
+    fieldId: string,
+    deleteData: boolean
+  ) => Promise<void>;
+
+  // Column label actions
+  updateColumnLabel: (column: ContactColumn, label: string) => void;
+  resetColumnLabel: (column: ContactColumn) => void;
 }
 
 export const useContactStore = create<ContactState>()(
@@ -127,13 +157,18 @@ export const useContactStore = create<ContactState>()(
         "company",
         "jobTitle",
         "source",
+        "status",
+        "createdAt",
         "notes",
       ],
       columnOrder: DEFAULT_COLUMN_ORDER,
-      columnWidths: DEFAULT_COLUMN_WIDTHS,
+      columnWidths: DEFAULT_COLUMN_WIDTHS as Record<string, number>,
       editingCell: null,
       searchQuery: "",
       filters: {},
+      customColumns: [],
+      columnLabels: {},
+      protectedColumns: ["name", "email"],
 
       /**
        * Fetch all contacts for a workspace
@@ -415,39 +450,49 @@ export const useContactStore = create<ContactState>()(
         column: ContactColumn,
         value: any
       ) => {
+        const { customColumns } = get();
+        const customColumn = customColumns.find((col) => col.fieldKey === column);
+
         // Build update data based on column
         const updateData: UpdateContactData = {};
 
-        // Map column to contact field
-        switch (column) {
-          case "name":
-            // Name is special - we need to handle first/last name
-            // For now, we'll just update firstName
-            // In a real implementation, you'd need better handling
-            updateData.firstName = value;
-            break;
-          case "email":
-            updateData.email = value;
-            break;
-          case "phone":
-            updateData.phone = value;
-            break;
-          case "company":
-            updateData.company = value;
-            break;
-          case "jobTitle":
-            updateData.jobTitle = value;
-            break;
-          case "source":
-            updateData.source = value;
-            break;
-          case "notes":
-            updateData.notes = value;
-            break;
-          case "status":
-            updateData.status = value;
-            break;
-          // createdAt is read-only, skip
+        if (customColumn) {
+          // Handle custom field
+          updateData.customFields = {
+            [column]: value,
+          };
+        } else {
+          // Map column to contact field
+          switch (column) {
+            case "name":
+              // Name is special - we need to handle first/last name
+              // For now, we'll just update firstName
+              // In a real implementation, you'd need better handling
+              updateData.firstName = value;
+              break;
+            case "email":
+              updateData.email = value;
+              break;
+            case "phone":
+              updateData.phone = value;
+              break;
+            case "company":
+              updateData.company = value;
+              break;
+            case "jobTitle":
+              updateData.jobTitle = value;
+              break;
+            case "source":
+              updateData.source = value;
+              break;
+            case "notes":
+              updateData.notes = value;
+              break;
+            case "status":
+              updateData.status = value;
+              break;
+            // createdAt is read-only, skip
+          }
         }
 
         // Update via existing updateContact action
@@ -463,7 +508,7 @@ export const useContactStore = create<ContactState>()(
       resetColumnConfiguration: () => {
         set({
           columnOrder: DEFAULT_COLUMN_ORDER,
-          columnWidths: DEFAULT_COLUMN_WIDTHS,
+          columnWidths: DEFAULT_COLUMN_WIDTHS as Record<string, number>,
           visibleColumns: [
             "name",
             "email",
@@ -471,8 +516,167 @@ export const useContactStore = create<ContactState>()(
             "company",
             "jobTitle",
             "source",
+            "status",
+            "createdAt",
             "notes",
           ],
+        });
+      },
+
+      /**
+       * Fetch custom columns for a workspace
+       */
+      fetchCustomColumns: async (workspaceId: string) => {
+        try {
+          const response = await customFieldApi.getCustomColumns(workspaceId);
+          if (response.success && response.data) {
+            set({ customColumns: response.data.customFields });
+          }
+        } catch (error: any) {
+          console.error("Error fetching custom columns:", error);
+          set({ error: "Failed to fetch custom columns" });
+        }
+      },
+
+      /**
+       * Create a new custom column
+       */
+      createCustomColumn: async (
+        workspaceId: string,
+        data: customFieldApi.CreateCustomColumnData
+      ) => {
+        try {
+          const response = await customFieldApi.createCustomColumn(workspaceId, data);
+          if (response.success && response.data) {
+            // Add the new custom column to the store
+            set((state) => ({
+              customColumns: [...state.customColumns, response.data!.customField],
+            }));
+
+            // Optionally add it to visible columns
+            const fieldKey = response.data.customField.fieldKey;
+            set((state) => ({
+              visibleColumns: [...state.visibleColumns, fieldKey],
+              columnOrder: [...state.columnOrder, fieldKey],
+            }));
+          }
+        } catch (error: any) {
+          console.error("Error creating custom column:", error);
+          set({ error: "Failed to create custom column" });
+          throw error;
+        }
+      },
+
+      /**
+       * Update a custom column
+       */
+      updateCustomColumn: async (
+        workspaceId: string,
+        fieldId: string,
+        data: customFieldApi.UpdateCustomColumnData
+      ) => {
+        try {
+          const response = await customFieldApi.updateCustomColumn(
+            workspaceId,
+            fieldId,
+            data
+          );
+          if (response.success && response.data) {
+            // Update the custom column in the store
+            set((state) => ({
+              customColumns: state.customColumns.map((col) =>
+                col._id === fieldId ? response.data!.customField : col
+              ),
+            }));
+          }
+        } catch (error: any) {
+          console.error("Error updating custom column:", error);
+          set({ error: "Failed to update custom column" });
+          throw error;
+        }
+      },
+
+      /**
+       * Delete a custom column
+       */
+      deleteCustomColumn: async (
+        workspaceId: string,
+        fieldId: string,
+        deleteData: boolean
+      ) => {
+        try {
+          const { protectedColumns } = get();
+
+          // Find the column to check if it's protected
+          const column = get().customColumns.find((col) => col._id === fieldId);
+          if (
+            column &&
+            protectedColumns.includes(column.fieldKey as BuiltInColumn)
+          ) {
+            throw new Error("Cannot delete protected column");
+          }
+
+          const response = await customFieldApi.deleteCustomColumn(
+            workspaceId,
+            fieldId,
+            deleteData
+          );
+
+          if (response.success) {
+            if (deleteData) {
+              // Hard delete: Remove from custom columns
+              set((state) => ({
+                customColumns: state.customColumns.filter(
+                  (col) => col._id !== fieldId
+                ),
+              }));
+
+              // Remove from visible columns and column order
+              if (column) {
+                const fieldKey = column.fieldKey;
+                set((state) => ({
+                  visibleColumns: state.visibleColumns.filter(
+                    (col) => col !== fieldKey
+                  ),
+                  columnOrder: state.columnOrder.filter((col) => col !== fieldKey),
+                }));
+              }
+            } else {
+              // Soft delete: Update isActive flag
+              set((state) => ({
+                customColumns: state.customColumns.map((col) =>
+                  col._id === fieldId ? { ...col, isActive: false } : col
+                ),
+              }));
+            }
+          }
+        } catch (error: any) {
+          console.error("Error deleting custom column:", error);
+          set({ error: error.message || "Failed to delete custom column" });
+          throw error;
+        }
+      },
+
+      /**
+       * Update column label
+       */
+      updateColumnLabel: (column: ContactColumn, label: string) => {
+        set((state) => ({
+          columnLabels: {
+            ...state.columnLabels,
+            [column]: label.trim(),
+          },
+        }));
+      },
+
+      /**
+       * Reset column label to default
+       */
+      resetColumnLabel: (column: ContactColumn) => {
+        set((state) => {
+          const newLabels = { ...state.columnLabels };
+          delete newLabels[column];
+          return { columnLabels: newLabels };
         });
       },
     }),
@@ -482,6 +686,7 @@ export const useContactStore = create<ContactState>()(
         visibleColumns: state.visibleColumns,
         columnOrder: state.columnOrder,
         columnWidths: state.columnWidths,
+        columnLabels: state.columnLabels,
         filters: state.filters,
       }),
     }

@@ -22,13 +22,17 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
   const params = useParams();
   const workspaceId = params.id as string;
 
-  const { editingCell, setEditingCell, updateContactField } = useContactStore();
+  const { editingCell, setEditingCell, updateContactField, customColumns } = useContactStore();
   const [localValue, setLocalValue] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
 
   const isEditing =
     editingCell?.contactId === contact._id && editingCell?.column === column;
+
+  // Check if this is a custom field
+  const customColumnDef = customColumns.find((col) => col.fieldKey === column);
+  const isCustomField = !!customColumnDef;
 
   // Don't allow editing for certain columns
   const isReadOnly = column === "createdAt";
@@ -47,31 +51,38 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
 
     // Get the current value for editing
     let currentValue = "";
-    switch (column) {
-      case "name":
-        currentValue = `${contact.firstName} ${contact.lastName}`;
-        break;
-      case "email":
-        currentValue = contact.email || "";
-        break;
-      case "phone":
-        currentValue = contact.phone || "";
-        break;
-      case "company":
-        currentValue = contact.company || "";
-        break;
-      case "jobTitle":
-        currentValue = contact.jobTitle || "";
-        break;
-      case "source":
-        currentValue = contact.source || "";
-        break;
-      case "notes":
-        currentValue = contact.notes || "";
-        break;
-      case "status":
-        currentValue = contact.status || "lead";
-        break;
+
+    if (isCustomField) {
+      // Handle custom field value
+      currentValue = String(contact.customFields?.[column] ?? "");
+    } else {
+      // Handle built-in fields
+      switch (column) {
+        case "name":
+          currentValue = `${contact.firstName} ${contact.lastName}`;
+          break;
+        case "email":
+          currentValue = contact.email || "";
+          break;
+        case "phone":
+          currentValue = contact.phone || "";
+          break;
+        case "company":
+          currentValue = contact.company || "";
+          break;
+        case "jobTitle":
+          currentValue = contact.jobTitle || "";
+          break;
+        case "source":
+          currentValue = contact.source || "";
+          break;
+        case "notes":
+          currentValue = contact.notes || "";
+          break;
+        case "status":
+          currentValue = contact.status || "lead";
+          break;
+      }
     }
 
     setLocalValue(currentValue);
@@ -117,6 +128,10 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
   };
 
   const getCurrentValue = (): string => {
+    if (isCustomField) {
+      return String(contact.customFields?.[column] ?? "");
+    }
+
     switch (column) {
       case "name":
         return `${contact.firstName} ${contact.lastName}`;
@@ -166,6 +181,59 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
   }
 
   // Render different input types based on column
+  // Handle custom field inputs
+  if (isCustomField && customColumnDef) {
+    switch (customColumnDef.fieldType) {
+      case "number":
+        return (
+          <input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            type="number"
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            disabled={isSaving}
+            className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+          />
+        );
+      case "select":
+        return (
+          <select
+            ref={inputRef as React.RefObject<HTMLSelectElement>}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            disabled={isSaving}
+            className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+          >
+            <option value="">Select...</option>
+            {customColumnDef.selectOptions?.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        );
+      case "text":
+      default:
+        return (
+          <input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            type="text"
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            disabled={isSaving}
+            className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+          />
+        );
+    }
+  }
+
+  // Handle built-in field status
   if (column === "status") {
     return (
       <select

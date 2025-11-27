@@ -15,7 +15,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Contact } from "@/lib/api/contact";
-import { useContactStore, ContactColumn } from "@/store/useContactStore";
+import { useContactStore, ContactColumn, BuiltInColumn } from "@/store/useContactStore";
 import ContactTableRow from "./ContactTableRow";
 import DraggableColumnHeader from "./DraggableColumnHeader";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ interface ContactsTableProps {
   workspaceId: string;
 }
 
-const COLUMN_LABELS: Record<ContactColumn, string> = {
+const DEFAULT_COLUMN_LABELS: Record<BuiltInColumn, string> = {
   name: "Name",
   email: "Email",
   phone: "Phone",
@@ -55,7 +55,26 @@ export default function ContactsTable({
     pagination,
     fetchContacts,
     reorderColumns,
+    customColumns,
+    columnLabels,
   } = useContactStore();
+
+  // Function to get column label dynamically
+  const getColumnLabel = (column: ContactColumn): string => {
+    // Check for custom label override
+    if (columnLabels[column]) {
+      return columnLabels[column];
+    }
+
+    // Check if it's a custom column
+    const customCol = customColumns.find((c) => c.fieldKey === column);
+    if (customCol) {
+      return customCol.fieldLabel;
+    }
+
+    // Fall back to default built-in label
+    return DEFAULT_COLUMN_LABELS[column as BuiltInColumn] || column;
+  };
 
   const [sortColumn, setSortColumn] = useState<ContactColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -153,8 +172,8 @@ export default function ContactsTable({
                     <DraggableColumnHeader
                       key={column}
                       column={column}
-                      label={COLUMN_LABELS[column]}
-                      width={columnWidths[column]}
+                      label={getColumnLabel(column)}
+                      width={columnWidths[column] || 150}
                       sortColumn={sortColumn}
                       sortDirection={sortDirection}
                       onSort={handleSort}

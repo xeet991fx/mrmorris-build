@@ -18,7 +18,7 @@ export default function ContactsPage() {
   const params = useParams();
   const workspaceId = params.id as string;
 
-  const { contacts, isLoading, fetchContacts, deleteContact } = useContactStore();
+  const { contacts, isLoading, fetchContacts, deleteContact, fetchCustomColumns } = useContactStore();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -27,10 +27,11 @@ export default function ContactsPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
 
-  // Fetch contacts on mount
+  // Fetch contacts and custom columns on mount
   useEffect(() => {
     if (workspaceId) {
       fetchContacts(workspaceId);
+      fetchCustomColumns(workspaceId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);

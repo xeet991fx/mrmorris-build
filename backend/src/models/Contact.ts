@@ -36,6 +36,9 @@ export interface IContact extends Document {
   lastContactedAt?: Date;
   notes?: string;
 
+  // Custom Fields
+  customFields?: Map<string, any>;
+
   // AI Copilot Data
   aiInsights?: {
     sentiment?: "positive" | "neutral" | "negative";
@@ -131,6 +134,13 @@ const contactSchema = new Schema<IContact>(
     },
     lastContactedAt: { type: Date },
     notes: { type: String },
+
+    // Custom Fields
+    customFields: {
+      type: Map,
+      of: Schema.Types.Mixed,
+      default: () => new Map(),
+    },
 
     // AI Copilot Data
     aiInsights: {
