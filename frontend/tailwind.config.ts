@@ -17,8 +17,9 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        heading: ["var(--font-heading)"],
-        body: ["var(--font-body)"],
+        sans: ["var(--font-hanken)", "system-ui", "sans-serif"],
+        heading: ["var(--font-hanken)"],
+        body: ["var(--font-hanken)"],
       },
       colors: {
         border: "hsl(var(--border))",

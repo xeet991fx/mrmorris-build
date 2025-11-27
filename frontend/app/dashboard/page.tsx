@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { LogOut, User, Mail, CheckCircle2, Calendar } from "lucide-react";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -28,9 +29,13 @@ function DashboardContent() {
       <header className="border-b border-neutral-700/50 bg-neutral-800/50 backdrop-blur-xl">
         <div className="container mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 bg-white rounded-md flex items-center justify-center shadow-sm">
-              <span className="text-neutral-900 font-bold text-sm">M</span>
-            </div>
+            <Image
+              src="/mrmorrislogo2-removebg-preview.png"
+              alt="MrMorris Logo"
+              width={36}
+              height={36}
+              className="object-contain"
+            />
             <h1 className="text-base font-semibold text-white">
               MrMorris
             </h1>

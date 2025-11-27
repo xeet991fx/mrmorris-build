@@ -1,18 +1,12 @@
 import type { Metadata } from "next"
-import { Inter, Poppins } from "next/font/google"
+import { Hanken_Grotesk } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 
-const inter = Inter({
+const hankenGrotesk = Hanken_Grotesk({
   subsets: ["latin"],
-  variable: "--font-body",
-  display: "swap",
-})
-
-const poppins = Poppins({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-heading",
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-hanken",
   display: "swap",
 })
 
@@ -43,7 +37,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${poppins.variable} font-body`}>
+      <body className={`${hankenGrotesk.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

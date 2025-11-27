@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
@@ -9,7 +10,14 @@ export function Navbar() {
     <nav className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center gap-3">
+            <Image
+              src="/mrmorrislogo2-removebg-preview.png"
+              alt="MrMorris Logo"
+              width={56}
+              height={56}
+              className="object-contain"
+            />
             <span className="font-heading text-2xl font-bold bg-gradient-to-r from-[#9ACD32] via-[#8AB82E] to-[#7BA628] bg-clip-text text-transparent">
               MrMorris
             </span>
