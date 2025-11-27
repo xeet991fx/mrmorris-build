@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Bars3Icon,
@@ -196,8 +197,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
           )}
           disabled={!isInsideWorkspace}
         >
-          <div className="w-7 h-7 bg-[#9ACD32] rounded-md flex items-center justify-center flex-shrink-0 shadow-sm">
-            <span className="text-neutral-900 font-bold text-sm">M</span>
+          <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+            <Image
+              src="/mrmorrislogo2-removebg-preview.png"
+              alt="MrMorris Logo"
+              width={36}
+              height={36}
+              className="object-contain"
+            />
           </div>
           <motion.div
             initial={false}
