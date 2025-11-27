@@ -86,10 +86,13 @@ export default function AddCustomColumnModal({
         isRequired,
       };
 
+      console.log("Creating custom column:", data);
       await createCustomColumn(workspaceId, data);
+      console.log("Custom column created successfully");
       toast.success("Custom column created successfully");
       handleClose();
     } catch (error: any) {
+      console.error("Error creating custom column:", error);
       toast.error(error.message || "Failed to create custom column");
     } finally {
       setIsCreating(false);

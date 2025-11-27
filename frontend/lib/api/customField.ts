@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { axiosInstance } from "../axios";
 
 export interface CreateCustomColumnData {
   fieldLabel: string;
@@ -48,13 +46,11 @@ export const getCustomColumns = async (
   includeInactive: boolean = false
 ): Promise<CustomFieldResponse<{ customFields: CustomColumnDefinition[]; count: number }>> => {
   try {
-    const url = `${API_URL}/api/workspaces/${workspaceId}/custom-fields${
+    const url = `/workspaces/${workspaceId}/custom-fields${
       includeInactive ? "?includeInactive=true" : ""
     }`;
 
-    const response = await axios.get(url, {
-      withCredentials: true,
-    });
+    const response = await axiosInstance.get(url);
 
     return response.data;
   } catch (error: any) {
@@ -73,11 +69,8 @@ export const getCustomColumn = async (
   fieldId: string
 ): Promise<CustomFieldResponse<{ customField: CustomColumnDefinition }>> => {
   try {
-    const response = await axios.get(
-      `${API_URL}/api/workspaces/${workspaceId}/custom-fields/${fieldId}`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/workspaces/${workspaceId}/custom-fields/${fieldId}`
     );
 
     return response.data;
@@ -97,16 +90,21 @@ export const createCustomColumn = async (
   data: CreateCustomColumnData
 ): Promise<CustomFieldResponse<{ customField: CustomColumnDefinition }>> => {
   try {
-    const response = await axios.post(
-      `${API_URL}/api/workspaces/${workspaceId}/custom-fields`,
-      data,
-      {
-        withCredentials: true,
-      }
-    );
+    const url = `/workspaces/${workspaceId}/custom-fields`;
+    console.log("🔵 Creating custom column");
+    console.log("URL:", url);
+    console.log("Workspace ID:", workspaceId);
+    console.log("Request data:", data);
 
+    const response = await axiosInstance.post(url, data);
+
+    console.log("✅ Custom column created successfully:", response.data);
     return response.data;
   } catch (error: any) {
+    console.error("❌ Error creating custom column:", error);
+    console.error("Error response:", error.response?.data);
+    console.error("Error status:", error.response?.status);
+    console.error("Error URL:", error.config?.url);
     return {
       success: false,
       error: error.response?.data?.error || "Failed to create custom column",
@@ -123,12 +121,9 @@ export const updateCustomColumn = async (
   data: UpdateCustomColumnData
 ): Promise<CustomFieldResponse<{ customField: CustomColumnDefinition }>> => {
   try {
-    const response = await axios.patch(
-      `${API_URL}/api/workspaces/${workspaceId}/custom-fields/${fieldId}`,
-      data,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.patch(
+      `/workspaces/${workspaceId}/custom-fields/${fieldId}`,
+      data
     );
 
     return response.data;
@@ -149,13 +144,10 @@ export const deleteCustomColumn = async (
   deleteData: boolean = false
 ): Promise<CustomFieldResponse> => {
   try {
-    const response = await axios.delete(
-      `${API_URL}/api/workspaces/${workspaceId}/custom-fields/${fieldId}${
+    const response = await axiosInstance.delete(
+      `/workspaces/${workspaceId}/custom-fields/${fieldId}${
         deleteData ? "?deleteData=true" : ""
-      }`,
-      {
-        withCredentials: true,
-      }
+      }`
     );
 
     return response.data;
