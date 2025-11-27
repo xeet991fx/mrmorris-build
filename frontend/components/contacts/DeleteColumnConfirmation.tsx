@@ -155,7 +155,7 @@ export default function DeleteColumnConfirmation({
                       <p className="text-sm text-neutral-300">
                         Are you sure you want to delete the column{" "}
                         <span className="font-semibold text-white">
-                          "{column.fieldLabel}"
+                          &quot;{column.fieldLabel}&quot;
                         </span>
                         ?
                       </p>
@@ -171,7 +171,7 @@ export default function DeleteColumnConfirmation({
                       )}
 
                       <p className="text-sm text-neutral-400">
-                        In the next step, you'll choose whether to hide the column (preserving
+                        In the next step, you&apos;ll choose whether to hide the column (preserving
                         data) or permanently delete it.
                       </p>
                     </div>
@@ -264,7 +264,7 @@ export default function DeleteColumnConfirmation({
                       </div>
 
                       <p className="text-sm text-neutral-300">
-                        Type <span className="font-mono font-semibold text-white">"{column.fieldLabel}"</span> to
+                        Type <span className="font-mono font-semibold text-white">&quot;{column.fieldLabel}&quot;</span> to
                         confirm deletion:
                       </p>
 

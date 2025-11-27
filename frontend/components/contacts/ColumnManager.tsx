@@ -270,7 +270,7 @@ export default function ColumnManager({ isOpen, onClose }: ColumnManagerProps) {
                                 <PlusIcon className="w-8 h-8 text-neutral-500" />
                               </div>
                               <p className="text-sm text-neutral-400 mb-4">
-                                No custom columns yet. Click "Add Column" to create one.
+                                No custom columns yet. Click &quot;Add Column&quot; to create one.
                               </p>
                             </div>
                           ) : (
