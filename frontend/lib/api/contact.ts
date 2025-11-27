@@ -27,6 +27,7 @@ export interface Contact {
   assignedTo?: string;
   lastContactedAt?: string;
   notes?: string;
+  customFields?: Record<string, any>;
   aiInsights?: {
     sentiment?: "positive" | "neutral" | "negative";
     engagementScore?: number;
@@ -48,6 +49,7 @@ export interface CreateContactData {
   status?: "lead" | "prospect" | "customer" | "inactive";
   notes?: string;
   tags?: string[];
+  customFields?: Record<string, any>;
 }
 
 export interface UpdateContactData extends Partial<CreateContactData> {}

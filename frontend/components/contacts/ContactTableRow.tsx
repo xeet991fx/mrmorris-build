@@ -2,7 +2,7 @@ import { Menu } from "@headlessui/react";
 import { EllipsisVerticalIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { Contact } from "@/lib/api/contact";
-import { useContactStore, ContactColumn } from "@/store/useContactStore";
+import { useContactStore, ContactColumn, BuiltInColumn } from "@/store/useContactStore";
 import EditableCell from "./EditableCell";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -29,12 +29,30 @@ export default function ContactTableRow({
   const {
     selectedContacts,
     toggleContactSelection,
+    customColumns,
   } = useContactStore();
 
   const isSelected = selectedContacts.includes(contact._id);
   const fullName = `${contact.firstName} ${contact.lastName}`;
 
+  // Helper to check if column is built-in
+  const isBuiltInColumn = (column: ContactColumn): column is BuiltInColumn => {
+    return [
+      "name",
+      "email",
+      "phone",
+      "company",
+      "jobTitle",
+      "source",
+      "notes",
+      "status",
+      "createdAt",
+    ].includes(column);
+  };
+
   const getCellContent = (column: ContactColumn) => {
+    // Handle built-in columns
+    if (isBuiltInColumn(column)) {
     switch (column) {
       case "name":
         return fullName;
@@ -78,6 +96,30 @@ export default function ContactTableRow({
         return format(new Date(contact.createdAt), "MMM d, yyyy");
       default:
         return "—";
+      }
+    }
+
+    // Handle custom columns
+    const customValue = contact.customFields?.[column];
+    const columnDef = customColumns.find((col) => col.fieldKey === column);
+
+    if (customValue === undefined || customValue === null || customValue === "") {
+      return "—";
+    }
+
+    // Format based on field type
+    switch (columnDef?.fieldType) {
+      case "number":
+        return new Intl.NumberFormat().format(Number(customValue));
+      case "select":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            {customValue}
+          </span>
+        );
+      case "text":
+      default:
+        return String(customValue);
     }
   };
 

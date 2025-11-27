@@ -282,10 +282,25 @@ router.patch(
       // Validate input
       const validatedData = updateContactSchema.parse(req.body);
 
+      // Handle custom fields separately to merge them properly
+      let updateData: any = { ...validatedData };
+      if (validatedData.customFields) {
+        // Get existing contact to merge custom fields
+        const existingContact = await Contact.findOne({ _id: id, workspaceId });
+        if (existingContact) {
+          // Merge custom fields
+          const mergedCustomFields = new Map(existingContact.customFields || new Map());
+          Object.entries(validatedData.customFields).forEach(([key, value]) => {
+            mergedCustomFields.set(key, value);
+          });
+          updateData.customFields = mergedCustomFields;
+        }
+      }
+
       // Update contact
       const contact = await Contact.findOneAndUpdate(
         { _id: id, workspaceId },
-        validatedData,
+        updateData,
         { new: true, runValidators: true }
       ).populate("assignedTo", "name email");
 

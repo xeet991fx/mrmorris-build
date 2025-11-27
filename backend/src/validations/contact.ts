@@ -49,6 +49,7 @@ export const createContactSchema = z.object({
     .optional(),
   assignedTo: z.string().optional(), // User ID
   notes: z.string().optional().or(z.literal("")),
+  customFields: z.record(z.any()).optional(), // Dynamic custom fields
 });
 
 // Update contact schema - all fields optional
