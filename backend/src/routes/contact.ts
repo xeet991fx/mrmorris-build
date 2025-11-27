@@ -53,11 +53,17 @@ router.post(
       const validatedData = createContactSchema.parse(req.body);
 
       // Create contact
-      const contact = await Contact.create({
+      const contactDoc = await Contact.create({
         ...validatedData,
         workspaceId,
         userId: req.user?._id,
       });
+
+      // Convert Map to plain object for JSON serialization
+      const contact: any = contactDoc.toObject();
+      if (contact.customFields && contact.customFields instanceof Map) {
+        contact.customFields = Object.fromEntries(contact.customFields);
+      }
 
       res.status(201).json({
         success: true,
@@ -146,7 +152,7 @@ router.get(
       }
 
       // Get contacts with pagination
-      const [contacts, total] = await Promise.all([
+      const [contactDocs, total] = await Promise.all([
         Contact.find(filter)
           .sort({ createdAt: -1 })
           .skip(skip)
@@ -154,6 +160,15 @@ router.get(
           .populate("assignedTo", "name email"),
         Contact.countDocuments(filter),
       ]);
+
+      // Convert Map to plain object for JSON serialization
+      const contacts = contactDocs.map((doc) => {
+        const obj: any = doc.toObject();
+        if (obj.customFields && obj.customFields instanceof Map) {
+          obj.customFields = Object.fromEntries(obj.customFields);
+        }
+        return obj;
+      });
 
       res.status(200).json({
         success: true,
@@ -215,16 +230,22 @@ router.get(
       }
 
       // Find contact
-      const contact = await Contact.findOne({
+      const contactDoc = await Contact.findOne({
         _id: id,
         workspaceId,
       }).populate("assignedTo", "name email");
 
-      if (!contact) {
+      if (!contactDoc) {
         return res.status(404).json({
           success: false,
           error: "Contact not found.",
         });
+      }
+
+      // Convert Map to plain object for JSON serialization
+      const contact: any = contactDoc.toObject();
+      if (contact.customFields && contact.customFields instanceof Map) {
+        contact.customFields = Object.fromEntries(contact.customFields);
       }
 
       res.status(200).json({
@@ -298,17 +319,23 @@ router.patch(
       }
 
       // Update contact
-      const contact = await Contact.findOneAndUpdate(
+      const contactDoc = await Contact.findOneAndUpdate(
         { _id: id, workspaceId },
         updateData,
         { new: true, runValidators: true }
       ).populate("assignedTo", "name email");
 
-      if (!contact) {
+      if (!contactDoc) {
         return res.status(404).json({
           success: false,
           error: "Contact not found.",
         });
+      }
+
+      // Convert Map to plain object for JSON serialization
+      const contact: any = contactDoc.toObject();
+      if (contact.customFields && contact.customFields instanceof Map) {
+        contact.customFields = Object.fromEntries(contact.customFields);
       }
 
       res.status(200).json({

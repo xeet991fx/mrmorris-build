@@ -74,12 +74,21 @@ router.post(
   customFieldLimiter,
   async (req: AuthRequest, res: Response) => {
     try {
+      console.log("🟢 CREATE CUSTOM FIELD ROUTE HIT");
+      console.log("Workspace ID:", req.params.workspaceId);
+      console.log("Request body:", JSON.stringify(req.body, null, 2));
+      console.log("User:", req.user?._id);
+
       const { workspaceId } = req.params;
       const userId = (req.user?._id as any).toString();
 
       // Verify workspace access
       const hasAccess = await verifyWorkspaceAccess(workspaceId, userId, res);
-      if (!hasAccess) return;
+      if (!hasAccess) {
+        console.log("❌ Workspace access denied");
+        return;
+      }
+      console.log("✅ Workspace access granted");
 
       // Validate request body
       const validation = createCustomFieldSchema.safeParse(req.body);

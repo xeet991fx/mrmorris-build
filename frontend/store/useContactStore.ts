@@ -546,22 +546,32 @@ export const useContactStore = create<ContactState>()(
         data: customFieldApi.CreateCustomColumnData
       ) => {
         try {
+          console.log("Store: Creating custom column with data:", data);
           const response = await customFieldApi.createCustomColumn(workspaceId, data);
-          if (response.success && response.data) {
-            // Add the new custom column to the store
-            set((state) => ({
-              customColumns: [...state.customColumns, response.data!.customField],
-            }));
+          console.log("Store: API response:", response);
 
-            // Optionally add it to visible columns
-            const fieldKey = response.data.customField.fieldKey;
+          if (response.success && response.data) {
+            const newColumn = response.data.customField;
+            const fieldKey = newColumn.fieldKey;
+            console.log("Store: New column created:", newColumn);
+
+            // Update all related state in one call
             set((state) => ({
+              customColumns: [...state.customColumns, newColumn],
               visibleColumns: [...state.visibleColumns, fieldKey],
               columnOrder: [...state.columnOrder, fieldKey],
             }));
+
+            console.log("Store: Custom column added successfully");
+
+            // Refetch to ensure consistency
+            await get().fetchCustomColumns(workspaceId);
+          } else {
+            console.error("Store: API response missing data:", response);
+            throw new Error(response.error || "Failed to create custom column");
           }
         } catch (error: any) {
-          console.error("Error creating custom column:", error);
+          console.error("Store: Error creating custom column:", error);
           set({ error: "Failed to create custom column" });
           throw error;
         }
