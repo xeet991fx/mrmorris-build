@@ -3,6 +3,9 @@ import { z } from "zod";
 // Create custom field schema
 export const createCustomFieldSchema = z
   .object({
+    entityType: z.enum(["contact", "company"], {
+      errorMap: () => ({ message: "Entity type must be contact or company" }),
+    }),
     fieldLabel: z
       .string()
       .min(1, "Field label is required")

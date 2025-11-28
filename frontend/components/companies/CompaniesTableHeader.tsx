@@ -6,28 +6,28 @@ import {
   AdjustmentsHorizontalIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { useContactStore } from "@/store/useContactStore";
+import { useCompanyStore } from "@/store/useCompanyStore";
 import { useDebounce } from "@/hooks/useDebounce";
 
-interface ContactsTableHeaderProps {
-  onAddContact: () => void;
+interface CompaniesTableHeaderProps {
+  onAddCompany: () => void;
   onToggleColumnManager: () => void;
   workspaceId: string;
 }
 
-export default function ContactsTableHeader({
-  onAddContact,
+export default function CompaniesTableHeader({
+  onAddCompany,
   onToggleColumnManager,
   workspaceId,
-}: ContactsTableHeaderProps) {
+}: CompaniesTableHeaderProps) {
   const {
     searchQuery,
     setSearchQuery,
-    selectedContacts,
-    clearSelectedContacts,
-    deleteContact,
-    fetchContacts,
-  } = useContactStore();
+    selectedCompanies,
+    clearSelectedCompanies,
+    deleteCompany,
+    fetchCompanies,
+  } = useCompanyStore();
 
   const [localSearch, setLocalSearch] = useState(searchQuery);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -41,9 +41,9 @@ export default function ContactsTableHeader({
     }
 
     setSearchQuery(debouncedSearch);
-    // Re-fetch contacts with new search
+    // Re-fetch companies with new search
     if (workspaceId) {
-      fetchContacts(workspaceId, { search: debouncedSearch, page: 1 });
+      fetchCompanies(workspaceId, { search: debouncedSearch, page: 1 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
@@ -51,17 +51,17 @@ export default function ContactsTableHeader({
   const handleBulkDelete = async () => {
     if (
       !window.confirm(
-        `Are you sure you want to delete ${selectedContacts.length} contact(s)?`
+        `Are you sure you want to delete ${selectedCompanies.length} company(ies)?`
       )
     ) {
       return;
     }
 
     try {
-      for (const contactId of selectedContacts) {
-        await deleteContact(workspaceId, contactId);
+      for (const companyId of selectedCompanies) {
+        await deleteCompany(workspaceId, companyId);
       }
-      clearSelectedContacts();
+      clearSelectedCompanies();
     } catch (error) {
       console.error("Bulk delete error:", error);
     }
@@ -75,7 +75,7 @@ export default function ContactsTableHeader({
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search contacts..."
+            placeholder="Search companies..."
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-card/95 border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-border transition-colors"
@@ -84,13 +84,13 @@ export default function ContactsTableHeader({
 
         {/* Actions */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {selectedContacts.length > 0 && (
+          {selectedCompanies.length > 0 && (
             <button
               onClick={handleBulkDelete}
               className="inline-flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-all"
             >
               <TrashIcon className="w-4 h-4" />
-              Delete ({selectedContacts.length})
+              Delete ({selectedCompanies.length})
             </button>
           )}
 
@@ -103,11 +103,11 @@ export default function ContactsTableHeader({
           </button>
 
           <button
-            onClick={onAddContact}
+            onClick={onAddCompany}
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all shadow-sm hover:shadow flex-1 sm:flex-initial justify-center"
           >
             <PlusIcon className="w-4 h-4" />
-            Add Contact
+            Add Company
           </button>
         </div>
       </div>

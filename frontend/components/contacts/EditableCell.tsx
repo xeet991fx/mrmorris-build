@@ -171,7 +171,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
         onClick={handleClick}
         className={cn(
           "min-h-[32px] flex items-center",
-          !isReadOnly && "cursor-pointer hover:bg-neutral-700/30 rounded px-2 -mx-2 transition-colors"
+          !isReadOnly && "cursor-pointer hover:bg-muted/30 rounded px-2 -mx-2 transition-colors"
         )}
         title={isReadOnly ? undefined : "Click to edit"}
       >
@@ -194,7 +194,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             disabled={isSaving}
-            className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+            className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
           />
         );
       case "select":
@@ -206,7 +206,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             disabled={isSaving}
-            className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+            className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
           >
             <option value="">Select...</option>
             {customColumnDef.selectOptions?.map((option) => (
@@ -227,7 +227,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             disabled={isSaving}
-            className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+            className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
           />
         );
     }
@@ -243,7 +243,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         disabled={isSaving}
-        className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+        className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
       >
         {STATUS_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
@@ -264,7 +264,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
         onKeyDown={handleKeyDown}
         disabled={isSaving}
         rows={2}
-        className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] resize-none disabled:opacity-50"
+        className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] resize-none disabled:opacity-50"
       />
     );
   }
@@ -278,7 +278,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
       onBlur={handleSave}
       onKeyDown={handleKeyDown}
       disabled={isSaving}
-      className="w-full px-2 py-1 bg-neutral-700 border border-neutral-600 rounded text-sm text-white focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+      className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
     />
   );
 }

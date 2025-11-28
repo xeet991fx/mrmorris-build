@@ -3,6 +3,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 export interface IContact extends Document {
   workspaceId: Types.ObjectId;
   userId: Types.ObjectId;
+  companyId?: Types.ObjectId; // Reference to Company
 
   // Basic Information
   firstName: string;
@@ -63,6 +64,11 @@ const contactSchema = new Schema<IContact>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: [true, "User ID is required"],
+      index: true,
+    },
+    companyId: {
+      type: Schema.Types.ObjectId,
+      ref: "Company",
       index: true,
     },
 
@@ -167,6 +173,7 @@ contactSchema.index({ workspaceId: 1, createdAt: -1 });
 contactSchema.index({ workspaceId: 1, status: 1 });
 contactSchema.index({ workspaceId: 1, email: 1 });
 contactSchema.index({ workspaceId: 1, assignedTo: 1 });
+contactSchema.index({ workspaceId: 1, companyId: 1 });
 
 // Text index for search
 contactSchema.index({

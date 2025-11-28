@@ -87,10 +87,10 @@ function ResetPasswordContent() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12">
-        <div className="w-full max-w-md bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8 text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Invalid Link</h2>
-          <p className="text-neutral-400 mb-6">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
+        <div className="w-full max-w-md bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl p-8 text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-4">Invalid Link</h2>
+          <p className="text-muted-foreground mb-6">
             This password reset link is invalid. Please request a new one.
           </p>
           <Link href="/forgot-password">
@@ -105,14 +105,14 @@ function ResetPasswordContent() {
 
   if (resetSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8 text-center">
+          <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl p-8 text-center">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -124,10 +124,10 @@ function ResetPasswordContent() {
               </div>
             </motion.div>
 
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               Password Reset!
             </h2>
-            <p className="text-neutral-400 mb-6">
+            <p className="text-muted-foreground mb-6">
               Your password has been successfully reset. You&apos;re now logged in!
             </p>
 
@@ -136,7 +136,7 @@ function ResetPasswordContent() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              <p className="text-sm text-neutral-500 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Redirecting to dashboard...
               </p>
               <Link href="/dashboard">
@@ -154,7 +154,7 @@ function ResetPasswordContent() {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12 relative overflow-hidden">
         {/* Animated background gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
@@ -192,7 +192,7 @@ function ResetPasswordContent() {
           className="w-full max-w-md relative z-10"
         >
           {/* Glass card */}
-          <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8">
+          <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl p-8">
             {/* Header */}
             <div className="text-center mb-8">
               <motion.div
@@ -200,10 +200,10 @@ function ResetPasswordContent() {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.1, duration: 0.5 }}
               >
-                <h1 className="text-3xl font-bold text-white mb-2">
+                <h1 className="text-3xl font-bold text-foreground mb-2">
                   Reset Password
                 </h1>
-                <p className="text-neutral-400">
+                <p className="text-muted-foreground">
                   Enter your new password below
                 </p>
               </motion.div>
@@ -219,23 +219,23 @@ function ResetPasswordContent() {
               >
                 <label
                   htmlFor="password"
-                  className="block text-sm font-medium text-neutral-300 mb-2"
+                  className="block text-sm font-medium text-foreground mb-2"
                 >
                   New Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     {...register("password")}
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Create a strong password"
-                    className="pl-10 pr-10 bg-neutral-900/50 border-neutral-800/50 text-white placeholder:text-neutral-500 focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                    className="pl-10 pr-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showPassword ? (
                       <EyeOff className="h-5 w-5" />
@@ -253,7 +253,7 @@ function ResetPasswordContent() {
                     className="mt-2"
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="flex-1 h-1 bg-neutral-800 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                         <motion.div
                           className={`h-full ${passwordStrength.color}`}
                           initial={{ width: 0 }}
@@ -261,7 +261,7 @@ function ResetPasswordContent() {
                           transition={{ duration: 0.3 }}
                         />
                       </div>
-                      <span className="text-xs text-neutral-400">
+                      <span className="text-xs text-muted-foreground">
                         {passwordStrength.label}
                       </span>
                     </div>
@@ -287,23 +287,23 @@ function ResetPasswordContent() {
               >
                 <label
                   htmlFor="confirmPassword"
-                  className="block text-sm font-medium text-neutral-300 mb-2"
+                  className="block text-sm font-medium text-foreground mb-2"
                 >
                   Confirm New Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     {...register("confirmPassword")}
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm your password"
-                    className="pl-10 pr-10 bg-neutral-900/50 border-neutral-800/50 text-white placeholder:text-neutral-500 focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                    className="pl-10 pr-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-5 w-5" />
@@ -351,9 +351,9 @@ function ResetPasswordContent() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-              className="mt-8 pt-6 border-t border-neutral-900/50"
+              className="mt-8 pt-6 border-t border-border/50"
             >
-              <p className="text-center text-neutral-400 text-sm">
+              <p className="text-center text-muted-foreground text-sm">
                 Remember your password?{" "}
                 <Link
                   href="/login"

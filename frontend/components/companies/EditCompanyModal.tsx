@@ -5,65 +5,87 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { updateContactSchema, UpdateContactInput } from "@/lib/validations/contact";
-import { useContactStore } from "@/store/useContactStore";
-import { Contact } from "@/lib/api/contact";
-import ContactForm from "./ContactForm";
+import { updateCompanySchema, UpdateCompanyInput } from "@/lib/validations/company";
+import { useCompanyStore } from "@/store/useCompanyStore";
+import { Company } from "@/lib/api/company";
+import CompanyForm from "./CompanyForm";
 
-interface EditContactModalProps {
+interface EditCompanyModalProps {
   isOpen: boolean;
   onClose: () => void;
   workspaceId: string;
-  contact: Contact;
+  company: Company;
 }
 
-export default function EditContactModal({
+export default function EditCompanyModal({
   isOpen,
   onClose,
   workspaceId,
-  contact,
-}: EditContactModalProps) {
-  const { updateContact, isLoading } = useContactStore();
+  company,
+}: EditCompanyModalProps) {
+  const { updateCompany, isLoading } = useCompanyStore();
 
-  const form = useForm<UpdateContactInput>({
-    resolver: zodResolver(updateContactSchema),
+  const form = useForm<UpdateCompanyInput>({
+    resolver: zodResolver(updateCompanySchema),
     defaultValues: {
-      firstName: contact.firstName,
-      lastName: contact.lastName,
-      email: contact.email || "",
-      phone: contact.phone || "",
-      company: contact.company || "",
-      jobTitle: contact.jobTitle || "",
-      source: contact.source || "",
-      status: contact.status || "lead",
-      notes: contact.notes || "",
+      name: company.name,
+      industry: company.industry || "",
+      website: company.website || "",
+      phone: company.phone || "",
+      companySize: company.companySize,
+      annualRevenue: company.annualRevenue,
+      employeeCount: company.employeeCount,
+      linkedinUrl: company.linkedinUrl || "",
+      twitterUrl: company.twitterUrl || "",
+      facebookUrl: company.facebookUrl || "",
+      address: company.address || {
+        street: "",
+        city: "",
+        state: "",
+        country: "",
+        zipCode: "",
+      },
+      status: company.status || "lead",
+      source: company.source || "",
+      notes: company.notes || "",
     },
   });
 
   const { handleSubmit, reset } = form;
 
-  // Update form when contact changes
+  // Update form when company changes
   useEffect(() => {
     reset({
-      firstName: contact.firstName,
-      lastName: contact.lastName,
-      email: contact.email || "",
-      phone: contact.phone || "",
-      company: contact.company || "",
-      jobTitle: contact.jobTitle || "",
-      source: contact.source || "",
-      status: contact.status || "lead",
-      notes: contact.notes || "",
+      name: company.name,
+      industry: company.industry || "",
+      website: company.website || "",
+      phone: company.phone || "",
+      companySize: company.companySize,
+      annualRevenue: company.annualRevenue,
+      employeeCount: company.employeeCount,
+      linkedinUrl: company.linkedinUrl || "",
+      twitterUrl: company.twitterUrl || "",
+      facebookUrl: company.facebookUrl || "",
+      address: company.address || {
+        street: "",
+        city: "",
+        state: "",
+        country: "",
+        zipCode: "",
+      },
+      status: company.status || "lead",
+      source: company.source || "",
+      notes: company.notes || "",
     });
-  }, [contact, reset]);
+  }, [company, reset]);
 
-  const onSubmit = async (data: UpdateContactInput) => {
+  const onSubmit = async (data: UpdateCompanyInput) => {
     try {
-      await updateContact(workspaceId, contact._id, data);
-      toast.success("Contact updated successfully!");
+      await updateCompany(workspaceId, company._id, data);
+      toast.success("Company updated successfully!");
       onClose();
     } catch (error: any) {
-      const message = error.response?.data?.error || "Failed to update contact";
+      const message = error.response?.data?.error || "Failed to update company";
       toast.error(message);
     }
   };
@@ -111,7 +133,7 @@ export default function EditContactModal({
                       as="h3"
                       className="text-xl font-semibold text-foreground"
                     >
-                      Edit Contact
+                      Edit Company
                     </Dialog.Title>
                     <button
                       type="button"
@@ -124,7 +146,7 @@ export default function EditContactModal({
 
                   {/* Form */}
                   <form onSubmit={handleSubmit(onSubmit)}>
-                    <ContactForm form={form} />
+                    <CompanyForm form={form} />
 
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-border">

@@ -138,7 +138,7 @@ export default function EditCustomColumnModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-neutral-800 border border-neutral-700/50 p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-card border border-border p-6 text-left align-middle shadow-xl transition-all">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -148,14 +148,14 @@ export default function EditCustomColumnModal({
                   <div className="flex items-center justify-between mb-6">
                     <Dialog.Title
                       as="h3"
-                      className="text-lg font-semibold text-white"
+                      className="text-lg font-semibold text-foreground"
                     >
                       Edit Custom Column
                     </Dialog.Title>
                     <button
                       type="button"
                       onClick={onClose}
-                      className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-400 hover:text-white transition-colors"
+                      className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <XMarkIcon className="w-5 h-5" />
                     </button>
@@ -165,33 +165,33 @@ export default function EditCustomColumnModal({
                   <div className="space-y-4">
                     {/* Field Key (read-only) */}
                     <div>
-                      <label className="block text-sm font-medium text-neutral-300 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Field Key
                       </label>
-                      <div className="px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-neutral-400 text-sm font-mono">
+                      <div className="px-3 py-2 bg-background border border-border rounded-lg text-muted-foreground text-sm font-mono">
                         {column.fieldKey}
                       </div>
-                      <p className="text-xs text-neutral-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Field key cannot be changed after creation
                       </p>
                     </div>
 
                     {/* Data Type (read-only) */}
                     <div>
-                      <label className="block text-sm font-medium text-neutral-300 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Data Type
                       </label>
-                      <div className="px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-lg text-neutral-400 text-sm capitalize">
+                      <div className="px-3 py-2 bg-background border border-border rounded-lg text-muted-foreground text-sm capitalize">
                         {column.fieldType}
                       </div>
-                      <p className="text-xs text-neutral-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Data type cannot be changed to prevent data loss
                       </p>
                     </div>
 
                     {/* Column Label (editable) */}
                     <div>
-                      <label className="block text-sm font-medium text-neutral-300 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Column Label <span className="text-red-400">*</span>
                       </label>
                       <input
@@ -199,9 +199,9 @@ export default function EditCustomColumnModal({
                         value={fieldLabel}
                         onChange={(e) => setFieldLabel(e.target.value)}
                         maxLength={100}
-                        className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white focus:outline-none focus:border-[#9ACD32] transition-colors"
+                        className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-[#9ACD32] transition-colors"
                       />
-                      <p className="text-xs text-neutral-400 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {fieldLabel.length}/100 characters
                       </p>
                     </div>
@@ -209,7 +209,7 @@ export default function EditCustomColumnModal({
                     {/* Dropdown Options (editable for select type) */}
                     {column.fieldType === "select" && (
                       <div>
-                        <label className="block text-sm font-medium text-neutral-300 mb-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
                           Dropdown Options <span className="text-red-400">*</span>
                         </label>
                         <div className="space-y-2">
@@ -220,13 +220,13 @@ export default function EditCustomColumnModal({
                                 value={option}
                                 onChange={(e) => handleOptionChange(index, e.target.value)}
                                 placeholder={`Option ${index + 1}`}
-                                className="flex-1 px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white placeholder-neutral-400 focus:outline-none focus:border-[#9ACD32] transition-colors"
+                                className="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-[#9ACD32] transition-colors"
                               />
                               {selectOptions.length > 1 && (
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveOption(index)}
-                                  className="p-2 rounded-lg hover:bg-neutral-700 text-neutral-400 hover:text-red-400 transition-colors"
+                                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-red-400 transition-colors"
                                 >
                                   <TrashIcon className="w-5 h-5" />
                                 </button>
@@ -246,18 +246,18 @@ export default function EditCustomColumnModal({
                     )}
 
                     {/* Is Required (editable) */}
-                    <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-700/30 transition-colors cursor-pointer">
+                    <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer">
                       <input
                         type="checkbox"
                         checked={isRequired}
                         onChange={(e) => setIsRequired(e.target.checked)}
-                        className="w-4 h-4 rounded border-neutral-600 bg-neutral-700 text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
+                        className="w-4 h-4 rounded border-border bg-input text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
                       />
                       <div>
-                        <div className="text-sm font-medium text-white">
+                        <div className="text-sm font-medium text-foreground">
                           Required Field
                         </div>
-                        <div className="text-xs text-neutral-400">
+                        <div className="text-xs text-muted-foreground">
                           Users must provide a value for this field
                         </div>
                       </div>
@@ -265,7 +265,7 @@ export default function EditCustomColumnModal({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-700/50">
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
                     <button
                       type="button"
                       onClick={onDelete}
@@ -279,7 +279,7 @@ export default function EditCustomColumnModal({
                         type="button"
                         onClick={onClose}
                         disabled={isUpdating}
-                        className="px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors disabled:opacity-50"
+                        className="px-4 py-2 text-sm font-medium text-foreground hover:text-foreground transition-colors disabled:opacity-50"
                       >
                         Cancel
                       </button>
@@ -287,7 +287,7 @@ export default function EditCustomColumnModal({
                         type="button"
                         onClick={handleSubmit}
                         disabled={isUpdating}
-                        className="px-4 py-2 text-sm font-medium text-neutral-900 bg-[#9ACD32] hover:bg-[#8AB82E] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8AB82E] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isUpdating ? "Saving..." : "Save Changes"}
                       </button>

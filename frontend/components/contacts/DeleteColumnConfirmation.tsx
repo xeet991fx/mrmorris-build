@@ -118,7 +118,7 @@ export default function DeleteColumnConfirmation({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-neutral-800 border border-neutral-700/50 p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-card border border-border p-6 text-left align-middle shadow-xl transition-all">
                 <motion.div
                   key={step}
                   initial={{ opacity: 0, x: 20 }}
@@ -133,7 +133,7 @@ export default function DeleteColumnConfirmation({
                       </div>
                       <Dialog.Title
                         as="h3"
-                        className="text-lg font-semibold text-white"
+                        className="text-lg font-semibold text-foreground"
                       >
                         {step === 1 && "Delete Column?"}
                         {step === 2 && "Choose Deletion Mode"}
@@ -143,7 +143,7 @@ export default function DeleteColumnConfirmation({
                     <button
                       type="button"
                       onClick={handleClose}
-                      className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-400 hover:text-white transition-colors"
+                      className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <XMarkIcon className="w-5 h-5" />
                     </button>
@@ -152,9 +152,9 @@ export default function DeleteColumnConfirmation({
                   {/* Step 1: Initial Warning */}
                   {step === 1 && (
                     <div className="space-y-4">
-                      <p className="text-sm text-neutral-300">
+                      <p className="text-sm text-foreground">
                         Are you sure you want to delete the column{" "}
-                        <span className="font-semibold text-white">
+                        <span className="font-semibold text-foreground">
                           &quot;{column.fieldLabel}&quot;
                         </span>
                         ?
@@ -170,7 +170,7 @@ export default function DeleteColumnConfirmation({
                         </div>
                       )}
 
-                      <p className="text-sm text-neutral-400">
+                      <p className="text-sm text-muted-foreground">
                         In the next step, you&apos;ll choose whether to hide the column (preserving
                         data) or permanently delete it.
                       </p>
@@ -180,7 +180,7 @@ export default function DeleteColumnConfirmation({
                   {/* Step 2: Choose Deletion Mode */}
                   {step === 2 && (
                     <div className="space-y-4">
-                      <p className="text-sm text-neutral-300 mb-4">
+                      <p className="text-sm text-foreground mb-4">
                         What should happen to the data in this column?
                       </p>
 
@@ -191,7 +191,7 @@ export default function DeleteColumnConfirmation({
                             "flex items-start p-4 rounded-lg border-2 cursor-pointer transition-colors",
                             deleteMode === "soft"
                               ? "border-[#9ACD32] bg-[#9ACD32]/10"
-                              : "border-neutral-700 hover:border-neutral-600"
+                              : "border-border hover:border-border"
                           )}
                         >
                           <input
@@ -203,13 +203,13 @@ export default function DeleteColumnConfirmation({
                             className="mt-1 w-4 h-4 text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
                           />
                           <div className="ml-3">
-                            <div className="text-sm font-semibold text-white flex items-center gap-2">
+                            <div className="text-sm font-semibold text-foreground flex items-center gap-2">
                               Hide Column, Keep Data
                               <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">
                                 Recommended
                               </span>
                             </div>
-                            <p className="text-xs text-neutral-400 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               The column will be hidden from the table, but all data will be
                               preserved. You can restore the column later if needed.
                             </p>
@@ -222,7 +222,7 @@ export default function DeleteColumnConfirmation({
                             "flex items-start p-4 rounded-lg border-2 cursor-pointer transition-colors",
                             deleteMode === "hard"
                               ? "border-red-500 bg-red-500/10"
-                              : "border-neutral-700 hover:border-neutral-600"
+                              : "border-border hover:border-border"
                           )}
                         >
                           <input
@@ -234,10 +234,10 @@ export default function DeleteColumnConfirmation({
                             className="mt-1 w-4 h-4 text-red-500 focus:ring-red-500 focus:ring-offset-0"
                           />
                           <div className="ml-3">
-                            <div className="text-sm font-semibold text-white">
+                            <div className="text-sm font-semibold text-foreground">
                               Delete Column AND All Data
                             </div>
-                            <p className="text-xs text-neutral-400 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               The column definition and all data will be permanently deleted.{" "}
                               {contactsWithData > 0 && (
                                 <span className="text-red-400 font-medium">
@@ -263,8 +263,8 @@ export default function DeleteColumnConfirmation({
                         </p>
                       </div>
 
-                      <p className="text-sm text-neutral-300">
-                        Type <span className="font-mono font-semibold text-white">&quot;{column.fieldLabel}&quot;</span> to
+                      <p className="text-sm text-foreground">
+                        Type <span className="font-mono font-semibold text-foreground">&quot;{column.fieldLabel}&quot;</span> to
                         confirm deletion:
                       </p>
 
@@ -273,7 +273,7 @@ export default function DeleteColumnConfirmation({
                         value={confirmText}
                         onChange={(e) => setConfirmText(e.target.value)}
                         placeholder={column.fieldLabel}
-                        className="w-full px-3 py-2 bg-neutral-700 border border-neutral-600 rounded-lg text-white placeholder-neutral-500 focus:outline-none focus:border-red-500 transition-colors"
+                        className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-red-500 transition-colors"
                         autoFocus
                       />
 
@@ -287,12 +287,12 @@ export default function DeleteColumnConfirmation({
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-neutral-700/50">
+                  <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
                     <button
                       type="button"
                       onClick={handleClose}
                       disabled={isDeleting}
-                      className="px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors disabled:opacity-50"
+                      className="px-4 py-2 text-sm font-medium text-foreground hover:text-foreground transition-colors disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -304,7 +304,7 @@ export default function DeleteColumnConfirmation({
                         "px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                         step === 3 || (step === 2 && deleteMode === "hard")
                           ? "bg-red-500 hover:bg-red-600 text-white"
-                          : "bg-[#9ACD32] hover:bg-[#8AB82E] text-neutral-900"
+                          : "bg-[#9ACD32] hover:bg-[#8AB82E] text-background"
                       )}
                     >
                       {isDeleting
@@ -328,7 +328,7 @@ export default function DeleteColumnConfirmation({
                             ? "bg-[#9ACD32]"
                             : step === s
                             ? "bg-[#9ACD32]"
-                            : "bg-neutral-600"
+                            : "bg-muted-foreground"
                         )}
                       />
                     ))}

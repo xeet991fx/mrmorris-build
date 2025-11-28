@@ -14,53 +14,55 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Contact } from "@/lib/api/contact";
-import { useContactStore, ContactColumn, BuiltInColumn } from "@/store/useContactStore";
-import ContactTableRow from "./ContactTableRow";
+import { Company } from "@/lib/api/company";
+import { useCompanyStore, CompanyColumn, BuiltInColumn } from "@/store/useCompanyStore";
+import CompanyTableRow from "./CompanyTableRow";
 import DraggableColumnHeader from "./DraggableColumnHeader";
 import { cn } from "@/lib/utils";
 
-interface ContactsTableProps {
-  contacts: Contact[];
-  onEdit: (contact: Contact) => void;
-  onDelete: (contactId: string) => void;
+interface CompaniesTableProps {
+  companies: Company[];
+  onEdit: (company: Company) => void;
+  onDelete: (companyId: string) => void;
   workspaceId: string;
 }
 
 const DEFAULT_COLUMN_LABELS: Record<BuiltInColumn, string> = {
-  name: "Name",
-  email: "Email",
+  name: "Company Name",
+  industry: "Industry",
+  website: "Website",
   phone: "Phone",
-  company: "Company",
-  jobTitle: "Job Title",
+  companySize: "Company Size",
+  annualRevenue: "Annual Revenue",
+  employeeCount: "Employee Count",
+  status: "Status",
   source: "Lead Source",
   notes: "Notes",
-  status: "Status",
   createdAt: "Created Date",
 };
 
-export default function ContactsTable({
-  contacts,
+export default function CompaniesTable({
+  companies,
   onEdit,
   onDelete,
   workspaceId,
-}: ContactsTableProps) {
+}: CompaniesTableProps) {
   const {
     visibleColumns,
     columnOrder,
     columnWidths,
-    selectedContacts,
-    selectAllContacts,
-    clearSelectedContacts,
+    selectedCompanies,
+    selectAllCompanies,
+    clearSelectedCompanies,
     pagination,
-    fetchContacts,
+    fetchCompanies,
     reorderColumns,
     customColumns,
     columnLabels,
-  } = useContactStore();
+  } = useCompanyStore();
 
   // Function to get column label dynamically
-  const getColumnLabel = (column: ContactColumn): string => {
+  const getColumnLabel = (column: CompanyColumn): string => {
     // Check for custom label override
     if (columnLabels[column]) {
       return columnLabels[column];
@@ -76,7 +78,7 @@ export default function ContactsTable({
     return DEFAULT_COLUMN_LABELS[column as BuiltInColumn] || column;
   };
 
-  const [sortColumn, setSortColumn] = useState<ContactColumn | null>(null);
+  const [sortColumn, setSortColumn] = useState<CompanyColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   // Setup drag and drop sensors
@@ -90,18 +92,18 @@ export default function ContactsTable({
   );
 
   const allSelected =
-    contacts.length > 0 && selectedContacts.length === contacts.length;
-  const someSelected = selectedContacts.length > 0 && !allSelected;
+    companies.length > 0 && selectedCompanies.length === companies.length;
+  const someSelected = selectedCompanies.length > 0 && !allSelected;
 
   const handleSelectAll = () => {
     if (allSelected) {
-      clearSelectedContacts();
+      clearSelectedCompanies();
     } else {
-      selectAllContacts();
+      selectAllCompanies();
     }
   };
 
-  const handleSort = (column: ContactColumn) => {
+  const handleSort = (column: CompanyColumn) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -111,15 +113,15 @@ export default function ContactsTable({
   };
 
   const handlePageChange = (newPage: number) => {
-    fetchContacts(workspaceId, { page: newPage, limit: pagination.limit });
+    fetchCompanies(workspaceId, { page: newPage, limit: pagination.limit });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = columnOrder.indexOf(active.id as ContactColumn);
-      const newIndex = columnOrder.indexOf(over.id as ContactColumn);
+      const oldIndex = columnOrder.indexOf(active.id as CompanyColumn);
+      const newIndex = columnOrder.indexOf(over.id as CompanyColumn);
       reorderColumns(oldIndex, newIndex);
     }
   };
@@ -186,20 +188,20 @@ export default function ContactsTable({
               </tr>
             </thead>
             <tbody>
-              {contacts.length === 0 ? (
+              {companies.length === 0 ? (
                 <tr>
                   <td
                     colSpan={orderedVisibleColumns.length + 2}
                     className="px-4 py-12 text-center text-sm text-muted-foreground"
                   >
-                    No contacts found
+                    No companies found
                   </td>
                 </tr>
               ) : (
-                contacts.map((contact, index) => (
-                  <ContactTableRow
-                    key={contact._id}
-                    contact={contact}
+                companies.map((company, index) => (
+                  <CompanyTableRow
+                    key={company._id}
+                    company={company}
                     index={index}
                     onEdit={onEdit}
                     onDelete={onDelete}
@@ -227,7 +229,7 @@ export default function ContactsTable({
               {Math.min(pagination.page * pagination.limit, pagination.total)}
             </span>{" "}
             of <span className="font-medium text-foreground">{pagination.total}</span>{" "}
-            contacts
+            companies
           </p>
 
           <div className="flex items-center gap-2">

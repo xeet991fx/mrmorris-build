@@ -20,7 +20,7 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       <div className="space-y-3">
         <div className="relative">
           {showCurrency && (
-            <span className="absolute left-4 top-1/2 -tranneutral-y-1/2 text-neutral-400 font-medium">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
               $
             </span>
           )}
@@ -36,12 +36,12 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
               }
             }}
             className={cn(
-              "w-full py-3 bg-neutral-800/50 backdrop-blur-sm border rounded-lg text-white placeholder:text-neutral-500 transition-all duration-100 outline-none",
+              "w-full py-3 bg-input backdrop-blur-sm border rounded-lg text-foreground placeholder:text-muted-foreground transition-all duration-100 outline-none",
               "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
               showCurrency ? "pl-8 pr-4" : "px-4",
               error
                 ? "border-red-500/50 focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
-                : "border-neutral-700/50 focus:border-white/500 focus:ring-2 focus:ring-white/500/20",
+                : "border-border focus:border-[#9ACD32] focus:ring-2 focus:ring-[#9ACD32]/20",
               className
             )}
             {...props}
@@ -58,8 +58,8 @@ const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-100",
                   value === amount
-                    ? "bg-white/500 text-white"
-                    : "bg-neutral-800/50 border border-neutral-700/50 text-neutral-300 hover:border-white/500/50"
+                    ? "bg-[#9ACD32] text-background"
+                    : "bg-muted border border-border text-foreground hover:border-border"
                 )}
               >
                 ${amount.toLocaleString()}

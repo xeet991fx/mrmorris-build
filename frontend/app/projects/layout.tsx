@@ -13,12 +13,14 @@ import {
   ChevronDownIcon,
   UserGroupIcon,
   HomeIcon,
+  BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 
 const MOBILE_SIDEBAR_WIDTH = 280;
 const MIN_SIDEBAR_WIDTH = 200;
@@ -186,7 +188,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={cn(
-        "border-b border-neutral-700/50 transition-all duration-150 relative group flex-shrink-0",
+        "border-b border-border transition-all duration-150 relative group flex-shrink-0",
         isExpanded ? "px-5 py-4" : "px-3 py-4"
       )}>
         <button
@@ -215,13 +217,13 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             transition={{ duration: 0.15 }}
             className="flex items-center gap-2 overflow-hidden whitespace-nowrap min-w-0"
           >
-            <h1 className="text-base font-semibold text-white">
+            <h1 className="text-base font-semibold text-foreground">
               MrMorris
             </h1>
             {isInsideWorkspace && currentWorkspaceFromUrl && (
               <>
-                <span className="text-neutral-500 text-base">/</span>
-                <span className="text-base font-medium text-neutral-300 truncate">
+                <span className="text-muted-foreground text-base">/</span>
+                <span className="text-base font-medium text-foreground truncate">
                   {currentWorkspaceFromUrl.name}
                 </span>
               </>
@@ -232,7 +234,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-neutral-700 text-neutral-400 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all opacity-0 group-hover:opacity-100"
             aria-label="Close sidebar"
           >
             <XMarkIcon className="w-4 h-4" />
@@ -251,7 +253,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             {isExpanded && (
               <button
                 onClick={() => setIsWorkspacesCollapsed(!isWorkspacesCollapsed)}
-                className="p-0.5 rounded hover:bg-neutral-700/50 text-neutral-500 hover:text-white transition-all"
+                className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all"
                 aria-label={isWorkspacesCollapsed ? "Expand workspaces" : "Collapse workspaces"}
               >
                 <ChevronDownIcon
@@ -269,14 +271,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 width: isExpanded ? "auto" : 0,
               }}
               transition={{ duration: 0.15 }}
-              className="text-xs font-semibold text-neutral-500 uppercase tracking-wide overflow-hidden whitespace-nowrap"
+              className="text-xs font-semibold text-muted-foreground uppercase tracking-wide overflow-hidden whitespace-nowrap"
             >
               Workspaces
             </motion.h2>
           </div>
           <button
             onClick={handleCreateWorkspace}
-            className="p-1 rounded hover:bg-neutral-700/50 text-neutral-400 hover:text-white transition-all"
+            className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all"
             aria-label="Create new workspace"
             title={!isExpanded ? "Create new workspace" : ""}
           >
@@ -301,7 +303,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     isExpanded ? "py-8" : "py-4"
                   )}>
                     <FolderIcon className={cn(
-                      "text-neutral-500 mx-auto mb-3",
+                      "text-muted-foreground mx-auto mb-3",
                       isExpanded ? "w-5 h-5" : "w-4 h-4"
                     )} />
                     <motion.div
@@ -313,10 +315,10 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                       transition={{ duration: 0.15 }}
                       className="overflow-hidden"
                     >
-                      <p className="text-xs text-neutral-500">No workspaces yet</p>
+                      <p className="text-xs text-muted-foreground">No workspaces yet</p>
                       <button
                         onClick={handleCreateWorkspace}
-                        className="mt-3 text-xs text-white hover:text-neutral-300 transition-colors"
+                        className="mt-3 text-xs text-foreground hover:text-foreground/80 transition-colors"
                       >
                         Create your first workspace
                       </button>
@@ -331,8 +333,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                         "w-full flex items-center gap-2 rounded-md transition-all text-left group",
                         isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
                         isWorkspaceActive(workspace._id)
-                          ? "bg-neutral-700/70 text-white"
-                          : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+                          ? "bg-muted/70 text-foreground"
+                          : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                       )}
                       title={!isExpanded ? workspace.name : ""}
                     >
@@ -374,7 +376,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 width: isExpanded ? "auto" : 0,
               }}
               transition={{ duration: 0.15 }}
-              className="text-xs font-semibold text-neutral-500 uppercase tracking-wide overflow-hidden whitespace-nowrap"
+              className="text-xs font-semibold text-muted-foreground uppercase tracking-wide overflow-hidden whitespace-nowrap"
             >
               CRM
             </motion.h2>
@@ -388,8 +390,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 "w-full flex items-center gap-2 rounded-md transition-all text-left",
                 isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
                 pathname === `/projects/${currentWorkspaceFromUrl?._id}`
-                  ? "bg-neutral-700/70 text-white"
-                  : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+                  ? "bg-muted/70 text-foreground"
+                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
               )}
               title={!isExpanded ? "Dashboard" : ""}
             >
@@ -414,8 +416,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 "w-full flex items-center gap-2 rounded-md transition-all text-left",
                 isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
                 pathname.includes('/contacts')
-                  ? "bg-neutral-700/70 text-white"
-                  : "text-neutral-400 hover:bg-neutral-700/30 hover:text-white"
+                  ? "bg-muted/70 text-foreground"
+                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
               )}
               title={!isExpanded ? "Contacts" : ""}
             >
@@ -432,14 +434,40 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 Contacts
               </motion.span>
             </button>
+
+            {/* Companies */}
+            <button
+              onClick={() => router.push(`/projects/${currentWorkspaceFromUrl?._id}/companies`)}
+              className={cn(
+                "w-full flex items-center gap-2 rounded-md transition-all text-left",
+                isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
+                pathname.includes('/companies')
+                  ? "bg-muted/70 text-foreground"
+                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+              )}
+              title={!isExpanded ? "Companies" : ""}
+            >
+              <BuildingOffice2Icon className="w-4 h-4 flex-shrink-0" />
+              <motion.span
+                initial={false}
+                animate={{
+                  opacity: isExpanded ? 1 : 0,
+                  width: isExpanded ? "auto" : 0,
+                }}
+                transition={{ duration: 0.15 }}
+                className="text-sm font-normal overflow-hidden whitespace-nowrap"
+              >
+                Companies
+              </motion.span>
+            </button>
           </div>
         </div>
       )}
 
       {/* User Section - Pinned to bottom */}
-      <div className="mt-auto p-3 border-t border-neutral-700/50 flex-shrink-0">
+      <div className="mt-auto p-3 border-t border-border flex-shrink-0">
         <div className={cn(
-          "flex items-center gap-2 mb-2 rounded-md hover:bg-neutral-700/30 transition-colors cursor-pointer",
+          "flex items-center gap-2 mb-2 rounded-md hover:bg-muted/30 transition-colors cursor-pointer",
           isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center"
         )}>
           <div className="w-6 h-6 bg-[#9ACD32] rounded-full flex items-center justify-center text-neutral-900 text-xs font-semibold flex-shrink-0 shadow-sm">
@@ -454,14 +482,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             transition={{ duration: 0.15 }}
             className="flex-1 min-w-0 overflow-hidden"
           >
-            <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-            <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
+            <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </motion.div>
         </div>
         <button
           onClick={handleLogout}
           className={cn(
-            "w-full flex items-center gap-2 rounded-md hover:bg-neutral-700/30 text-neutral-400 hover:text-white transition-all",
+            "w-full flex items-center gap-2 rounded-md hover:bg-muted/30 text-muted-foreground hover:text-foreground transition-all",
             isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center"
           )}
           title={!isExpanded ? "Logout" : ""}
@@ -486,38 +514,41 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="min-h-screen bg-neutral-900">
+      <div className="min-h-screen bg-background">
         {/* Header with Toggle Button and Page Name - Thin Bar */}
         <div
           className={cn(
-            "fixed top-0 left-0 right-0 z-40 bg-neutral-900",
+            "fixed top-0 left-0 right-0 z-40 bg-background",
             !isResizing && "lg:transition-all lg:duration-200 lg:ease-out"
           )}
           style={{
             left: isSidebarOpen && isDesktop ? `${sidebarWidth}px` : '0',
           }}
         >
-          <div className="flex items-center px-4 py-2.5">
-            <div className={cn(
-              "flex items-center gap-3 transition-all duration-150",
-              isSidebarOpen ? "opacity-0 w-0" : "opacity-100"
-            )}>
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="p-1.5 rounded-md hover:bg-neutral-700/50 text-neutral-400 hover:text-white transition-all duration-100"
-                aria-label="Open sidebar"
-              >
-                <Bars3Icon className="w-5 h-5" />
-              </button>
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <div className="flex items-center">
+              <div className={cn(
+                "flex items-center gap-3 transition-all duration-150",
+                isSidebarOpen ? "opacity-0 w-0" : "opacity-100"
+              )}>
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all duration-100"
+                  aria-label="Open sidebar"
+                >
+                  <Bars3Icon className="w-5 h-5" />
+                </button>
+              </div>
+              <h1 className={cn(
+                "text-base font-medium text-foreground transition-all duration-150",
+                isSidebarOpen ? "ml-0" : "ml-3"
+              )}>
+                {pathname === '/projects' ? 'Workspaces' :
+                  pathname.startsWith('/projects/') ? workspaces.find(w => pathname.includes(w._id))?.name || 'Workspace' :
+                    'Dashboard'}
+              </h1>
             </div>
-            <h1 className={cn(
-              "text-base font-medium text-white transition-all duration-150",
-              isSidebarOpen ? "ml-0" : "ml-3"
-            )}>
-              {pathname === '/projects' ? 'Workspaces' :
-                pathname.startsWith('/projects/') ? workspaces.find(w => pathname.includes(w._id))?.name || 'Workspace' :
-                  'Dashboard'}
-            </h1>
+            <ThemeToggle />
           </div>
         </div>
 
@@ -537,7 +568,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 animate={{ x: 0 }}
                 exit={{ x: -MOBILE_SIDEBAR_WIDTH }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="lg:hidden fixed top-0 left-0 bottom-0 bg-neutral-800/50 backdrop-blur-xl border-r border-neutral-700/50 z-50 shadow-2xl"
+                className="lg:hidden fixed top-0 left-0 bottom-0 bg-card/95 backdrop-blur-xl border-r border-border z-50 shadow-2xl"
                 style={{ width: `${MOBILE_SIDEBAR_WIDTH}px` }}
               >
                 <SidebarContent isExpanded={true} onClose={() => setIsSidebarOpen(false)} />
@@ -549,7 +580,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Desktop Sidebar (>= lg screens) - Pushes content */}
         <aside
           className={cn(
-            "hidden lg:block fixed top-0 left-0 bottom-0 bg-neutral-800/50 backdrop-blur-xl border-r border-neutral-700/50 z-30 overflow-hidden shadow-xl",
+            "hidden lg:block fixed top-0 left-0 bottom-0 bg-card/95 backdrop-blur-xl border-r border-border z-30 overflow-hidden shadow-xl",
             !isResizing && "transition-all duration-200 ease-out"
           )}
           style={{
@@ -567,7 +598,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onMouseDown={handleMouseDown}
                 className="absolute top-1/2 right-0 -translate-y-1/2 w-3 h-12 flex items-center justify-center cursor-col-resize group"
               >
-                <div className="w-0.5 h-8 bg-neutral-600 group-hover:bg-neutral-500 transition-colors rounded-full" />
+                <div className="w-0.5 h-8 bg-accent group-hover:bg-accent/80 transition-colors rounded-full" />
               </div>
             </div>
           )}

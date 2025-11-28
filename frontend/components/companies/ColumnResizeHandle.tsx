@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { useContactStore, ContactColumn } from "@/store/useContactStore";
+import { useCompanyStore, CompanyColumn } from "@/store/useCompanyStore";
 import { cn } from "@/lib/utils";
 
 interface ColumnResizeHandleProps {
-  column: ContactColumn;
+  column: CompanyColumn;
 }
 
 export default function ColumnResizeHandle({ column }: ColumnResizeHandleProps) {
-  const { resizeColumn, columnWidths } = useContactStore();
+  const { resizeColumn, columnWidths } = useCompanyStore();
   const [isResizing, setIsResizing] = useState(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);

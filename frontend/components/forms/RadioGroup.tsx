@@ -36,17 +36,17 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
               {({ checked }) => (
                 <div
                   className={cn(
-                    "relative p-4 rounded-lg cursor-pointer transition-all duration-100 bg-neutral-800/50 backdrop-blur-sm border",
+                    "relative p-4 rounded-lg cursor-pointer transition-all duration-100 bg-input backdrop-blur-sm border",
                     checked
-                      ? "border-white/500/50 bg-white/500/10"
+                      ? "border-[#9ACD32]/50 bg-[#9ACD32]/10"
                       : error
                       ? "border-red-500/50 hover:border-red-500/70"
-                      : "border-neutral-700/50 hover:border-neutral-600/50"
+                      : "border-border hover:border-border"
                   )}
                 >
                   <div className="flex items-start gap-3">
                     {option.icon && (
-                      <div className="flex-shrink-0 text-neutral-400">
+                      <div className="flex-shrink-0 text-muted-foreground">
                         {option.icon}
                       </div>
                     )}
@@ -54,18 +54,18 @@ const RadioGroup = forwardRef<HTMLDivElement, RadioGroupProps>(
                       <div className="flex items-center gap-2">
                         <HeadlessRadioGroup.Label
                           as="p"
-                          className="font-medium text-white"
+                          className="font-medium text-foreground"
                         >
                           {option.label}
                         </HeadlessRadioGroup.Label>
                         {checked && (
-                          <CheckCircleIcon className="w-5 h-5 text-white/400 flex-shrink-0" />
+                          <CheckCircleIcon className="w-5 h-5 text-[#9ACD32] flex-shrink-0" />
                         )}
                       </div>
                       {option.description && (
                         <HeadlessRadioGroup.Description
                           as="p"
-                          className="text-sm text-neutral-400 mt-1"
+                          className="text-sm text-muted-foreground mt-1"
                         >
                           {option.description}
                         </HeadlessRadioGroup.Description>

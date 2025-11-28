@@ -1,16 +1,16 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ContactColumn } from "@/store/useContactStore";
+import { CompanyColumn } from "@/store/useCompanyStore";
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import { cn } from "@/lib/utils";
 
 interface DraggableColumnHeaderProps {
-  column: ContactColumn;
+  column: CompanyColumn;
   label: string;
   width: number;
-  sortColumn: ContactColumn | null;
+  sortColumn: CompanyColumn | null;
   sortDirection: "asc" | "desc";
-  onSort: (column: ContactColumn) => void;
+  onSort: (column: CompanyColumn) => void;
 }
 
 export default function DraggableColumnHeader({

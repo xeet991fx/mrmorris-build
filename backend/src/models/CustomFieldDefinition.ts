@@ -2,6 +2,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface ICustomFieldDefinition extends Document {
   workspaceId: Types.ObjectId;
+  entityType: "contact" | "company";
   fieldKey: string;
   fieldLabel: string;
   fieldType: "text" | "number" | "select";
@@ -20,6 +21,12 @@ const customFieldDefinitionSchema = new Schema<ICustomFieldDefinition>(
       type: Schema.Types.ObjectId,
       ref: "Project",
       required: [true, "Workspace ID is required"],
+      index: true,
+    },
+    entityType: {
+      type: String,
+      enum: ["contact", "company"],
+      required: [true, "Entity type is required"],
       index: true,
     },
     fieldKey: {
@@ -81,8 +88,8 @@ const customFieldDefinitionSchema = new Schema<ICustomFieldDefinition>(
   }
 );
 
-// Compound unique index - one fieldKey per workspace
-customFieldDefinitionSchema.index({ workspaceId: 1, fieldKey: 1 }, { unique: true });
+// Compound unique index - one fieldKey per workspace per entity type
+customFieldDefinitionSchema.index({ workspaceId: 1, entityType: 1, fieldKey: 1 }, { unique: true });
 
 // Performance index for queries
 customFieldDefinitionSchema.index({ workspaceId: 1, isActive: 1, order: 1 });

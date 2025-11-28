@@ -2,6 +2,7 @@ import express, { Response } from "express";
 import rateLimit from "express-rate-limit";
 import CustomFieldDefinition from "../models/CustomFieldDefinition";
 import Contact from "../models/Contact";
+import Company from "../models/Company";
 import Project from "../models/Project";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import {
@@ -102,12 +103,21 @@ router.post(
 
       const data = validation.data;
 
+      // Ensure entityType is provided
+      if (!data.entityType) {
+        return res.status(400).json({
+          success: false,
+          error: "Entity type is required. Must be 'contact' or 'company'.",
+        });
+      }
+
       // Generate field key from label
       const fieldKey = generateFieldKey(data.fieldLabel);
 
-      // Check if field key already exists for this workspace
+      // Check if field key already exists for this workspace and entity type
       const existingField = await CustomFieldDefinition.findOne({
         workspaceId,
+        entityType: data.entityType,
         fieldKey,
       });
 
@@ -121,6 +131,7 @@ router.post(
       // Get the highest order number to append new field at the end
       const highestOrderField = await CustomFieldDefinition.findOne({
         workspaceId,
+        entityType: data.entityType,
         isActive: true,
       }).sort({ order: -1 });
 
@@ -129,6 +140,7 @@ router.post(
       // Create custom field definition
       const customField = new CustomFieldDefinition({
         workspaceId,
+        entityType: data.entityType,
         fieldKey,
         fieldLabel: data.fieldLabel,
         fieldType: data.fieldType,
@@ -169,7 +181,7 @@ router.get(
   async (req: AuthRequest, res: Response) => {
     try {
       const { workspaceId } = req.params;
-      const { includeInactive } = req.query;
+      const { includeInactive, entityType } = req.query;
       const userId = (req.user?._id as any).toString();
 
       // Verify workspace access
@@ -178,6 +190,10 @@ router.get(
 
       // Build query
       const query: any = { workspaceId };
+
+      // Add entityType filter (default to "contact" for backward compatibility)
+      query.entityType = entityType || "contact";
+
       if (includeInactive !== "true") {
         query.isActive = true;
       }
@@ -360,11 +376,13 @@ router.delete(
       }
 
       if (deleteData === "true") {
-        // Hard delete: Remove from all contacts and delete definition
+        // Hard delete: Remove from all entities and delete definition
         const fieldKey = customField.fieldKey;
+        const entityType = customField.entityType;
 
-        // Remove the custom field from all contacts
-        await Contact.updateMany(
+        // Remove the custom field from all entities (Contact or Company)
+        const Model = entityType === "contact" ? Contact : Company;
+        await Model.updateMany(
           { workspaceId },
           { $unset: { [`customFields.${fieldKey}`]: "" } }
         );

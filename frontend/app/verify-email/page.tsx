@@ -48,14 +48,14 @@ function VerifyEmailContent() {
   }, [searchParams, verifyEmail, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8">
+        <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl p-8">
           {status === "loading" && (
             <div className="text-center">
               <motion.div
@@ -65,10 +65,10 @@ function VerifyEmailContent() {
               >
                 <Loader2 className="w-16 h-16 text-[#9ACD32]" />
               </motion.div>
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 Verifying Your Email
               </h2>
-              <p className="text-neutral-400">Please wait...</p>
+              <p className="text-muted-foreground">Please wait...</p>
             </div>
           )}
 
@@ -89,17 +89,17 @@ function VerifyEmailContent() {
                 </div>
               </motion.div>
 
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 Email Verified!
               </h2>
-              <p className="text-neutral-400 mb-6">{message}</p>
+              <p className="text-muted-foreground mb-6">{message}</p>
 
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <p className="text-sm text-neutral-500 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   Redirecting to dashboard...
                 </p>
                 <Link href="/dashboard">
@@ -128,16 +128,16 @@ function VerifyEmailContent() {
                 </div>
               </motion.div>
 
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 Verification Failed
               </h2>
-              <p className="text-neutral-400 mb-6">{message}</p>
+              <p className="text-muted-foreground mb-6">{message}</p>
 
               <div className="space-y-3">
                 <Link href="/register">
                   <Button
                     variant="outline"
-                    className="w-full border-neutral-800 text-neutral-300 hover:bg-neutral-900"
+                    className="w-full border-border text-foreground hover:bg-muted"
                   >
                     Create New Account
                   </Button>
