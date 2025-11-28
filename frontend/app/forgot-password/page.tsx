@@ -41,14 +41,14 @@ export default function ForgotPasswordPage() {
     return (
       <>
         <Toaster position="top-right" />
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12">
+        <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
             className="w-full max-w-md"
           >
-            <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8 text-center">
+            <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl p-8 text-center">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -60,10 +60,10 @@ export default function ForgotPasswordPage() {
                 </div>
               </motion.div>
 
-              <h2 className="text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 Check Your Email
               </h2>
-              <p className="text-neutral-400 mb-6">
+              <p className="text-muted-foreground mb-6">
                 If an account exists with{" "}
                 <span className="text-[#9ACD32] font-medium">
                   {getValues("email")}
@@ -71,8 +71,8 @@ export default function ForgotPasswordPage() {
                 , you will receive a password reset link shortly.
               </p>
 
-              <div className="bg-neutral-900/50 border border-neutral-800/50 rounded-lg p-4 mb-6">
-                <p className="text-sm text-neutral-300">
+              <div className="bg-muted/50 border border-border/50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-foreground">
                   Didn&apos;t receive the email? Check your spam folder or try again
                   in a few minutes.
                 </p>
@@ -94,7 +94,7 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black px-4 py-12 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12 relative overflow-hidden">
         {/* Animated background gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
@@ -132,7 +132,7 @@ export default function ForgotPasswordPage() {
           className="w-full max-w-md relative z-10"
         >
           {/* Glass card */}
-          <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-8">
+          <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl p-8">
             {/* Header */}
             <div className="text-center mb-8">
               <motion.div
@@ -140,10 +140,10 @@ export default function ForgotPasswordPage() {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.1, duration: 0.5 }}
               >
-                <h1 className="text-3xl font-bold text-white mb-2">
+                <h1 className="text-3xl font-bold text-foreground mb-2">
                   Reset Password
                 </h1>
-                <p className="text-neutral-400">
+                <p className="text-muted-foreground">
                   Enter your email to receive a reset link
                 </p>
               </motion.div>
@@ -159,18 +159,18 @@ export default function ForgotPasswordPage() {
               >
                 <label
                   htmlFor="email"
-                  className="block text-sm font-medium text-neutral-300 mb-2"
+                  className="block text-sm font-medium text-foreground mb-2"
                 >
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     {...register("email")}
                     id="email"
                     type="email"
                     placeholder="you@example.com"
-                    className="pl-10 bg-neutral-900/50 border-neutral-800/50 text-white placeholder:text-neutral-500 focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                    className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
                   />
                 </div>
                 {errors.email && (
@@ -212,9 +212,9 @@ export default function ForgotPasswordPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.5 }}
-              className="mt-8 pt-6 border-t border-neutral-900/50"
+              className="mt-8 pt-6 border-t border-border/50"
             >
-              <p className="text-center text-neutral-400 text-sm">
+              <p className="text-center text-muted-foreground text-sm">
                 Remember your password?{" "}
                 <Link
                   href="/login"
@@ -234,7 +234,7 @@ export default function ForgotPasswordPage() {
             >
               <Link
                 href="/"
-                className="block text-center text-neutral-500 hover:text-neutral-400 text-sm transition-colors"
+                className="block text-center text-muted-foreground hover:text-foreground text-sm transition-colors"
               >
                 ← Back to Home
               </Link>

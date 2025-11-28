@@ -38,10 +38,10 @@ const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(
       <div
         ref={ref}
         className={cn(
-          "min-h-[48px] p-2 bg-neutral-800/50 backdrop-blur-sm border rounded-lg transition-all duration-100",
+          "min-h-[48px] p-2 bg-input backdrop-blur-sm border rounded-lg transition-all duration-100",
           error
             ? "border-red-500/50 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/20"
-            : "border-neutral-700/50 focus-within:border-white/500 focus-within:ring-2 focus-within:ring-white/500/20"
+            : "border-border focus-within:border-[#9ACD32] focus-within:ring-2 focus-within:ring-[#9ACD32]/20"
         )}
       >
         <div className="flex flex-wrap gap-2">
@@ -53,13 +53,13 @@ const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ type: "spring", stiffness: 500 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/500/20 border border-white/500/30 rounded-lg text-sm font-medium text-white/300"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9ACD32]/20 border border-[#9ACD32]/30 rounded-lg text-sm font-medium text-foreground"
               >
                 <span>{tag}</span>
                 <button
                   type="button"
                   onClick={() => handleRemove(tag)}
-                  className="hover:text-white transition-colors"
+                  className="hover:text-foreground transition-colors"
                 >
                   <XMarkIcon className="w-4 h-4" />
                 </button>
@@ -73,7 +73,7 @@ const TagsInput = forwardRef<HTMLDivElement, TagsInputProps>(
             onKeyDown={handleKeyDown}
             placeholder={value.length === 0 ? placeholder : ""}
             disabled={maxTags ? value.length >= maxTags : false}
-            className="flex-1 min-w-[200px] px-2 py-1 bg-transparent text-white placeholder:text-neutral-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 min-w-[200px] px-2 py-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
       </div>

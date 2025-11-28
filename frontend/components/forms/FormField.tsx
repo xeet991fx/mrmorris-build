@@ -22,8 +22,8 @@ export default function FormField({
 }: FormFieldProps) {
   return (
     <div className={cn("space-y-2", className)}>
-      <label className="flex items-center gap-2 text-sm font-medium text-neutral-300">
-        {icon && <span className="text-neutral-500">{icon}</span>}
+      <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+        {icon && <span className="text-muted-foreground">{icon}</span>}
         <span>
           {label}
           {required && <span className="text-red-400 ml-1">*</span>}
@@ -33,7 +33,7 @@ export default function FormField({
       {children}
 
       {helpText && !error && (
-        <p className="text-xs text-neutral-500">{helpText}</p>
+        <p className="text-xs text-muted-foreground">{helpText}</p>
       )}
 
       <AnimatePresence>

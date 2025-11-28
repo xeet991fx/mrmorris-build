@@ -1,69 +1,63 @@
-import { Fragment, useEffect } from "react";
+import { Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { updateContactSchema, UpdateContactInput } from "@/lib/validations/contact";
-import { useContactStore } from "@/store/useContactStore";
-import { Contact } from "@/lib/api/contact";
-import ContactForm from "./ContactForm";
+import { createCompanySchema, CreateCompanyInput } from "@/lib/validations/company";
+import { useCompanyStore } from "@/store/useCompanyStore";
+import CompanyForm from "./CompanyForm";
 
-interface EditContactModalProps {
+interface AddCompanyModalProps {
   isOpen: boolean;
   onClose: () => void;
   workspaceId: string;
-  contact: Contact;
 }
 
-export default function EditContactModal({
+export default function AddCompanyModal({
   isOpen,
   onClose,
   workspaceId,
-  contact,
-}: EditContactModalProps) {
-  const { updateContact, isLoading } = useContactStore();
+}: AddCompanyModalProps) {
+  const { createCompany, isLoading } = useCompanyStore();
 
-  const form = useForm<UpdateContactInput>({
-    resolver: zodResolver(updateContactSchema),
+  const form = useForm<CreateCompanyInput>({
+    resolver: zodResolver(createCompanySchema),
     defaultValues: {
-      firstName: contact.firstName,
-      lastName: contact.lastName,
-      email: contact.email || "",
-      phone: contact.phone || "",
-      company: contact.company || "",
-      jobTitle: contact.jobTitle || "",
-      source: contact.source || "",
-      status: contact.status || "lead",
-      notes: contact.notes || "",
+      name: "",
+      industry: "",
+      website: "",
+      phone: "",
+      companySize: undefined,
+      annualRevenue: undefined,
+      employeeCount: undefined,
+      linkedinUrl: "",
+      twitterUrl: "",
+      facebookUrl: "",
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        country: "",
+        zipCode: "",
+      },
+      status: "lead",
+      source: "",
+      notes: "",
     },
   });
 
   const { handleSubmit, reset } = form;
 
-  // Update form when contact changes
-  useEffect(() => {
-    reset({
-      firstName: contact.firstName,
-      lastName: contact.lastName,
-      email: contact.email || "",
-      phone: contact.phone || "",
-      company: contact.company || "",
-      jobTitle: contact.jobTitle || "",
-      source: contact.source || "",
-      status: contact.status || "lead",
-      notes: contact.notes || "",
-    });
-  }, [contact, reset]);
-
-  const onSubmit = async (data: UpdateContactInput) => {
+  const onSubmit = async (data: CreateCompanyInput) => {
     try {
-      await updateContact(workspaceId, contact._id, data);
-      toast.success("Contact updated successfully!");
+      await createCompany(workspaceId, data);
+      toast.success("Company created successfully!");
+      reset();
       onClose();
     } catch (error: any) {
-      const message = error.response?.data?.error || "Failed to update contact";
+      const message = error.response?.data?.error || "Failed to create company";
       toast.error(message);
     }
   };
@@ -111,7 +105,7 @@ export default function EditContactModal({
                       as="h3"
                       className="text-xl font-semibold text-foreground"
                     >
-                      Edit Contact
+                      Add New Company
                     </Dialog.Title>
                     <button
                       type="button"
@@ -124,7 +118,7 @@ export default function EditContactModal({
 
                   {/* Form */}
                   <form onSubmit={handleSubmit(onSubmit)}>
-                    <ContactForm form={form} />
+                    <CompanyForm form={form} />
 
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-border">
@@ -141,7 +135,7 @@ export default function EditContactModal({
                         disabled={isLoading}
                         className="px-4 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8AB82E] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isLoading ? "Saving..." : "Save Changes"}
+                        {isLoading ? "Creating..." : "Create Company"}
                       </button>
                     </div>
                   </form>

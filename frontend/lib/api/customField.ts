@@ -1,6 +1,7 @@
 import { axiosInstance } from "../axios";
 
 export interface CreateCustomColumnData {
+  entityType: "contact" | "company";
   fieldLabel: string;
   fieldType: "text" | "number" | "select";
   selectOptions?: string[];
@@ -20,6 +21,7 @@ export interface UpdateCustomColumnData {
 export interface CustomColumnDefinition {
   _id: string;
   workspaceId: string;
+  entityType: "contact" | "company";
   fieldKey: string;
   fieldLabel: string;
   fieldType: "text" | "number" | "select";
@@ -43,12 +45,17 @@ export interface CustomFieldResponse<T = any> {
  */
 export const getCustomColumns = async (
   workspaceId: string,
+  entityType: "contact" | "company" = "contact",
   includeInactive: boolean = false
 ): Promise<CustomFieldResponse<{ customFields: CustomColumnDefinition[]; count: number }>> => {
   try {
-    const url = `/workspaces/${workspaceId}/custom-fields${
-      includeInactive ? "?includeInactive=true" : ""
-    }`;
+    const params = new URLSearchParams();
+    params.append("entityType", entityType);
+    if (includeInactive) {
+      params.append("includeInactive", "true");
+    }
+
+    const url = `/workspaces/${workspaceId}/custom-fields?${params.toString()}`;
 
     const response = await axiosInstance.get(url);
 

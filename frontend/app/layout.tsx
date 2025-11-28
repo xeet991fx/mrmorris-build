@@ -40,9 +40,8 @@ export default function RootLayout({
       <body className={`${hankenGrotesk.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="system"
           enableSystem
-          disableTransitionOnChange
         >
           {children}
         </ThemeProvider>

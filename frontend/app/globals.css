@@ -22,8 +22,11 @@
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 84 76% 53%;
+    --ring: 84 76% 45%;
     --radius: 0.5rem;
+    --surface: 0 0% 98%;
+    --surface-hover: 0 0% 96%;
+    --overlay: 0 0% 95%;
   }
 
   .dark {
@@ -46,6 +49,9 @@
     --border: 0 0% 20%;
     --input: 0 0% 18%;
     --ring: 84 76% 53%;
+    --surface: 0 0% 12%;
+    --surface-hover: 0 0% 15%;
+    --overlay: 0 0% 10%;
   }
 }
 
@@ -103,17 +109,17 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  @apply bg-neutral-900/50;
+  @apply bg-muted/50;
   border-radius: 10px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  @apply bg-neutral-700;
+  @apply bg-muted-foreground/30;
   border-radius: 10px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  @apply bg-neutral-600;
+  @apply bg-muted-foreground/50;
 }
 
 .scrollbar-thumb-neutral-700 {

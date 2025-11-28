@@ -1,25 +1,25 @@
 import { Menu } from "@headlessui/react";
 import { EllipsisVerticalIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { Contact } from "@/lib/api/contact";
-import { useContactStore, ContactColumn, BuiltInColumn } from "@/store/useContactStore";
-import EditableCell from "./EditableCell";
+import { Company } from "@/lib/api/company";
+import { useCompanyStore, CompanyColumn, BuiltInColumn } from "@/store/useCompanyStore";
+import EditableCell from "../contacts/EditableCell";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-interface ContactTableRowProps {
-  contact: Contact;
+interface CompanyTableRowProps {
+  company: Company;
   index: number;
-  onEdit: (contact: Contact) => void;
-  onDelete: (contactId: string) => void;
-  orderedColumns: ContactColumn[];
+  onEdit: (company: Company) => void;
+  onDelete: (companyId: string) => void;
+  orderedColumns: CompanyColumn[];
   initial?: any;
   animate?: any;
   transition?: any;
 }
 
-export default function ContactTableRow({
-  contact,
+export default function CompanyTableRow({
+  company,
   index,
   onEdit,
   onDelete,
@@ -27,51 +27,91 @@ export default function ContactTableRow({
   initial,
   animate,
   transition,
-}: ContactTableRowProps) {
+}: CompanyTableRowProps) {
   const {
-    selectedContacts,
-    toggleContactSelection,
+    selectedCompanies,
+    toggleCompanySelection,
     customColumns,
-  } = useContactStore();
+  } = useCompanyStore();
 
-  const isSelected = selectedContacts.includes(contact._id);
-  const fullName = `${contact.firstName} ${contact.lastName}`;
+  const isSelected = selectedCompanies.includes(company._id);
 
   // Helper to check if column is built-in
-  const isBuiltInColumn = (column: ContactColumn): column is BuiltInColumn => {
+  const isBuiltInColumn = (column: CompanyColumn): column is BuiltInColumn => {
     return [
       "name",
-      "email",
+      "industry",
+      "website",
       "phone",
-      "company",
-      "jobTitle",
+      "companySize",
+      "annualRevenue",
+      "employeeCount",
+      "status",
       "source",
       "notes",
-      "status",
       "createdAt",
     ].includes(column);
   };
 
-  const getCellContent = (column: ContactColumn) => {
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
+
+  const getCellContent = (column: CompanyColumn) => {
     // Handle built-in columns
     if (isBuiltInColumn(column)) {
     switch (column) {
       case "name":
-        return fullName;
-      case "email":
-        return contact.email || "—";
+        return company.name;
+      case "industry":
+        return company.industry || "—";
+      case "website":
+        return company.website ? (
+          <a
+            href={company.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#9ACD32] hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {company.website}
+          </a>
+        ) : (
+          "—"
+        );
       case "phone":
-        return contact.phone || "—";
-      case "company":
-        return contact.company || "—";
-      case "jobTitle":
-        return contact.jobTitle || "—";
+        return company.phone || "—";
+      case "companySize":
+        return company.companySize ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            {company.companySize}
+          </span>
+        ) : (
+          "—"
+        );
+      case "annualRevenue":
+        return company.annualRevenue
+          ? formatCurrency(company.annualRevenue)
+          : "—";
+      case "employeeCount":
+        return company.employeeCount
+          ? formatNumber(company.employeeCount)
+          : "—";
       case "source":
-        return contact.source || "—";
+        return company.source || "—";
       case "notes":
-        return contact.notes ? (
-          <span className="line-clamp-1" title={contact.notes}>
-            {contact.notes}
+        return company.notes ? (
+          <span className="line-clamp-1" title={company.notes}>
+            {company.notes}
           </span>
         ) : (
           "—"
@@ -81,28 +121,28 @@ export default function ContactTableRow({
           <span
             className={cn(
               "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-              contact.status === "customer" &&
+              company.status === "customer" &&
                 "bg-green-500/10 text-green-400 border border-green-500/20",
-              contact.status === "prospect" &&
+              company.status === "prospect" &&
                 "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-              contact.status === "lead" &&
+              company.status === "lead" &&
                 "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-              contact.status === "inactive" &&
-                "bg-muted text-muted-foreground border border-border"
+              company.status === "churned" &&
+                "bg-red-500/10 text-red-400 border border-red-500/20"
             )}
           >
-            {contact.status || "lead"}
+            {company.status || "lead"}
           </span>
         );
       case "createdAt":
-        return format(new Date(contact.createdAt), "MMM d, yyyy");
+        return format(new Date(company.createdAt), "MMM d, yyyy");
       default:
         return "—";
       }
     }
 
     // Handle custom columns
-    const customValue = contact.customFields?.[column];
+    const customValue = company.customFields?.[column];
     const columnDef = customColumns.find((col) => col.fieldKey === column);
 
     if (customValue === undefined || customValue === null || customValue === "") {
@@ -141,7 +181,7 @@ export default function ContactTableRow({
         <input
           type="checkbox"
           checked={isSelected}
-          onChange={() => toggleContactSelection(contact._id)}
+          onChange={() => toggleCompanySelection(company._id)}
           className="w-4 h-4 rounded border-border bg-input text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
         />
       </td>
@@ -152,11 +192,10 @@ export default function ContactTableRow({
           key={column}
           className="px-4 py-3 text-sm text-foreground"
         >
-          <EditableCell
-            contact={contact}
-            column={column}
-            value={getCellContent(column)}
-          />
+          {/* Note: EditableCell would need to be adapted for companies or we pass company prop */}
+          <div className="overflow-hidden text-ellipsis">
+            {getCellContent(column)}
+          </div>
         </td>
       ))}
 
@@ -171,7 +210,7 @@ export default function ContactTableRow({
             <Menu.Item>
               {({ active }) => (
                 <button
-                  onClick={() => onEdit(contact)}
+                  onClick={() => onEdit(company)}
                   className={cn(
                     "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
                     active ? "bg-muted text-foreground" : "text-foreground"
@@ -185,7 +224,7 @@ export default function ContactTableRow({
             <Menu.Item>
               {({ active }) => (
                 <button
-                  onClick={() => onDelete(contact._id)}
+                  onClick={() => onDelete(company._id)}
                   className={cn(
                     "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
                     active ? "bg-red-500/20 text-red-400" : "text-red-400"

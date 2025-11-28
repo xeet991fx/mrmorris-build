@@ -45,12 +45,12 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
               type="button"
               onClick={() => handleToggle(option.value)}
               className={cn(
-                "relative p-4 rounded-lg text-left cursor-pointer transition-all duration-100 bg-neutral-700/50 backdrop-blur-sm border",
+                "relative p-4 rounded-lg text-left cursor-pointer transition-all duration-100 bg-input backdrop-blur-sm border",
                 isChecked
                   ? "border-[#9ACD32]/50 bg-[#9ACD32]/10"
                   : error
                   ? "border-red-500/50 hover:border-red-500/70"
-                  : "border-neutral-600/50 hover:border-neutral-600"
+                  : "border-border hover:border-border"
               )}
             >
               <div className="flex items-start gap-3">
@@ -59,17 +59,17 @@ const CheckboxGroup = forwardRef<HTMLDivElement, CheckboxGroupProps>(
                     "flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-100",
                     isChecked
                       ? "bg-[#9ACD32] border-[#9ACD32]"
-                      : "bg-transparent border-neutral-500"
+                      : "bg-transparent border-muted-foreground"
                   )}
                 >
                   {isChecked && (
-                    <CheckIcon className="w-3 h-3 text-neutral-900 animate-in fade-in zoom-in duration-150" />
+                    <CheckIcon className="w-3 h-3 text-background animate-in fade-in zoom-in duration-150" />
                   )}
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-white">{option.label}</p>
+                  <p className="font-medium text-foreground">{option.label}</p>
                   {option.description && (
-                    <p className="text-sm text-neutral-400 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {option.description}
                     </p>
                   )}

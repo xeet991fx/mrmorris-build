@@ -8,6 +8,7 @@ import waitlistRoutes from "./routes/waitlist";
 import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/project";
 import contactRoutes from "./routes/contact";
+import companyRoutes from "./routes/company";
 import customFieldRoutes from "./routes/customField";
 
 dotenv.config();
@@ -73,6 +74,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/waitlist", waitlistRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/workspaces", contactRoutes);
+app.use("/api/workspaces", companyRoutes);
 app.use("/api/workspaces", customFieldRoutes);
 
 // 404 handler

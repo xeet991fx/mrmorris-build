@@ -42,17 +42,17 @@ export default function WorkspacePage() {
 
   if (isInitialLoading || !currentWorkspace) {
     return (
-      <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-neutral-400">Loading workspace...</p>
+          <div className="w-12 h-12 border-3 border-foreground border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading workspace...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
+    <div className="min-h-screen bg-background px-8 pt-14 pb-8">
       {/* Breadcrumb */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
@@ -61,12 +61,12 @@ export default function WorkspacePage() {
       >
         <button
           onClick={() => router.push("/projects")}
-          className="text-neutral-400 hover:text-white transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
           Workspaces
         </button>
-        <ChevronRightIcon className="w-3.5 h-3.5 text-neutral-600" />
-        <span className="text-white font-medium">{currentWorkspace.name}</span>
+        <ChevronRightIcon className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-foreground font-medium">{currentWorkspace.name}</span>
       </motion.div>
 
       {/* Welcome Message */}
@@ -76,18 +76,18 @@ export default function WorkspacePage() {
         className="flex items-center justify-center min-h-[500px]"
       >
         <div className="max-w-2xl w-full">
-          <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-700/50 rounded-xl p-10 text-center shadow-sm">
+          <div className="bg-card/95 backdrop-blur-xl border border-border rounded-xl p-10 text-center shadow-sm">
             <div className="w-16 h-16 bg-gradient-to-br from-[#9ACD32] to-[#7BA428] rounded-xl flex items-center justify-center mx-auto mb-5">
               <SparklesIcon className="w-8 h-8 text-neutral-900" />
             </div>
 
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               Welcome to {currentWorkspace.name}
             </h2>
-            <p className="text-sm text-neutral-400 mb-2">
+            <p className="text-sm text-muted-foreground mb-2">
               Your workspace was created on {format(new Date(currentWorkspace.createdAt), "MMMM d, yyyy")}
             </p>
-            <p className="text-sm text-neutral-500 mb-6">
+            <p className="text-sm text-muted-foreground mb-6">
               This is your autonomous marketing workspace. Start building amazing campaigns!
             </p>
 

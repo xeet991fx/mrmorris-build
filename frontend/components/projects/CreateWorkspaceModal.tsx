@@ -78,16 +78,16 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-neutral-950/95 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-md bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-hidden"
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-neutral-900/50">
-                <Dialog.Title className="text-2xl font-bold text-white">
+              <div className="flex items-center justify-between p-6 border-b border-border">
+                <Dialog.Title className="text-2xl font-bold text-foreground">
                   Create New Workspace
                 </Dialog.Title>
                 <button
                   onClick={handleClose}
-                  className="p-2 rounded-lg hover:bg-neutral-900/50 text-neutral-400 hover:text-white transition-all"
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
                 >
                   <XMarkIcon className="w-6 h-6" />
                 </button>
@@ -98,7 +98,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
                 <div>
                   <label
                     htmlFor="name"
-                    className="block text-sm font-medium text-neutral-300 mb-2"
+                    className="block text-sm font-medium text-foreground mb-2"
                   >
                     Workspace Name
                   </label>
@@ -107,7 +107,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
                     id="name"
                     type="text"
                     placeholder="e.g., My Marketing Campaign"
-                    className="w-full px-4 py-3 bg-neutral-900/50 border border-neutral-800/50 rounded-lg text-white placeholder:text-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                    className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
                     autoFocus
                   />
                   {errors.name && (
@@ -119,7 +119,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
                       {errors.name.message}
                     </motion.p>
                   )}
-                  <p className="mt-2 text-xs text-neutral-500">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Give your workspace a descriptive name (3-100 characters)
                   </p>
                 </div>
@@ -129,7 +129,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="flex-1 px-4 py-3 bg-neutral-900/50 hover:bg-neutral-800/50 border border-neutral-800/50 text-neutral-300 hover:text-white rounded-lg font-medium transition-all"
+                    className="flex-1 px-4 py-3 bg-muted/50 hover:bg-muted border border-border text-muted-foreground hover:text-foreground rounded-lg font-medium transition-all"
                   >
                     Cancel
                   </button>

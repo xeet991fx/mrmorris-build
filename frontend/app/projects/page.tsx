@@ -67,14 +67,14 @@ export default function WorkspacesPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
+      <div className="min-h-screen bg-background px-8 pt-14 pb-8">
         {/* Description */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-muted-foreground">
             Manage your marketing automation workspaces
           </p>
         </motion.div>
@@ -88,13 +88,13 @@ export default function WorkspacesPage() {
             className="flex items-center justify-center min-h-[500px]"
           >
             <div className="text-center max-w-md">
-              <div className="w-14 h-14 bg-neutral-700/50 rounded-xl flex items-center justify-center mx-auto mb-5 shadow-sm">
-                <RocketLaunchIcon className="w-6 h-6 text-neutral-400" />
+              <div className="w-14 h-14 bg-muted rounded-xl flex items-center justify-center mx-auto mb-5 shadow-sm">
+                <RocketLaunchIcon className="w-6 h-6 text-muted-foreground" />
               </div>
-              <h2 className="text-xl font-semibold text-white mb-2">
+              <h2 className="text-xl font-semibold text-foreground mb-2">
                 Create Your First Workspace
               </h2>
-              <p className="text-sm text-neutral-400 mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 Get started with autonomous marketing by creating your first
                 workspace. We&apos;ll guide you through a simple setup process.
               </p>
@@ -132,14 +132,14 @@ export default function WorkspacesPage() {
                   variants={itemVariants}
                   className="relative group"
                 >
-                  <div className="bg-neutral-800/50 border border-neutral-700/50 rounded-xl p-4 hover:border-neutral-600/50 hover:bg-neutral-800/70 transition-all duration-100 cursor-pointer shadow-sm hover:shadow-md">
+                  <div className="bg-card/95 backdrop-blur border border-border rounded-xl p-4 hover:border-border/80 hover:bg-card transition-all duration-100 cursor-pointer shadow-sm hover:shadow-md">
                     {/* Settings Menu */}
                     <div className="absolute top-2.5 right-2.5">
                       <Menu as="div" className="relative">
-                        <Menu.Button className="p-1.5 rounded-md hover:bg-neutral-700/50 text-neutral-500 hover:text-white transition-all opacity-0 group-hover:opacity-100">
+                        <Menu.Button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-all opacity-0 group-hover:opacity-100">
                           <EllipsisVerticalIcon className="w-4 h-4" />
                         </Menu.Button>
-                        <Menu.Items className="absolute right-0 mt-1 w-36 origin-top-right bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl overflow-hidden z-10">
+                        <Menu.Items className="absolute right-0 mt-1 w-36 origin-top-right bg-card border border-border rounded-lg shadow-xl overflow-hidden z-10">
                           <Menu.Item>
                             {({ active }) => (
                               <button
@@ -150,8 +150,8 @@ export default function WorkspacesPage() {
                                 className={cn(
                                   "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
                                   active
-                                    ? "bg-neutral-700 text-white"
-                                    : "text-neutral-300"
+                                    ? "bg-muted text-foreground"
+                                    : "text-foreground"
                                 )}
                               >
                                 <Cog6ToothIcon className="w-3.5 h-3.5" />
@@ -189,15 +189,15 @@ export default function WorkspacesPage() {
 
                     {/* Card Content */}
                     <div onClick={() => handleOpenWorkspace(workspace._id)}>
-                      <h3 className="text-base font-semibold text-white mb-1 pr-7">
+                      <h3 className="text-base font-semibold text-foreground mb-1 pr-7">
                         {workspace.name}
                       </h3>
-                      <p className="text-xs text-neutral-500 mb-4">
+                      <p className="text-xs text-muted-foreground mb-4">
                         Created {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                       </p>
 
                       {/* Open Button */}
-                      <button className="w-full px-3 py-1.5 bg-neutral-700/50 hover:bg-neutral-700 border border-neutral-700/50 hover:border-neutral-600 text-neutral-300 hover:text-white rounded-md transition-all text-xs font-medium">
+                      <button className="w-full px-3 py-1.5 bg-muted hover:bg-muted/80 border border-border text-foreground hover:text-foreground rounded-md transition-all text-xs font-medium">
                         Open Workspace
                       </button>
                     </div>

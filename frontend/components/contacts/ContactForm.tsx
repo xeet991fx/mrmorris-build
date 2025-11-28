@@ -43,7 +43,7 @@ export default function ContactForm({ form }: ContactFormProps) {
       {/* Name Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             First Name <span className="text-red-400">*</span>
           </label>
           <TextInput
@@ -55,7 +55,7 @@ export default function ContactForm({ form }: ContactFormProps) {
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Last Name <span className="text-red-400">*</span>
           </label>
           <TextInput
@@ -71,7 +71,7 @@ export default function ContactForm({ form }: ContactFormProps) {
       {/* Email and Phone */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Email
           </label>
           <TextInput
@@ -84,7 +84,7 @@ export default function ContactForm({ form }: ContactFormProps) {
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Phone
           </label>
           <TextInput
@@ -101,7 +101,7 @@ export default function ContactForm({ form }: ContactFormProps) {
       {/* Company and Job Title */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Company
           </label>
           <TextInput
@@ -113,7 +113,7 @@ export default function ContactForm({ form }: ContactFormProps) {
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Job Title
           </label>
           <TextInput
@@ -129,7 +129,7 @@ export default function ContactForm({ form }: ContactFormProps) {
       {/* Lead Source and Status */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Lead Source
           </label>
           <SelectDropdown
@@ -147,7 +147,7 @@ export default function ContactForm({ form }: ContactFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+          <label className="block text-sm font-medium text-foreground mb-1.5">
             Status
           </label>
           <SelectDropdown
@@ -167,7 +167,7 @@ export default function ContactForm({ form }: ContactFormProps) {
 
       {/* Notes */}
       <div>
-        <label className="block text-sm font-medium text-neutral-300 mb-1.5">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
           Notes
         </label>
         <Textarea

@@ -69,8 +69,8 @@ export function HowItWorks() {
 
               {/* Step Number Circle */}
               <div className="flex-shrink-0">
-                <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-neutral-700/50 bg-neutral-800/50 shadow-lg">
-                  <span className="text-3xl font-bold text-neutral-300">{step.number}</span>
+                <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-border bg-card shadow-lg">
+                  <span className="text-3xl font-bold text-foreground">{step.number}</span>
                 </div>
               </div>
 
