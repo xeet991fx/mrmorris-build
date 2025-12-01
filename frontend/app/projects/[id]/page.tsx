@@ -38,7 +38,7 @@ export default function WorkspacePage() {
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [workspaceId, fetchWorkspace]);
 
   if (isInitialLoading || !currentWorkspace) {
     return (

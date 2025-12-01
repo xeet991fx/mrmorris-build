@@ -79,7 +79,9 @@ export default function ActionCard({ action, workspaceId, messageId }: ActionCar
     // Update message action status to failed (cancelled)
     updateMessageAction(messageId, "failed", cancelResult);
 
-    toast.info("Action cancelled");
+    toast("Action cancelled", {
+      icon: "ℹ️",
+    });
   };
 
   if (executed && result) {
@@ -87,11 +89,10 @@ export default function ActionCard({ action, workspaceId, messageId }: ActionCar
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className={`mt-3 p-3 rounded-lg border ${
-          result.success
-            ? "bg-green-500/10 border-green-500/30"
-            : "bg-muted border-border"
-        }`}
+        className={`mt-3 p-3 rounded-lg border ${result.success
+          ? "bg-green-500/10 border-green-500/30"
+          : "bg-muted border-border"
+          }`}
       >
         <div className="flex items-start gap-3">
           {result.success ? (
@@ -121,11 +122,10 @@ export default function ActionCard({ action, workspaceId, messageId }: ActionCar
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`mt-3 p-4 rounded-lg border ${
-        action.requiresConfirmation
-          ? "bg-orange-500/10 border-orange-500/30"
-          : "bg-[#9ACD32]/10 border-[#9ACD32]/30"
-      }`}
+      className={`mt-3 p-4 rounded-lg border ${action.requiresConfirmation
+        ? "bg-orange-500/10 border-orange-500/30"
+        : "bg-[#9ACD32]/10 border-[#9ACD32]/30"
+        }`}
     >
       <div className="flex items-start gap-3">
         {action.requiresConfirmation ? (
@@ -174,11 +174,10 @@ export default function ActionCard({ action, workspaceId, messageId }: ActionCar
             <button
               onClick={handleExecute}
               disabled={isExecuting}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                action.requiresConfirmation
-                  ? "bg-orange-600 hover:bg-orange-700 text-white"
-                  : "bg-[#9ACD32] hover:bg-[#8AB82E] text-neutral-900"
-              }`}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${action.requiresConfirmation
+                ? "bg-orange-600 hover:bg-orange-700 text-white"
+                : "bg-[#9ACD32] hover:bg-[#8AB82E] text-neutral-900"
+                }`}
             >
               {isExecuting ? (
                 <span className="flex items-center gap-2">

@@ -52,7 +52,7 @@ export default function AgentMessageList() {
               MrMorris AI Assistant
             </h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Ask me anything about your CRM data, or tell me what you'd like to do.
+              Ask me anything about your CRM data, or tell me what you&apos;d like to do.
               I can help you create contacts, analyze data, and execute actions.
             </p>
           </motion.div>

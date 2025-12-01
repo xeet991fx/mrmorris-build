@@ -52,7 +52,7 @@ export interface CreateContactData {
   customFields?: Record<string, any>;
 }
 
-export interface UpdateContactData extends Partial<CreateContactData> {}
+export interface UpdateContactData extends Partial<CreateContactData> { }
 
 export interface ContactResponse {
   success: boolean;
@@ -149,7 +149,7 @@ export const updateContact = async (
 export const deleteContact = async (
   workspaceId: string,
   contactId: string
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; error?: string }> => {
   const response = await axiosInstance.delete(
     `/workspaces/${workspaceId}/contacts/${contactId}`
   );
