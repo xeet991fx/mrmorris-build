@@ -77,6 +77,7 @@ export default function AddCustomColumnModal({
     setIsCreating(true);
     try {
       const data = {
+        entityType: "contact" as const,
         fieldLabel: fieldLabel.trim(),
         fieldType,
         selectOptions:

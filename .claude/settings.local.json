@@ -54,7 +54,8 @@
       "Bash(del \"frontend\\components\\projects\\wizard\\Step3ChannelsSetup.tsx\")",
       "Bash(del \"frontend\\components\\projects\\wizard\\Step4BrandMessaging.tsx\")",
       "Bash(del \"frontend\\components\\projects\\wizard\\Step5OfferCTA.tsx\")",
-      "Bash(del \"frontend\\components\\projects\\wizard\\Step6Competition.tsx\")"
+      "Bash(del \"frontend\\components\\projects\\wizard\\Step6Competition.tsx\")",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
