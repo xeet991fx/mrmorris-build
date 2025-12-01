@@ -15,12 +15,16 @@ import {
   HomeIcon,
   BuildingOffice2Icon,
 } from "@heroicons/react/24/outline";
+import { SparklesIcon } from "@heroicons/react/24/solid";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+import { useAgentStore } from "@/store/useAgentStore";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import AgentSidebar from "@/components/agent/AgentSidebar";
+import { useAgentContextSync } from "@/lib/hooks/useAgentContextSync";
 
 const MOBILE_SIDEBAR_WIDTH = 280;
 const MIN_SIDEBAR_WIDTH = 200;
@@ -32,6 +36,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const { workspaces, fetchWorkspaces, setCurrentWorkspace } = useWorkspaceStore();
+  const { toggleSidebar: toggleAgentSidebar } = useAgentStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarLocked, setIsSidebarLocked] = useState(false);
 
@@ -183,6 +188,12 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const currentWorkspaceFromUrl = isInsideWorkspace
     ? workspaces.find(w => pathname.includes(w._id))
     : null;
+
+  // Sync agent context with current workspace and page
+  useAgentContextSync(
+    currentWorkspaceFromUrl?.name,
+    pathname.includes('/contacts') ? 'contacts' : pathname.includes('/companies') ? 'companies' : 'dashboard'
+  );
 
   const SidebarContent = ({ isExpanded, onClose }: { isExpanded: boolean; onClose?: () => void }) => (
     <div className="flex flex-col h-full">
@@ -548,7 +559,17 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     'Dashboard'}
               </h1>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleAgentSidebar}
+                className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all duration-100"
+                aria-label="Toggle AI Assistant"
+                title="AI Assistant (MrMorris)"
+              >
+                <SparklesIcon className="w-5 h-5" />
+              </button>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
 
@@ -618,6 +639,9 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </main>
+
+        {/* AI Agent Sidebar */}
+        <AgentSidebar />
       </div>
     </>
   );

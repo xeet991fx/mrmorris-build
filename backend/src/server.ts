@@ -10,6 +10,7 @@ import projectRoutes from "./routes/project";
 import contactRoutes from "./routes/contact";
 import companyRoutes from "./routes/company";
 import customFieldRoutes from "./routes/customField";
+import agentRoutes from "./routes/agent";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(cors({
   origin: [
     process.env.FRONTEND_URL || "http://localhost:3000",
     "http://localhost:3001", // Allow both ports for local development
+    "http://localhost:3002", // Allow both ports for local development
   ],
   credentials: true,
 }));
@@ -76,6 +78,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/workspaces", contactRoutes);
 app.use("/api/workspaces", companyRoutes);
 app.use("/api/workspaces", customFieldRoutes);
+app.use("/api/agent", agentRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
