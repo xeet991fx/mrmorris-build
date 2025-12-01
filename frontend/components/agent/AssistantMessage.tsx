@@ -51,15 +51,14 @@ export default function AssistantMessage({ message, isLatest }: AssistantMessage
           </span>
           {message.metadata?.actionStatus && (
             <span
-              className={`text-xs px-2 py-0.5 rounded-full ${
-                message.metadata.actionStatus === "completed"
-                  ? "bg-green-500/20 text-green-600"
-                  : message.metadata.actionStatus === "failed"
+              className={`text-xs px-2 py-0.5 rounded-full ${message.metadata.actionStatus === "completed"
+                ? "bg-green-500/20 text-green-600"
+                : message.metadata.actionStatus === "failed"
                   ? "bg-red-500/20 text-red-600"
                   : message.metadata.actionStatus === "executing"
-                  ? "bg-blue-500/20 text-blue-600"
-                  : "bg-muted text-muted-foreground"
-              }`}
+                    ? "bg-blue-500/20 text-blue-600"
+                    : "bg-muted text-muted-foreground"
+                }`}
             >
               {message.metadata.actionStatus}
             </span>
@@ -68,7 +67,6 @@ export default function AssistantMessage({ message, isLatest }: AssistantMessage
         <div className="bg-muted rounded-lg px-4 py-3 text-sm prose prose-sm prose-neutral dark:prose-invert max-w-none">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            children={displayContent}
             components={{
               // Customize markdown rendering
               p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
@@ -98,7 +96,9 @@ export default function AssistantMessage({ message, isLatest }: AssistantMessage
                 </a>
               ),
             }}
-          />
+          >
+            {displayContent}
+          </ReactMarkdown>
         </div>
 
         {/* Action card for executable actions */}

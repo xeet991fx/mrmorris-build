@@ -65,7 +65,7 @@ export interface CreateCompanyData {
   customFields?: Record<string, any>;
 }
 
-export interface UpdateCompanyData extends Partial<CreateCompanyData> {}
+export interface UpdateCompanyData extends Partial<CreateCompanyData> { }
 
 export interface CompanyResponse {
   success: boolean;
@@ -164,7 +164,7 @@ export const updateCompany = async (
 export const deleteCompany = async (
   workspaceId: string,
   companyId: string
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; error?: string }> => {
   const response = await axiosInstance.delete(
     `/workspaces/${workspaceId}/companies/${companyId}`
   );
