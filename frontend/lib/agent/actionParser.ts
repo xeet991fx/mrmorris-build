@@ -130,14 +130,23 @@ function getActionDescription(type: string, params: any): string {
 
 /**
  * Validate action parameters
+ * Returns detailed error messages about what's missing
  */
 export function validateActionParams(action: ParsedAction): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   switch (action.type) {
     case 'create_contact':
-      if (!action.parameters.email && !action.parameters.phone) {
-        errors.push('Contact must have at least an email or phone number');
+      // Check required fields
+      if (!action.parameters.firstName || action.parameters.firstName.trim() === '') {
+        errors.push('First name is required');
+      }
+      if (!action.parameters.lastName || action.parameters.lastName.trim() === '') {
+        errors.push('Last name is required');
+      }
+      // Validate email format if provided
+      if (action.parameters.email && !isValidEmail(action.parameters.email)) {
+        errors.push('Invalid email format');
       }
       break;
 
@@ -146,10 +155,14 @@ export function validateActionParams(action: ParsedAction): { valid: boolean; er
       if (!action.parameters.id) {
         errors.push('Contact ID is required');
       }
+      // Validate email format if provided in update
+      if (action.type === 'update_contact' && action.parameters.email && !isValidEmail(action.parameters.email)) {
+        errors.push('Invalid email format');
+      }
       break;
 
     case 'create_company':
-      if (!action.parameters.name) {
+      if (!action.parameters.name || action.parameters.name.trim() === '') {
         errors.push('Company name is required');
       }
       break;
@@ -176,7 +189,7 @@ export function validateActionParams(action: ParsedAction): { valid: boolean; er
     case 'bulk_update_contacts':
     case 'bulk_delete_contacts':
       if (!action.parameters.contactIds || action.parameters.contactIds.length === 0) {
-        errors.push('Contact IDs are required');
+        errors.push('Contact IDs are required for bulk operations');
       }
       break;
   }
@@ -185,4 +198,12 @@ export function validateActionParams(action: ParsedAction): { valid: boolean; er
     valid: errors.length === 0,
     errors,
   };
+}
+
+/**
+ * Simple email validation helper
+ */
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }

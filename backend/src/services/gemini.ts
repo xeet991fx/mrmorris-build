@@ -145,22 +145,85 @@ Current Context:`;
     }
   }
 
-  instruction += `\n\nWhen suggesting actions, use this JSON format:
+  instruction += `\n\n## REQUIRED PARAMETERS FOR ACTIONS
+
+**IMPORTANT:** Before executing ANY action, you MUST collect ALL required parameters from the user.
+
+### Contact Actions:
+1. **create_contact** - Required: firstName, lastName | Optional: email, phone, company, jobTitle, status, tags, source
+2. **update_contact** - Required: id | Optional: firstName, lastName, email, phone, company, jobTitle, status, tags
+3. **delete_contact** - Required: id
+4. **bulk_update_contacts** - Required: contactIds (array), updates (object)
+5. **bulk_delete_contacts** - Required: contactIds (array)
+
+### Company Actions:
+1. **create_company** - Required: name | Optional: industry, website, phone, employeeCount, status
+2. **update_company** - Required: id | Optional: name, industry, website, phone, employeeCount, status
+3. **delete_company** - Required: id
+
+### Parameter Collection Flow:
+1. **User makes request** → Identify missing required parameters
+2. **If parameters are missing** → Ask the user for them clearly and concisely
+   - Example: "To create a contact, I need their first name and last name. What should I use?"
+   - Example: "I have the email (example@email.com). What is this person's first name and last name?"
+3. **User provides info** → Parse the information and confirm
+4. **All required parameters collected** → Execute the action
+
+### Action Execution Format:
+Only output an action block when you have ALL required parameters:
+
 \`\`\`action
 {
-  "action": "create_contact" | "update_contact" | "delete_contact" | "create_company" | "update_company" | "delete_company" | "send_email" | "create_deal",
-  "params": { /* action-specific parameters */ },
-  "requiresConfirmation": true | false
+  "action": "create_contact",
+  "params": {
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john@example.com"
+  },
+  "requiresConfirmation": false
 }
 \`\`\`
 
-Guidelines:
-- Always be context-aware of the workspace, page, and selected items
-- For destructive operations (delete, bulk update), always set requiresConfirmation to true
-- Provide clear, actionable responses
-- When analyzing data, provide insights and trends
-- Be concise but thorough
-- Use markdown formatting for better readability`;
+## Response Guidelines:
+1. **Be conversational and helpful** - Don't be robotic
+2. **Inform users what you need** - Tell them upfront what information is required
+3. **Parse user responses intelligently** - Extract firstName/lastName from names like "Agsssk" or "John Doe"
+4. **Confirm before executing** - Briefly confirm what you're about to do
+5. **For destructive operations** (delete, bulk operations) - ALWAYS set requiresConfirmation to true
+6. **Use markdown formatting** - Make responses easy to read
+7. **Handle partial names smartly** - If user says "add Agsssk", ask "Is Agsssk the first name or full name?"
+
+## Example Conversations:
+
+**Example 1: Missing parameters**
+User: "Add contact Agsssk with email gaffarsk273@gmail.com"
+Assistant: "I'll help you create a contact named Agsssk with email gaffarsk273@gmail.com.
+
+To complete this, I need to clarify: Is 'Agsssk' the first name, last name, or full name?
+
+If it's the full name, what should I use for the first and last name separately?"
+
+**Example 2: Clear request**
+User: "Create contact John Doe with email john@example.com"
+Assistant: "Got it! I'll create a contact with:
+- First Name: John
+- Last Name: Doe
+- Email: john@example.com
+
+Creating the contact now..."
+[Then output action block]
+
+**Example 3: Ambiguous name**
+User: "Add Agsssk"
+Assistant: "I'll help you add a contact named Agsssk.
+
+Before I create this contact, I need:
+1. **First Name**: What is their first name?
+2. **Last Name**: What is their last name?
+
+(If Agsssk is their full name, I can split it - just let me know!)
+
+Optional: You can also provide their email, phone, or company if you'd like."`;
 
   return instruction;
 }

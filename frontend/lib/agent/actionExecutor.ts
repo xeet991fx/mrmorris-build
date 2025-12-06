@@ -27,8 +27,8 @@ export async function executeAction(
   if (!validation.valid) {
     return {
       success: false,
-      message: 'Invalid action parameters',
-      error: validation.errors.join(', '),
+      message: 'Missing required information',
+      error: `Please provide the following: ${validation.errors.join('; ')}`,
     };
   }
 
@@ -113,21 +113,47 @@ async function executeCreateContact(
     if (response.success && response.data) {
       return {
         success: true,
-        message: `Contact created: ${params.firstName || ''} ${params.lastName || ''}`.trim(),
+        message: `✅ Contact created successfully: ${params.firstName || ''} ${params.lastName || ''}`.trim(),
         data: response.data.contact,
       };
+    }
+
+    // Extract more detailed error message
+    let errorDetail = response.error || 'Unknown error';
+
+    // Check if it's a validation error from the backend
+    if (response.error && typeof response.error === 'string') {
+      if (response.error.includes('firstName')) {
+        errorDetail = 'First name is required';
+      } else if (response.error.includes('lastName')) {
+        errorDetail = 'Last name is required';
+      } else if (response.error.includes('email')) {
+        errorDetail = 'Invalid email format';
+      }
     }
 
     return {
       success: false,
       message: 'Failed to create contact',
-      error: response.error,
+      error: errorDetail,
     };
   } catch (error: any) {
+    // Parse error response for more details
+    let errorMessage = error.message || 'Unknown error occurred';
+
+    if (error.response?.data?.details) {
+      // Zod validation errors from backend
+      const details = error.response.data.details;
+      if (Array.isArray(details)) {
+        const messages = details.map((d: any) => `${d.path?.join('.')}: ${d.message}`);
+        errorMessage = messages.join('; ');
+      }
+    }
+
     return {
       success: false,
       message: 'Failed to create contact',
-      error: error.message,
+      error: errorMessage,
     };
   }
 }

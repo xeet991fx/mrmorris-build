@@ -11,6 +11,8 @@ import {
 import { ParsedAction } from "@/lib/agent/actionParser";
 import { executeAction } from "@/lib/agent/actionExecutor";
 import { useAgentStore } from "@/store/useAgentStore";
+import { useContactStore } from "@/store/useContactStore";
+import { useCompanyStore } from "@/store/useCompanyStore";
 import toast from "react-hot-toast";
 
 interface ActionCardProps {
@@ -24,6 +26,8 @@ export default function ActionCard({ action, workspaceId, messageId }: ActionCar
   const [executed, setExecuted] = useState(false);
   const [result, setResult] = useState<any>(null);
   const { updateContext, updateMessageAction } = useAgentStore();
+  const { fetchContacts } = useContactStore();
+  const { fetchCompanies } = useCompanyStore();
 
   const handleExecute = async () => {
     setIsExecuting(true);
@@ -42,6 +46,9 @@ export default function ActionCard({ action, workspaceId, messageId }: ActionCar
 
         // Update message action status to completed
         updateMessageAction(messageId, "completed", actionResult);
+
+        // Refresh data based on action type
+        await refreshDataAfterAction(action.type, workspaceId);
 
         // Trigger context update to refresh data
         updateContext({});
@@ -65,6 +72,45 @@ export default function ActionCard({ action, workspaceId, messageId }: ActionCar
       updateMessageAction(messageId, "failed", failureResult);
     } finally {
       setIsExecuting(false);
+    }
+  };
+
+  /**
+   * Refresh data after successful action execution
+   */
+  const refreshDataAfterAction = async (actionType: string, workspaceId: string) => {
+    try {
+      // Contact actions - refresh contacts
+      if (actionType.includes('contact')) {
+        console.log('🔄 Refreshing contacts after AI action...');
+        await fetchContacts(workspaceId);
+        console.log('✅ Contacts refreshed successfully');
+      }
+
+      // Company actions - refresh companies
+      if (actionType.includes('company')) {
+        console.log('🔄 Refreshing companies after AI action...');
+        await fetchCompanies(workspaceId);
+        console.log('✅ Companies refreshed successfully');
+      }
+
+      // Bulk actions might affect both
+      if (actionType.includes('bulk')) {
+        console.log('🔄 Refreshing all data after bulk action...');
+        await Promise.all([
+          fetchContacts(workspaceId),
+          fetchCompanies(workspaceId),
+        ]);
+        console.log('✅ All data refreshed successfully');
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh data after action:', error);
+      // Don't throw - the action was successful, just the refresh failed
+      // Show a subtle warning to the user
+      toast('Data will refresh on next page load', {
+        icon: 'ℹ️',
+        duration: 2000,
+      });
     }
   };
 
