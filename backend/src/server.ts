@@ -11,6 +11,8 @@ import contactRoutes from "./routes/contact";
 import companyRoutes from "./routes/company";
 import customFieldRoutes from "./routes/customField";
 import agentRoutes from "./routes/agent";
+import pipelineRoutes from "./routes/pipeline";
+import opportunityRoutes from "./routes/opportunity";
 
 dotenv.config();
 
@@ -78,6 +80,8 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/workspaces", contactRoutes);
 app.use("/api/workspaces", companyRoutes);
 app.use("/api/workspaces", customFieldRoutes);
+app.use("/api/workspaces", pipelineRoutes);
+app.use("/api/workspaces", opportunityRoutes);
 app.use("/api/agent", agentRoutes);
 
 // 404 handler

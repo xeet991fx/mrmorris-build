@@ -14,6 +14,7 @@ import {
   UserGroupIcon,
   HomeIcon,
   BuildingOffice2Icon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import { SparklesIcon } from "@heroicons/react/24/solid";
 import { Toaster } from "react-hot-toast";
@@ -471,6 +472,32 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 Companies
               </motion.span>
             </button>
+
+            {/* Pipelines */}
+            <button
+              onClick={() => router.push(`/projects/${currentWorkspaceFromUrl?._id}/pipelines`)}
+              className={cn(
+                "w-full flex items-center gap-2 rounded-md transition-all text-left",
+                isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
+                pathname.includes('/pipelines')
+                  ? "bg-muted/70 text-foreground"
+                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+              )}
+              title={!isExpanded ? "Pipelines" : ""}
+            >
+              <Squares2X2Icon className="w-4 h-4 flex-shrink-0" />
+              <motion.span
+                initial={false}
+                animate={{
+                  opacity: isExpanded ? 1 : 0,
+                  width: isExpanded ? "auto" : 0,
+                }}
+                transition={{ duration: 0.15 }}
+                className="text-sm font-normal overflow-hidden whitespace-nowrap"
+              >
+                Pipelines
+              </motion.span>
+            </button>
           </div>
         </div>
       )}
@@ -529,14 +556,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Header with Toggle Button and Page Name - Thin Bar */}
         <div
           className={cn(
-            "fixed top-0 left-0 right-0 z-40 bg-background",
+            "fixed top-0 left-0 right-0 z-40 bg-neutral-900",
             !isResizing && "lg:transition-all lg:duration-200 lg:ease-out"
           )}
           style={{
             left: isSidebarOpen && isDesktop ? `${sidebarWidth}px` : '0',
           }}
         >
-          <div className="flex items-center justify-between px-4 py-2.5">
+          <div className="flex items-center justify-between px-4 py-1.5">
             <div className="flex items-center">
               <div className={cn(
                 "flex items-center gap-3 transition-all duration-150",
