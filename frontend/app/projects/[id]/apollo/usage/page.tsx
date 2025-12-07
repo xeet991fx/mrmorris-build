@@ -87,7 +87,7 @@ export default function ApolloUsagePage() {
           <h3 className="text-sm font-semibold text-foreground mb-3">Coming Soon</h3>
           <p className="text-sm text-muted-foreground mb-4">
             The Apollo usage dashboard is currently under development. Once you start using
-            Apollo enrichment features, you'll see detailed analytics here including:
+            Apollo enrichment features, you&apos;ll see detailed analytics here including:
           </p>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">

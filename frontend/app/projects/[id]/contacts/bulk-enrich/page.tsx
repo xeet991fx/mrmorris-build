@@ -64,7 +64,7 @@ export default function BulkEnrichPage() {
               <h3 className="text-sm font-semibold text-foreground mb-3">Coming Soon</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 The bulk enrichment feature is currently under development. Once available,
-                you'll be able to:
+                you&apos;ll be able to:
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground mb-4">
                 <li className="flex items-start gap-2">
@@ -112,8 +112,8 @@ export default function BulkEnrichPage() {
             Enrich Individual Contacts
           </h3>
           <p className="text-sm text-muted-foreground mb-3">
-            In the meantime, you can enrich contacts one at a time using the "Enrich with
-            Apollo" button on individual contact pages.
+            In the meantime, you can enrich contacts one at a time using the &quot;Enrich with
+            Apollo&quot; button on individual contact pages.
           </p>
           <button
             onClick={() => router.push(`/projects/${workspaceId}/contacts`)}

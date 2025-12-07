@@ -62,7 +62,7 @@ export default function ApolloSearchPage() {
           Find Contacts with Apollo
         </h1>
         <p className="text-sm text-muted-foreground">
-          Search Apollo.io's database of 275M+ contacts and companies
+          Search Apollo.io&apos;s database of 275M+ contacts and companies
         </p>
       </motion.div>
 

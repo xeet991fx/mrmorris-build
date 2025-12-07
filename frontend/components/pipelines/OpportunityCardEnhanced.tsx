@@ -1,4 +1,4 @@
-import { useSortable } from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
 import {
@@ -47,14 +47,19 @@ export default function OpportunityCardEnhanced({
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
     isDragging,
-  } = useSortable({ id: opportunity._id });
+  } = useDraggable({
+    id: opportunity._id,
+    data: {
+      type: "opportunity",
+      opportunity,
+    },
+  });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+  // When dragging, hide the original card completely (DragOverlay shows the moving card)
+  const style: React.CSSProperties = {
+    opacity: isDragging ? 0 : 1,
+    cursor: isDragging ? 'grabbing' : 'grab',
   };
 
   // Calculate metrics
@@ -87,12 +92,13 @@ export default function OpportunityCardEnhanced({
     }
   };
 
+  // Don't apply drag listeners when dragging to prevent double movement
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
+      {...(isDragging ? {} : listeners)}
       onClick={handleCardClick}
       className={cn(
         "bg-card border border-border rounded-lg p-3 cursor-grab group hover:border-muted-foreground/20 transition-all relative",

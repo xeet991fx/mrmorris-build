@@ -1,5 +1,4 @@
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { motion } from "framer-motion";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Opportunity } from "@/lib/api/opportunity";
@@ -30,6 +29,10 @@ export default function KanbanColumn({
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage._id,
+    data: {
+      type: "stage",
+      stageId: stage._id,
+    },
   });
 
   // Calculate total value of opportunities in this stage
@@ -82,40 +85,35 @@ export default function KanbanColumn({
           isOver ? "border-[#9ACD32] bg-[#9ACD32]/10" : "border-border"
         )}
       >
-        <SortableContext
-          items={opportunities.map((o) => o._id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {opportunities.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-center">
-              <div>
-                <p className="text-sm text-muted-foreground">No opportunities</p>
-                <button
-                  onClick={() => onAddOpportunity(stage._id)}
-                  className="mt-2 text-xs text-[#9ACD32] hover:underline"
-                >
-                  Add one
-                </button>
-              </div>
-            </div>
-          ) : (
-            opportunities.map((opportunity, index) => (
-              <motion.div
-                key={opportunity._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+        {opportunities.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-center">
+            <div>
+              <p className="text-sm text-muted-foreground">No opportunities</p>
+              <button
+                onClick={() => onAddOpportunity(stage._id)}
+                className="mt-2 text-xs text-[#9ACD32] hover:underline"
               >
-                <OpportunityCardEnhanced
-                  opportunity={opportunity}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onClick={onCardClick}
-                />
-              </motion.div>
-            ))
-          )}
-        </SortableContext>
+                Add one
+              </button>
+            </div>
+          </div>
+        ) : (
+          opportunities.map((opportunity, index) => (
+            <motion.div
+              key={opportunity._id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <OpportunityCardEnhanced
+                opportunity={opportunity}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onClick={onCardClick}
+              />
+            </motion.div>
+          ))
+        )}
       </div>
     </div>
   );
