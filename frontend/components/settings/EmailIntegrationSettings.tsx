@@ -33,8 +33,10 @@ export default function EmailIntegrationSettings({
     const [connecting, setConnecting] = useState(false);
     const [syncing, setSyncing] = useState<string | null>(null);
 
+
     useEffect(() => {
         loadIntegrations();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspaceId]);
 
     const loadIntegrations = async () => {

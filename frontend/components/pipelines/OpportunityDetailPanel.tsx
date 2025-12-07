@@ -387,7 +387,7 @@ export default function OpportunityDetailPanel({
                       <div className="text-center py-8 text-neutral-500">
                         <SparklesIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                         <p>No AI analysis yet</p>
-                        <p className="text-sm mt-1">Click "Analyze with AI" to get started</p>
+                        <p className="text-sm mt-1">Click &quot;Analyze with AI&quot; to get started</p>
                       </div>
                     )}
 
