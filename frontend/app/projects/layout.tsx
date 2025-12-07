@@ -256,127 +256,127 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Workspaces Section - Hidden when inside a workspace */}
       {!isInsideWorkspace && (
-      <div className="flex-1 overflow-y-auto px-3 py-4">
-        <div className={cn(
-          "flex items-center mb-3 transition-all duration-150",
-          isExpanded ? "justify-between" : "justify-center"
-        )}>
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            {isExpanded && (
-              <button
-                onClick={() => setIsWorkspacesCollapsed(!isWorkspacesCollapsed)}
-                className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all"
-                aria-label={isWorkspacesCollapsed ? "Expand workspaces" : "Collapse workspaces"}
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <div className={cn(
+            "flex items-center mb-3 transition-all duration-150",
+            isExpanded ? "justify-between" : "justify-center"
+          )}>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              {isExpanded && (
+                <button
+                  onClick={() => setIsWorkspacesCollapsed(!isWorkspacesCollapsed)}
+                  className="p-0.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all"
+                  aria-label={isWorkspacesCollapsed ? "Expand workspaces" : "Collapse workspaces"}
+                >
+                  <ChevronDownIcon
+                    className={cn(
+                      "w-3.5 h-3.5 transition-transform duration-200",
+                      isWorkspacesCollapsed && "-rotate-90"
+                    )}
+                  />
+                </button>
+              )}
+              <motion.h2
+                initial={false}
+                animate={{
+                  opacity: isExpanded ? 1 : 0,
+                  width: isExpanded ? "auto" : 0,
+                }}
+                transition={{ duration: 0.15 }}
+                className="text-xs font-semibold text-muted-foreground uppercase tracking-wide overflow-hidden whitespace-nowrap"
               >
-                <ChevronDownIcon
-                  className={cn(
-                    "w-3.5 h-3.5 transition-transform duration-200",
-                    isWorkspacesCollapsed && "-rotate-90"
-                  )}
-                />
-              </button>
-            )}
-            <motion.h2
-              initial={false}
-              animate={{
-                opacity: isExpanded ? 1 : 0,
-                width: isExpanded ? "auto" : 0,
-              }}
-              transition={{ duration: 0.15 }}
-              className="text-xs font-semibold text-muted-foreground uppercase tracking-wide overflow-hidden whitespace-nowrap"
+                Workspaces
+              </motion.h2>
+            </div>
+            <button
+              onClick={handleCreateWorkspace}
+              className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all"
+              aria-label="Create new workspace"
+              title={!isExpanded ? "Create new workspace" : ""}
             >
-              Workspaces
-            </motion.h2>
+              <PlusIcon className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={handleCreateWorkspace}
-            className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all"
-            aria-label="Create new workspace"
-            title={!isExpanded ? "Create new workspace" : ""}
-          >
-            <PlusIcon className="w-4 h-4" />
-          </button>
-        </div>
 
-        {/* Workspaces List */}
-        <AnimatePresence initial={false}>
-          {!isWorkspacesCollapsed && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="overflow-hidden"
-            >
-              <div className="space-y-0.5">
-                {workspaces.length === 0 ? (
-                  <div className={cn(
-                    "text-center transition-all",
-                    isExpanded ? "py-8" : "py-4"
-                  )}>
-                    <FolderIcon className={cn(
-                      "text-muted-foreground mx-auto mb-3",
-                      isExpanded ? "w-5 h-5" : "w-4 h-4"
-                    )} />
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        opacity: isExpanded ? 1 : 0,
-                        height: isExpanded ? "auto" : 0,
-                      }}
-                      transition={{ duration: 0.15 }}
-                      className="overflow-hidden"
-                    >
-                      <p className="text-xs text-muted-foreground">No workspaces yet</p>
-                      <button
-                        onClick={handleCreateWorkspace}
-                        className="mt-3 text-xs text-foreground hover:text-foreground/80 transition-colors"
-                      >
-                        Create your first workspace
-                      </button>
-                    </motion.div>
-                  </div>
-                ) : (
-                  workspaces.map((workspace) => (
-                    <button
-                      key={workspace._id}
-                      onClick={() => handleWorkspaceClick(workspace)}
-                      className={cn(
-                        "w-full flex items-center gap-2 rounded-md transition-all text-left group",
-                        isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
-                        isWorkspaceActive(workspace._id)
-                          ? "bg-muted/70 text-foreground"
-                          : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                      )}
-                      title={!isExpanded ? workspace.name : ""}
-                    >
-                      <FolderIcon className="w-4 h-4 flex-shrink-0" />
+          {/* Workspaces List */}
+          <AnimatePresence initial={false}>
+            {!isWorkspacesCollapsed && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-0.5">
+                  {workspaces.length === 0 ? (
+                    <div className={cn(
+                      "text-center transition-all",
+                      isExpanded ? "py-8" : "py-4"
+                    )}>
+                      <FolderIcon className={cn(
+                        "text-muted-foreground mx-auto mb-3",
+                        isExpanded ? "w-5 h-5" : "w-4 h-4"
+                      )} />
                       <motion.div
                         initial={false}
                         animate={{
                           opacity: isExpanded ? 1 : 0,
-                          width: isExpanded ? "auto" : 0,
+                          height: isExpanded ? "auto" : 0,
                         }}
                         transition={{ duration: 0.15 }}
-                        className="flex-1 min-w-0 overflow-hidden"
+                        className="overflow-hidden"
                       >
-                        <p className="text-sm font-normal truncate">
-                          {workspace.name}
-                        </p>
+                        <p className="text-xs text-muted-foreground">No workspaces yet</p>
+                        <button
+                          onClick={handleCreateWorkspace}
+                          className="mt-3 text-xs text-foreground hover:text-foreground/80 transition-colors"
+                        >
+                          Create your first workspace
+                        </button>
                       </motion.div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                    </div>
+                  ) : (
+                    workspaces.map((workspace) => (
+                      <button
+                        key={workspace._id}
+                        onClick={() => handleWorkspaceClick(workspace)}
+                        className={cn(
+                          "w-full flex items-center gap-2 rounded-md transition-all text-left group",
+                          isExpanded ? "px-2 py-1.5" : "p-1.5 justify-center",
+                          isWorkspaceActive(workspace._id)
+                            ? "bg-muted/70 text-foreground"
+                            : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                        )}
+                        title={!isExpanded ? workspace.name : ""}
+                      >
+                        <FolderIcon className="w-4 h-4 flex-shrink-0" />
+                        <motion.div
+                          initial={false}
+                          animate={{
+                            opacity: isExpanded ? 1 : 0,
+                            width: isExpanded ? "auto" : 0,
+                          }}
+                          transition={{ duration: 0.15 }}
+                          className="flex-1 min-w-0 overflow-hidden"
+                        >
+                          <p className="text-sm font-normal truncate">
+                            {workspace.name}
+                          </p>
+                        </motion.div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
       {/* CRM Navigation - Shown when inside a workspace */}
       {isInsideWorkspace && (
-        <div className="flex-1 overflow-y-auto px-3 py-4">
+        <div className="px-3 py-4">
           <div className={cn(
             "flex items-center mb-3 transition-all duration-150",
             isExpanded ? "justify-start" : "justify-center"
@@ -556,7 +556,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Header with Toggle Button and Page Name - Thin Bar */}
         <div
           className={cn(
-            "fixed top-0 left-0 right-0 z-40 bg-neutral-900",
+            "fixed top-0 left-0 right-0 z-40 bg-card border-b border-border",
             !isResizing && "lg:transition-all lg:duration-200 lg:ease-out"
           )}
           style={{
@@ -635,7 +635,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             width: isSidebarOpen ? `${sidebarWidth}px` : 0
           }}
         >
-          <div style={{ width: `${sidebarWidth}px` }}>
+          <div className="h-full" style={{ width: `${sidebarWidth}px` }}>
             <SidebarContent isExpanded={true} onClose={() => setIsSidebarOpen(false)} />
           </div>
 

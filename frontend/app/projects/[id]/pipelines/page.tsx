@@ -95,11 +95,11 @@ export default function PipelinesPage() {
 
   if (isLoading && pipelines.length === 0) {
     return (
-      <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
+      <div className="min-h-screen bg-background px-8 pt-14 pb-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-neutral-400">Loading pipelines...</p>
+            <p className="text-sm text-muted-foreground">Loading pipelines...</p>
           </div>
         </div>
       </div>
@@ -108,14 +108,14 @@ export default function PipelinesPage() {
 
   // Render empty state content
   const renderEmptyState = () => (
-    <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
+    <div className="min-h-screen bg-background px-8 pt-14 pb-8">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <h1 className="text-2xl font-bold text-white mb-1">Pipelines</h1>
-        <p className="text-sm text-neutral-400">
+        <h1 className="text-2xl font-bold text-foreground mb-1">Pipelines</h1>
+        <p className="text-sm text-muted-foreground">
           Manage your sales opportunities through customizable pipelines
         </p>
       </motion.div>
@@ -128,8 +128,8 @@ export default function PipelinesPage() {
       >
         <div className="text-center max-w-md">
           <Squares2X2Icon className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-white mb-2">No pipelines yet</h2>
-          <p className="text-sm text-neutral-400 mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-2">No pipelines yet</h2>
+          <p className="text-sm text-muted-foreground mb-6">
             Create your first pipeline to start managing opportunities
           </p>
           <button
@@ -153,15 +153,15 @@ export default function PipelinesPage() {
       {!isLoading && pipelines.length === 0 ? (
         renderEmptyState()
       ) : (
-        <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
+        <div className="min-h-screen bg-background px-8 pt-14 pb-8">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-6"
           >
-            <h1 className="text-2xl font-bold text-white mb-1">Pipelines</h1>
-            <p className="text-sm text-neutral-400">
+            <h1 className="text-2xl font-bold text-foreground mb-1">Pipelines</h1>
+            <p className="text-sm text-muted-foreground">
               Manage your sales opportunities through customizable pipelines
             </p>
           </motion.div>
@@ -179,7 +179,7 @@ export default function PipelinesPage() {
               <select
                 value={currentPipeline?._id || ""}
                 onChange={(e) => handlePipelineChange(e.target.value)}
-                className="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-transparent"
+                className="px-4 py-2 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-transparent"
               >
                 {pipelines.map((pipeline) => (
                   <option key={pipeline._id} value={pipeline._id}>
@@ -189,12 +189,12 @@ export default function PipelinesPage() {
               </select>
 
               {/* View Toggle */}
-              <div className="flex items-center gap-1 bg-neutral-800 border border-neutral-700 rounded-lg p-1">
+              <div className="flex items-center gap-1 bg-card border border-border rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("kanban")}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "kanban"
                     ? "bg-[#9ACD32] text-neutral-900"
-                    : "text-neutral-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                 >
                   <Squares2X2Icon className="w-4 h-4" />
@@ -204,7 +204,7 @@ export default function PipelinesPage() {
                   onClick={() => setViewMode("table")}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "table"
                     ? "bg-[#9ACD32] text-neutral-900"
-                    : "text-neutral-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                 >
                   <ViewColumnsIcon className="w-4 h-4" />
@@ -217,7 +217,7 @@ export default function PipelinesPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsManagePipelinesModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-lg text-sm font-medium transition-colors"
               >
                 <Cog6ToothIcon className="w-4 h-4" />
                 Manage Pipelines

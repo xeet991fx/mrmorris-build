@@ -54,21 +54,21 @@ export default function KanbanColumn({
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: stage.color }}
             />
-            <h3 className="text-sm font-semibold text-white">{stage.name}</h3>
-            <span className="text-xs text-neutral-400 bg-neutral-800 px-2 py-0.5 rounded-full">
+            <h3 className="text-sm font-semibold text-foreground">{stage.name}</h3>
+            <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded-full">
               {opportunities.length}
             </span>
           </div>
           <button
             onClick={() => onAddOpportunity(stage._id)}
-            className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground hover:bg-card rounded transition-colors"
             title="Add opportunity to this stage"
           >
             <PlusIcon className="w-4 h-4" />
           </button>
         </div>
         {totalValue > 0 && (
-          <div className="text-xs text-neutral-400">
+          <div className="text-xs text-muted-foreground">
             {formatCurrency(totalValue)}
           </div>
         )}
@@ -78,8 +78,8 @@ export default function KanbanColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 bg-neutral-900/50 border-2 border-dashed rounded-lg p-2 space-y-3 overflow-y-auto",
-          isOver ? "border-[#9ACD32] bg-[#9ACD32]/10" : "border-neutral-800"
+          "flex-1 bg-muted/30 border-2 border-dashed rounded-lg p-2 space-y-3 overflow-y-auto",
+          isOver ? "border-[#9ACD32] bg-[#9ACD32]/10" : "border-border"
         )}
       >
         <SortableContext
@@ -89,7 +89,7 @@ export default function KanbanColumn({
           {opportunities.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-center">
               <div>
-                <p className="text-sm text-neutral-500">No opportunities</p>
+                <p className="text-sm text-muted-foreground">No opportunities</p>
                 <button
                   onClick={() => onAddOpportunity(stage._id)}
                   className="mt-2 text-xs text-[#9ACD32] hover:underline"

@@ -60,11 +60,11 @@ export default function CompaniesPage() {
 
   if (isLoading && companies.length === 0) {
     return (
-      <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
+      <div className="min-h-screen bg-background px-8 pt-14 pb-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-neutral-400">Loading companies...</p>
+            <p className="text-sm text-muted-foreground">Loading companies...</p>
           </div>
         </div>
       </div>
@@ -73,15 +73,15 @@ export default function CompaniesPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
+      <div className="min-h-screen bg-background px-8 pt-14 pb-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <h1 className="text-2xl font-bold text-white mb-1">Companies</h1>
-          <p className="text-sm text-neutral-400">
+          <h1 className="text-2xl font-bold text-foreground mb-1">Companies</h1>
+          <p className="text-sm text-muted-foreground">
             Manage your business relationships and company accounts
           </p>
         </motion.div>
@@ -112,10 +112,10 @@ export default function CompaniesPage() {
                 <div className="w-16 h-16 bg-neutral-800/50 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
                   <BuildingOffice2Icon className="w-8 h-8 text-neutral-500" />
                 </div>
-                <h2 className="text-xl font-semibold text-white mb-2">
+                <h2 className="text-xl font-semibold text-foreground mb-2">
                   No companies yet
                 </h2>
-                <p className="text-sm text-neutral-400 mb-6">
+                <p className="text-sm text-muted-foreground mb-6">
                   Start building your business network by adding your first company. Track
                   partnerships, manage accounts, and grow your B2B relationships.
                 </p>
