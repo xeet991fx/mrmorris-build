@@ -48,6 +48,41 @@ export interface IContact extends Document {
     lastAnalyzedAt?: Date;
   };
 
+  // Apollo.io Enrichment Data
+  apolloEnrichment?: {
+    enrichedAt: Date;
+    apolloId: string;
+    confidence: number; // 0-1, how confident is the data
+    dataSource: "apollo";
+    fieldsEnriched: string[]; // ['email', 'phone', 'linkedin', etc.]
+    creditsUsed: number;
+  };
+
+  // Email Verification (from Apollo or other providers)
+  emailVerification?: {
+    status: "valid" | "invalid" | "risky" | "unknown";
+    verifiedAt: Date;
+    provider: "apollo" | "zerobounce" | "other";
+  };
+
+  // Social Profiles (extended)
+  socialProfiles?: {
+    linkedin?: string;
+    twitter?: string;
+    github?: string;
+    facebook?: string;
+  };
+
+  // Location (more structured than address)
+  location?: {
+    city?: string;
+    state?: string;
+    country?: string;
+  };
+
+  // Title (using jobTitle for compatibility)
+  title?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -162,6 +197,54 @@ const contactSchema = new Schema<IContact>(
       recommendedActions: [{ type: String }],
       lastAnalyzedAt: { type: Date },
     },
+
+    // Apollo.io Enrichment Data
+    apolloEnrichment: {
+      enrichedAt: { type: Date },
+      apolloId: { type: String },
+      confidence: {
+        type: Number,
+        min: 0,
+        max: 1,
+      },
+      dataSource: {
+        type: String,
+        enum: ["apollo"],
+      },
+      fieldsEnriched: [{ type: String }],
+      creditsUsed: { type: Number },
+    },
+
+    // Email Verification
+    emailVerification: {
+      status: {
+        type: String,
+        enum: ["valid", "invalid", "risky", "unknown"],
+      },
+      verifiedAt: { type: Date },
+      provider: {
+        type: String,
+        enum: ["apollo", "zerobounce", "other"],
+      },
+    },
+
+    // Social Profiles (extended)
+    socialProfiles: {
+      linkedin: { type: String },
+      twitter: { type: String },
+      github: { type: String },
+      facebook: { type: String },
+    },
+
+    // Location
+    location: {
+      city: { type: String },
+      state: { type: String },
+      country: { type: String },
+    },
+
+    // Title
+    title: { type: String },
   },
   {
     timestamps: true,

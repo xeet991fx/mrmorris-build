@@ -10,6 +10,7 @@ import {
     ExclamationCircleIcon,
     CheckCircleIcon,
     ChevronRightIcon,
+    SparklesIcon,
 } from "@heroicons/react/24/outline";
 import {
     getGmailConnectUrl,
@@ -188,6 +189,21 @@ export default function EmailIntegrationSettings({
                         )}
                     </button>
 
+                    {/* Apollo.io Card */}
+                    <button
+                        onClick={() => router.push(`/projects/${workspaceId}/settings/apollo`)}
+                        className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card/50 hover:bg-card hover:border-neutral-600 transition-all group"
+                    >
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                            <SparklesIcon className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="text-left flex-1">
+                            <div className="text-sm font-medium text-foreground">Apollo.io</div>
+                            <div className="text-xs text-muted-foreground">B2B data enrichment</div>
+                        </div>
+                        <ChevronRightIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    </button>
+
                     {/* Outlook Card - Coming Soon */}
                     <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-card/30 opacity-50 cursor-not-allowed relative">
                         <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-muted rounded text-[10px] text-muted-foreground">
@@ -339,10 +355,10 @@ export default function EmailIntegrationSettings({
                 <h2 className="text-lg font-semibold text-foreground mb-4">How It Works</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     {[
-                        { num: "1", title: "Smart Matching", desc: "Emails matched to contacts by address" },
-                        { num: "2", title: "Auto-Logging", desc: "Matched emails become activities" },
-                        { num: "3", title: "7-Day Sync", desc: "Each sync fetches last 7 days" },
-                        { num: "4", title: "Secure Storage", desc: "Credentials encrypted with AES-256" },
+                        { num: "1", title: "Smart Matching", desc: "Emails matched to contacts by address", icon: "📧" },
+                        { num: "2", title: "Auto-Logging", desc: "Matched emails become activities", icon: "📝" },
+                        { num: "3", title: "7-Day Sync", desc: "Each sync fetches last 7 days", icon: "🔄" },
+                        { num: "4", title: "Secure Storage", desc: "Credentials encrypted with AES-256", icon: "🔒" },
                     ].map((item) => (
                         <div
                             key={item.num}
@@ -351,6 +367,37 @@ export default function EmailIntegrationSettings({
                             <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                                 <span className="text-blue-400 font-semibold text-sm">{item.num}</span>
                             </div>
+                            <div>
+                                <div className="text-sm font-medium text-foreground">{item.title}</div>
+                                <div className="text-xs text-muted-foreground">{item.desc}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </motion.div>
+
+            {/* Apollo Integration Benefits */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="mt-6"
+            >
+                <h2 className="text-lg font-semibold text-foreground mb-4">Apollo.io Benefits</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[
+                        { title: "Contact Enrichment", desc: "Auto-fill missing emails, phones & LinkedIn profiles", icon: "✨" },
+                        { title: "Company Data", desc: "Get industry, size, revenue & tech stack info", icon: "🏢" },
+                        { title: "Email Verification", desc: "Verify emails before sending campaigns", icon: "✓" },
+                        { title: "B2B Database", desc: "Search 275M+ contacts & companies", icon: "🔍" },
+                        { title: "Smart Matching", desc: "Find contacts by title, location & company", icon: "🎯" },
+                        { title: "Credit Tracking", desc: "Monitor usage with detailed analytics", icon: "📊" },
+                    ].map((item, index) => (
+                        <div
+                            key={index}
+                            className="flex items-start gap-3 p-4 rounded-lg border border-border bg-card/50"
+                        >
+                            <div className="text-2xl">{item.icon}</div>
                             <div>
                                 <div className="text-sm font-medium text-foreground">{item.title}</div>
                                 <div className="text-xs text-muted-foreground">{item.desc}</div>

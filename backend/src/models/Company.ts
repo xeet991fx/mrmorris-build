@@ -48,6 +48,25 @@ export interface ICompany extends Document {
     lastAnalyzedAt?: Date;
   };
 
+  // Apollo.io Enrichment Data
+  apolloEnrichment?: {
+    enrichedAt: Date;
+    apolloId: string;
+    confidence: number;
+    dataSource: "apollo";
+    fieldsEnriched: string[];
+    creditsUsed: number;
+  };
+
+  // Social Profiles (extended)
+  socialProfiles?: {
+    linkedin?: string;
+    twitter?: string;
+    facebook?: string;
+    angellist?: string;
+    crunchbase?: string;
+  };
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -154,6 +173,32 @@ const companySchema = new Schema<ICompany>(
       },
       recommendedActions: [{ type: String }],
       lastAnalyzedAt: { type: Date },
+    },
+
+    // Apollo.io Enrichment Data
+    apolloEnrichment: {
+      enrichedAt: { type: Date },
+      apolloId: { type: String },
+      confidence: {
+        type: Number,
+        min: 0,
+        max: 1,
+      },
+      dataSource: {
+        type: String,
+        enum: ["apollo"],
+      },
+      fieldsEnriched: [{ type: String }],
+      creditsUsed: { type: Number },
+    },
+
+    // Social Profiles (extended)
+    socialProfiles: {
+      linkedin: { type: String },
+      twitter: { type: String },
+      facebook: { type: String },
+      angellist: { type: String },
+      crunchbase: { type: String },
     },
   },
   {

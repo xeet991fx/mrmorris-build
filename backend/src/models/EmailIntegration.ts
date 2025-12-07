@@ -8,7 +8,7 @@ const IV_LENGTH = 16;
 export interface IEmailIntegration extends Document {
     userId: Types.ObjectId;
     workspaceId: Types.ObjectId;
-    provider: "gmail" | "outlook";
+    provider: "gmail" | "outlook" | "apollo";
     email: string;
     accessToken: string;
     refreshToken: string;
@@ -16,6 +16,13 @@ export interface IEmailIntegration extends Document {
     isActive: boolean;
     lastSyncAt?: Date;
     syncError?: string;
+
+    // Apollo-specific fields
+    apolloApiKey?: string;
+    apolloEnabled?: boolean;
+    apolloAutoEnrich?: boolean;
+    apolloCreditsUsed?: number;
+
     createdAt: Date;
     updatedAt: Date;
 
@@ -24,6 +31,8 @@ export interface IEmailIntegration extends Document {
     getAccessToken(): string;
     getRefreshToken(): string;
     isTokenExpired(): boolean;
+    setApolloApiKey?(apiKey: string): void;
+    getApolloApiKey?(): string;
 }
 
 // Encryption helper functions
@@ -69,7 +78,7 @@ const emailIntegrationSchema = new Schema<IEmailIntegration>(
         },
         provider: {
             type: String,
-            enum: ["gmail", "outlook"],
+            enum: ["gmail", "outlook", "apollo"],
             required: [true, "Provider is required"],
         },
         email: {
@@ -101,6 +110,23 @@ const emailIntegrationSchema = new Schema<IEmailIntegration>(
         },
         syncError: {
             type: String,
+        },
+        // Apollo-specific fields
+        apolloApiKey: {
+            type: String,
+            select: false, // Don't return API key by default
+        },
+        apolloEnabled: {
+            type: Boolean,
+            default: false,
+        },
+        apolloAutoEnrich: {
+            type: Boolean,
+            default: false,
+        },
+        apolloCreditsUsed: {
+            type: Number,
+            default: 0,
         },
     },
     {
@@ -143,6 +169,19 @@ emailIntegrationSchema.methods.getRefreshToken = function (): string {
 
 emailIntegrationSchema.methods.isTokenExpired = function (): boolean {
     return new Date() >= this.expiresAt;
+};
+
+emailIntegrationSchema.methods.setApolloApiKey = function (apiKey: string): void {
+    this.apolloApiKey = encrypt(apiKey);
+};
+
+emailIntegrationSchema.methods.getApolloApiKey = function (): string {
+    try {
+        return this.apolloApiKey ? decrypt(this.apolloApiKey) : "";
+    } catch (error) {
+        console.error("Failed to decrypt Apollo API key");
+        return "";
+    }
 };
 
 const EmailIntegration = mongoose.model<IEmailIntegration>(
