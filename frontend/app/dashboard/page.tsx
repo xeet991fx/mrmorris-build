@@ -31,7 +31,7 @@ function DashboardContent() {
         <div className="container mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Image
-              src="/mrmorrislogo2-removebg-preview.png"
+              src="/Clianta-logo.jpg"
               alt="MrMorris Logo"
               width={36}
               height={36}

@@ -45,20 +45,10 @@ export default function ColumnResizeHandle({ column }: ColumnResizeHandleProps) 
   return (
     <div
       className={cn(
-        "absolute right-0 top-0 w-1 h-full cursor-col-resize group z-10",
-        "hover:bg-[#9ACD32]/50 transition-colors",
-        isResizing && "bg-[#9ACD32]"
+        "absolute right-0 top-0 w-3 h-full cursor-col-resize z-10",
+        "-mr-1.5"
       )}
       onMouseDown={handleMouseDown}
-    >
-      {/* Visual handle indicator */}
-      <div
-        className={cn(
-          "absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-accent",
-          "group-hover:bg-[#9ACD32] transition-colors rounded-full",
-          isResizing && "bg-[#9ACD32]"
-        )}
-      />
-    </div>
+    />
   );
 }

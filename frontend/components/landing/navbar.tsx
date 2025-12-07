@@ -12,7 +12,7 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-3">
             <Image
-              src="/mrmorrislogo2-removebg-preview.png"
+              src="/Clianta-logo.jpg"
               alt="MrMorris Logo"
               width={56}
               height={56}
