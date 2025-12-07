@@ -178,7 +178,7 @@ export async function executeAction(
  */
 export async function getSuggestions(
   workspaceId: string,
-  currentPage: "dashboard" | "contacts" | "companies",
+  currentPage: "dashboard" | "contacts" | "companies" | "pipelines",
   selectedCount: number = 0
 ): Promise<string[]> {
   try {

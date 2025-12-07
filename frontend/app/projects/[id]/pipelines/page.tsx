@@ -12,10 +12,18 @@ import PipelineTableView from "@/components/pipelines/PipelineTableView";
 import AddOpportunityModal from "@/components/pipelines/AddOpportunityModal";
 import EditOpportunityModal from "@/components/pipelines/EditOpportunityModal";
 import ManagePipelinesModal from "@/components/pipelines/ManagePipelinesModal";
+import { useAgentContextSync } from "@/lib/hooks/useAgentContextSync";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 
 export default function PipelinesPage() {
   const params = useParams();
   const workspaceId = params.id as string;
+
+  // Get workspace name for context
+  const { currentWorkspace } = useWorkspaceStore();
+
+  // Sync agent context to show "Pipelines" in chatbot
+  useAgentContextSync(currentWorkspace?.name, "pipelines");
 
   const {
     pipelines,
@@ -145,110 +153,108 @@ export default function PipelinesPage() {
       {!isLoading && pipelines.length === 0 ? (
         renderEmptyState()
       ) : (
-      <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <h1 className="text-2xl font-bold text-white mb-1">Pipelines</h1>
-          <p className="text-sm text-neutral-400">
-            Manage your sales opportunities through customizable pipelines
-          </p>
-        </motion.div>
+        <div className="min-h-screen bg-neutral-900 px-8 pt-14 pb-8">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <h1 className="text-2xl font-bold text-white mb-1">Pipelines</h1>
+            <p className="text-sm text-neutral-400">
+              Manage your sales opportunities through customizable pipelines
+            </p>
+          </motion.div>
 
-        {/* Pipeline Selector & Actions Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6 flex items-center justify-between gap-4"
-        >
-          {/* Pipeline Selector & View Toggle */}
-          <div className="flex items-center gap-3">
-            {/* Pipeline Dropdown */}
-            <select
-              value={currentPipeline?._id || ""}
-              onChange={(e) => handlePipelineChange(e.target.value)}
-              className="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-transparent"
-            >
-              {pipelines.map((pipeline) => (
-                <option key={pipeline._id} value={pipeline._id}>
-                  {pipeline.name} {pipeline.isDefault && "(Default)"}
-                </option>
-              ))}
-            </select>
+          {/* Pipeline Selector & Actions Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-6 flex items-center justify-between gap-4"
+          >
+            {/* Pipeline Selector & View Toggle */}
+            <div className="flex items-center gap-3">
+              {/* Pipeline Dropdown */}
+              <select
+                value={currentPipeline?._id || ""}
+                onChange={(e) => handlePipelineChange(e.target.value)}
+                className="px-4 py-2 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-transparent"
+              >
+                {pipelines.map((pipeline) => (
+                  <option key={pipeline._id} value={pipeline._id}>
+                    {pipeline.name} {pipeline.isDefault && "(Default)"}
+                  </option>
+                ))}
+              </select>
 
-            {/* View Toggle */}
-            <div className="flex items-center gap-1 bg-neutral-800 border border-neutral-700 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode("kanban")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === "kanban"
+              {/* View Toggle */}
+              <div className="flex items-center gap-1 bg-neutral-800 border border-neutral-700 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("kanban")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "kanban"
                     ? "bg-[#9ACD32] text-neutral-900"
                     : "text-neutral-400 hover:text-white"
-                }`}
+                    }`}
+                >
+                  <Squares2X2Icon className="w-4 h-4" />
+                  Kanban
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "table"
+                    ? "bg-[#9ACD32] text-neutral-900"
+                    : "text-neutral-400 hover:text-white"
+                    }`}
+                >
+                  <ViewColumnsIcon className="w-4 h-4" />
+                  Table
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsManagePipelinesModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                <Squares2X2Icon className="w-4 h-4" />
-                Kanban
+                <Cog6ToothIcon className="w-4 h-4" />
+                Manage Pipelines
               </button>
               <button
-                onClick={() => setViewMode("table")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  viewMode === "table"
-                    ? "bg-[#9ACD32] text-neutral-900"
-                    : "text-neutral-400 hover:text-white"
-                }`}
+                onClick={() => handleAddOpportunity()}
+                disabled={!currentPipeline}
+                className="flex items-center gap-2 px-4 py-2 bg-[#9ACD32] hover:bg-[#8BC225] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-lg text-sm font-medium transition-colors"
               >
-                <ViewColumnsIcon className="w-4 h-4" />
-                Table
+                <PlusIcon className="w-5 h-5" />
+                Add Opportunity
               </button>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsManagePipelinesModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 text-white rounded-lg text-sm font-medium transition-colors"
-            >
-              <Cog6ToothIcon className="w-4 h-4" />
-              Manage Pipelines
-            </button>
-            <button
-              onClick={() => handleAddOpportunity()}
-              disabled={!currentPipeline}
-              className="flex items-center gap-2 px-4 py-2 bg-[#9ACD32] hover:bg-[#8BC225] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-lg text-sm font-medium transition-colors"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Add Opportunity
-            </button>
-          </div>
-        </motion.div>
-
-        {/* View Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          {viewMode === "kanban" ? (
-            // Kanban View
-            <PipelineKanbanView
-              onEditOpportunity={handleEditOpportunity}
-              onDeleteOpportunity={handleDeleteOpportunity}
-              onAddOpportunity={handleAddOpportunity}
-            />
-          ) : (
-            // Table View
-            <PipelineTableView
-              onEditOpportunity={handleEditOpportunity}
-              onDeleteOpportunity={handleDeleteOpportunity}
-            />
-          )}
-        </motion.div>
-      </div>
+          {/* View Content */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            {viewMode === "kanban" ? (
+              // Kanban View
+              <PipelineKanbanView
+                onEditOpportunity={handleEditOpportunity}
+                onDeleteOpportunity={handleDeleteOpportunity}
+                onAddOpportunity={handleAddOpportunity}
+              />
+            ) : (
+              // Table View
+              <PipelineTableView
+                onEditOpportunity={handleEditOpportunity}
+                onDeleteOpportunity={handleDeleteOpportunity}
+              />
+            )}
+          </motion.div>
+        </div>
       )}
 
       {/* Modals - Always rendered */}

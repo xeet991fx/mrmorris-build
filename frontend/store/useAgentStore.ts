@@ -16,7 +16,7 @@ export interface AgentMessage {
 export interface AgentContext {
   workspaceId: string | null;
   workspaceName: string | null;
-  currentPage: "dashboard" | "contacts" | "companies";
+  currentPage: "dashboard" | "contacts" | "companies" | "pipelines";
   selectedItems: {
     contacts?: string[];
     companies?: string[];

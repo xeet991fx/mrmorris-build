@@ -10,7 +10,7 @@ import { useParams, usePathname } from "next/navigation";
  */
 export function useAgentContextSync(
   workspaceName?: string | null,
-  currentPage?: "dashboard" | "contacts" | "companies",
+  currentPage?: "dashboard" | "contacts" | "companies" | "pipelines",
   selectedContacts?: string[],
   selectedCompanies?: string[]
 ) {
@@ -22,12 +22,14 @@ export function useAgentContextSync(
     const workspaceId = params?.id as string | undefined;
 
     // Determine current page from pathname if not provided
-    let page: "dashboard" | "contacts" | "companies" = currentPage || "dashboard";
+    let page: "dashboard" | "contacts" | "companies" | "pipelines" = currentPage || "dashboard";
     if (!currentPage && pathname) {
       if (pathname.includes("/contacts")) {
         page = "contacts";
       } else if (pathname.includes("/companies")) {
         page = "companies";
+      } else if (pathname.includes("/pipelines")) {
+        page = "pipelines";
       }
     }
 
