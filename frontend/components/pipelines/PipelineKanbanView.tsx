@@ -3,13 +3,11 @@ import { useParams } from "next/navigation";
 import {
   DndContext,
   DragEndEvent,
-  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
-  closestCenter,
 } from "@dnd-kit/core";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -55,65 +53,88 @@ export default function PipelineKanbanView({
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
 
-    // Find the opportunity being dragged
-    const opportunity = kanbanData.stages
-      .flatMap((stage) => stage.opportunities)
-      .find((opp) => opp._id === active.id);
-
-    if (opportunity) {
-      setActiveOpportunity(opportunity);
-    }
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-
-    if (!over) return;
-
-    const opportunityId = active.id as string;
-    const newStageId = over.id as string;
-
-    // Find current stage of the opportunity
-    const currentStage = kanbanData.stages.find((stage) =>
-      stage.opportunities.some((opp) => opp._id === opportunityId)
-    );
-
-    if (!currentStage) return;
-
-    // If hovering over the same stage, prevent the drop
-    // This stops DndKit's sortable from reordering within the same stage
-    if (currentStage.stage._id === newStageId) {
-      return false;
+    // Get opportunity from drag data
+    const dragData = active.data.current;
+    if (dragData?.type === "opportunity" && dragData.opportunity) {
+      setActiveOpportunity(dragData.opportunity);
     }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
+    // DEBUG: Log what we're getting
+    console.log("=== DRAG END ===");
+    console.log("active.id:", active.id);
+    console.log("over:", over);
+    console.log("over?.id:", over?.id);
+    console.log("over?.data.current:", over?.data?.current);
+
+    // Always clear drag state
     setActiveOpportunity(null);
 
-    if (!over) return;
+    // If no drop target, card snaps back - do nothing
+    if (!over) {
+      console.log("No drop target - snapping back");
+      return;
+    }
+
+    // Get data from active (dragged item) and over (drop target)
+    const activeData = active.data.current;
+    const overData = over.data.current;
+
+    // Validate we're dragging an opportunity
+    if (activeData?.type !== "opportunity") {
+      return;
+    }
+
+    // Get the target stage ID
+    let targetStageId: string | null = null;
+
+    if (overData?.type === "stage") {
+      // Dropped on a stage column
+      targetStageId = overData.stageId;
+    } else {
+      // Dropped on something else (maybe another card or outside)
+      // Try to find which stage the over.id belongs to
+      const targetStage = kanbanData.stages.find(
+        (stage) => stage.stage._id === over.id
+      );
+      if (targetStage) {
+        targetStageId = targetStage.stage._id;
+      }
+    }
+
+    // If we couldn't determine a valid target stage, snap back silently
+    if (!targetStageId) {
+      return;
+    }
 
     const opportunityId = active.id as string;
-    const newStageId = over.id as string;
+    const opportunity = activeData.opportunity as Opportunity;
 
     // Find current stage of the opportunity
     const currentStage = kanbanData.stages.find((stage) =>
       stage.opportunities.some((opp) => opp._id === opportunityId)
     );
 
-    if (!currentStage) return;
+    // If we can't find current stage, snap back
+    if (!currentStage) {
+      return;
+    }
 
-    // If dropped in the same stage, do nothing
-    if (currentStage.stage._id === newStageId) return;
+    // If dropped in the same stage, snap back (no move needed)
+    if (currentStage.stage._id === targetStageId) {
+      return;
+    }
 
     // Optimistic update
-    optimisticMoveOpportunity(opportunityId, currentStage.stage._id, newStageId);
+    optimisticMoveOpportunity(opportunityId, currentStage.stage._id, targetStageId);
 
     // Make API call
     try {
       await moveOpportunity(workspaceId, opportunityId, {
-        stageId: newStageId,
+        stageId: targetStageId,
       });
       toast.success("Opportunity moved successfully");
     } catch (error: any) {
@@ -165,9 +186,7 @@ export default function PipelineKanbanView({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
@@ -196,13 +215,19 @@ export default function PipelineKanbanView({
       </div>
 
       {/* Drag Overlay - Shows the card being dragged */}
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeOpportunity ? (
-          <div className="opacity-90">
+          <div
+            className="scale-105 shadow-2xl"
+            style={{
+              cursor: 'grabbing',
+              pointerEvents: 'none',
+            }}
+          >
             <OpportunityCardEnhanced
               opportunity={activeOpportunity}
-              onEdit={() => {}}
-              onDelete={() => {}}
+              onEdit={() => { }}
+              onDelete={() => { }}
             />
           </div>
         ) : null}
