@@ -10,7 +10,7 @@ MrMorris is your AI Marketing Team That Never Sleeps. This landing page showcase
 
 ### Frontend
 - **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
+- **Language**: TypeScript 
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn/ui
 - **Animations**: Framer Motion
