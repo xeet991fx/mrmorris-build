@@ -49,7 +49,7 @@ export default function DraggableColumnHeader({
       <div
         {...attributes}
         {...listeners}
-        className="flex items-center gap-1 cursor-move select-none"
+        className="flex items-center gap-1 cursor-grab active:cursor-grabbing select-none"
         onClick={() => onSort(column)}
       >
         {/* Drag indicator */}

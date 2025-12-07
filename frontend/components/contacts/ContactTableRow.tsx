@@ -131,9 +131,8 @@ export default function ContactTableRow({
       animate={animate}
       transition={transition}
       className={cn(
-        "border-b border-border hover:bg-muted/50 transition-colors",
-        index % 2 === 0 ? "bg-background" : "bg-muted/10",
-        isSelected && "bg-muted/30"
+        "border-b border-border hover:bg-muted/30 transition-colors",
+        isSelected && "bg-muted/20"
       )}
     >
       {/* Checkbox */}

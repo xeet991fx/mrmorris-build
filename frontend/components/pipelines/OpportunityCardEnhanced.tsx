@@ -95,22 +95,27 @@ export default function OpportunityCardEnhanced({
       {...listeners}
       onClick={handleCardClick}
       className={cn(
-        "bg-card border rounded-lg p-3 cursor-pointer group hover:border-neutral-600 transition-all relative",
-        isDragging && "opacity-50 cursor-grabbing",
-        // Border color based on temperature
-        temperature === "hot" && "border-red-500/30 hover:border-red-500/50",
-        temperature === "warm" && "border-yellow-500/30 hover:border-yellow-500/50",
-        temperature === "cold" && "border-blue-500/30 hover:border-blue-500/50",
-        !temperature && "border-border"
+        "bg-card border border-border rounded-lg p-3 cursor-grab group hover:border-muted-foreground/20 transition-all relative",
+        isDragging && "opacity-50 cursor-grabbing"
       )}
     >
       {/* Header Row: Temperature + Value + Menu */}
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
-          {/* Temperature Icon */}
-          <span className={cn("text-xl", temperatureColor)} title={temperature}>
-            {temperatureIcon}
-          </span>
+          {/* Temperature Badge */}
+          {temperature && (
+            <span
+              className={cn(
+                "px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
+                temperature === "hot" && "bg-red-500/10 text-red-500 border border-red-500/20",
+                temperature === "warm" && "bg-yellow-500/10 text-yellow-600 border border-yellow-500/20",
+                temperature === "cold" && "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+              )}
+              title={`Deal temperature: ${temperature}`}
+            >
+              {temperature}
+            </span>
+          )}
 
           {/* Deal Value */}
           <div className="text-lg font-bold text-[#84cc16]">
@@ -240,7 +245,7 @@ export default function OpportunityCardEnhanced({
         </div>
 
         <div className="flex items-center gap-1" title={`Last activity: ${formatRelativeTime(opportunity.lastActivityAt)}`}>
-          <span className="text-muted-foreground">🕐</span>
+          <BoltIcon className="w-3 h-3 text-muted-foreground" />
           <span>{formatRelativeTime(opportunity.lastActivityAt)}</span>
         </div>
       </div>
@@ -254,7 +259,7 @@ export default function OpportunityCardEnhanced({
       )}
 
       {/* Footer Stats: Files, Notes, Last Call */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground border-t border-border pt-2">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground border-t border-border pt-2 flex-wrap">
         {/* File count */}
         {(opportunity as any).fileCount > 0 && (
           <div className="flex items-center gap-1" title="Attachments">
@@ -279,9 +284,11 @@ export default function OpportunityCardEnhanced({
           </div>
         )}
 
+        <div className="flex-1" />
+
         {/* Probability */}
         {opportunity.probability && (
-          <div className="ml-auto text-xs font-medium text-muted-foreground" title="Close probability">
+          <div className="text-xs font-medium text-muted-foreground" title="Close probability">
             {opportunity.probability}%
           </div>
         )}
@@ -289,10 +296,10 @@ export default function OpportunityCardEnhanced({
         {/* AI Score Badge */}
         {(opportunity as any).aiInsights?.dealScore && (
           <div
-            className="flex items-center gap-1 px-1.5 py-0.5 bg-violet-500/20 rounded text-violet-400 text-xs font-medium ml-auto"
+            className="flex items-center gap-1 px-1.5 py-0.5 bg-violet-500/10 border border-violet-500/20 rounded text-violet-400 text-xs font-semibold"
             title={`AI Score: ${(opportunity as any).aiInsights.dealScore}/100`}
           >
-            <span>✨</span>
+            <span className="text-[9px] uppercase tracking-wide">AI</span>
             <span>{(opportunity as any).aiInsights.dealScore}</span>
           </div>
         )}
