@@ -1,31 +1,31 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ArrowRight, Goal, Cog, TrendingUp } from "lucide-react"
+import { ArrowRight, Upload, Sparkles, Workflow } from "lucide-react"
 
 const steps = [
   {
-    icon: Goal,
+    icon: Upload,
     number: "01",
-    title: "Set Your Goals",
+    title: "Import Your Contacts",
     description:
-      "Tell MrMorris what you want to achieve: \"Increase demo bookings by 30% this quarter\" or \"Generate 500 qualified leads.\" It asks clarifying questions to understand constraints and priorities.",
+      "Connect your existing tools or upload a CSV. Clianta automatically deduplicates, cleans, and organizes your data. No manual mapping or complex setup required.",
     iconColor: "text-cyan-500",
   },
   {
-    icon: Cog,
+    icon: Sparkles,
     number: "02",
-    title: "MrMorris Strategizes & Executes",
+    title: "AI Creates Your Workflows",
     description:
-      "The system creates a complete multi-channel strategy, allocates budget, defines KPIs, builds campaigns, creates content, and launches everything—all autonomously. You approve once, it handles the rest.",
+      "Unlike traditional CRMs that require hours of complex configuration, Clianta's AI analyzes your sales process and automatically creates personalized workflows tailored to how you actually work. No flowchart builders or technical setup—just describe what you need.",
     iconColor: "text-violet-500",
   },
   {
-    icon: TrendingUp,
+    icon: Workflow,
     number: "03",
-    title: "Continuous Optimization & Learning",
+    title: "Automations Run For You",
     description:
-      "MrMorris monitors performance 24/7, adjusts bids, reallocates budget, tests new variations, and scales winners in real-time. It learns from every campaign and gets smarter over time.",
+      "Your custom workflows run automatically—sending follow-ups, updating deal stages, assigning tasks, and alerting you to opportunities. You focus on selling while Clianta handles the rest.",
     iconColor: "text-emerald-500",
   },
 ]
@@ -42,13 +42,13 @@ export function HowItWorks() {
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-            How{" "}
+            Workflows That{" "}
             <span className="bg-gradient-to-r from-[#9ACD32] via-[#8AB82E] to-[#7BA628] bg-clip-text text-transparent">
-              It Works
+              Build Themselves
             </span>
           </h2>
           <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-            From goal-setting to execution to optimization—MrMorris handles it all autonomously
+            Forget complex workflow builders. Tell Clianta what you need, and AI creates automation tailored to your process.
           </p>
         </motion.div>
 
