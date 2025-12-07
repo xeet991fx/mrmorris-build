@@ -5,44 +5,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const faqs = [
   {
-    question: "How autonomous is MrMorris really?",
+    question: "How does the AI work?",
     answer:
-      "MrMorris can operate fully autonomously within the constraints you set. Initially, you'll work in human-in-the-loop mode where it proposes actions for approval. As trust builds, you can grant it more autonomy to execute campaigns, optimize budgets, and respond to opportunities without asking permission.",
+      "Describe what you want in plain English. Clianta builds workflows, automations, and pipelines automatically. No coding, no flowcharts.",
   },
   {
-    question: "What if MrMorris makes a mistake or wastes budget?",
+    question: "How is this different from Salesforce or HubSpot?",
     answer:
-      "You set budget and risk limits that MrMorris cannot exceed. For example, it can reallocate up to 20% of budget between channels autonomously, but needs approval for larger changes. Every decision is logged in an audit trail so you can review what happened and why. Plus, it learns from mistakes and gets better over time.",
+      "Traditional CRMs need weeks of setup and consultants. Clianta configures itself through conversation—in minutes.",
   },
   {
-    question: "How long does implementation take?",
+    question: "Can I import existing data?",
     answer:
-      "Initial setup typically takes 1-2 weeks, including connecting your marketing platforms, CRM, and analytics tools. The system then observes your campaigns for 2-4 weeks to learn your brand voice, customer behavior, and what works. After that, it can start making autonomous decisions with your approval.",
+      "Yes. Import via CSV or connect directly to Salesforce, HubSpot, or Pipedrive. We clean and dedupe automatically.",
   },
   {
-    question: "How is this different from marketing automation tools like HubSpot?",
+    question: "Is my data secure?",
     answer:
-      "Traditional automation tools execute pre-defined workflows you create. MrMorris thinks strategically, makes decisions based on live data, learns from outcomes, and adapts continuously. It's not just executing your plan—it's creating the plan, testing variations, and improving autonomously.",
+      "Bank-level encryption. SOC 2 Type II compliant. GDPR ready. Your data is never shared.",
   },
   {
-    question: "What kind of results can we expect?",
+    question: "How long to get started?",
     answer:
-      "Early startup partners report 40% average ROI improvement, 60% reduction in manual campaign management time, and the ability to achieve 3x faster growth with the same resources. Results vary based on your current setup and how much autonomy you grant the system.",
-  },
-  {
-    question: "Is our data secure?",
-    answer:
-      "Absolutely. We're SOC 2 Type II certified and GDPR compliant. Your data is encrypted in transit and at rest. We never share your data with third parties or use it to train models for other customers. You maintain full control and can export or delete your data anytime.",
-  },
-  {
-    question: "How much does it cost?",
-    answer:
-      "Pricing is tailored to your startup stage and needs. We offer flexible plans based on your monthly marketing spend and team size. Join the waitlist to get early access pricing, startup-friendly rates, and a personalized demo.",
-  },
-  {
-    question: "Can I try it before committing?",
-    answer:
-      "Yes! We offer a 30-day pilot program where we work with you on a subset of your campaigns to prove ROI before you commit to a full rollout. Join the waitlist to learn more about our pilot program.",
+      "Under 5 minutes. Connect email, import contacts, describe your process. Done.",
   },
 ]
 
@@ -58,17 +43,13 @@ export function FAQ() {
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-            Frequently Asked{" "}
             <span className="bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] bg-clip-text text-transparent">
-              Questions
+              FAQ
             </span>
           </h2>
-          <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-            Everything you need to know about MrMorris
-          </p>
         </motion.div>
 
-        <div className="mx-auto max-w-4xl space-y-4">
+        <div className="mx-auto max-w-3xl space-y-4">
           {faqs.map((faq, index) => (
             <motion.div
               key={index}
@@ -78,11 +59,11 @@ export function FAQ() {
               transition={{ duration: 0.25, delay: index * 0.05 }}
             >
               <Card className="border-2 bg-card/50 backdrop-blur transition-all hover:border-primary/30 hover:shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">{faq.question}</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">{faq.question}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{faq.answer}</p>
+                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
                 </CardContent>
               </Card>
             </motion.div>
