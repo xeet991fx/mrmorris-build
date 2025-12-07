@@ -660,7 +660,7 @@ function ConditionConfig({
                     <span className="font-medium text-foreground">Preview:</span> If {condition.field}{" "}
                     {condition.operator}{" "}
                     {!["is_empty", "is_not_empty"].includes(condition.operator) && (
-                        <span className="font-medium text-foreground">"{condition.value || "..."}"</span>
+                        <span className="font-medium text-foreground">&quot;{condition.value || "&quot;...&quot;"}&quot;</span>
                     )}
                 </p>
                 <div className="flex gap-3 mt-2">

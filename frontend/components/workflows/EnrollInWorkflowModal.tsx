@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useCallback } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon, BoltIcon, PlayIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { useParams } from "next/navigation";
@@ -40,14 +40,7 @@ export default function EnrollInWorkflowModal({
     const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
     const [isEnrolling, setIsEnrolling] = useState(false);
 
-    // Fetch active workflows on mount
-    useEffect(() => {
-        if (isOpen && workspaceId) {
-            loadWorkflows();
-        }
-    }, [isOpen, workspaceId]);
-
-    const loadWorkflows = async () => {
+    const loadWorkflows = useCallback(async () => {
         setIsLoading(true);
         try {
             const { workflows: data } = await fetchWorkflows(workspaceId, {
@@ -61,7 +54,14 @@ export default function EnrollInWorkflowModal({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [workspaceId, entityType]);
+
+    // Fetch active workflows on mount
+    useEffect(() => {
+        if (isOpen && workspaceId) {
+            loadWorkflows();
+        }
+    }, [isOpen, workspaceId, loadWorkflows]);
 
     const handleEnroll = async () => {
         if (!selectedWorkflowId) return;

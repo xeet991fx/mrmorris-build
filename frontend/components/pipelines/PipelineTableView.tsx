@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronUpDownIcon,
@@ -55,7 +55,7 @@ export default function PipelineTableView({
   }, [kanbanData, currentPipeline]);
 
   // Get stage info for an opportunity
-  const getStageInfo = (opportunity: Opportunity) => {
+  const getStageInfo = useCallback((opportunity: Opportunity) => {
     const stage = currentPipeline?.stages.find(
       (s) => s._id === opportunity.stageId
     );
@@ -63,7 +63,7 @@ export default function PipelineTableView({
       name: stage?.name || "—",
       color: stage?.color || "#6B7280",
     };
-  };
+  }, [currentPipeline]);
 
   // Filter and sort opportunities
   const filteredAndSortedOpportunities = useMemo(() => {
@@ -131,7 +131,7 @@ export default function PipelineTableView({
     });
 
     return sorted;
-  }, [allOpportunities, searchQuery, sortColumn, sortDirection]);
+  }, [allOpportunities, searchQuery, sortColumn, sortDirection, getStageInfo]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {

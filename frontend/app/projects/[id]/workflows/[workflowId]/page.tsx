@@ -135,6 +135,16 @@ export default function WorkflowEditorPage() {
     const [showValidationPanel, setShowValidationPanel] = useState(false);
     const [showBulkEnrollModal, setShowBulkEnrollModal] = useState(false);
 
+    // Save workflow
+    const handleSave = useCallback(async () => {
+        if (!currentWorkflow) return;
+
+        await updateWorkflow(workspaceId, workflowId, {
+            name: workflowName,
+            steps: currentWorkflow.steps,
+        });
+    }, [currentWorkflow, workspaceId, workflowId, workflowName, updateWorkflow]);
+
     // Fetch workflow on mount
     useEffect(() => {
         if (workspaceId && workflowId) {
@@ -176,7 +186,7 @@ export default function WorkflowEditorPage() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [hasUnsavedChanges, isSaving, selectedStepId, showConfigPanel, currentWorkflow?.status]);
+    }, [hasUnsavedChanges, isSaving, selectedStepId, showConfigPanel, currentWorkflow?.status, handleSave, removeStep, selectStep]);
 
     // Sync nodes and edges with workflow steps
     useEffect(() => {
@@ -345,15 +355,7 @@ export default function WorkflowEditorPage() {
         [addStep, selectStep]
     );
 
-    // Save workflow
-    const handleSave = async () => {
-        if (!currentWorkflow) return;
 
-        await updateWorkflow(workspaceId, workflowId, {
-            name: workflowName,
-            steps: currentWorkflow.steps,
-        });
-    };
 
     // Activate workflow
     const handleActivate = async () => {

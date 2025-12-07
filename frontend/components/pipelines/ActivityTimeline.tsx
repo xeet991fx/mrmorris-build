@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   EnvelopeIcon,
@@ -29,11 +29,7 @@ export default function ActivityTimeline({
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
 
-  useEffect(() => {
-    loadActivities();
-  }, [workspaceId, opportunityId, filter]);
-
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await getActivities(
@@ -50,7 +46,11 @@ export default function ActivityTimeline({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [workspaceId, opportunityId, filter]);
+
+  useEffect(() => {
+    loadActivities();
+  }, [loadActivities]);
 
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { XMarkIcon, UserGroupIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
@@ -36,13 +36,7 @@ export default function BulkEnrollmentModal({
     const [isLoading, setIsLoading] = useState(false);
     const [isEnrolling, setIsEnrolling] = useState(false);
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchContacts();
-        }
-    }, [isOpen, workspaceId]);
-
-    const fetchContacts = async () => {
+    const fetchContacts = useCallback(async () => {
         setIsLoading(true);
         try {
             const response = await fetch(`/api/workspace/${workspaceId}/contacts`);
@@ -55,7 +49,13 @@ export default function BulkEnrollmentModal({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [workspaceId]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchContacts();
+        }
+    }, [isOpen, fetchContacts]);
 
     const handleToggle = (contactId: string) => {
         const newSelected = new Set(selectedIds);
@@ -133,7 +133,7 @@ export default function BulkEnrollmentModal({
                             <div>
                                 <h2 className="text-xl font-bold text-foreground">Bulk Enrollment</h2>
                                 <p className="text-sm text-muted-foreground">
-                                    Select contacts to enroll in "{workflowName}"
+                                    Select contacts to enroll in &quot;{workflowName}&quot;
                                 </p>
                             </div>
                         </div>
