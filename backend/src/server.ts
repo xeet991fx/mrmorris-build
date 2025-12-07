@@ -16,6 +16,8 @@ import pipelineRoutes from "./routes/pipeline";
 import opportunityRoutes from "./routes/opportunity";
 import activityRoutes from "./routes/activity";
 import attachmentRoutes from "./routes/attachment";
+import aiRoutes from "./routes/ai";
+import emailIntegrationRoutes from "./routes/emailIntegration";
 
 dotenv.config();
 
@@ -90,6 +92,8 @@ app.use("/api/workspaces", pipelineRoutes);
 app.use("/api/workspaces", opportunityRoutes);
 app.use("/api", activityRoutes);
 app.use("/api", attachmentRoutes);
+app.use("/api", aiRoutes);
+app.use("/api/email", emailIntegrationRoutes);
 app.use("/api/agent", agentRoutes);
 
 // 404 handler

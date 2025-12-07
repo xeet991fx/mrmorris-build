@@ -285,6 +285,17 @@ export default function OpportunityCardEnhanced({
             {opportunity.probability}%
           </div>
         )}
+
+        {/* AI Score Badge */}
+        {(opportunity as any).aiInsights?.dealScore && (
+          <div
+            className="flex items-center gap-1 px-1.5 py-0.5 bg-violet-500/20 rounded text-violet-400 text-xs font-medium ml-auto"
+            title={`AI Score: ${(opportunity as any).aiInsights.dealScore}/100`}
+          >
+            <span>✨</span>
+            <span>{(opportunity as any).aiInsights.dealScore}</span>
+          </div>
+        )}
       </div>
 
       {/* Click anywhere to open detail panel hint */}

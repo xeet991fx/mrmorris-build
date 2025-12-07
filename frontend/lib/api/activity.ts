@@ -3,9 +3,9 @@
  * Handles all activity-related API calls
  */
 
-import axios from 'axios';
+import { axiosInstance } from '../axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = '';  // axiosInstance already has baseURL set
 
 export interface Activity {
   _id: string;
@@ -69,10 +69,9 @@ export async function createActivity(
   data: CreateActivityData
 ) {
   try {
-    const response = await axios.post(
-      `${API_URL}/api/workspaces/${workspaceId}/opportunities/${opportunityId}/activities`,
-      data,
-      { withCredentials: true }
+    const response = await axiosInstance.post(
+      `/workspaces/${workspaceId}/opportunities/${opportunityId}/activities`,
+      data
     );
     return response.data;
   } catch (error: any) {
@@ -102,9 +101,8 @@ export async function getActivities(
     if (options?.limit) params.append('limit', options.limit.toString());
     if (options?.offset) params.append('offset', options.offset.toString());
 
-    const response = await axios.get(
-      `${API_URL}/api/workspaces/${workspaceId}/opportunities/${opportunityId}/activities?${params}`,
-      { withCredentials: true }
+    const response = await axiosInstance.get(
+      `/workspaces/${workspaceId}/opportunities/${opportunityId}/activities?${params}`
     );
     return response.data;
   } catch (error: any) {
@@ -125,10 +123,9 @@ export async function updateActivity(
   data: UpdateActivityData
 ) {
   try {
-    const response = await axios.patch(
-      `${API_URL}/api/workspaces/${workspaceId}/activities/${activityId}`,
-      data,
-      { withCredentials: true }
+    const response = await axiosInstance.patch(
+      `/workspaces/${workspaceId}/activities/${activityId}`,
+      data
     );
     return response.data;
   } catch (error: any) {
@@ -148,9 +145,8 @@ export async function deleteActivity(
   activityId: string
 ) {
   try {
-    const response = await axios.delete(
-      `${API_URL}/api/workspaces/${workspaceId}/activities/${activityId}`,
-      { withCredentials: true }
+    const response = await axiosInstance.delete(
+      `/workspaces/${workspaceId}/activities/${activityId}`
     );
     return response.data;
   } catch (error: any) {

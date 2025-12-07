@@ -58,9 +58,11 @@ export interface IOpportunity extends Document {
   // AI Insights
   aiInsights?: {
     dealScore?: number; // 0-100
+    closeProbability?: number; // AI-calculated close probability
     recommendedActions?: string[];
     riskFactors?: string[];
     lastAnalyzedAt?: Date;
+    confidenceLevel?: number; // 0-100 AI confidence
   };
 
   createdAt: Date;
@@ -251,9 +253,19 @@ const opportunitySchema = new Schema<IOpportunity>(
         min: 0,
         max: 100,
       },
+      closeProbability: {
+        type: Number,
+        min: 0,
+        max: 100,
+      },
       recommendedActions: [{ type: String }],
       riskFactors: [{ type: String }],
       lastAnalyzedAt: { type: Date },
+      confidenceLevel: {
+        type: Number,
+        min: 0,
+        max: 100,
+      },
     },
   },
   {

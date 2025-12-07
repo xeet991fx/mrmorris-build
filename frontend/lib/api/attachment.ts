@@ -4,8 +4,9 @@
  */
 
 import axios from 'axios';
+import { axiosInstance } from '../axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export interface Attachment {
   _id: string;
@@ -46,11 +47,10 @@ export async function uploadAttachment(
     if (options?.category) formData.append('category', options.category);
     if (options?.description) formData.append('description', options.description);
 
-    const response = await axios.post(
-      `${API_URL}/api/workspaces/${workspaceId}/opportunities/${opportunityId}/attachments`,
+    const response = await axiosInstance.post(
+      `/workspaces/${workspaceId}/opportunities/${opportunityId}/attachments`,
       formData,
       {
-        withCredentials: true,
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -78,9 +78,8 @@ export async function getAttachments(
     const params = new URLSearchParams();
     if (category) params.append('category', category);
 
-    const response = await axios.get(
-      `${API_URL}/api/workspaces/${workspaceId}/opportunities/${opportunityId}/attachments?${params}`,
-      { withCredentials: true }
+    const response = await axiosInstance.get(
+      `/workspaces/${workspaceId}/opportunities/${opportunityId}/attachments?${params}`
     );
     return response.data;
   } catch (error: any) {
@@ -99,7 +98,7 @@ export function getAttachmentDownloadUrl(
   workspaceId: string,
   attachmentId: string
 ): string {
-  return `${API_URL}/api/workspaces/${workspaceId}/attachments/${attachmentId}/download`;
+  return `${API_URL}/workspaces/${workspaceId}/attachments/${attachmentId}/download`;
 }
 
 /**
@@ -110,9 +109,8 @@ export async function deleteAttachment(
   attachmentId: string
 ) {
   try {
-    const response = await axios.delete(
-      `${API_URL}/api/workspaces/${workspaceId}/attachments/${attachmentId}`,
-      { withCredentials: true }
+    const response = await axiosInstance.delete(
+      `/workspaces/${workspaceId}/attachments/${attachmentId}`
     );
     return response.data;
   } catch (error: any) {

@@ -317,47 +317,53 @@ Keep both components and test the new one in a separate column.
 
 ---
 
-## 🔜 Next Steps to Complete
+## ✅ All Core Features Complete
 
-### Still Need to Build:
+### Implemented Components:
 
-1. **Activity Timeline Component** ⏳
+1. **Activity Timeline Component** ✅
    - Display all activities for an opportunity
    - Group by date
-   - Show AI-logged activities
+   - Show AI-logged activities (`ActivityTimeline.tsx`)
 
-2. **Log Email/Call Modals** ⏳
-   - Quick email logging from card menu
-   - Quick call logging from card menu
+2. **Log Email/Call Modals** ✅
+   - Quick email logging from card menu (`LogEmailModal.tsx`)
+   - Quick call logging from card menu (`LogCallModal.tsx`)
    - Auto-update activity counts
 
-3. **File Upload Component** ⏳
-   - Drag-drop file upload
+3. **File Upload Component** ✅
+   - Drag-drop file upload (`FileUploadZone.tsx`)
    - File list display
    - File preview/download
 
-4. **Opportunity Detail Panel** ⏳
-   - Slide-over panel on card click
+4. **Opportunity Detail Panel** ✅
+   - Slide-over panel on card click (`OpportunityDetailPanel.tsx`)
    - Show all opportunity details
    - Embedded activity timeline
    - File attachments section
-   - Edit form
+   - Edit button
 
-5. **Activity API Routes** ⏳
+5. **Activity API Routes** ✅
    - POST /opportunities/:id/activities
    - GET /opportunities/:id/activities
    - PATCH /activities/:id
    - DELETE /activities/:id
 
-6. **Attachment API Routes** ⏳
+6. **Attachment API Routes** ✅
    - POST /opportunities/:id/attachments
    - GET /opportunities/:id/attachments
    - DELETE /attachments/:id
    - GET /attachments/:id/download
 
-7. **Auto-Activity Logging** ⏳
-   - Stage change creates activity automatically
+7. **Auto-Activity Logging** ✅
+   - Stage change creates activity automatically (in `opportunity.ts` move endpoint)
    - Update opportunity move handler
+
+### Still Pending (Future/Phase 2):
+
+- [ ] End-to-end testing
+- [ ] AI Enhancement Service (deal scoring, email auto-logging, suggestions)
+- [ ] Email Integration (Gmail/Outlook OAuth)
 
 ---
 
@@ -541,13 +547,13 @@ Once fully implemented, track these:
 - [x] Enhanced opportunity card created
 - [x] Chatbot pipeline actions implemented
 - [x] Documentation created
-- [ ] Activity API routes implemented
-- [ ] Attachment API routes implemented
-- [ ] Activity timeline component created
-- [ ] Email/Call logging modals created
-- [ ] File upload component created
-- [ ] Detail panel component created
-- [ ] Auto-activity logging on stage changes
+- [x] Activity API routes implemented
+- [x] Attachment API routes implemented
+- [x] Activity timeline component created
+- [x] Email/Call logging modals created
+- [x] File upload component created
+- [x] Detail panel component created
+- [x] Auto-activity logging on stage changes
 - [ ] Test all features end-to-end
 - [ ] Deploy to staging
 - [ ] User acceptance testing
