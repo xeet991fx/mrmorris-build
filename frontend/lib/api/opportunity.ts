@@ -39,6 +39,11 @@ export interface Opportunity {
     riskFactors?: string[];
     lastAnalyzedAt?: string;
   };
+  // UI enhancement fields
+  dealTemperature?: "hot" | "warm" | "cold";
+  nextAction?: string;
+  activityCount?: number;
+  callCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,7 +68,7 @@ export interface CreateOpportunityData {
   customFields?: Record<string, any>;
 }
 
-export interface UpdateOpportunityData extends Partial<CreateOpportunityData> {}
+export interface UpdateOpportunityData extends Partial<CreateOpportunityData> { }
 
 export interface MoveOpportunityData {
   stageId: string;
