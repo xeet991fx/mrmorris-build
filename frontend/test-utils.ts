@@ -11,7 +11,7 @@ import {
   formatRelativeTime,
   formatCurrency,
   getInitials,
-} from './lib/utils/opportunityUtils.ts';
+} from './lib/utils/opportunityUtils';
 
 // Mock opportunity data
 const mockOpportunity = {
