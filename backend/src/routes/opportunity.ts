@@ -11,6 +11,7 @@ import {
   moveOpportunitySchema,
   opportunityQuerySchema,
 } from "../validations/opportunity";
+import { workflowService } from "../services/WorkflowService";
 
 const router = express.Router();
 
@@ -130,6 +131,10 @@ router.post(
         message: "Opportunity created successfully!",
         data: { opportunity },
       });
+
+      // Trigger workflow enrollment for deal creation (async, don't wait)
+      workflowService.checkAndEnroll("deal:created", opportunityDoc, workspaceId)
+        .catch((err) => console.error("Workflow enrollment error:", err));
     } catch (error: any) {
       if (error.name === "ZodError") {
         console.error("Validation error:", JSON.stringify(error.errors, null, 2));
@@ -709,6 +714,10 @@ router.patch(
         message: "Opportunity moved successfully!",
         data: { opportunity: updatedOpportunity },
       });
+
+      // Trigger workflow enrollment for stage change (async, don't wait)
+      workflowService.checkAndEnroll("deal:stage_changed", opportunity, workspaceId)
+        .catch((err) => console.error("Workflow enrollment error:", err));
     } catch (error: any) {
       if (error.name === "ZodError") {
         return res.status(400).json({
@@ -784,4 +793,4 @@ router.delete(
 );
 
 export default router;
- 
+

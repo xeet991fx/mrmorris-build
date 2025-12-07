@@ -18,6 +18,8 @@ import activityRoutes from "./routes/activity";
 import attachmentRoutes from "./routes/attachment";
 import aiRoutes from "./routes/ai";
 import emailIntegrationRoutes from "./routes/emailIntegration";
+import workflowRoutes from "./routes/workflow";
+import { workflowScheduler } from "./services/WorkflowScheduler";
 
 dotenv.config();
 
@@ -95,6 +97,7 @@ app.use("/api", attachmentRoutes);
 app.use("/api", aiRoutes);
 app.use("/api/email", emailIntegrationRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/workspaces", workflowRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -115,6 +118,10 @@ const startServer = async () => {
       console.log(`🔑 Auth endpoints: http://localhost:${PORT}/api/auth`);
       console.log(`📋 Waitlist endpoints: http://localhost:${PORT}/api/waitlist`);
       console.log(`📁 Project endpoints: http://localhost:${PORT}/api/projects`);
+
+      // Start workflow scheduler (runs every minute)
+      workflowScheduler.start();
+      console.log(`⚡ Workflow scheduler: Running`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);

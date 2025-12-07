@@ -1,0 +1,298 @@
+// ============================================
+// WORKFLOW TYPE DEFINITIONS
+// ============================================
+
+// Trigger Types
+export type TriggerType =
+    | 'contact_created'
+    | 'contact_updated'
+    | 'deal_stage_changed'
+    | 'deal_created'
+    | 'email_opened'
+    | 'email_clicked'
+    | 'form_submitted'
+    | 'manual';
+
+// Action Types
+export type ActionType =
+    | 'send_email'
+    | 'update_field'
+    | 'create_task'
+    | 'assign_owner'
+    | 'add_tag'
+    | 'remove_tag'
+    | 'send_notification'
+    | 'enroll_workflow';
+
+// Delay Types
+export type DelayType = 'duration' | 'until_date' | 'until_time' | 'until_weekday';
+export type DelayUnit = 'minutes' | 'hours' | 'days' | 'weeks';
+
+// Condition Operators
+export type ConditionOperator =
+    | 'equals'
+    | 'not_equals'
+    | 'contains'
+    | 'not_contains'
+    | 'greater_than'
+    | 'less_than'
+    | 'is_empty'
+    | 'is_not_empty'
+    | 'is_true'
+    | 'is_false';
+
+// Workflow Status
+export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'archived';
+
+// Step Types
+export type StepType = 'trigger' | 'action' | 'delay' | 'condition';
+
+// Entity Types
+export type EntityType = 'contact' | 'deal' | 'company';
+
+// Enrollment Status
+export type EnrollmentStatus =
+    | 'active'
+    | 'completed'
+    | 'goal_met'
+    | 'failed'
+    | 'cancelled'
+    | 'paused';
+
+// ============================================
+// CONDITION INTERFACE
+// ============================================
+
+export interface WorkflowCondition {
+    field: string;
+    operator: ConditionOperator;
+    value?: any;
+}
+
+// ============================================
+// STEP CONFIG INTERFACE
+// ============================================
+
+export interface WorkflowStepConfig {
+    // Trigger config
+    triggerType?: TriggerType;
+    filters?: Array<{
+        id: string;
+        field: string;
+        operator: string;
+        value: string;
+    }>;
+
+    // Action config
+    actionType?: ActionType;
+    emailTemplateId?: string;
+    emailSubject?: string;
+    emailBody?: string;
+    fieldName?: string;
+    fieldValue?: any;
+    taskTitle?: string;
+    taskDescription?: string;
+    taskDueInDays?: number;
+    taskAssignee?: string;
+    tagName?: string;
+    notificationMessage?: string;
+    notificationUserId?: string;
+    targetWorkflowId?: string;
+
+    // Delay config
+    delayType?: DelayType;
+    delayValue?: number;
+    delayUnit?: DelayUnit;
+    delayDate?: string;
+    delayTime?: string;
+    delayWeekdays?: number[];
+
+    // Condition config
+    conditions?: WorkflowCondition[];
+}
+
+// ============================================
+// STEP INTERFACE
+// ============================================
+
+export interface WorkflowStep {
+    id: string;
+    type: StepType;
+    name: string;
+    config: WorkflowStepConfig;
+    position: {
+        x: number;
+        y: number;
+    };
+    nextStepIds: string[];
+}
+
+// ============================================
+// ENROLLMENT CRITERIA
+// ============================================
+
+export interface EnrollmentCriteria {
+    conditions: WorkflowCondition[];
+    matchAll?: boolean;
+}
+
+// ============================================
+// WORKFLOW STATS
+// ============================================
+
+export interface WorkflowStats {
+    totalEnrolled: number;
+    currentlyActive: number;
+    completed: number;
+    goalsMet: number;
+    failed: number;
+}
+
+// ============================================
+// MAIN WORKFLOW INTERFACE
+// ============================================
+
+export interface Workflow {
+    _id: string;
+    workspaceId: string;
+    userId: string;
+    name: string;
+    description?: string;
+    status: WorkflowStatus;
+    triggerEntityType: EntityType;
+    enrollmentCriteria?: EnrollmentCriteria;
+    steps: WorkflowStep[];
+    allowReenrollment: boolean;
+    goalCriteria?: EnrollmentCriteria;
+    stats: WorkflowStats;
+    createdAt: string;
+    updatedAt: string;
+    lastActivatedAt?: string;
+}
+
+// ============================================
+// STEP EXECUTION
+// ============================================
+
+export interface StepExecution {
+    stepId: string;
+    stepName: string;
+    stepType: StepType;
+    startedAt: string;
+    completedAt?: string;
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+    result?: any;
+    error?: string;
+}
+
+// ============================================
+// WORKFLOW ENROLLMENT
+// ============================================
+
+export interface WorkflowEnrollment {
+    _id: string;
+    workflowId: string;
+    workspaceId: string;
+    entityType: EntityType;
+    entityId: string;
+    status: EnrollmentStatus;
+    currentStepId?: string;
+    nextExecutionTime?: string;
+    stepsExecuted: StepExecution[];
+    enrolledBy?: string;
+    enrollmentSource: 'automatic' | 'manual' | 'api';
+    lastError?: string;
+    errorCount: number;
+    enrolledAt: string;
+    completedAt?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// ============================================
+// API INPUT TYPES
+// ============================================
+
+export interface CreateWorkflowInput {
+    name: string;
+    description?: string;
+    triggerEntityType?: EntityType;
+    enrollmentCriteria?: EnrollmentCriteria;
+    steps?: WorkflowStep[];
+    allowReenrollment?: boolean;
+    goalCriteria?: EnrollmentCriteria;
+}
+
+export interface UpdateWorkflowInput {
+    name?: string;
+    description?: string;
+    triggerEntityType?: EntityType;
+    enrollmentCriteria?: EnrollmentCriteria;
+    steps?: WorkflowStep[];
+    allowReenrollment?: boolean;
+    goalCriteria?: EnrollmentCriteria;
+    status?: WorkflowStatus;
+}
+
+export interface EnrollEntityInput {
+    entityType: EntityType;
+    entityId: string;
+}
+
+// ============================================
+// REACT FLOW NODE TYPES
+// ============================================
+
+export interface WorkflowNodeData {
+    step: WorkflowStep;
+    onDelete?: (id: string) => void;
+    onConfigure?: (id: string) => void;
+    isSelected?: boolean;
+}
+
+// ============================================
+// HELPER CONSTANTS
+// ============================================
+
+export const TRIGGER_TYPE_LABELS: Record<TriggerType, string> = {
+    contact_created: 'Contact Created',
+    contact_updated: 'Contact Updated',
+    deal_stage_changed: 'Deal Stage Changed',
+    deal_created: 'Deal Created',
+    email_opened: 'Email Opened',
+    email_clicked: 'Email Clicked',
+    form_submitted: 'Form Submitted',
+    manual: 'Manual Enrollment',
+};
+
+export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
+    send_email: 'Send Email',
+    update_field: 'Update Field',
+    create_task: 'Create Task',
+    assign_owner: 'Assign Owner',
+    add_tag: 'Add Tag',
+    remove_tag: 'Remove Tag',
+    send_notification: 'Send Notification',
+    enroll_workflow: 'Enroll in Workflow',
+};
+
+export const DELAY_UNIT_LABELS: Record<DelayUnit, string> = {
+    minutes: 'Minutes',
+    hours: 'Hours',
+    days: 'Days',
+    weeks: 'Weeks',
+};
+
+export const STATUS_COLORS: Record<WorkflowStatus, string> = {
+    draft: 'gray',
+    active: 'green',
+    paused: 'yellow',
+    archived: 'red',
+};
+
+export const STEP_TYPE_COLORS: Record<StepType, string> = {
+    trigger: 'violet',
+    action: 'blue',
+    delay: 'orange',
+    condition: 'teal',
+};

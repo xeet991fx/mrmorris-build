@@ -56,9 +56,8 @@ class EmailService {
   private async sendEmail(options: EmailOptions): Promise<void> {
     try {
       const info = await this.transporter.sendMail({
-        from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${
-          process.env.EMAIL_USER
-        }>`,
+        from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${process.env.EMAIL_USER
+          }>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
@@ -125,6 +124,111 @@ class EmailService {
       subject: "Welcome to MrMorris!",
       html,
     });
+  }
+
+  /**
+   * Send workflow automation email
+   * Used by the WorkflowService to send automated emails
+   */
+  async sendWorkflowEmail(
+    to: string,
+    subject: string,
+    body: string,
+    entityData?: Record<string, any>
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      // Replace variables in subject and body
+      let processedSubject = subject;
+      let processedBody = body;
+
+      if (entityData) {
+        const variables: Record<string, string> = {
+          "{{firstName}}": entityData.firstName || entityData.name?.split(" ")[0] || "",
+          "{{lastName}}": entityData.lastName || entityData.name?.split(" ").slice(1).join(" ") || "",
+          "{{email}}": entityData.email || "",
+          "{{phone}}": entityData.phone || "",
+          "{{company}}": entityData.company || "",
+          "{{status}}": entityData.status || "",
+          "{{source}}": entityData.source || "",
+          "{{name}}": entityData.name || `${entityData.firstName || ""} ${entityData.lastName || ""}`.trim(),
+        };
+
+        for (const [key, value] of Object.entries(variables)) {
+          processedSubject = processedSubject.replace(new RegExp(key, "g"), value);
+          processedBody = processedBody.replace(new RegExp(key, "g"), value);
+        }
+      }
+
+      // Send the email
+      const info = await this.transporter.sendMail({
+        from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${process.env.EMAIL_USER}>`,
+        to,
+        subject: processedSubject,
+        html: this.getWorkflowEmailTemplate(processedSubject, processedBody),
+      });
+
+      console.log(`✅ Workflow email sent to ${to} (ID: ${info.messageId})`);
+      return { success: true, messageId: info.messageId };
+    } catch (error: any) {
+      console.error(`❌ Failed to send workflow email to ${to}:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Workflow email template
+   */
+  private getWorkflowEmailTemplate(subject: string, body: string): string {
+    // Convert newlines to <br> tags for HTML
+    const htmlBody = body.replace(/\n/g, "<br>");
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 30px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">MrMorris</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px;">
+              <div style="color: #374151; font-size: 16px; line-height: 1.7;">
+                ${htmlBody}
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0; background-color: #f8fafc; border-radius: 0 0 16px 16px;">
+              <p style="margin: 0 0 10px; color: #94a3b8; font-size: 12px;">
+                This is an automated message from MrMorris CRM
+              </p>
+              <p style="margin: 0; color: #94a3b8; font-size: 12px;">
+                © ${new Date().getFullYear()} MrMorris. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
   }
 
   /**

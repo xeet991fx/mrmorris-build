@@ -8,6 +8,7 @@ import {
   updateContactSchema,
   contactQuerySchema,
 } from "../validations/contact";
+import { workflowService } from "../services/WorkflowService";
 
 const router = express.Router();
 
@@ -64,6 +65,10 @@ router.post(
       if (contact.customFields && contact.customFields instanceof Map) {
         contact.customFields = Object.fromEntries(contact.customFields);
       }
+
+      // Trigger workflow enrollment (async, don't wait)
+      workflowService.checkAndEnroll("contact:created", contactDoc, workspaceId)
+        .catch((err) => console.error("Workflow enrollment error:", err));
 
       res.status(201).json({
         success: true,

@@ -7,6 +7,7 @@ import {
   EllipsisVerticalIcon,
   PencilIcon,
   TrashIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 import { Opportunity } from "@/lib/api/opportunity";
 import { cn } from "@/lib/utils";
@@ -15,12 +16,14 @@ interface OpportunityCardProps {
   opportunity: Opportunity;
   onEdit: (opportunity: Opportunity) => void;
   onDelete: (opportunityId: string) => void;
+  inWorkflow?: boolean;
 }
 
 export default function OpportunityCard({
   opportunity,
   onEdit,
   onDelete,
+  inWorkflow = false,
 }: OpportunityCardProps) {
   const {
     attributes,
@@ -80,9 +83,17 @@ export default function OpportunityCard({
     >
       {/* Title */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="text-sm font-semibold text-white line-clamp-2 flex-1">
-          {opportunity.title}
-        </h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-sm font-semibold text-white line-clamp-2">
+            {opportunity.title}
+          </h3>
+          {inWorkflow && (
+            <div className="flex items-center gap-1 mt-1">
+              <BoltIcon className="w-3 h-3 text-violet-400" />
+              <span className="text-[10px] text-violet-400 font-medium">In Workflow</span>
+            </div>
+          )}
+        </div>
 
         {/* Actions Menu - Shows on hover */}
         <div className="opacity-0 group-hover:opacity-100 transition-opacity">

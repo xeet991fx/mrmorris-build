@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Menu } from "@headlessui/react";
-import { EllipsisVerticalIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { EllipsisVerticalIcon, PencilIcon, TrashIcon, BoltIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { Contact } from "@/lib/api/contact";
 import { useContactStore, ContactColumn, BuiltInColumn } from "@/store/useContactStore";
 import EditableCell from "./EditableCell";
+import EnrollInWorkflowModal from "@/components/workflows/EnrollInWorkflowModal";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -36,6 +38,7 @@ export default function ContactTableRow({
 
   const isSelected = selectedContacts.includes(contact._id);
   const fullName = `${contact.firstName} ${contact.lastName}`;
+  const [showWorkflowModal, setShowWorkflowModal] = useState(false);
 
   // Helper to check if column is built-in
   const isBuiltInColumn = (column: ContactColumn): column is BuiltInColumn => {
@@ -55,49 +58,49 @@ export default function ContactTableRow({
   const getCellContent = (column: ContactColumn) => {
     // Handle built-in columns
     if (isBuiltInColumn(column)) {
-    switch (column) {
-      case "name":
-        return fullName;
-      case "email":
-        return contact.email || "—";
-      case "phone":
-        return contact.phone || "—";
-      case "company":
-        return contact.company || "—";
-      case "jobTitle":
-        return contact.jobTitle || "—";
-      case "source":
-        return contact.source || "—";
-      case "notes":
-        return contact.notes ? (
-          <span className="line-clamp-1" title={contact.notes}>
-            {contact.notes}
-          </span>
-        ) : (
-          "—"
-        );
-      case "status":
-        return (
-          <span
-            className={cn(
-              "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-              contact.status === "customer" &&
+      switch (column) {
+        case "name":
+          return fullName;
+        case "email":
+          return contact.email || "—";
+        case "phone":
+          return contact.phone || "—";
+        case "company":
+          return contact.company || "—";
+        case "jobTitle":
+          return contact.jobTitle || "—";
+        case "source":
+          return contact.source || "—";
+        case "notes":
+          return contact.notes ? (
+            <span className="line-clamp-1" title={contact.notes}>
+              {contact.notes}
+            </span>
+          ) : (
+            "—"
+          );
+        case "status":
+          return (
+            <span
+              className={cn(
+                "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                contact.status === "customer" &&
                 "bg-green-500/10 text-green-400 border border-green-500/20",
-              contact.status === "prospect" &&
+                contact.status === "prospect" &&
                 "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-              contact.status === "lead" &&
+                contact.status === "lead" &&
                 "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-              contact.status === "inactive" &&
+                contact.status === "inactive" &&
                 "bg-muted text-muted-foreground border border-border"
-            )}
-          >
-            {contact.status || "lead"}
-          </span>
-        );
-      case "createdAt":
-        return format(new Date(contact.createdAt), "MMM d, yyyy");
-      default:
-        return "—";
+              )}
+            >
+              {contact.status || "lead"}
+            </span>
+          );
+        case "createdAt":
+          return format(new Date(contact.createdAt), "MMM d, yyyy");
+        default:
+          return "—";
       }
     }
 
@@ -184,6 +187,20 @@ export default function ContactTableRow({
             <Menu.Item>
               {({ active }) => (
                 <button
+                  onClick={() => setShowWorkflowModal(true)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
+                    active ? "bg-muted text-foreground" : "text-foreground"
+                  )}
+                >
+                  <BoltIcon className="w-3.5 h-3.5" />
+                  Add to Workflow
+                </button>
+              )}
+            </Menu.Item>
+            <Menu.Item>
+              {({ active }) => (
+                <button
                   onClick={() => onDelete(contact._id)}
                   className={cn(
                     "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
@@ -198,6 +215,15 @@ export default function ContactTableRow({
           </Menu.Items>
         </Menu>
       </td>
+
+      {/* Workflow Enrollment Modal */}
+      <EnrollInWorkflowModal
+        isOpen={showWorkflowModal}
+        onClose={() => setShowWorkflowModal(false)}
+        entityType="contact"
+        entityId={contact._id}
+        entityName={fullName}
+      />
     </motion.tr>
   );
 }

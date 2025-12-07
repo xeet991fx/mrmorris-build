@@ -239,6 +239,28 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
+              {/* Workflows */}
+              <button
+                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/workflows`)}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  pathname.includes('/workflows')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Workflows" : ""}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                </svg>
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Workflows
+                  </span>
+                )}
+              </button>
+
               {/* Email Settings */}
               <button
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings/email`)}
