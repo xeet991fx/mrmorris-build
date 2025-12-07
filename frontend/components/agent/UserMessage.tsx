@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { AgentMessage } from "@/store/useAgentStore";
-import { UserCircleIcon } from "@heroicons/react/24/solid";
 
 interface UserMessageProps {
   message: AgentMessage;
@@ -16,27 +15,15 @@ export default function UserMessage({ message, isLatest }: UserMessageProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="flex items-start gap-3"
+      className="py-6 border-b border-border/50"
     >
-      {/* Avatar */}
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#9ACD32] flex items-center justify-center">
-        <UserCircleIcon className="w-6 h-6 text-neutral-900" />
-      </div>
-
-      {/* Message Content */}
-      <div className="flex-1 space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-foreground">You</span>
-          <span className="text-xs text-muted-foreground">
-            {new Date(message.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
+      <div className="flex items-start gap-4">
+        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+          <span className="text-xs font-medium text-muted-foreground">You</span>
         </div>
-        <div className="bg-[#9ACD32] text-neutral-900 rounded-lg px-4 py-2.5 text-sm whitespace-pre-wrap break-words">
+        <p className="text-base text-foreground whitespace-pre-wrap break-words pt-0.5">
           {message.content}
-        </div>
+        </p>
       </div>
     </motion.div>
   );

@@ -18,15 +18,12 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-import { SparklesIcon } from "@heroicons/react/24/solid";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
-import { useAgentStore } from "@/store/useAgentStore";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import AgentSidebar from "@/components/agent/AgentSidebar";
 import { useAgentContextSync } from "@/lib/hooks/useAgentContextSync";
 
 function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
@@ -34,7 +31,6 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const { workspaces, fetchWorkspaces, setCurrentWorkspace } = useWorkspaceStore();
-  const { toggleSidebar: toggleAgentSidebar } = useAgentStore();
 
   // Sidebar is always visible - either expanded (full) or collapsed (icon-only)
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
@@ -115,13 +111,13 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
             className="w-full flex items-center gap-3 hover:bg-muted/20 rounded-md p-1 -m-1 transition-colors"
           >
-            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 overflow-visible">
               <Image
-                src="/Clianta-logo.jpg"
+                src="/Clianta-logo-removebg-preview.png"
                 alt="Company Logo"
-                width={32}
-                height={32}
-                className="object-contain"
+                width={64}
+                height={64}
+                className="object-contain mx-auto"
               />
             </div>
             <div className="flex-1 min-w-0 overflow-hidden text-left">
@@ -136,13 +132,13 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
             className="flex items-center justify-center w-full hover:bg-muted/20 rounded-md p-1 -m-1 transition-colors"
           >
-            <div className="w-8 h-8 flex items-center justify-center">
+            <div className="w-8 h-8 flex items-center justify-center overflow-visible">
               <Image
-                src="/Clianta-logo.jpg"
+                src="/Clianta-logo-removebg-preview.png"
                 alt="Company Logo"
-                width={32}
-                height={32}
-                className="object-contain"
+                width={64}
+                height={64}
+                className="object-contain mx-auto"
               />
             </div>
           </button>
@@ -411,14 +407,6 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
 
         {/* Floating Right Actions */}
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-          <button
-            onClick={toggleAgentSidebar}
-            className="p-2 rounded-lg bg-card border border-border shadow-lg hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all"
-            aria-label="Toggle AI Assistant"
-            title="AI Assistant (MrMorris)"
-          >
-            <SparklesIcon className="w-5 h-5" />
-          </button>
           <div className="bg-card border border-border shadow-lg rounded-lg p-1">
             <ThemeToggle />
           </div>
@@ -449,9 +437,6 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             {children}
           </div>
         </main>
-
-        {/* AI Agent Sidebar */}
-        <AgentSidebar />
       </div>
     </>
   );

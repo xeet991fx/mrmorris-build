@@ -4,13 +4,9 @@ import { motion } from "framer-motion"
 import { ArrowRight, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 
 export function Hero() {
-  const scrollToWaitlist = () => {
-    const waitlistSection = document.getElementById("waitlist")
-    waitlistSection?.scrollIntoView({ behavior: "smooth" })
-  }
-
   return (
     <section className="relative min-h-screen pt-32 pb-20">
       {/* Gradient Background */}
@@ -29,7 +25,7 @@ export function Hero() {
           >
             <Badge className="mb-6 px-4 py-2 text-sm bg-gradient-to-r from-[#9ACD32]/20 to-[#8AB82E]/20 border-[#9ACD32]/30" variant="secondary">
               <Sparkles className="mr-2 h-4 w-4 text-[#9ACD32]" />
-              Autonomous Marketing Powered by AI Agents
+              AI-Native CRM
             </Badge>
           </motion.div>
 
@@ -38,11 +34,11 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.1 }}
-            className="mb-6 max-w-5xl text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl"
+            className="mb-6 max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl"
           >
-            Your AI Marketing Team{" "}
+            Your CRM,{" "}
             <span className="bg-gradient-to-r from-[#9ACD32] via-[#8AB82E] to-[#7BA628] bg-clip-text text-transparent">
-              That Never Sleeps
+              Built by AI
             </span>
           </motion.h1>
 
@@ -51,11 +47,10 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.2 }}
-            className="mb-10 max-w-3xl text-lg text-muted-foreground sm:text-xl md:text-2xl"
+            className="mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl md:text-2xl"
           >
-            MrMorris is a multi-agent autonomous marketing copilot that runs campaigns
-            end-to-end, optimizes performance in real-time, and drives results 24/7—without
-            human intervention.
+            Describe how you sell. Clianta builds personalized workflows
+            and automations in minutes.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -65,12 +60,16 @@ export function Hero() {
             transition={{ duration: 0.25, delay: 0.3 }}
             className="flex flex-col gap-4 sm:flex-row"
           >
-            <Button onClick={scrollToWaitlist} size="xl" className="group">
-              Talk To Us
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+            <Button asChild size="xl" className="group">
+              <Link href="/register">
+                Start Free
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
             </Button>
-            <Button onClick={scrollToWaitlist} size="xl" variant="outline">
-              Learn More
+            <Button asChild size="xl" variant="outline">
+              <Link href="#how-it-works">
+                How It Works
+              </Link>
             </Button>
           </motion.div>
 
@@ -79,13 +78,12 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.4 }}
-            className="mt-20 grid w-full max-w-4xl grid-cols-2 gap-8 md:grid-cols-4"
+            className="mt-20 grid w-full max-w-3xl grid-cols-3 gap-8"
           >
             {[
-              { value: "24/7", label: "Autonomous Operation", color: "from-[#9ACD32] to-[#8AB82E]" },
-              { value: "5+", label: "Specialized AI Agents", color: "from-[#8AB82E] to-[#7BA628]" },
-              { value: "100%", label: "Automated Optimization", color: "from-[#7BA628] to-[#6C9420]" },
-              { value: "Real-time", label: "Campaign Adjustments", color: "from-[#9ACD32] to-[#6C9420]" },
+              { value: "5 min", label: "Setup", color: "from-[#9ACD32] to-[#8AB82E]" },
+              { value: "Zero", label: "Config", color: "from-[#8AB82E] to-[#7BA628]" },
+              { value: "AI", label: "Workflows", color: "from-[#7BA628] to-[#6C9420]" },
             ].map((stat, index) => (
               <div key={index} className="flex flex-col items-center">
                 <div className={`text-3xl font-bold md:text-4xl bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>{stat.value}</div>

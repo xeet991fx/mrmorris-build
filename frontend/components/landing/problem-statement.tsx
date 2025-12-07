@@ -1,36 +1,32 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { AlertCircle, Clock, TrendingDown, Users } from "lucide-react"
+import { AlertCircle, Clock, Cog, Users } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 
 const problems = [
   {
-    icon: Clock,
-    title: "Founders Stretched Too Thin",
-    description:
-      "Small teams are stuck monitoring campaigns manually, missing optimization opportunities while they sleep. You can't be everywhere at once.",
+    icon: Cog,
+    title: "Weeks of Setup",
+    description: "Complex configuration, custom fields, workflow builders. You need a consultant just to start.",
     iconColor: "text-orange-500",
   },
   {
-    icon: Users,
-    title: "Can't Compete With Bigger Budgets",
-    description:
-      "Well-funded competitors have 10-person marketing teams. You have limited resources and can't afford to hire expensive specialists.",
+    icon: Clock,
+    title: "Endless Data Entry",
+    description: "Your team spends more time updating the CRM than actually selling.",
     iconColor: "text-blue-500",
   },
   {
-    icon: TrendingDown,
-    title: "Burning Precious Runway",
-    description:
-      "By the time you analyze data and make changes, valuable budget is already wasted. Every dollar matters when resources are limited.",
+    icon: AlertCircle,
+    title: "Broken Automations",
+    description: "If-then rules are fragile. One change breaks everything.",
     iconColor: "text-red-500",
   },
   {
-    icon: AlertCircle,
-    title: "No Room for Expensive Mistakes",
-    description:
-      "Budget overspend, negative sentiment, or underperforming ads discovered too late can burn through months of runway and damage your brand.",
+    icon: Users,
+    title: "Nobody Uses It",
+    description: "Too complicated. Your team finds workarounds. Data becomes useless.",
     iconColor: "text-yellow-500",
   },
 ]
@@ -47,14 +43,13 @@ export function ProblemStatement() {
           className="mb-16 text-center"
         >
           <h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
-            Startups Face an{" "}
+            CRMs Are{" "}
             <span className="bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] bg-clip-text text-transparent">
-              Impossible Choice
+              Broken
             </span>
           </h2>
-          <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-            Scale marketing effectively or preserve your runway. Your lean team is stretched thin,
-            and you can&apos;t afford to hire expensive specialists or waste precious budget.
+          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+            You wanted to save time. You got a complex system that nobody wants to use.
           </p>
         </motion.div>
 
