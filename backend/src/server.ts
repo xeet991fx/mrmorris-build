@@ -2,6 +2,7 @@ import express, { Application, Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+import path from "path";
 import connectDB from "./config/database";
 import passport from "./config/passport";
 import waitlistRoutes from "./routes/waitlist";
@@ -13,6 +14,8 @@ import customFieldRoutes from "./routes/customField";
 import agentRoutes from "./routes/agent";
 import pipelineRoutes from "./routes/pipeline";
 import opportunityRoutes from "./routes/opportunity";
+import activityRoutes from "./routes/activity";
+import attachmentRoutes from "./routes/attachment";
 
 dotenv.config();
 
@@ -34,6 +37,9 @@ app.use(cookieParser());
 
 // Initialize Passport
 app.use(passport.initialize());
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Health check endpoint (before DB middleware)
 app.get("/health", (req: Request, res: Response) => {
@@ -82,6 +88,8 @@ app.use("/api/workspaces", companyRoutes);
 app.use("/api/workspaces", customFieldRoutes);
 app.use("/api/workspaces", pipelineRoutes);
 app.use("/api/workspaces", opportunityRoutes);
+app.use("/api", activityRoutes);
+app.use("/api", attachmentRoutes);
 app.use("/api/agent", agentRoutes);
 
 // 404 handler

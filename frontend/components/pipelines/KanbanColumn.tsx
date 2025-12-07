@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { motion } from "framer-motion";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { Opportunity } from "@/lib/api/opportunity";
-import OpportunityCard from "./OpportunityCard";
+import OpportunityCardEnhanced from "./OpportunityCardEnhanced";
 import { cn } from "@/lib/utils";
 
 interface KanbanColumnProps {
@@ -17,6 +17,7 @@ interface KanbanColumnProps {
   onEdit: (opportunity: Opportunity) => void;
   onDelete: (opportunityId: string) => void;
   onAddOpportunity: (stageId: string) => void;
+  onCardClick?: (opportunity: Opportunity) => void;
 }
 
 export default function KanbanColumn({
@@ -25,6 +26,7 @@ export default function KanbanColumn({
   onEdit,
   onDelete,
   onAddOpportunity,
+  onCardClick,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage._id,
@@ -104,10 +106,11 @@ export default function KanbanColumn({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <OpportunityCard
+                <OpportunityCardEnhanced
                   opportunity={opportunity}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onClick={onCardClick}
                 />
               </motion.div>
             ))

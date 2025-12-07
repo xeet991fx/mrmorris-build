@@ -16,7 +16,8 @@ import toast from "react-hot-toast";
 import { usePipelineStore } from "@/store/usePipelineStore";
 import { Opportunity } from "@/lib/api/opportunity";
 import KanbanColumn from "./KanbanColumn";
-import OpportunityCard from "./OpportunityCard";
+import OpportunityCardEnhanced from "./OpportunityCardEnhanced";
+import OpportunityDetailPanel from "./OpportunityDetailPanel";
 
 interface PipelineKanbanViewProps {
   onEditOpportunity: (opportunity: Opportunity) => void;
@@ -36,6 +37,9 @@ export default function PipelineKanbanView({
     usePipelineStore();
 
   const [activeOpportunity, setActiveOpportunity] = useState<Opportunity | null>(
+    null
+  );
+  const [detailPanelOpportunity, setDetailPanelOpportunity] = useState<Opportunity | null>(
     null
   );
 
@@ -184,6 +188,7 @@ export default function PipelineKanbanView({
                 onEdit={onEditOpportunity}
                 onDelete={onDeleteOpportunity}
                 onAddOpportunity={() => onAddOpportunity(stageData.stage._id)}
+                onCardClick={setDetailPanelOpportunity}
               />
             </motion.div>
           ))}
@@ -194,7 +199,7 @@ export default function PipelineKanbanView({
       <DragOverlay>
         {activeOpportunity ? (
           <div className="opacity-90">
-            <OpportunityCard
+            <OpportunityCardEnhanced
               opportunity={activeOpportunity}
               onEdit={() => {}}
               onDelete={() => {}}
@@ -202,6 +207,15 @@ export default function PipelineKanbanView({
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Detail Panel */}
+      <OpportunityDetailPanel
+        isOpen={!!detailPanelOpportunity}
+        onClose={() => setDetailPanelOpportunity(null)}
+        opportunity={detailPanelOpportunity}
+        workspaceId={workspaceId}
+        onEdit={onEditOpportunity}
+      />
     </DndContext>
   );
 }

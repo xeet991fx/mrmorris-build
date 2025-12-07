@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import Opportunity from "../models/Opportunity";
 import Pipeline from "../models/Pipeline";
 import Project from "../models/Project";
+import Activity from "../models/Activity";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import {
   createOpportunitySchema,
@@ -637,10 +638,12 @@ router.patch(
         });
       }
 
-      // Update stage history - close previous stage
+      // Get previous stage name for activity logging
+      let previousStageName = "Unknown";
       const currentStageIndex = opportunity.stageHistory.length - 1;
       if (currentStageIndex >= 0) {
         const currentStage = opportunity.stageHistory[currentStageIndex];
+        previousStageName = currentStage.stageName;
         if (!currentStage.exitedAt) {
           currentStage.exitedAt = new Date();
           currentStage.duration =
@@ -661,6 +664,28 @@ router.patch(
       opportunity.lastActivityAt = new Date();
 
       await opportunity.save();
+
+      // Auto-log stage change activity
+      try {
+        const stageChangeActivity = new Activity({
+          workspaceId,
+          userId: req.user?._id,
+          opportunityId: id,
+          type: "stage_change",
+          title: `Moved from ${previousStageName} to ${stage.name}`,
+          description: `Stage changed from "${previousStageName}" to "${stage.name}"`,
+          metadata: {
+            fromStage: previousStageName,
+            toStage: stage.name,
+          },
+          isAutoLogged: true,
+          aiConfidence: 100,
+        });
+        await stageChangeActivity.save();
+      } catch (activityError) {
+        console.error("Failed to log stage change activity:", activityError);
+        // Don't fail the request if activity logging fails
+      }
 
       // Populate and return
       const updatedOpportunity: any = await Opportunity.findById(id)

@@ -38,6 +38,17 @@ export interface IOpportunity extends Document {
   priority?: "low" | "medium" | "high";
   lastActivityAt?: Date;
 
+  // Next Action & Temperature
+  nextAction?: string;
+  nextActionDueDate?: Date;
+  dealTemperature?: "hot" | "warm" | "cold";
+
+  // Activity Counts
+  activityCount?: number;
+  emailCount?: number;
+  callCount?: number;
+  meetingCount?: number;
+
   // Stage History
   stageHistory: IStageHistory[];
 
@@ -184,6 +195,42 @@ const opportunitySchema = new Schema<IOpportunity>(
       type: Date,
     },
 
+    // Next Action & Temperature
+    nextAction: {
+      type: String,
+      trim: true,
+      maxlength: [200, "Next action must be less than 200 characters"],
+    },
+    nextActionDueDate: {
+      type: Date,
+    },
+    dealTemperature: {
+      type: String,
+      enum: ["hot", "warm", "cold"],
+    },
+
+    // Activity Counts
+    activityCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    emailCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    callCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    meetingCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     // Stage History
     stageHistory: {
       type: [stageHistorySchema],
@@ -219,6 +266,8 @@ opportunitySchema.index({ workspaceId: 1, pipelineId: 1, stageId: 1 });
 opportunitySchema.index({ workspaceId: 1, status: 1, createdAt: -1 });
 opportunitySchema.index({ workspaceId: 1, assignedTo: 1 });
 opportunitySchema.index({ workspaceId: 1, createdAt: -1 });
+opportunitySchema.index({ workspaceId: 1, lastActivityAt: -1 }); // For stale deals
+opportunitySchema.index({ workspaceId: 1, dealTemperature: 1 }); // For filtering by temperature
 
 // Text index for search
 opportunitySchema.index({

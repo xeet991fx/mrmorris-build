@@ -19,6 +19,10 @@ const DESTRUCTIVE_ACTIONS = [
   'bulk_delete_companies',
   'delete_all_contacts',
   'delete_all_companies',
+  'delete_pipeline',
+  'delete_stage',
+  'delete_opportunity',
+  'bulk_delete_opportunities',
 ];
 
 /**
@@ -122,6 +126,52 @@ function getActionDescription(type: string, params: any): string {
     case 'find_duplicates':
       return `Find duplicate contacts`;
 
+    // Pipeline actions
+    case 'create_pipeline':
+      return `Create pipeline: ${params.name || ''}`;
+
+    case 'update_pipeline':
+      return `Update pipeline ${params.id || 'selected'}`;
+
+    case 'delete_pipeline':
+      return `Delete pipeline ${params.id || 'selected'}`;
+
+    case 'add_stage':
+      return `Add stage "${params.stageName || ''}" to pipeline`;
+
+    case 'update_stage':
+      return `Update stage ${params.stageId || 'selected'}`;
+
+    case 'delete_stage':
+      return `Delete stage ${params.stageId || 'selected'}`;
+
+    case 'reorder_stages':
+      return `Reorder pipeline stages`;
+
+    case 'set_default_pipeline':
+      return `Set default pipeline`;
+
+    // Opportunity actions
+    case 'create_opportunity':
+      return `Create opportunity: ${params.title || ''}`;
+
+    case 'update_opportunity':
+      return `Update opportunity ${params.id || 'selected'}`;
+
+    case 'move_opportunity':
+      return `Move opportunity to new stage`;
+
+    case 'delete_opportunity':
+      return `Delete opportunity ${params.id || 'selected'}`;
+
+    case 'bulk_update_opportunities':
+      const oppUpdateCount = params.opportunityIds?.length || 0;
+      return `Update ${oppUpdateCount} opportunit${oppUpdateCount !== 1 ? 'ies' : 'y'}`;
+
+    case 'bulk_delete_opportunities':
+      const oppDeleteCount = params.opportunityIds?.length || 0;
+      return `Delete ${oppDeleteCount} opportunit${oppDeleteCount !== 1 ? 'ies' : 'y'}`;
+
     // Default
     default:
       return `Execute: ${type.replace(/_/g, ' ')}`;
@@ -190,6 +240,92 @@ export function validateActionParams(action: ParsedAction): { valid: boolean; er
     case 'bulk_delete_contacts':
       if (!action.parameters.contactIds || action.parameters.contactIds.length === 0) {
         errors.push('Contact IDs are required for bulk operations');
+      }
+      break;
+
+    case 'create_pipeline':
+      if (!action.parameters.name || action.parameters.name.trim() === '') {
+        errors.push('Pipeline name is required');
+      }
+      if (!action.parameters.stages || !Array.isArray(action.parameters.stages) || action.parameters.stages.length === 0) {
+        errors.push('At least one stage is required');
+      }
+      break;
+
+    case 'update_pipeline':
+    case 'delete_pipeline':
+    case 'set_default_pipeline':
+      if (!action.parameters.id && !action.parameters.pipelineId) {
+        errors.push('Pipeline ID is required');
+      }
+      break;
+
+    case 'add_stage':
+      if (!action.parameters.pipelineId) {
+        errors.push('Pipeline ID is required');
+      }
+      if (!action.parameters.stageName || action.parameters.stageName.trim() === '') {
+        errors.push('Stage name is required');
+      }
+      if (!action.parameters.stageColor || action.parameters.stageColor.trim() === '') {
+        errors.push('Stage color is required');
+      }
+      break;
+
+    case 'update_stage':
+    case 'delete_stage':
+      if (!action.parameters.pipelineId) {
+        errors.push('Pipeline ID is required');
+      }
+      if (!action.parameters.stageId) {
+        errors.push('Stage ID is required');
+      }
+      break;
+
+    case 'reorder_stages':
+      if (!action.parameters.pipelineId) {
+        errors.push('Pipeline ID is required');
+      }
+      if (!action.parameters.stageOrder || !Array.isArray(action.parameters.stageOrder)) {
+        errors.push('Stage order array is required');
+      }
+      break;
+
+    case 'create_opportunity':
+      if (!action.parameters.title || action.parameters.title.trim() === '') {
+        errors.push('Opportunity title is required');
+      }
+      if (action.parameters.value === undefined || action.parameters.value === null) {
+        errors.push('Opportunity value is required');
+      }
+      if (!action.parameters.pipelineId) {
+        errors.push('Pipeline ID is required');
+      }
+      if (!action.parameters.stageId) {
+        errors.push('Stage ID is required');
+      }
+      break;
+
+    case 'update_opportunity':
+    case 'delete_opportunity':
+      if (!action.parameters.id) {
+        errors.push('Opportunity ID is required');
+      }
+      break;
+
+    case 'move_opportunity':
+      if (!action.parameters.id) {
+        errors.push('Opportunity ID is required');
+      }
+      if (!action.parameters.stageId) {
+        errors.push('Stage ID is required');
+      }
+      break;
+
+    case 'bulk_update_opportunities':
+    case 'bulk_delete_opportunities':
+      if (!action.parameters.opportunityIds || action.parameters.opportunityIds.length === 0) {
+        errors.push('Opportunity IDs are required for bulk operations');
       }
       break;
   }
