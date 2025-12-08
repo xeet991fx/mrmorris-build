@@ -240,6 +240,87 @@ export const workflowTemplates: WorkflowTemplate[] = [
             },
         ],
     },
+    {
+        id: 'meeting-noshow',
+        name: 'Meeting No-Show Follow-up',
+        description: 'Automatically follow up when a contact misses a meeting with branching based on response.',
+        category: 'engagement',
+        icon: '📅',
+        color: 'from-amber-500 to-orange-500',
+        triggerEntityType: 'contact',
+        steps: [
+            {
+                name: 'Meeting No-Show',
+                type: 'trigger' as StepType,
+                position: { x: 250, y: 50 },
+                config: { triggerType: 'contact_updated' as TriggerType },
+                nextStepIds: ['step-2'],
+            },
+            {
+                name: 'Add Tag: No-Show',
+                type: 'action' as StepType,
+                position: { x: 250, y: 180 },
+                config: {
+                    actionType: 'add_tag' as ActionType,
+                    tagName: 'No-Show',
+                },
+                nextStepIds: ['step-3'],
+            },
+            {
+                name: 'Send Apology & Reschedule',
+                type: 'action' as StepType,
+                position: { x: 250, y: 310 },
+                config: {
+                    actionType: 'send_email' as ActionType,
+                    emailSubject: 'We missed you at today\'s meeting',
+                    emailBody: 'Hi {{firstName}},\n\nI noticed we missed our meeting today. No worries - things come up!\n\nWould you like to reschedule? Here\'s my calendar link: [Insert calendar link]\n\nLooking forward to connecting,\nThe Team',
+                },
+                nextStepIds: ['step-4'],
+            },
+            {
+                name: 'Wait 2 Days',
+                type: 'delay' as StepType,
+                position: { x: 250, y: 440 },
+                config: { delayValue: 2, delayUnit: 'days' },
+                nextStepIds: ['step-5'],
+            },
+            {
+                name: 'Check: Email Opened?',
+                type: 'condition' as StepType,
+                position: { x: 250, y: 570 },
+                config: {
+                    conditions: [{
+                        field: 'lastEmailOpened',
+                        operator: 'is_not_empty',
+                    }],
+                },
+                nextStepIds: ['step-6', 'step-7'],
+            },
+            {
+                name: 'Email Opened - Create Task',
+                type: 'action' as StepType,
+                position: { x: 450, y: 700 },
+                config: {
+                    actionType: 'create_task' as ActionType,
+                    taskTitle: 'Call {{firstName}} - engaged after no-show',
+                    taskDescription: 'Contact opened reschedule email. Call to reconnect.',
+                    taskDueInDays: 1,
+                },
+                nextStepIds: [],
+            },
+            {
+                name: 'Not Opened - Send Final Reminder',
+                type: 'action' as StepType,
+                position: { x: 50, y: 700 },
+                config: {
+                    actionType: 'send_email' as ActionType,
+                    emailSubject: 'Last chance to reschedule',
+                    emailBody: 'Hi {{firstName}},\n\nI wanted to reach out one more time about rescheduling our meeting.\n\nIf you\'re still interested, reply to this email and we\'ll find a time that works.\n\nIf not, no problem - wishing you all the best!\n\nBest,\nThe Team',
+                },
+                nextStepIds: [],
+            },
+        ],
+    },
 ];
 
 // Helper function to instantiate a template with proper IDs

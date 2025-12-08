@@ -228,7 +228,7 @@ async function executeConditionStep(
 // ============================================
 
 /**
- * Handle step execution errors with retry logic
+ * Handle step execution errors with exponential backoff retry logic
  */
 async function handleStepError(
     enrollment: IWorkflowEnrollment,
@@ -244,18 +244,28 @@ async function handleStepError(
     enrollment.lastError = error.message;
     enrollment.errorCount += 1;
 
-    // Retry logic - fail after 3 attempts
-    if (enrollment.errorCount >= 3) {
+    // Retry logic with exponential backoff - fail after 3 attempts
+    const maxRetries = 3;
+
+    if (enrollment.errorCount >= maxRetries) {
         await completeEnrollment(enrollment, "failed");
         console.error(
             `❌ Enrollment failed after ${enrollment.errorCount} attempts: ${error.message}`
         );
+
+        // TODO: Send notification to user about failed enrollment
+        // await notifyUserOfFailure(enrollment, error);
     } else {
-        // Schedule retry in 5 minutes
-        enrollment.nextExecutionTime = new Date(Date.now() + 5 * 60 * 1000);
+        // Exponential backoff: 1min (attempt 1), 5min (attempt 2), 15min (attempt 3)
+        const retryDelayMinutes = Math.pow(5, enrollment.errorCount);
+        const retryDelayMs = retryDelayMinutes * 60 * 1000;
+
+        enrollment.status = "retrying";
+        enrollment.nextExecutionTime = new Date(Date.now() + retryDelayMs);
         await enrollment.save();
+
         console.warn(
-            `⚠️ Step failed (attempt ${enrollment.errorCount}/3), retrying in 5 minutes: ${error.message}`
+            `⚠️ Step failed (attempt ${enrollment.errorCount}/${maxRetries}), retrying in ${retryDelayMinutes} minute${retryDelayMinutes > 1 ? 's' : ''}: ${error.message}`
         );
     }
 }

@@ -10,7 +10,8 @@ export type EnrollmentStatus =
     | 'goal_met'
     | 'failed'
     | 'cancelled'
-    | 'paused';
+    | 'paused'
+    | 'retrying';
 
 export interface IStepExecution {
     stepId: string;
@@ -119,7 +120,7 @@ const workflowEnrollmentSchema = new Schema<IWorkflowEnrollment>(
         // Progress tracking
         status: {
             type: String,
-            enum: ['active', 'completed', 'goal_met', 'failed', 'cancelled', 'paused'],
+            enum: ['active', 'completed', 'goal_met', 'failed', 'cancelled', 'paused', 'retrying'],
             default: 'active',
             index: true,
         },

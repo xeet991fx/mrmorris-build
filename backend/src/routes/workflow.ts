@@ -1153,5 +1153,232 @@ router.get(
     }
 );
 
+// ============================================
+// TEST MODE ROUTE
+// ============================================
+
+/**
+ * @route   POST /api/workspaces/:workspaceId/workflows/:id/test
+ * @desc    Test workflow execution in dry-run mode
+ * @access  Private
+ */
+router.post(
+    "/:workspaceId/workflows/:id/test",
+    authenticate,
+    workflowLimiter,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = (req.user?._id as any).toString();
+            const { entityId, entityType, dryRun = true, fastForward = true } = req.body;
+
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            // Get workflow
+            const workflow = await Workflow.findOne({ _id: id, workspaceId });
+            if (!workflow) {
+                return res.status(404).json({
+                    success: false,
+                    error: "Workflow not found.",
+                });
+            }
+
+            // Get test entity
+            let entity;
+            switch (entityType) {
+                case "contact":
+                    entity = await Contact.findOne({ _id: entityId, projectId: workspaceId });
+                    break;
+                case "deal":
+                    entity = await Opportunity.findOne({ _id: entityId, projectId: workspaceId });
+                    break;
+                case "company":
+                    entity = await Company.findOne({ _id: entityId, projectId: workspaceId });
+                    break;
+                default:
+                    return res.status(400).json({
+                        success: false,
+                        error: "Invalid entity type. Must be 'contact', 'deal', or 'company'.",
+                    });
+            }
+
+            if (!entity) {
+                return res.status(404).json({
+                    success: false,
+                    error: `${entityType} not found.`,
+                });
+            }
+
+            // Get entity name based on type
+            let entityName = "Unknown";
+            if (entityType === "contact") {
+                const contact = entity as any;
+                entityName = contact.firstName
+                    ? `${contact.firstName} ${contact.lastName || ""}`.trim()
+                    : contact.email || "Unknown Contact";
+            } else if (entityType === "deal") {
+                const deal = entity as any;
+                entityName = deal.name || deal.title || "Unknown Deal";
+            } else if (entityType === "company") {
+                const company = entity as any;
+                entityName = company.name || "Unknown Company";
+            }
+
+            // Execute test workflow
+            const testResults = {
+                workflowName: workflow.name,
+                entityName,
+                dryRun,
+                fastForward,
+                steps: [] as any[],
+                startedAt: new Date(),
+                completedAt: null as Date | null,
+                success: true,
+                totalDuration: 0,
+                productionDuration: 0,
+            };
+
+            // Find trigger step
+            const triggerStep = workflow.steps.find((s) => s.type === "trigger");
+            if (!triggerStep) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Workflow has no trigger step.",
+                });
+            }
+
+            // Simulate workflow execution
+            let currentStepId: string | undefined = triggerStep.nextStepIds?.[0];
+            let stepCount = 0;
+            let productionDelayMs = 0;
+
+            while (currentStepId && stepCount < 50) {
+                const step = workflow.steps.find((s) => s.id === currentStepId);
+                if (!step) break;
+
+                stepCount++;
+                const stepResult: any = {
+                    stepId: step.id,
+                    stepName: step.name,
+                    stepType: step.type,
+                    status: "success",
+                    startedAt: new Date(),
+                };
+
+                try {
+                    switch (step.type) {
+                        case "action":
+                            if (dryRun) {
+                                stepResult.simulated = true;
+                                stepResult.message = `Would execute: ${step.config.actionType}`;
+                                stepResult.config = step.config;
+                            } else {
+                                // Actually execute action
+                                const { workflowService } = await import("../services/workflow");
+                                const { executeAction } = await import("../services/workflow/actions");
+
+                                // Create temporary enrollment for test
+                                const testEnrollment = {
+                                    workflowId: workflow._id,
+                                    entityId: entity._id,
+                                    entityType,
+                                    workspaceId: workflow.workspaceId,
+                                } as any;
+
+                                const actionResult = await executeAction(step.config.actionType!, {
+                                    step,
+                                    entity,
+                                    enrollment: testEnrollment,
+                                    workspaceId: workflow.workspaceId,
+                                });
+
+                                stepResult.result = actionResult;
+                                stepResult.message = actionResult.success
+                                    ? `Executed: ${step.config.actionType}`
+                                    : `Failed: ${actionResult.error}`;
+                            }
+                            currentStepId = step.nextStepIds?.[0];
+                            break;
+
+                        case "delay":
+                            const delayMs =
+                                (step.config.delayValue || 0) *
+                                (step.config.delayUnit === "minutes"
+                                    ? 60 * 1000
+                                    : step.config.delayUnit === "hours"
+                                    ? 60 * 60 * 1000
+                                    : step.config.delayUnit === "days"
+                                    ? 24 * 60 * 60 * 1000
+                                    : 7 * 24 * 60 * 60 * 1000);
+
+                            productionDelayMs += delayMs;
+
+                            if (fastForward) {
+                                stepResult.message = `Skipped delay: ${step.config.delayValue} ${step.config.delayUnit}`;
+                                stepResult.delaySkipped = delayMs;
+                            } else {
+                                stepResult.message = `Waiting: ${step.config.delayValue} ${step.config.delayUnit}`;
+                                stepResult.delayMs = delayMs;
+                            }
+                            currentStepId = step.nextStepIds?.[0];
+                            break;
+
+                        case "condition":
+                            const { evaluateCondition } = await import("../services/workflow/conditionEvaluator");
+                            const condition = step.config.conditions?.[0];
+
+                            if (!condition) {
+                                stepResult.message = "No condition configured, taking default path";
+                                currentStepId = step.nextStepIds?.[0];
+                            } else {
+                                const conditionResult = evaluateCondition(entity, condition);
+                                stepResult.conditionResult = conditionResult;
+                                stepResult.message = conditionResult
+                                    ? `Condition TRUE: Taking YES path`
+                                    : `Condition FALSE: Taking NO path`;
+                                stepResult.condition = condition;
+                                stepResult.entityValue = (entity as any)[condition.field];
+
+                                currentStepId = conditionResult
+                                    ? step.nextStepIds?.[0]
+                                    : step.nextStepIds?.[1];
+                            }
+                            break;
+
+                        default:
+                            stepResult.message = `Unknown step type: ${step.type}`;
+                            currentStepId = step.nextStepIds?.[0];
+                    }
+                } catch (error: any) {
+                    stepResult.status = "error";
+                    stepResult.error = error.message;
+                    stepResult.message = `Error: ${error.message}`;
+                }
+
+                stepResult.completedAt = new Date();
+                stepResult.duration = stepResult.completedAt.getTime() - stepResult.startedAt.getTime();
+                testResults.steps.push(stepResult);
+            }
+
+            testResults.completedAt = new Date();
+            testResults.totalDuration = testResults.completedAt.getTime() - testResults.startedAt.getTime();
+            testResults.productionDuration = productionDelayMs;
+
+            res.json({
+                success: true,
+                message: "Workflow test completed successfully",
+                data: testResults,
+            });
+        } catch (error: any) {
+            console.error("Test workflow error:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to test workflow.",
+                details: error.message,
+            });
+        }
+    }
+);
+
 export default router;
 
