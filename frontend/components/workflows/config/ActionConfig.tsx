@@ -492,35 +492,34 @@ function EnrollWorkflowActionFields({ step, onChange }: ActionConfigProps) {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (workspaceId) {
-            fetchWorkflows();
-        }
-    }, [workspaceId]);
-
-    const fetchWorkflows = async () => {
-        setLoading(true);
-        try {
-            const token = localStorage.getItem("token");
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/workflows`,
-                {
-                    headers: { Authorization: `Bearer ${token}` },
-                }
-            );
-            const data = await res.json();
-            if (data.success) {
-                // Filter out current workflow and only show active ones
-                const availableWorkflows = (data.data?.workflows || []).filter(
-                    (w: WorkflowListItem) => w.status === "active"
+        const fetchWorkflows = async () => {
+            if (!workspaceId) return;
+            setLoading(true);
+            try {
+                const token = localStorage.getItem("token");
+                const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/workflows`,
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
                 );
-                setWorkflows(availableWorkflows);
+                const data = await res.json();
+                if (data.success) {
+                    // Filter out current workflow and only show active ones
+                    const availableWorkflows = (data.data?.workflows || []).filter(
+                        (w: WorkflowListItem) => w.status === "active"
+                    );
+                    setWorkflows(availableWorkflows);
+                }
+            } catch (error) {
+                console.error("Failed to fetch workflows:", error);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error("Failed to fetch workflows:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
+
+        fetchWorkflows();
+    }, [workspaceId]);
 
     return (
         <div className="space-y-4">
