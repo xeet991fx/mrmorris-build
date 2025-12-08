@@ -88,6 +88,8 @@ export interface WorkflowStepConfig {
     emailTemplateId?: string;
     emailSubject?: string;
     emailBody?: string;
+    useCustomEmail?: boolean;      // If true, use recipientEmail instead of entity.email
+    recipientEmail?: string;       // Custom email address (supports placeholders)
     fieldName?: string;
     fieldValue?: any;
     taskTitle?: string;

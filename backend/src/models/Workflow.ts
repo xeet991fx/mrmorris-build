@@ -65,6 +65,9 @@ export interface IWorkflowStep {
         emailTemplateId?: string;
         emailSubject?: string;
         emailBody?: string;
+        useCustomEmail?: boolean;      // Send to custom email vs enrolled contact
+        recipientEmail?: string;       // Custom email address (supports placeholders)
+        sendFromAccountId?: string;    // Connected Gmail account to send from
         fieldName?: string;
         fieldValue?: any;
         taskTitle?: string;
@@ -188,6 +191,9 @@ const workflowStepSchema = new Schema<IWorkflowStep>(
             emailTemplateId: String,
             emailSubject: String,
             emailBody: String,
+            useCustomEmail: Boolean,
+            recipientEmail: String,
+            sendFromAccountId: String,
             fieldName: String,
             fieldValue: Schema.Types.Mixed,
             taskTitle: String,

@@ -257,6 +257,48 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
+              {/* Email Templates */}
+              <button
+                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/email-templates`)}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  pathname.includes('/email-templates')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Templates" : ""}
+              >
+                <EnvelopeIcon className="w-5 h-5 flex-shrink-0" />
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Templates
+                  </span>
+                )}
+              </button>
+
+              {/* Sequences */}
+              <button
+                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/sequences`)}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  pathname.includes('/sequences')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Sequences" : ""}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Sequences
+                  </span>
+                )}
+              </button>
+
               {/* Integrations */}
               <button
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings/integrations`)}
