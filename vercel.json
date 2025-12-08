@@ -1,6 +1,16 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron/workflows",
+      "schedule": "* * * * *"
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/cron/(.*)",
+      "destination": "/api/cron/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/api"

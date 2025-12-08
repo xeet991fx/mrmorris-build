@@ -1056,4 +1056,102 @@ router.post(
     }
 );
 
+// ============================================
+// SCHEDULER/CRON ROUTES
+// ============================================
+
+/**
+ * @route   POST /api/workspaces/workflows/process
+ * @desc    Manually trigger workflow processing (for testing/admin)
+ * @access  Private (requires CRON_SECRET in production)
+ */
+router.post(
+    "/workflows/process",
+    async (req: AuthRequest, res: Response) => {
+        try {
+            // In production, verify CRON_SECRET
+            const cronSecret = process.env.CRON_SECRET;
+            const authHeader = req.headers['authorization'];
+
+            if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+                // If no cron secret match, require user authentication
+                const authResult = await new Promise<boolean>((resolve) => {
+                    authenticate(req, res, () => resolve(true));
+                    setTimeout(() => resolve(false), 100);
+                });
+
+                if (!authResult && !req.user) {
+                    return res.status(401).json({
+                        success: false,
+                        error: "Unauthorized. Provide valid authentication or CRON_SECRET.",
+                    });
+                }
+            }
+
+            console.log("🔄 Manual workflow processing triggered...");
+            const startTime = Date.now();
+
+            // Import and use workflow service
+            const workflowService = (await import("../services/WorkflowService")).default;
+            await workflowService.processReadyEnrollments();
+
+            const duration = Date.now() - startTime;
+            console.log(`✅ Workflow processing completed in ${duration}ms`);
+
+            res.status(200).json({
+                success: true,
+                message: "Workflow enrollments processed successfully",
+                timestamp: new Date().toISOString(),
+                durationMs: duration,
+            });
+        } catch (error: any) {
+            console.error("Manual workflow processing error:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to process workflow enrollments.",
+                message: error.message,
+            });
+        }
+    }
+);
+
+/**
+ * @route   GET /api/workspaces/workflows/scheduler-status
+ * @desc    Get workflow scheduler status
+ * @access  Private
+ */
+router.get(
+    "/workflows/scheduler-status",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workflowScheduler } = await import("../services/WorkflowScheduler");
+            const status = workflowScheduler.getStatus();
+
+            // Count pending enrollments
+            const pendingCount = await WorkflowEnrollment.countDocuments({
+                status: "active",
+                nextExecutionTime: { $lte: new Date() },
+            });
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    scheduler: status,
+                    pendingEnrollments: pendingCount,
+                    serverTime: new Date().toISOString(),
+                    isVercel: process.env.VERCEL === '1',
+                },
+            });
+        } catch (error: any) {
+            console.error("Get scheduler status error:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to get scheduler status.",
+            });
+        }
+    }
+);
+
 export default router;
+
