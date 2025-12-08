@@ -12,6 +12,8 @@ import updateFieldAction from "./updateFieldAction";
 import taskAction from "./taskAction";
 import { addTagAction, removeTagAction } from "./tagAction";
 import notificationAction from "./notificationAction";
+import assignOwnerAction from "./assignOwnerAction";
+import enrollWorkflowAction from "./enrollWorkflowAction";
 
 // ============================================
 // ACTION REGISTRY
@@ -24,6 +26,8 @@ const actionRegistry: Record<string, ActionExecutor> = {
     add_tag: addTagAction,
     remove_tag: removeTagAction,
     send_notification: notificationAction,
+    assign_owner: assignOwnerAction,
+    enroll_workflow: enrollWorkflowAction,
 };
 
 // ============================================

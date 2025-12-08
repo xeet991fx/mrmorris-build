@@ -13,17 +13,23 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 // ============================================
 
 export type SequenceStatus = 'draft' | 'active' | 'paused' | 'archived';
+export type SequenceStepType = 'email' | 'task' | 'linkedin';
 
 export interface ISequenceStep {
     id: string;
     order: number;
-    templateId?: Types.ObjectId;          // Reference to EmailTemplate
-    subject: string;
-    body: string;
+    type: SequenceStepType;              // NEW: Step type (email, task, linkedin)
+    templateId?: Types.ObjectId;          // Reference to EmailTemplate (for email type)
+    subject: string;                      // Email subject or task title
+    body: string;                         // Email body or task description
     delay: {
         value: number;
         unit: 'hours' | 'days' | 'weeks';
     };
+    // Task-specific fields
+    taskDueInDays?: number;               // NEW: Days from now for task due date
+    taskAssignee?: Types.ObjectId;        // NEW: User to assign task to
+    taskPriority?: 'low' | 'medium' | 'high'; // NEW: Task priority
 }
 
 export interface ISequenceEnrollment {
@@ -93,6 +99,11 @@ const sequenceStepSchema = new Schema<ISequenceStep>(
     {
         id: { type: String, required: true },
         order: { type: Number, required: true },
+        type: {
+            type: String,
+            enum: ['email', 'task', 'linkedin'],
+            default: 'email'
+        },
         templateId: { type: Schema.Types.ObjectId, ref: "EmailTemplate" },
         subject: { type: String, required: true },
         body: { type: String, required: true },
@@ -103,6 +114,14 @@ const sequenceStepSchema = new Schema<ISequenceStep>(
                 enum: ['hours', 'days', 'weeks'],
                 default: 'days'
             },
+        },
+        // Task-specific fields
+        taskDueInDays: { type: Number, default: 1 },
+        taskAssignee: { type: Schema.Types.ObjectId, ref: "User" },
+        taskPriority: {
+            type: String,
+            enum: ['low', 'medium', 'high'],
+            default: 'medium'
         },
     },
     { _id: false }

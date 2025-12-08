@@ -124,8 +124,8 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
                             fetchTemplates();
                         }}
                         className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${useTemplate
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-card text-muted-foreground border-border hover:border-primary/50"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-muted-foreground border-border hover:border-primary/50"
                             }`}
                     >
                         📋 Use Template
@@ -137,8 +137,8 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
                             onChange({ ...step.config, emailTemplateId: "" });
                         }}
                         className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${!useTemplate
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-card text-muted-foreground border-border hover:border-primary/50"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-muted-foreground border-border hover:border-primary/50"
                             }`}
                     >
                         ✏️ Write Custom
@@ -185,8 +185,8 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
                         type="button"
                         onClick={() => onChange({ ...step.config, useCustomEmail: false, recipientEmail: "" })}
                         className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${!useCustomEmail
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-card text-muted-foreground border-border hover:border-primary/50"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-muted-foreground border-border hover:border-primary/50"
                             }`}
                     >
                         📧 Enrolled Contact
@@ -195,8 +195,8 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
                         type="button"
                         onClick={() => onChange({ ...step.config, useCustomEmail: true })}
                         className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${useCustomEmail
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-card text-muted-foreground border-border hover:border-primary/50"
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-muted-foreground border-border hover:border-primary/50"
                             }`}
                     >
                         ✉️ Custom Email
@@ -425,6 +425,149 @@ function NotificationActionFields({ step, onChange }: ActionConfigProps) {
     );
 }
 
+interface TeamMember {
+    _id: string;
+    name: string;
+    email: string;
+}
+
+interface WorkflowListItem {
+    _id: string;
+    name: string;
+    status: string;
+}
+
+function AssignOwnerActionFields({ step, onChange }: ActionConfigProps) {
+    const params = useParams();
+    const workspaceId = params?.id as string;
+    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        // For now, we'll use a simple input
+        // In a full implementation, you'd fetch team members
+        // fetchTeamMembers();
+    }, [workspaceId]);
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Assign To (User ID) *
+                </label>
+                <input
+                    type="text"
+                    placeholder="Enter user ID to assign ownership"
+                    value={step.config.taskAssignee || ""}
+                    onChange={(e) =>
+                        onChange({ ...step.config, taskAssignee: e.target.value })
+                    }
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                    The contact/deal will be assigned to this user
+                </p>
+            </div>
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                    <span className="text-amber-500">👤</span>
+                    <div>
+                        <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                            Owner Assignment
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            The new owner will be notified and can see this record in their dashboard
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function EnrollWorkflowActionFields({ step, onChange }: ActionConfigProps) {
+    const params = useParams();
+    const workspaceId = params?.id as string;
+    const [workflows, setWorkflows] = useState<WorkflowListItem[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (workspaceId) {
+            fetchWorkflows();
+        }
+    }, [workspaceId]);
+
+    const fetchWorkflows = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem("token");
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/workflows`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
+            const data = await res.json();
+            if (data.success) {
+                // Filter out current workflow and only show active ones
+                const availableWorkflows = (data.data?.workflows || []).filter(
+                    (w: WorkflowListItem) => w.status === "active"
+                );
+                setWorkflows(availableWorkflows);
+            }
+        } catch (error) {
+            console.error("Failed to fetch workflows:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Target Workflow *
+                </label>
+                <select
+                    value={step.config.targetWorkflowId || ""}
+                    onChange={(e) =>
+                        onChange({ ...step.config, targetWorkflowId: e.target.value })
+                    }
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    disabled={loading}
+                >
+                    <option value="">
+                        {loading ? "Loading workflows..." : "Select a workflow..."}
+                    </option>
+                    {workflows.map((w) => (
+                        <option key={w._id} value={w._id}>
+                            {w.name}
+                        </option>
+                    ))}
+                </select>
+                {workflows.length === 0 && !loading && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                        No active workflows found. Activate other workflows first.
+                    </p>
+                )}
+            </div>
+            <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                    <span className="text-purple-500">🔄</span>
+                    <div>
+                        <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                            Workflow Chaining
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            The contact/deal will be enrolled in the selected workflow after this step
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
@@ -474,6 +617,12 @@ export default function ActionConfig({ step, onChange }: ActionConfigProps) {
             )}
             {actionType === "send_notification" && (
                 <NotificationActionFields step={step} onChange={onChange} />
+            )}
+            {actionType === "assign_owner" && (
+                <AssignOwnerActionFields step={step} onChange={onChange} />
+            )}
+            {actionType === "enroll_workflow" && (
+                <EnrollWorkflowActionFields step={step} onChange={onChange} />
             )}
         </div>
     );
