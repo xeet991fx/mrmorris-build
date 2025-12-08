@@ -108,10 +108,10 @@ export default function ApolloUsagePage() {
             </li>
           </ul>
           <button
-            onClick={() => router.push(`/projects/${workspaceId}/settings/apollo`)}
+            onClick={() => router.push(`/projects/${workspaceId}/settings/integrations`)}
             className="mt-4 text-sm text-primary hover:underline"
           >
-            Go to Apollo Settings →
+            Go to Integrations →
           </button>
         </div>
       </motion.div>
