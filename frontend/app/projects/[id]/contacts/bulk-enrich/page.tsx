@@ -90,10 +90,10 @@ export default function BulkEnrichPage() {
               </ul>
               <div className="flex gap-3">
                 <button
-                  onClick={() => router.push(`/projects/${workspaceId}/settings/apollo`)}
+                  onClick={() => router.push(`/projects/${workspaceId}/settings/integrations`)}
                   className="text-sm text-primary hover:underline"
                 >
-                  Configure Apollo Settings →
+                  Configure Integrations →
                 </button>
                 <button
                   onClick={() => router.push(`/projects/${workspaceId}/contacts`)}

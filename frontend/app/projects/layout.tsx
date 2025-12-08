@@ -257,22 +257,22 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
-              {/* Email Settings */}
+              {/* Integrations */}
               <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings/email`)}
+                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings/integrations`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
-                  pathname.includes('/settings/email')
+                  pathname.includes('/settings/integrations')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
-                title={!isExpanded ? "Email Settings" : ""}
+                title={!isExpanded ? "Integrations" : ""}
               >
-                <EnvelopeIcon className="w-5 h-5 flex-shrink-0" />
+                <Cog6ToothIcon className="w-5 h-5 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
-                    Email Integration
+                    Integrations
                   </span>
                 )}
               </button>
