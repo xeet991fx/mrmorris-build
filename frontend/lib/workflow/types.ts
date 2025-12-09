@@ -131,6 +131,10 @@ export interface WorkflowStepConfig {
     scorePoints?: number;
     scoreEventType?: string;
     scoreReason?: string;
+    // Legacy aliases for lead score
+    eventType?: string;
+    points?: number;
+    reason?: string;
 }
 
 // ============================================

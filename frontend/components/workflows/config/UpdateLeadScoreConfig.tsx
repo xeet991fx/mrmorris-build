@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { WorkflowStep } from "@/types/workflow";
+import { WorkflowStep } from "@/lib/workflow/types";
 
 interface UpdateLeadScoreConfigProps {
   step: WorkflowStep;
@@ -40,7 +40,7 @@ export default function UpdateLeadScoreConfig({
   const [reason, setReason] = useState(step.config?.reason || "");
   const [usePreset, setUsePreset] = useState(
     COMMON_SCORING_EVENTS.some((e) => e.event === eventType) ||
-      NEGATIVE_EVENTS.some((e) => e.event === eventType)
+    NEGATIVE_EVENTS.some((e) => e.event === eventType)
   );
 
   const handleEventChange = (event: string) => {
@@ -96,7 +96,7 @@ export default function UpdateLeadScoreConfig({
           Update Lead Score
         </h3>
         <p className="text-xs text-gray-600 mb-4">
-          Add or subtract points from the contact's lead score based on their actions.
+          Add or subtract points from the contact&apos;s lead score based on their actions.
         </p>
       </div>
 
@@ -166,7 +166,7 @@ export default function UpdateLeadScoreConfig({
           maxLength={100}
         />
         <p className="text-xs text-gray-500 mt-1">
-          This will appear in the lead's score history.
+          This will appear in the lead&apos;s score history.
         </p>
       </div>
 
@@ -178,11 +178,11 @@ export default function UpdateLeadScoreConfig({
         <div className="text-sm text-blue-800">
           {points > 0 ? "Add" : "Subtract"}{" "}
           <span className="font-bold">{Math.abs(points)}</span> points{" "}
-          {points > 0 ? "to" : "from"} contact's lead score
+          {points > 0 ? "to" : "from"} contact&apos;s lead score
           {reason && (
             <>
               {" "}
-              for <span className="font-semibold">"{reason}"</span>
+              for <span className="font-semibold">&quot;{reason}&quot;</span>
             </>
           )}
         </div>
