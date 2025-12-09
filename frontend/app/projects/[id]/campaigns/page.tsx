@@ -16,6 +16,7 @@ import {
     ChatBubbleLeftIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import { getEmailIntegrations } from "@/lib/api/emailIntegration";
 
 interface CampaignStep {
     id: string;
@@ -100,15 +101,41 @@ export default function CampaignsPage() {
     const fetchEmailAccounts = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`${apiUrl}/email-accounts`, {
+
+            // Fetch cold email accounts
+            const coldAccountsPromise = fetch(`${apiUrl}/email-accounts`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
-            });
-            const data = await response.json();
-            if (data.success) {
-                setEmailAccounts(data.accounts);
+            }).then(res => res.json()).catch(() => ({ success: false, accounts: [] }));
+
+            // Fetch Gmail integrations
+            const integrationsPromise = getEmailIntegrations(workspaceId);
+
+            const [coldData, integrationsData] = await Promise.all([
+                coldAccountsPromise,
+                integrationsPromise,
+            ]);
+
+            const accounts: Array<{ _id: string; email: string }> = [];
+
+            // Add cold email accounts
+            if (coldData.success && coldData.accounts) {
+                for (const acc of coldData.accounts) {
+                    accounts.push({ _id: acc._id, email: acc.email });
+                }
             }
+
+            // Add Gmail integrations (avoid duplicates)
+            if (integrationsData.success && integrationsData.data?.integrations) {
+                for (const integration of integrationsData.data.integrations) {
+                    if (!accounts.some(acc => acc.email === integration.email)) {
+                        accounts.push({ _id: integration._id, email: integration.email });
+                    }
+                }
+            }
+
+            setEmailAccounts(accounts);
         } catch (error) {
             console.error("Failed to fetch email accounts:", error);
         }
@@ -477,8 +504,8 @@ export default function CampaignsPage() {
                                             <label
                                                 key={account._id}
                                                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors ${createForm.fromAccounts.includes(account._id)
-                                                        ? "bg-primary text-primary-foreground"
-                                                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                                    ? "bg-primary text-primary-foreground"
+                                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
                                                     }`}
                                             >
                                                 <input
