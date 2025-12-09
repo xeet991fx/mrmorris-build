@@ -23,6 +23,7 @@ const BUILT_IN_COLUMN_LABELS: Record<BuiltInColumn, string> = {
   source: "Lead Source",
   notes: "Notes",
   status: "Status",
+  leadScore: "Lead Score",
   createdAt: "Created Date",
 };
 
@@ -292,11 +293,11 @@ export default function ColumnManager({ isOpen, onClose }: ColumnManagerProps) {
                                           className={cn(
                                             "text-xs px-2 py-0.5 rounded capitalize",
                                             column.fieldType === "text" &&
-                                              "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+                                            "bg-blue-500/10 text-blue-400 border border-blue-500/20",
                                             column.fieldType === "number" &&
-                                              "bg-green-500/10 text-green-400 border border-green-500/20",
+                                            "bg-green-500/10 text-green-400 border border-green-500/20",
                                             column.fieldType === "select" &&
-                                              "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                                            "bg-purple-500/10 text-purple-400 border border-purple-500/20"
                                           )}
                                         >
                                           {column.fieldType}
