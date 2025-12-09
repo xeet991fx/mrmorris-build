@@ -22,7 +22,9 @@ export type ActionType =
     | 'add_tag'
     | 'remove_tag'
     | 'send_notification'
-    | 'enroll_workflow';
+    | 'enroll_workflow'
+    | 'update_lead_score'
+    | 'send_webhook';
 
 // Delay Types
 export type DelayType = 'duration' | 'until_date' | 'until_time' | 'until_weekday';
@@ -111,6 +113,24 @@ export interface WorkflowStepConfig {
 
     // Condition config
     conditions?: WorkflowCondition[];
+
+    // Wait event config
+    waitEventType?: string;
+    waitTimeoutDays?: number;
+    waitHasTimeout?: boolean;
+    waitTimeoutAction?: string;
+
+    // Webhook config
+    webhookUrl?: string;
+    webhookMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
+    webhookHeaders?: Record<string, string>;
+    webhookBody?: string;
+
+    // Lead score config
+    scoreMethod?: 'points' | 'event';
+    scorePoints?: number;
+    scoreEventType?: string;
+    scoreReason?: string;
 }
 
 // ============================================
@@ -276,6 +296,8 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
     remove_tag: 'Remove Tag',
     send_notification: 'Send Notification',
     enroll_workflow: 'Enroll in Workflow',
+    update_lead_score: 'Update Lead Score',
+    send_webhook: 'Send Webhook',
 };
 
 export const DELAY_UNIT_LABELS: Record<DelayUnit, string> = {

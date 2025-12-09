@@ -1631,5 +1631,122 @@ router.post(
     }
 );
 
+// ============================================
+// INCOMING WEBHOOK ENDPOINT
+// ============================================
+
+/**
+ * @route   POST /api/workspaces/:workspaceId/workflows/:id/webhook
+ * @desc    Receive incoming webhook to trigger workflow enrollment
+ * @access  Public (with webhook secret)
+ */
+router.post(
+    "/:workspaceId/workflows/:id/webhook",
+    async (req, res) => {
+        try {
+            const { workspaceId, id: workflowId } = req.params;
+            const webhookSecret = req.headers["x-webhook-secret"] as string;
+
+            // Find the workflow
+            const workflow = await Workflow.findOne({
+                _id: workflowId,
+                workspaceId,
+                status: "active",
+            });
+
+            if (!workflow) {
+                return res.status(404).json({
+                    success: false,
+                    error: "Workflow not found or not active.",
+                });
+            }
+
+            // Check if this workflow has webhook_received trigger
+            const triggerStep = workflow.steps.find(
+                (s) => s.type === "trigger" && s.config.triggerType === "webhook_received"
+            );
+
+            if (!triggerStep) {
+                return res.status(400).json({
+                    success: false,
+                    error: "This workflow does not have a webhook trigger.",
+                });
+            }
+
+            // Parse payload
+            const { entityType = "contact", entityId, data } = req.body;
+
+            if (!entityId) {
+                return res.status(400).json({
+                    success: false,
+                    error: "entityId is required in the request body.",
+                });
+            }
+
+            // Find the entity
+            let entity;
+            switch (entityType) {
+                case "contact":
+                    entity = await Contact.findOne({ _id: entityId, workspaceId });
+                    break;
+                case "deal":
+                    entity = await Opportunity.findOne({ _id: entityId, workspaceId });
+                    break;
+                case "company":
+                    entity = await Company.findOne({ _id: entityId, workspaceId });
+                    break;
+                default:
+                    entity = await Contact.findOne({ _id: entityId, workspaceId });
+            }
+
+            if (!entity) {
+                return res.status(404).json({
+                    success: false,
+                    error: `${entityType} with ID ${entityId} not found.`,
+                });
+            }
+
+            // Create enrollment
+            const enrollment = await WorkflowEnrollment.create({
+                workflowId: workflow._id,
+                workspaceId,
+                entityType,
+                entityId,
+                status: "active",
+                currentStepId: workflow.steps[1]?.id, // Start from second step (after trigger)
+                nextExecutionTime: new Date(),
+                enrollmentSource: "api",
+                enrolledAt: new Date(),
+            });
+
+            // Update workflow stats
+            await Workflow.findByIdAndUpdate(workflowId, {
+                $inc: { "stats.totalEnrolled": 1, "stats.currentlyActive": 1 },
+            });
+
+            console.log(`✅ Webhook enrolled ${entityType} ${entityId} in workflow ${workflow.name}`);
+
+            res.status(201).json({
+                success: true,
+                message: "Entity enrolled in workflow via webhook",
+                data: {
+                    enrollmentId: enrollment._id,
+                    workflowId: workflow._id,
+                    workflowName: workflow.name,
+                    entityType,
+                    entityId,
+                },
+            });
+        } catch (error: any) {
+            console.error("Webhook trigger error:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to process webhook.",
+                details: error.message,
+            });
+        }
+    }
+);
+
 export default router;
 

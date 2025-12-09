@@ -4,6 +4,7 @@ import Workflow from "../models/Workflow";
 import Contact from "../models/Contact";
 import Activity from "../models/Activity";
 import { workflowService } from "../services/workflow";
+import leadScoringService from "../services/leadScoring";
 
 const router = express.Router();
 
@@ -61,6 +62,17 @@ router.get("/open/:trackingId", async (req: Request, res: Response) => {
                 trackingId,
             },
         });
+
+        // Update lead score
+        try {
+            await leadScoringService.updateLeadScore(
+                workspaceId,
+                contactId,
+                "email_opened"
+            );
+        } catch (error) {
+            console.error("Failed to update lead score:", error);
+        }
 
         // Trigger workflows with email_opened trigger
         try {
@@ -140,6 +152,17 @@ router.get("/click/:trackingId", async (req: Request, res: Response) => {
                 trackingId,
             },
         });
+
+        // Update lead score
+        try {
+            await leadScoringService.updateLeadScore(
+                workspaceId,
+                contactId,
+                "email_clicked"
+            );
+        } catch (error) {
+            console.error("Failed to update lead score:", error);
+        }
 
         // Trigger workflows with email_clicked trigger
         try {

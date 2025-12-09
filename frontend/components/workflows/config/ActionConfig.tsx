@@ -623,6 +623,175 @@ export default function ActionConfig({ step, onChange }: ActionConfigProps) {
             {actionType === "enroll_workflow" && (
                 <EnrollWorkflowActionFields step={step} onChange={onChange} />
             )}
+            {actionType === "update_lead_score" && (
+                <UpdateLeadScoreActionFields step={step} onChange={onChange} />
+            )}
+            {actionType === "send_webhook" && (
+                <WebhookActionFields step={step} onChange={onChange} />
+            )}
+        </div>
+    );
+}
+
+// Placeholder components for new action types
+function UpdateLeadScoreActionFields({ step, onChange }: ActionConfigProps) {
+    const scoreMethod = step.config.scoreMethod || "points";
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Score Method
+                </label>
+                <select
+                    value={scoreMethod}
+                    onChange={(e) => onChange({ ...step.config, scoreMethod: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                    <option value="points">Add/Subtract Points</option>
+                    <option value="event">Trigger Event Type</option>
+                </select>
+            </div>
+
+            {scoreMethod === "points" ? (
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                        Points to Add/Subtract
+                    </label>
+                    <input
+                        type="number"
+                        placeholder="e.g., 10 or -5"
+                        value={step.config.scorePoints || ""}
+                        onChange={(e) => onChange({ ...step.config, scorePoints: parseInt(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Use positive numbers to add, negative to subtract
+                    </p>
+                </div>
+            ) : (
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                        Event Type
+                    </label>
+                    <select
+                        value={step.config.scoreEventType || ""}
+                        onChange={(e) => onChange({ ...step.config, scoreEventType: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    >
+                        <option value="">Select event...</option>
+                        <option value="email_opened">Email Opened (+5)</option>
+                        <option value="email_clicked">Email Clicked (+10)</option>
+                        <option value="form_submitted">Form Submitted (+20)</option>
+                        <option value="demo_requested">Demo Requested (+50)</option>
+                        <option value="deal_won">Deal Won (+100)</option>
+                        <option value="website_visit">Website Visit (+5)</option>
+                    </select>
+                </div>
+            )}
+
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Reason (Optional)
+                </label>
+                <input
+                    type="text"
+                    placeholder="e.g., Downloaded whitepaper"
+                    value={step.config.scoreReason || ""}
+                    onChange={(e) => onChange({ ...step.config, scoreReason: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+            </div>
+
+            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                    <span className="text-green-500">📊</span>
+                    <div>
+                        <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                            Lead Scoring
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Updates the contact&apos;s lead score and grade (A-F)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function WebhookActionFields({ step, onChange }: ActionConfigProps) {
+    return (
+        <div className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Webhook URL *
+                </label>
+                <input
+                    type="url"
+                    placeholder="https://api.example.com/webhook"
+                    value={step.config.webhookUrl || ""}
+                    onChange={(e) => onChange({ ...step.config, webhookUrl: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                    Supports placeholders: {"{{firstName}}"}, {"{{email}}"}, etc.
+                </p>
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                    HTTP Method
+                </label>
+                <select
+                    value={step.config.webhookMethod || "POST"}
+                    onChange={(e) => onChange({ ...step.config, webhookMethod: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                    <option value="POST">POST</option>
+                    <option value="GET">GET</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                </select>
+            </div>
+
+            {step.config.webhookMethod !== "GET" && (
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                        Request Body (JSON)
+                    </label>
+                    <textarea
+                        placeholder={`{
+  "event": "workflow_action",
+  "contact": {
+    "name": "{{firstName}} {{lastName}}",
+    "email": "{{email}}"
+  }
+}`}
+                        value={step.config.webhookBody || ""}
+                        onChange={(e) => onChange({ ...step.config, webhookBody: e.target.value })}
+                        rows={5}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono text-sm resize-none"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Leave empty to send default entity data
+                    </p>
+                </div>
+            )}
+
+            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                    <span className="text-blue-500">🌐</span>
+                    <div>
+                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                            External Webhook
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Sends HTTP request to external service (10 second timeout)
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

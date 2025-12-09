@@ -2,8 +2,12 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IActivity extends Document {
   workspaceId: Types.ObjectId;
-  userId: Types.ObjectId; // who performed the action
-  opportunityId: Types.ObjectId;
+  userId?: Types.ObjectId; // who performed the action (optional for automated workflows)
+  opportunityId?: Types.ObjectId; // optional - can be contact or company activity
+
+  // Entity linking (polymorphic)
+  entityType?: "contact" | "deal" | "company" | "opportunity";
+  entityId?: Types.ObjectId;
 
   type:
     | "email"
@@ -13,7 +17,8 @@ export interface IActivity extends Document {
     | "stage_change"
     | "file_upload"
     | "task"
-    | "ai_suggestion";
+    | "ai_suggestion"
+    | "workflow_action"; // New type for workflow-generated activities
 
   title: string; // "Called John Smith"
   description?: string; // Call notes
@@ -27,11 +32,18 @@ export interface IActivity extends Document {
   // Task-specific
   dueDate?: Date;
   completed?: boolean;
+  assigneeId?: Types.ObjectId; // Task assignee
 
   // File-specific
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
+
+  // Workflow context
+  workflowId?: Types.ObjectId;
+  workflowEnrollmentId?: Types.ObjectId;
+  workflowStepId?: string;
+  automated?: boolean; // True if created by workflow
 
   // Metadata
   metadata?: {
@@ -39,6 +51,7 @@ export interface IActivity extends Document {
     toStage?: string;
     oldValue?: any;
     newValue?: any;
+    [key: string]: any; // Allow additional metadata
   };
 
   // AI
@@ -60,13 +73,24 @@ const activitySchema = new Schema<IActivity>(
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: [true, "User ID is required"],
+      required: false, // Optional for workflow automation
       index: true,
     },
     opportunityId: {
       type: Schema.Types.ObjectId,
       ref: "Opportunity",
-      required: [true, "Opportunity ID is required"],
+      required: false, // Optional - can link to other entities
+      index: true,
+    },
+
+    // Entity linking (polymorphic)
+    entityType: {
+      type: String,
+      enum: ["contact", "deal", "company", "opportunity"],
+      index: true,
+    },
+    entityId: {
+      type: Schema.Types.ObjectId,
       index: true,
     },
 
@@ -81,6 +105,7 @@ const activitySchema = new Schema<IActivity>(
         "file_upload",
         "task",
         "ai_suggestion",
+        "workflow_action",
       ],
       required: [true, "Activity type is required"],
     },
@@ -125,6 +150,31 @@ const activitySchema = new Schema<IActivity>(
       type: Boolean,
       default: false,
     },
+    assigneeId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
+
+    // Workflow context
+    workflowId: {
+      type: Schema.Types.ObjectId,
+      ref: "Workflow",
+      index: true,
+    },
+    workflowEnrollmentId: {
+      type: Schema.Types.ObjectId,
+      ref: "WorkflowEnrollment",
+      index: true,
+    },
+    workflowStepId: {
+      type: String,
+    },
+    automated: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
 
     // File-specific
     fileUrl: {
@@ -165,6 +215,9 @@ const activitySchema = new Schema<IActivity>(
 activitySchema.index({ workspaceId: 1, opportunityId: 1, createdAt: -1 }); // Timeline view
 activitySchema.index({ workspaceId: 1, type: 1, createdAt: -1 }); // Filter by type
 activitySchema.index({ workspaceId: 1, userId: 1, createdAt: -1 }); // My activities
+activitySchema.index({ workspaceId: 1, entityType: 1, entityId: 1, createdAt: -1 }); // Entity timeline
+activitySchema.index({ workspaceId: 1, workflowId: 1, createdAt: -1 }); // Workflow activities
+activitySchema.index({ workspaceId: 1, automated: 1, createdAt: -1 }); // Automated vs manual
 
 const Activity = mongoose.model<IActivity>("Activity", activitySchema);
 

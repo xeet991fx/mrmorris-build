@@ -22,6 +22,7 @@ import workflowRoutes from "./routes/workflow";
 import emailTemplateRoutes from "./routes/emailTemplate";
 import sequenceRoutes from "./routes/sequence";
 import emailTrackingRoutes from "./routes/emailTracking";
+import leadScoreRoutes from "./routes/leadScore";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 
 dotenv.config();
@@ -104,6 +105,7 @@ app.use("/api/workspaces", workflowRoutes);
 app.use("/api/workspaces", emailTemplateRoutes);
 app.use("/api/workspaces", sequenceRoutes);
 app.use("/api/email-tracking", emailTrackingRoutes);
+app.use("/api/workspaces", leadScoreRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

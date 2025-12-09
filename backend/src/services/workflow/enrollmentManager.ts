@@ -212,11 +212,86 @@ export async function completeEnrollment(
 /**
  * Find all enrollments ready for execution
  */
+/**
+ * Maximum number of enrollments to process per batch
+ * This prevents timeout issues on Vercel (10 min limit)
+ */
+const BATCH_SIZE = 100;
+
 export async function findReadyEnrollments(): Promise<IWorkflowEnrollment[]> {
     return WorkflowEnrollment.find({
-        status: "active",
+        status: { $in: ["active", "retrying"] },
         nextExecutionTime: { $lte: new Date() },
+    })
+        .limit(BATCH_SIZE)
+        .sort({ nextExecutionTime: 1 }); // Process oldest first (FIFO)
+}
+
+/**
+ * Resume enrollments waiting for a specific event
+ */
+export async function resumeWaitingEnrollments(
+    entityId: Types.ObjectId | string,
+    eventType: string,
+    workspaceId: Types.ObjectId | string
+): Promise<number> {
+    // Find all enrollments waiting for this event type on this entity
+    const waitingEnrollments = await WorkflowEnrollment.find({
+        workspaceId,
+        entityId,
+        status: "waiting_for_event",
+        "waitingForEvent.eventType": eventType,
     });
+
+    console.log(
+        `🎯 Found ${waitingEnrollments.length} enrollments waiting for event '${eventType}'`
+    );
+
+    let resumedCount = 0;
+
+    for (const enrollment of waitingEnrollments) {
+        // Mark the wait step as completed
+        const waitStep = enrollment.stepsExecuted[enrollment.stepsExecuted.length - 1];
+        if (waitStep && waitStep.status === "waiting") {
+            waitStep.status = "completed";
+            waitStep.completedAt = new Date();
+            waitStep.result = {
+                ...waitStep.result,
+                eventReceived: eventType,
+                resumedAt: new Date().toISOString(),
+            };
+        }
+
+        // Resume execution - move to next step
+        const workflow = await Workflow.findById(enrollment.workflowId);
+        if (!workflow) {
+            console.warn(`Workflow ${enrollment.workflowId} not found`);
+            continue;
+        }
+
+        const currentStep = workflow.steps.find(
+            (s) => s.id === enrollment.currentStepId
+        );
+        if (!currentStep) {
+            console.warn(`Step ${enrollment.currentStepId} not found`);
+            continue;
+        }
+
+        // Move to next step (the success path - nextStepIds[0])
+        enrollment.currentStepId = currentStep.nextStepIds[0];
+        enrollment.status = "active";
+        enrollment.nextExecutionTime = new Date(); // Execute immediately
+        enrollment.waitingForEvent = undefined;
+
+        await enrollment.save();
+        resumedCount++;
+
+        console.log(
+            `✅ Resumed enrollment ${enrollment._id} - event '${eventType}' received`
+        );
+    }
+
+    return resumedCount;
 }
 
 /**

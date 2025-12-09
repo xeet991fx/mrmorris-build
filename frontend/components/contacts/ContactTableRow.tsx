@@ -6,6 +6,7 @@ import { Contact } from "@/lib/api/contact";
 import { useContactStore, ContactColumn, BuiltInColumn } from "@/store/useContactStore";
 import EditableCell from "./EditableCell";
 import EnrollInWorkflowModal from "@/components/workflows/EnrollInWorkflowModal";
+import LeadScoreBadge from "./LeadScoreBadge";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -51,6 +52,7 @@ export default function ContactTableRow({
       "source",
       "notes",
       "status",
+      "leadScore",
       "createdAt",
     ].includes(column);
   };
@@ -96,6 +98,17 @@ export default function ContactTableRow({
             >
               {contact.status || "lead"}
             </span>
+          );
+        case "leadScore":
+          return contact.leadScore ? (
+            <LeadScoreBadge
+              score={contact.leadScore.currentScore}
+              grade={contact.leadScore.grade}
+              size="sm"
+              showScore={true}
+            />
+          ) : (
+            <span className="text-xs text-gray-500">No score</span>
           );
         case "createdAt":
           return format(new Date(contact.createdAt), "MMM d, yyyy");

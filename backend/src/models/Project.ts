@@ -3,6 +3,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 export interface IProject extends Document {
   userId: Types.ObjectId;
   name: string;
+  timezone: string; // e.g., 'America/New_York', 'UTC'
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +23,11 @@ const projectSchema = new Schema<IProject>(
       minlength: [3, "Project name must be at least 3 characters"],
       maxlength: [100, "Project name must be less than 100 characters"],
     },
+    timezone: {
+      type: String,
+      default: "UTC",
+      trim: true,
+    },
   },
   {
     timestamps: true, // Automatically creates createdAt and updatedAt
@@ -35,3 +41,4 @@ projectSchema.index({ createdAt: -1 }); // Index for general sorting
 const Project = mongoose.model<IProject>("Project", projectSchema);
 
 export default Project;
+

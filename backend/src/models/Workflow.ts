@@ -12,7 +12,8 @@ export type TriggerType =
     | 'email_opened'
     | 'email_clicked'
     | 'form_submitted'
-    | 'manual';
+    | 'manual'
+    | 'webhook_received';
 
 export type ActionType =
     | 'send_email'
@@ -22,7 +23,9 @@ export type ActionType =
     | 'add_tag'
     | 'remove_tag'
     | 'send_notification'
-    | 'enroll_workflow';
+    | 'enroll_workflow'
+    | 'update_lead_score'
+    | 'send_webhook';
 
 export type DelayType = 'duration' | 'until_date' | 'until_time' | 'until_weekday';
 
@@ -40,7 +43,7 @@ export type ConditionOperator =
 
 export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'archived';
 
-export type StepType = 'trigger' | 'action' | 'delay' | 'condition';
+export type StepType = 'trigger' | 'action' | 'delay' | 'condition' | 'wait_event';
 
 // ============================================
 // SUB-DOCUMENT INTERFACES
@@ -89,6 +92,17 @@ export interface IWorkflowStep {
 
         // Condition config
         conditions?: IWorkflowCondition[];
+
+        // Lead scoring config
+        scoreEventType?: string;
+        scorePoints?: number;
+        scoreReason?: string;
+
+        // Webhook config
+        webhookUrl?: string;
+        webhookMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
+        webhookHeaders?: Record<string, string>;
+        webhookBody?: string;
     };
     position: {
         x: number;
@@ -221,6 +235,11 @@ const workflowStepSchema = new Schema<IWorkflowStep>(
 
             // Condition config
             conditions: [workflowConditionSchema],
+
+            // Lead scoring config
+            scoreEventType: String,
+            scorePoints: Number,
+            scoreReason: String,
         },
         position: {
             x: { type: Number, required: true },

@@ -13,6 +13,7 @@ import EmailIntegration from "../../../models/EmailIntegration";
 import emailService from "../../email";
 import { replacePlaceholders } from "../utils";
 import { ActionContext, ActionResult, BaseActionExecutor } from "./types";
+import { generateTrackingId, getTrackingPixelUrl } from "../../../routes/emailTracking";
 
 // Gmail OAuth client factory
 const getOAuth2Client = () => {
@@ -45,7 +46,25 @@ export class EmailActionExecutor extends BaseActionExecutor {
 
         // Replace placeholders in subject and body
         const subject = replacePlaceholders(emailSubject || "Automated Message", entity);
-        const body = replacePlaceholders(emailBody || "", entity);
+        let body = replacePlaceholders(emailBody || "", entity);
+
+        // Add email tracking pixel and wrap links
+        const trackingId = generateTrackingId(
+            enrollment.workspaceId.toString(),
+            entity._id?.toString() || enrollment.entityId.toString(),
+            "workflow",
+            enrollment._id?.toString() || ""
+        );
+
+        // Add tracking pixel at the end of email body
+        const trackingPixelUrl = getTrackingPixelUrl(trackingId);
+        const trackingPixel = `<img src="${trackingPixelUrl}" width="1" height="1" style="display:none" alt="" />`;
+
+        // Wrap links with click tracking
+        body = this.wrapLinksWithTracking(body, trackingId);
+
+        // Append tracking pixel
+        body = body + trackingPixel;
 
         // Build entity data for email template
         const entityData = {
@@ -188,6 +207,30 @@ export class EmailActionExecutor extends BaseActionExecutor {
                 sentVia: "gmail",
             };
         }
+    }
+
+    /**
+     * Wrap all links in the email body with click tracking
+     */
+    private wrapLinksWithTracking(htmlBody: string, trackingId: string): string {
+        const baseUrl = process.env.BACKEND_URL || "http://localhost:5000";
+
+        // Match all <a href="..."> tags
+        return htmlBody.replace(
+            /<a\s+([^>]*?)href=["']([^"']+)["']([^>]*?)>/gi,
+            (match, beforeHref, url, afterHref) => {
+                // Don't track if it's already a tracking link
+                if (url.includes('/api/email-tracking/')) {
+                    return match;
+                }
+
+                // Encode the original URL
+                const encodedUrl = Buffer.from(url).toString("base64");
+                const trackingUrl = `${baseUrl}/api/email-tracking/click/${trackingId}?url=${encodedUrl}`;
+
+                return `<a ${beforeHref}href="${trackingUrl}"${afterHref}>`;
+            }
+        );
     }
 }
 

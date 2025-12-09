@@ -2,6 +2,7 @@ import express, { Response } from "express";
 import rateLimit from "express-rate-limit";
 import Contact from "../models/Contact";
 import Project from "../models/Project";
+import LeadScore from "../models/LeadScore";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import {
   createContactSchema,
@@ -166,12 +167,37 @@ router.get(
         Contact.countDocuments(filter),
       ]);
 
-      // Convert Map to plain object for JSON serialization
+      // Get lead scores for all contacts
+      const contactIds = contactDocs.map((doc) => doc._id);
+      const leadScores = await LeadScore.find({
+        workspaceId,
+        contactId: { $in: contactIds },
+      });
+
+      // Create a map of contactId => leadScore
+      const leadScoreMap = new Map(
+        leadScores.map((score) => [score.contactId.toString(), score])
+      );
+
+      // Convert Map to plain object for JSON serialization and attach lead scores
       const contacts = contactDocs.map((doc) => {
         const obj: any = doc.toObject();
         if (obj.customFields && obj.customFields instanceof Map) {
           obj.customFields = Object.fromEntries(obj.customFields);
         }
+
+        // Attach lead score if exists
+        const leadScore = leadScoreMap.get((doc._id as any).toString());
+        if (leadScore) {
+          obj.leadScore = {
+            currentScore: leadScore.currentScore,
+            grade: leadScore.grade,
+            previousScore: leadScore.previousScore,
+            previousGrade: leadScore.previousGrade,
+            lastActivityAt: leadScore.lastActivityAt,
+          };
+        }
+
         return obj;
       });
 

@@ -36,6 +36,7 @@ const DEFAULT_COLUMN_LABELS: Record<BuiltInColumn, string> = {
   source: "Lead Source",
   notes: "Notes",
   status: "Status",
+  leadScore: "Lead Score",
   createdAt: "Created Date",
 };
 

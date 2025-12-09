@@ -16,6 +16,7 @@ import {
     completeEnrollment,
     findReadyEnrollments,
     isEnrolled,
+    resumeWaitingEnrollments,
 } from "./enrollmentManager";
 import {
     executeNextStep,
@@ -82,6 +83,17 @@ class WorkflowService {
         entityId: Types.ObjectId | string
     ): Promise<boolean> {
         return isEnrolled(workflowId, entityId);
+    }
+
+    /**
+     * Resume enrollments waiting for a specific event
+     */
+    async resumeWaitingEnrollments(
+        entityId: Types.ObjectId | string,
+        eventType: string,
+        workspaceId: string
+    ): Promise<number> {
+        return resumeWaitingEnrollments(entityId, eventType, workspaceId);
     }
 
     // ==========================================
@@ -177,7 +189,8 @@ export {
     checkAndEnroll,
     enrollEntity,
     completeEnrollment,
-    findReadyEnrollments
+    findReadyEnrollments,
+    resumeWaitingEnrollments
 } from "./enrollmentManager";
 export { executeNextStep, processReadyEnrollments } from "./stepExecutor";
 export { evaluateCondition, evaluateConditions } from "./conditionEvaluator";

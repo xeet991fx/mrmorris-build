@@ -20,25 +20,23 @@ export class NotificationActionExecutor extends BaseActionExecutor {
         // Replace placeholders in message
         const message = replacePlaceholders(notificationMessage, entity);
 
-        // Create a notification activity (wrapped in try-catch)
-        try {
-            await Activity.create({
-                workspaceId: enrollment.workspaceId,
-                entityType: enrollment.entityType,
-                entityId: enrollment.entityId,
-                type: "note", // Using 'note' as 'notification' is not a valid type
-                title: "Workflow Notification",
-                description: message,
-                metadata: {
-                    workflowId: enrollment.workflowId,
-                    stepId: step.id,
-                    automated: true,
-                    targetUserId: notificationUserId,
-                },
-            });
-        } catch (activityError: any) {
-            console.warn("Notification activity logging skipped:", activityError.message);
-        }
+        // Create a notification activity
+        await Activity.create({
+            workspaceId: enrollment.workspaceId,
+            userId: notificationUserId, // The user being notified
+            entityType: enrollment.entityType,
+            entityId: enrollment.entityId,
+            type: "note", // Using 'note' as 'notification' is not a valid type
+            title: "Workflow Notification",
+            description: message,
+            workflowId: enrollment.workflowId,
+            workflowEnrollmentId: enrollment._id,
+            workflowStepId: step.id,
+            automated: true,
+            metadata: {
+                targetUserId: notificationUserId,
+            },
+        });
 
         this.log(`🔔 Notification: ${message}`);
 

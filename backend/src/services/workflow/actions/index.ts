@@ -14,6 +14,8 @@ import { addTagAction, removeTagAction } from "./tagAction";
 import notificationAction from "./notificationAction";
 import assignOwnerAction from "./assignOwnerAction";
 import enrollWorkflowAction from "./enrollWorkflowAction";
+import leadScoreAction from "./leadScoreAction";
+import webhookAction from "./webhookAction";
 
 // ============================================
 // ACTION REGISTRY
@@ -28,6 +30,8 @@ const actionRegistry: Record<string, ActionExecutor> = {
     send_notification: notificationAction,
     assign_owner: assignOwnerAction,
     enroll_workflow: enrollWorkflowAction,
+    update_lead_score: leadScoreAction,
+    send_webhook: webhookAction,
 };
 
 // ============================================

@@ -11,15 +11,16 @@ export type EnrollmentStatus =
     | 'failed'
     | 'cancelled'
     | 'paused'
-    | 'retrying';
+    | 'retrying'
+    | 'waiting_for_event';
 
 export interface IStepExecution {
     stepId: string;
     stepName: string;
-    stepType: 'trigger' | 'action' | 'delay' | 'condition';
+    stepType: 'trigger' | 'action' | 'delay' | 'condition' | 'wait_event';
     startedAt: Date;
     completedAt?: Date;
-    status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped' | 'waiting';
     result?: any;
     error?: string;
 }
@@ -40,6 +41,13 @@ export interface IWorkflowEnrollment extends Document {
     status: EnrollmentStatus;
     currentStepId?: string;
     nextExecutionTime?: Date;
+
+    // Wait for event state
+    waitingForEvent?: {
+        eventType: string;
+        timeoutAt?: Date;
+        timeoutStepId?: string;
+    };
 
     // Execution History
     stepsExecuted: IStepExecution[];
@@ -69,14 +77,14 @@ const stepExecutionSchema = new Schema<IStepExecution>(
         stepName: { type: String, required: true },
         stepType: {
             type: String,
-            enum: ['trigger', 'action', 'delay', 'condition'],
+            enum: ['trigger', 'action', 'delay', 'condition', 'wait_event'],
             required: true,
         },
         startedAt: { type: Date, required: true, default: Date.now },
         completedAt: { type: Date },
         status: {
             type: String,
-            enum: ['pending', 'running', 'completed', 'failed', 'skipped'],
+            enum: ['pending', 'running', 'completed', 'failed', 'skipped', 'waiting'],
             default: 'pending',
         },
         result: { type: Schema.Types.Mixed },
@@ -120,7 +128,7 @@ const workflowEnrollmentSchema = new Schema<IWorkflowEnrollment>(
         // Progress tracking
         status: {
             type: String,
-            enum: ['active', 'completed', 'goal_met', 'failed', 'cancelled', 'paused', 'retrying'],
+            enum: ['active', 'completed', 'goal_met', 'failed', 'cancelled', 'paused', 'retrying', 'waiting_for_event'],
             default: 'active',
             index: true,
         },
@@ -130,6 +138,13 @@ const workflowEnrollmentSchema = new Schema<IWorkflowEnrollment>(
         nextExecutionTime: {
             type: Date,
             index: true,
+        },
+
+        // Wait for event state
+        waitingForEvent: {
+            eventType: { type: String },
+            timeoutAt: { type: Date },
+            timeoutStepId: { type: String },
         },
 
         // Execution history

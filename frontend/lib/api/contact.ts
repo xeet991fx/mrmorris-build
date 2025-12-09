@@ -34,6 +34,13 @@ export interface Contact {
     recommendedActions?: string[];
     lastAnalyzedAt?: string;
   };
+  leadScore?: {
+    currentScore: number;
+    grade: "A" | "B" | "C" | "D" | "F";
+    previousScore: number;
+    previousGrade: "A" | "B" | "C" | "D" | "F";
+    lastActivityAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

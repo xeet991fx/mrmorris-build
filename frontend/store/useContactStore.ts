@@ -19,6 +19,7 @@ export type BuiltInColumn =
   | "source"
   | "notes"
   | "status"
+  | "leadScore"
   | "createdAt";
 
 export type ContactColumn = BuiltInColumn | string; // string for custom field keys
@@ -32,6 +33,7 @@ export const DEFAULT_COLUMN_WIDTHS: Record<BuiltInColumn, number> = {
   jobTitle: 160,
   source: 144,
   status: 112,
+  leadScore: 128,
   notes: 256,
   createdAt: 144,
 };
@@ -45,6 +47,7 @@ export const DEFAULT_COLUMN_ORDER: BuiltInColumn[] = [
   "jobTitle",
   "source",
   "status",
+  "leadScore",
   "createdAt",
   "notes",
 ];
@@ -158,6 +161,7 @@ export const useContactStore = create<ContactState>()(
         "jobTitle",
         "source",
         "status",
+        "leadScore",
         "createdAt",
         "notes",
       ],
@@ -517,6 +521,7 @@ export const useContactStore = create<ContactState>()(
             "jobTitle",
             "source",
             "status",
+            "leadScore",
             "createdAt",
             "notes",
           ],

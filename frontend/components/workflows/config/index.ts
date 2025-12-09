@@ -9,3 +9,7 @@ export { default as TriggerConfig } from "./TriggerConfig";
 export { default as ActionConfig } from "./ActionConfig";
 export { default as DelayConfig } from "./DelayConfig";
 export { default as ConditionConfig } from "./ConditionConfig";
+export { default as WaitEventConfig } from "./WaitEventConfig";
+export { default as WebhookActionConfig } from "./WebhookActionConfig";
+
+

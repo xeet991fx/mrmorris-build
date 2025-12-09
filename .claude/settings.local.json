@@ -56,7 +56,10 @@
       "Bash(del \"frontend\\components\\projects\\wizard\\Step5OfferCTA.tsx\")",
       "Bash(del \"frontend\\components\\projects\\wizard\\Step6Competition.tsx\")",
       "WebSearch",
-      "Bash(del \"C:\\Users\\imkum\\SDE\\mr-morrisv2\\mrmorris-build\\frontend\\app\\projects\\[id]\\settings\\email\\page.tsx\")"
+      "Bash(del \"C:\\Users\\imkum\\SDE\\mr-morrisv2\\mrmorris-build\\frontend\\app\\projects\\[id]\\settings\\email\\page.tsx\")",
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

@@ -80,6 +80,10 @@ export async function executeNextStep(
                     result = branchResult.result;
                     nextStepId = branchResult.nextStepId;
                     break;
+
+                case "wait_event":
+                    await executeWaitEventStep(step, enrollment, workflow, nextStepId);
+                    return; // Wait event step pauses execution
             }
 
             // Update step as completed
@@ -93,7 +97,10 @@ export async function executeNextStep(
             enrollment.nextExecutionTime = nextStepId ? new Date() : undefined;
 
             if (!nextStepId) {
-                await completeEnrollment(enrollment, "completed");
+                // Check if goal criteria is met before completing
+                const goalMet = await checkGoalCriteria(enrollment, workflow);
+                const completionStatus = goalMet ? "goal_met" : "completed";
+                await completeEnrollment(enrollment, completionStatus);
             } else {
                 await enrollment.save();
 
@@ -155,24 +162,142 @@ async function executeDelayStep(
     enrollment: IWorkflowEnrollment,
     nextStepId: string | undefined
 ): Promise<void> {
-    const delayMs = calculateDelayMs(step.config.delayValue, step.config.delayUnit);
+    const now = new Date();
+    let delayMs = 0;
+    let scheduledFor: Date;
+    let description: string;
+
+    const delayType = step.config.delayType || "duration";
+
+    switch (delayType) {
+        case "duration":
+            // Standard duration delay (minutes, hours, days, weeks)
+            delayMs = calculateDelayMs(step.config.delayValue, step.config.delayUnit);
+            scheduledFor = new Date(now.getTime() + delayMs);
+            description = `${step.config.delayValue} ${step.config.delayUnit}`;
+            break;
+
+        case "until_date":
+            // Wait until a specific date
+            const targetDate = new Date(step.config.delayDate!);
+            scheduledFor = targetDate;
+            delayMs = Math.max(0, targetDate.getTime() - now.getTime());
+            description = `until ${targetDate.toLocaleDateString()}`;
+            break;
+
+        case "until_time":
+            // Wait until a specific time today or tomorrow
+            const [hours, minutes] = step.config.delayTime!.split(":");
+            const targetTime = new Date(now);
+            targetTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+            // If time has passed today, schedule for tomorrow
+            if (targetTime <= now) {
+                targetTime.setDate(targetTime.getDate() + 1);
+            }
+
+            scheduledFor = targetTime;
+            delayMs = targetTime.getTime() - now.getTime();
+            description = `until ${step.config.delayTime}`;
+            break;
+
+        case "until_weekday":
+            // Wait until a specific day of the week (0 = Sunday, 6 = Saturday)
+            const targetWeekday = parseInt(step.config.delayWeekday!);
+            const currentWeekday = now.getDay();
+            let daysToAdd = targetWeekday - currentWeekday;
+
+            // If same day or past, go to next week
+            if (daysToAdd <= 0) {
+                daysToAdd += 7;
+            }
+
+            const targetWeekdayDate = new Date(now);
+            targetWeekdayDate.setDate(targetWeekdayDate.getDate() + daysToAdd);
+
+            // Set to 9 AM by default
+            targetWeekdayDate.setHours(9, 0, 0, 0);
+
+            scheduledFor = targetWeekdayDate;
+            delayMs = targetWeekdayDate.getTime() - now.getTime();
+
+            const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            description = `until next ${weekdays[targetWeekday]}`;
+            break;
+
+        default:
+            // Fallback to 1 day
+            delayMs = 24 * 60 * 60 * 1000;
+            scheduledFor = new Date(now.getTime() + delayMs);
+            description = "1 day (default)";
+    }
 
     enrollment.currentStepId = nextStepId;
-    enrollment.nextExecutionTime = new Date(Date.now() + delayMs);
+    enrollment.nextExecutionTime = scheduledFor;
 
     // Update step execution
     const delayExec = enrollment.stepsExecuted[enrollment.stepsExecuted.length - 1];
     delayExec.status = "completed";
     delayExec.completedAt = new Date();
     delayExec.result = {
+        delayType,
         delayMs,
-        scheduledFor: enrollment.nextExecutionTime.toISOString(),
+        scheduledFor: scheduledFor.toISOString(),
+        description,
     };
 
     await enrollment.save();
 
     console.log(
-        `⏰ Delay step: Waiting ${step.config.delayValue} ${step.config.delayUnit} (${delayMs}ms)`
+        `⏰ Delay step: Waiting ${description} (scheduled for ${scheduledFor.toLocaleString()})`
+    );
+}
+
+/**
+ * Execute a wait-for-event step (pauses until event occurs)
+ */
+async function executeWaitEventStep(
+    step: any,
+    enrollment: IWorkflowEnrollment,
+    workflow: any,
+    nextStepId: string | undefined
+): Promise<void> {
+    const { eventType, timeoutDays, timeoutStepId } = step.config;
+
+    if (!eventType) {
+        throw new Error("Wait event step requires eventType configuration");
+    }
+
+    // Calculate timeout if specified
+    let timeoutAt: Date | undefined;
+    if (timeoutDays && timeoutDays > 0) {
+        timeoutAt = new Date();
+        timeoutAt.setDate(timeoutAt.getDate() + timeoutDays);
+    }
+
+    // Update enrollment to waiting state
+    enrollment.status = "waiting_for_event";
+    enrollment.currentStepId = step.id; // Keep current step
+    enrollment.nextExecutionTime = timeoutAt; // Will be checked by timeout handler
+    enrollment.waitingForEvent = {
+        eventType,
+        timeoutAt,
+        timeoutStepId: timeoutStepId || step.nextStepIds[1], // Timeout path (or stay on current)
+    };
+
+    // Update step execution
+    const waitExec = enrollment.stepsExecuted[enrollment.stepsExecuted.length - 1];
+    waitExec.status = "waiting";
+    waitExec.result = {
+        eventType,
+        waitingFor: eventType,
+        timeoutAt: timeoutAt?.toISOString(),
+    };
+
+    await enrollment.save();
+
+    console.log(
+        `⏸️ Wait event step: Waiting for '${eventType}'${timeoutAt ? ` (timeout: ${timeoutAt.toLocaleString()})` : " (no timeout)"}`
     );
 }
 
@@ -267,6 +392,51 @@ async function handleStepError(
         console.warn(
             `⚠️ Step failed (attempt ${enrollment.errorCount}/${maxRetries}), retrying in ${retryDelayMinutes} minute${retryDelayMinutes > 1 ? 's' : ''}: ${error.message}`
         );
+    }
+}
+
+// ============================================
+// GOAL CHECKING
+// ============================================
+
+/**
+ * Check if the enrollment met the workflow's goal criteria
+ */
+async function checkGoalCriteria(
+    enrollment: IWorkflowEnrollment,
+    workflow: any
+): Promise<boolean> {
+    // If no goal criteria defined, return false
+    if (!workflow.goalCriteria || !workflow.goalCriteria.conditions || workflow.goalCriteria.conditions.length === 0) {
+        return false;
+    }
+
+    try {
+        // Get the current state of the entity
+        const entity = await getEntity(enrollment.entityType, enrollment.entityId);
+        if (!entity) {
+            console.warn(`Entity not found for goal checking: ${enrollment.entityId}`);
+            return false;
+        }
+
+        // Evaluate goal conditions
+        const { conditions, matchAll } = workflow.goalCriteria;
+        const results = await Promise.all(
+            conditions.map((condition: any) =>
+                evaluateCondition(entity, condition)
+            )
+        );
+
+        // AND logic: all must be true
+        if (matchAll) {
+            return results.every((r) => r === true);
+        }
+
+        // OR logic: at least one must be true
+        return results.some((r) => r === true);
+    } catch (error: any) {
+        console.error("Goal criteria evaluation failed:", error.message);
+        return false;
     }
 }
 
