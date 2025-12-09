@@ -11,6 +11,7 @@ import {
     PlayIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
+import Cookies from "js-cookie";
 
 interface TestWorkflowModalProps {
     isOpen: boolean;
@@ -78,12 +79,19 @@ export default function TestWorkflowModal({
     const fetchContacts = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`/api/workspace/${workspaceId}/contacts`);
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const token = Cookies.get('token');
+            const response = await fetch(`${API_URL}/workspaces/${workspaceId}/contacts`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                },
+            });
             if (!response.ok) throw new Error("Failed to fetch contacts");
             const data = await response.json();
-            setContacts(data.contacts || []);
-            if (data.contacts?.length > 0) {
-                setSelectedContactId(data.contacts[0]._id);
+            setContacts(data.data?.contacts || data.contacts || []);
+            if ((data.data?.contacts || data.contacts)?.length > 0) {
+                setSelectedContactId((data.data?.contacts || data.contacts)[0]._id);
             }
         } catch (error) {
             console.error("Failed to fetch contacts:", error);
@@ -103,11 +111,16 @@ export default function TestWorkflowModal({
         setTestResults(null);
 
         try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const token = Cookies.get('token');
             const response = await fetch(
-                `/api/workspaces/${workspaceId}/workflows/${workflowId}/test`,
+                `${API_URL}/workspaces/${workspaceId}/workflows/${workflowId}/test`,
                 {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token && { 'Authorization': `Bearer ${token}` }),
+                    },
                     body: JSON.stringify({
                         entityId: selectedContactId,
                         entityType: "contact",
@@ -289,11 +302,10 @@ export default function TestWorkflowModal({
                                     {testResults.steps.map((step, index) => (
                                         <div
                                             key={index}
-                                            className={`p-4 rounded-lg border ${
-                                                step.status === "success"
-                                                    ? "border-green-500/20 bg-green-500/5"
-                                                    : "border-red-500/20 bg-red-500/5"
-                                            }`}
+                                            className={`p-4 rounded-lg border ${step.status === "success"
+                                                ? "border-green-500/20 bg-green-500/5"
+                                                : "border-red-500/20 bg-red-500/5"
+                                                }`}
                                         >
                                             <div className="flex items-start gap-3">
                                                 {step.status === "success" ? (

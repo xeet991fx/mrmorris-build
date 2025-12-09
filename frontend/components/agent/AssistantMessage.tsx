@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import { motion } from "framer-motion";
 import { AgentMessage } from "@/store/useAgentStore";
 import { SparklesIcon } from "@heroicons/react/24/solid";
@@ -14,7 +15,7 @@ interface AssistantMessageProps {
   isLatest: boolean;
 }
 
-export default function AssistantMessage({ message, isLatest }: AssistantMessageProps) {
+const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(({ message, isLatest }, ref) => {
   const params = useParams();
   const workspaceId = params?.id as string;
 
@@ -28,6 +29,7 @@ export default function AssistantMessage({ message, isLatest }: AssistantMessage
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -99,4 +101,8 @@ export default function AssistantMessage({ message, isLatest }: AssistantMessage
       </div>
     </motion.div>
   );
-}
+});
+
+AssistantMessage.displayName = "AssistantMessage";
+
+export default AssistantMessage;

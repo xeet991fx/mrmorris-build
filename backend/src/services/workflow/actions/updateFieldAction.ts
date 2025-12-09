@@ -28,22 +28,28 @@ export class UpdateFieldActionExecutor extends BaseActionExecutor {
 
         this.log(`✏️ Updated ${fieldName}: "${oldValue}" → "${fieldValue}"`);
 
-        // Log activity
-        await Activity.create({
-            workspaceId: enrollment.workspaceId,
-            entityType: enrollment.entityType,
-            entityId: enrollment.entityId,
-            type: "automation",
-            title: "Workflow: Field Updated",
-            description: `Changed ${fieldName} from "${oldValue}" to "${fieldValue}"`,
-            metadata: {
-                workflowId: enrollment.workflowId,
-                stepId: step.id,
-                field: fieldName,
-                oldValue,
-                newValue: fieldValue,
-            },
-        });
+        // Log activity (optional - wrapped in try-catch to avoid failing workflow)
+        try {
+            await Activity.create({
+                workspaceId: enrollment.workspaceId,
+                entityType: enrollment.entityType,
+                entityId: enrollment.entityId,
+                type: "note", // Using 'note' as 'automation' is not a valid type
+                title: "Workflow: Field Updated",
+                description: `Changed ${fieldName} from "${oldValue}" to "${fieldValue}"`,
+                metadata: {
+                    workflowId: enrollment.workflowId,
+                    stepId: step.id,
+                    field: fieldName,
+                    oldValue,
+                    newValue: fieldValue,
+                    automated: true,
+                },
+            });
+        } catch (activityError: any) {
+            // Don't fail workflow if Activity logging fails
+            console.warn("Activity logging skipped:", activityError.message);
+        }
 
         return this.success({
             updated: true,

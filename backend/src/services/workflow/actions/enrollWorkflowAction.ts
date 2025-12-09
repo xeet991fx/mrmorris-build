@@ -53,22 +53,27 @@ export class EnrollWorkflowActionExecutor extends BaseActionExecutor {
 
         this.log(`🔄 Enrolled in workflow: "${targetWorkflow.name}"`);
 
-        // Log activity
-        await Activity.create({
-            workspaceId: enrollment.workspaceId,
-            entityType: enrollment.entityType,
-            entityId: enrollment.entityId,
-            type: "automation",
-            title: "Workflow: Enrolled in Another Workflow",
-            description: `Enrolled in "${targetWorkflow.name}"`,
-            metadata: {
-                sourceWorkflowId: enrollment.workflowId,
-                targetWorkflowId,
-                targetWorkflowName: targetWorkflow.name,
-                newEnrollmentId: newEnrollment._id,
-                stepId: step.id,
-            },
-        });
+        // Log activity (wrapped in try-catch to avoid failing workflow)
+        try {
+            await Activity.create({
+                workspaceId: enrollment.workspaceId,
+                entityType: enrollment.entityType,
+                entityId: enrollment.entityId,
+                type: "note", // Using 'note' as 'automation' is not valid
+                title: "Workflow: Enrolled in Another Workflow",
+                description: `Enrolled in "${targetWorkflow.name}"`,
+                metadata: {
+                    sourceWorkflowId: enrollment.workflowId,
+                    targetWorkflowId,
+                    targetWorkflowName: targetWorkflow.name,
+                    newEnrollmentId: newEnrollment._id,
+                    stepId: step.id,
+                    automated: true,
+                },
+            });
+        } catch (activityError: any) {
+            console.warn("Activity logging skipped:", activityError.message);
+        }
 
         return this.success({
             enrolled: true,

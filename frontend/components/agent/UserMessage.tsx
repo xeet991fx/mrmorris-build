@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import { motion } from "framer-motion";
 import { AgentMessage } from "@/store/useAgentStore";
 
@@ -8,9 +9,10 @@ interface UserMessageProps {
   isLatest: boolean;
 }
 
-export default function UserMessage({ message, isLatest }: UserMessageProps) {
+const UserMessage = forwardRef<HTMLDivElement, UserMessageProps>(({ message, isLatest }, ref) => {
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -27,4 +29,8 @@ export default function UserMessage({ message, isLatest }: UserMessageProps) {
       </div>
     </motion.div>
   );
-}
+});
+
+UserMessage.displayName = "UserMessage";
+
+export default UserMessage;

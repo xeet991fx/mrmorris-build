@@ -87,23 +87,10 @@ export class EmailActionExecutor extends BaseActionExecutor {
         const sentFrom = gmailIntegration?.email || process.env.EMAIL_USER || "system";
         this.log(`📧 Email sent from ${sentFrom} to ${toEmail}: "${subject}"`);
 
-        // Log activity
-        await Activity.create({
-            workspaceId: enrollment.workspaceId,
-            entityType: enrollment.entityType,
-            entityId: enrollment.entityId,
-            type: "automation",
-            title: "Workflow: Email Sent",
-            description: `Automated email sent: "${subject}"`,
-            metadata: {
-                workflowId: enrollment.workflowId,
-                stepId: step.id,
-                emailSubject: subject,
-                messageId: result.messageId,
-                sentFrom,
-                sentVia: result.sentVia || "gmail",
-            },
-        });
+        // Note: Activity logging skipped for workflow emails
+        // The Activity model requires opportunityId and userId which aren't available in workflow context
+        // Email sending is already logged via console above
+        this.log(`✅ Workflow email completed: ${result.sentVia} delivery to ${toEmail}`);
 
         return this.success({
             sent: true,

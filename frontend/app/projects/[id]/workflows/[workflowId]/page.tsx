@@ -24,18 +24,23 @@ import {
     Cog6ToothIcon,
     TrashIcon,
     UserGroupIcon,
+    BeakerIcon,
+    ExclamationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { WorkflowStep, TRIGGER_TYPE_LABELS, ACTION_TYPE_LABELS } from "@/lib/workflow/types";
 import { generateStepId } from "@/lib/workflow/api";
 import { cn } from "@/lib/utils";
 import { validateWorkflow, ValidationError } from "@/lib/workflow/validation";
+import Cookies from "js-cookie";
 
 // Import custom components
 import WorkflowSidebar from "@/components/workflows/WorkflowSidebar";
 import WorkflowConfigPanel from "@/components/workflows/WorkflowConfigPanel";
 import ValidationErrorPanel from "@/components/workflows/ValidationErrorPanel";
 import BulkEnrollmentModal from "@/components/workflows/BulkEnrollmentModal";
+import TestWorkflowModal from "@/components/workflows/TestWorkflowModal";
+import FailedEnrollmentsPanel from "@/components/workflows/FailedEnrollmentsPanel";
 import TriggerNode from "@/components/workflows/nodes/TriggerNode";
 import ActionNode from "@/components/workflows/nodes/ActionNode";
 import DelayNode from "@/components/workflows/nodes/DelayNode";
@@ -134,6 +139,9 @@ export default function WorkflowEditorPage() {
     const [validationWarnings, setValidationWarnings] = useState<ValidationError[]>([]);
     const [showValidationPanel, setShowValidationPanel] = useState(false);
     const [showBulkEnrollModal, setShowBulkEnrollModal] = useState(false);
+    const [showTestModal, setShowTestModal] = useState(false);
+    const [showFailedPanel, setShowFailedPanel] = useState(false);
+    const [failedCount, setFailedCount] = useState(0);
 
     // Save workflow
     const handleSave = useCallback(async () => {
@@ -182,11 +190,49 @@ export default function WorkflowEditorPage() {
                 e.preventDefault();
                 setShowBulkEnrollModal(true);
             }
+
+            // Cmd/Ctrl + T to open test modal
+            if ((e.metaKey || e.ctrlKey) && e.key === 't') {
+                e.preventDefault();
+                setShowTestModal(true);
+            }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [hasUnsavedChanges, isSaving, selectedStepId, showConfigPanel, currentWorkflow?.status, handleSave, removeStep, selectStep]);
+
+    // Fetch failed enrollment count
+    useEffect(() => {
+        const fetchFailedCount = async () => {
+            try {
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+                const token = Cookies.get('token');
+                const res = await fetch(
+                    `${API_URL}/workspaces/${workspaceId}/workflows/${workflowId}/enrollments?status=failed,retrying`,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token && { 'Authorization': `Bearer ${token}` }),
+                        },
+                    }
+                );
+                const data = await res.json();
+                if (data.success) {
+                    setFailedCount(data.data?.enrollments?.length || 0);
+                }
+            } catch (error) {
+                console.error('Failed to fetch failed count:', error);
+            }
+        };
+
+        if (workspaceId && workflowId) {
+            fetchFailedCount();
+            // Refresh every 30 seconds
+            const interval = setInterval(fetchFailedCount, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [workspaceId, workflowId]);
 
     // Sync nodes and edges with workflow steps
     useEffect(() => {
@@ -386,9 +432,14 @@ export default function WorkflowEditorPage() {
     // Bulk enrollment
     const handleBulkEnroll = async (contactIds: string[]) => {
         try {
-            const response = await fetch(`/api/workspace/${workspaceId}/workflows/${workflowId}/enroll-bulk`, {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const token = Cookies.get('token');
+            const response = await fetch(`${API_URL}/workspaces/${workspaceId}/workflows/${workflowId}/enroll-bulk`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                },
                 body: JSON.stringify({ entityIds: contactIds }),
             });
 
@@ -562,8 +613,30 @@ export default function WorkflowEditorPage() {
 
             {/* Bottom Action Bar */}
             <div className="h-14 border-t border-border bg-card flex items-center justify-between px-4 gap-3 flex-shrink-0">
-                {/* Left side - Bulk Enroll */}
-                <div>
+                {/* Left side - Test, Failed, Bulk Enroll */}
+                <div className="flex items-center gap-2">
+                    {/* Test Workflow Button */}
+                    <button
+                        onClick={() => setShowTestModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+                    >
+                        <BeakerIcon className="w-4 h-4" />
+                        Test Workflow
+                    </button>
+
+                    {/* Failed Enrollments Badge */}
+                    {failedCount > 0 && (
+                        <button
+                            onClick={() => setShowFailedPanel(true)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 hover:bg-red-500/20 transition-colors relative"
+                        >
+                            <ExclamationCircleIcon className="w-4 h-4" />
+                            Failed ({failedCount})
+                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                        </button>
+                    )}
+
+                    {/* Bulk Enroll Button */}
                     {currentWorkflow.status === "active" && (
                         <button
                             onClick={() => setShowBulkEnrollModal(true)}
@@ -625,6 +698,23 @@ export default function WorkflowEditorPage() {
                 workflowId={workflowId}
                 workflowName={currentWorkflow.name}
                 onEnroll={handleBulkEnroll}
+            />
+
+            {/* Test Workflow Modal */}
+            <TestWorkflowModal
+                isOpen={showTestModal}
+                onClose={() => setShowTestModal(false)}
+                workspaceId={workspaceId}
+                workflowId={workflowId}
+                workflowName={currentWorkflow.name}
+            />
+
+            {/* Failed Enrollments Panel */}
+            <FailedEnrollmentsPanel
+                isOpen={showFailedPanel}
+                onClose={() => setShowFailedPanel(false)}
+                workspaceId={workspaceId}
+                workflowId={workflowId}
             />
         </div>
     );

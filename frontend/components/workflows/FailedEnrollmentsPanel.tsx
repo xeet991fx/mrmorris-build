@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import Cookies from "js-cookie";
 
 interface FailedEnrollment {
     _id: string;
@@ -59,8 +60,16 @@ export default function FailedEnrollmentsPanel({
     const fetchFailedEnrollments = async () => {
         setIsLoading(true);
         try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const token = Cookies.get('token');
             const response = await fetch(
-                `/api/workspaces/${workspaceId}/workflows/${workflowId}/enrollments?status=failed,retrying`
+                `${API_URL}/workspaces/${workspaceId}/workflows/${workflowId}/enrollments?status=failed,retrying`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token && { 'Authorization': `Bearer ${token}` }),
+                    },
+                }
             );
             if (!response.ok) throw new Error("Failed to fetch enrollments");
 
@@ -78,9 +87,17 @@ export default function FailedEnrollmentsPanel({
         setRetryingIds((prev) => new Set(prev).add(enrollmentId));
 
         try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const token = Cookies.get('token');
             const response = await fetch(
-                `/api/workspaces/${workspaceId}/workflows/${workflowId}/enrollments/${enrollmentId}/retry`,
-                { method: "POST" }
+                `${API_URL}/workspaces/${workspaceId}/workflows/${workflowId}/enrollments/${enrollmentId}/retry`,
+                {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token && { 'Authorization': `Bearer ${token}` }),
+                    },
+                }
             );
 
             if (!response.ok) throw new Error("Retry failed");
@@ -101,9 +118,17 @@ export default function FailedEnrollmentsPanel({
 
     const handleCancel = async (enrollmentId: string) => {
         try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            const token = Cookies.get('token');
             const response = await fetch(
-                `/api/workspaces/${workspaceId}/workflows/${workflowId}/enrollments/${enrollmentId}`,
-                { method: "DELETE" }
+                `${API_URL}/workspaces/${workspaceId}/workflows/${workflowId}/enrollments/${enrollmentId}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token && { 'Authorization': `Bearer ${token}` }),
+                    },
+                }
             );
 
             if (!response.ok) throw new Error("Cancel failed");
@@ -251,11 +276,10 @@ export default function FailedEnrollmentsPanel({
                                                         {getEntityName(enrollment)}
                                                     </h3>
                                                     <span
-                                                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                            enrollment.status === "retrying"
-                                                                ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
-                                                                : "bg-red-500/10 text-red-600 dark:text-red-400"
-                                                        }`}
+                                                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${enrollment.status === "retrying"
+                                                            ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+                                                            : "bg-red-500/10 text-red-600 dark:text-red-400"
+                                                            }`}
                                                     >
                                                         {enrollment.status === "retrying"
                                                             ? "Retrying"

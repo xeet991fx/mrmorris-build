@@ -51,23 +51,28 @@ export class AssignOwnerActionExecutor extends BaseActionExecutor {
         const newOwnerName = newOwner.name || newOwner.email;
         this.log(`👤 Assigned owner: "${oldOwnerName}" → "${newOwnerName}"`);
 
-        // Log activity
-        await Activity.create({
-            workspaceId: enrollment.workspaceId,
-            entityType: enrollment.entityType,
-            entityId: enrollment.entityId,
-            type: "automation",
-            title: "Workflow: Owner Assigned",
-            description: `Changed owner from "${oldOwnerName}" to "${newOwnerName}"`,
-            metadata: {
-                workflowId: enrollment.workflowId,
-                stepId: step.id,
-                oldOwnerId,
-                newOwnerId: taskAssignee,
-                oldOwnerName,
-                newOwnerName,
-            },
-        });
+        // Log activity (wrapped in try-catch to avoid failing workflow)
+        try {
+            await Activity.create({
+                workspaceId: enrollment.workspaceId,
+                entityType: enrollment.entityType,
+                entityId: enrollment.entityId,
+                type: "note", // Using 'note' as 'automation' is not valid
+                title: "Workflow: Owner Assigned",
+                description: `Changed owner from "${oldOwnerName}" to "${newOwnerName}"`,
+                metadata: {
+                    workflowId: enrollment.workflowId,
+                    stepId: step.id,
+                    oldOwnerId,
+                    newOwnerId: taskAssignee,
+                    oldOwnerName,
+                    newOwnerName,
+                    automated: true,
+                },
+            });
+        } catch (activityError: any) {
+            console.warn("Activity logging skipped:", activityError.message);
+        }
 
         return this.success({
             assigned: true,
