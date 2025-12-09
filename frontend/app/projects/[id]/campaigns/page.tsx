@@ -81,7 +81,7 @@ export default function CampaignsPage() {
     const fetchCampaigns = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`${apiUrl}/campaigns`, {
+            const response = await fetch(`${apiUrl}/campaigns?workspaceId=${workspaceId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -103,7 +103,7 @@ export default function CampaignsPage() {
             const token = localStorage.getItem("token");
 
             // Fetch cold email accounts
-            const coldAccountsPromise = fetch(`${apiUrl}/email-accounts`, {
+            const coldAccountsPromise = fetch(`${apiUrl}/email-accounts?workspaceId=${workspaceId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -166,7 +166,7 @@ export default function CampaignsPage() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(createForm),
+                body: JSON.stringify({ ...createForm, workspaceId }),
             });
             const data = await response.json();
             if (data.success) {

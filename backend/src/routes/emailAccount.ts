@@ -19,8 +19,14 @@ router.use(authenticate);
  */
 router.get("/", async (req: any, res) => {
     try {
-        const { workspaceId } = req.user;
-        const { status, provider } = req.query;
+        const { workspaceId, status, provider } = req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                message: "workspaceId is required",
+            });
+        }
 
         const accounts = await EmailAccountService.getAccounts(workspaceId, {
             status,
@@ -46,8 +52,15 @@ router.get("/", async (req: any, res) => {
  */
 router.post("/smtp", async (req: any, res) => {
     try {
-        const { workspaceId, userId } = req.user;
-        const { email, smtpHost, smtpPort, smtpUser, smtpPassword } = req.body;
+        const userId = req.user._id;
+        const { workspaceId, email, smtpHost, smtpPort, smtpUser, smtpPassword } = req.body;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                message: "workspaceId is required",
+            });
+        }
 
         if (!email || !smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
             return res.status(400).json({

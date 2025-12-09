@@ -20,8 +20,15 @@ router.use(authenticate);
  */
 router.get("/", async (req: any, res) => {
     try {
-        const { workspaceId } = req.user;
-        const { status } = req.query;
+        const userId = req.user._id;
+        const { workspaceId, status } = req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                message: "workspaceId is required",
+            });
+        }
 
         const query: any = { workspaceId };
         if (status) query.status = status;
@@ -80,8 +87,15 @@ router.get("/:id", async (req: any, res) => {
  */
 router.post("/", async (req: any, res) => {
     try {
-        const { workspaceId, userId } = req.user;
-        const { name, description, fromAccounts, dailyLimit, sendingSchedule, steps } = req.body;
+        const userId = req.user._id;
+        const { workspaceId, name, description, fromAccounts, dailyLimit, sendingSchedule, steps } = req.body;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                message: "workspaceId is required",
+            });
+        }
 
         if (!name || !fromAccounts || !steps || steps.length === 0) {
             return res.status(400).json({

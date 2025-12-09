@@ -58,7 +58,7 @@ export default function EmailAccountsPage() {
             const token = localStorage.getItem("token");
 
             // Fetch cold email accounts
-            const emailAccountsPromise = fetch(`${apiUrl}/email-accounts`, {
+            const emailAccountsPromise = fetch(`${apiUrl}/email-accounts?workspaceId=${workspaceId}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -123,7 +123,7 @@ export default function EmailAccountsPage() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(smtpForm),
+                body: JSON.stringify({ ...smtpForm, workspaceId }),
             });
             const data = await response.json();
             if (data.success) {
