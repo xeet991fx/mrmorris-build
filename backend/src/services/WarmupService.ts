@@ -165,7 +165,7 @@ class WarmupService {
 
                 // Get potential recipient accounts (exclude self)
                 const recipients = accounts.filter(
-                    (a) => a._id.toString() !== account._id.toString()
+                    (a) => (a._id as Types.ObjectId).toString() !== (account._id as Types.ObjectId).toString()
                 );
 
                 if (recipients.length === 0) {
@@ -184,7 +184,7 @@ class WarmupService {
                 }
 
                 // Update warmup progress
-                await EmailAccountService.updateWarmupProgress(account._id, dailyTarget);
+                await EmailAccountService.updateWarmupProgress(account._id as Types.ObjectId, dailyTarget);
 
                 console.log(`✅ Warmup completed for ${account.email}: ${dailyTarget} emails`);
             } catch (error: any) {
