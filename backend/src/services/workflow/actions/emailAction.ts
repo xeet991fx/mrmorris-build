@@ -63,6 +63,12 @@ export class EmailActionExecutor extends BaseActionExecutor {
         let result: { success: boolean; messageId?: string; error?: string; sentVia?: string };
 
         // Check for connected Gmail account
+        console.log("🔍 Looking for Gmail integration:", {
+            workspaceId: enrollment.workspaceId,
+            provider: "gmail",
+            sendFromAccountId: sendFromAccountId || "any",
+        });
+
         const gmailIntegration = await EmailIntegration.findOne({
             workspaceId: enrollment.workspaceId,
             provider: "gmail",
@@ -71,9 +77,11 @@ export class EmailActionExecutor extends BaseActionExecutor {
         }).select("+accessToken +refreshToken");
 
         if (gmailIntegration) {
+            console.log("✅ Found Gmail integration:", gmailIntegration.email);
             // Send via Gmail API
             result = await this.sendViaGmail(gmailIntegration, toEmail, subject, body);
         } else {
+            console.log("⚠️ No Gmail integration found, using SMTP fallback");
             // Fallback to SMTP
             result = await emailService.sendWorkflowEmail(toEmail, subject, body, entityData);
             result.sentVia = "smtp";
