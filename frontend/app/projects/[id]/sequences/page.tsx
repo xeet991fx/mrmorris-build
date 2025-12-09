@@ -465,7 +465,7 @@ export default function SequencesPage() {
         try {
             const token = localStorage.getItem("token");
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/sequences`,
+                `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/sequences`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
@@ -495,8 +495,8 @@ export default function SequencesPage() {
         try {
             const token = localStorage.getItem("token");
             const url = editingSequence
-                ? `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/sequences/${editingSequence._id}`
-                : `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/sequences`;
+                ? `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/sequences/${editingSequence._id}`
+                : `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/sequences`;
 
             await fetch(url, {
                 method: editingSequence ? "PUT" : "POST",
@@ -518,7 +518,7 @@ export default function SequencesPage() {
         try {
             const token = localStorage.getItem("token");
             await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/sequences/${sequence._id}/activate`,
+                `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/sequences/${sequence._id}/activate`,
                 {
                     method: "POST",
                     headers: { Authorization: `Bearer ${token}` },
@@ -534,7 +534,7 @@ export default function SequencesPage() {
         try {
             const token = localStorage.getItem("token");
             await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/sequences/${sequence._id}/pause`,
+                `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/sequences/${sequence._id}/pause`,
                 {
                     method: "POST",
                     headers: { Authorization: `Bearer ${token}` },
@@ -552,7 +552,7 @@ export default function SequencesPage() {
         try {
             const token = localStorage.getItem("token");
             await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/sequences/${sequence._id}`,
+                `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/sequences/${sequence._id}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${token}` },

@@ -76,7 +76,7 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
         try {
             const token = localStorage.getItem("token");
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/email-templates`,
+                `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
@@ -498,7 +498,7 @@ function EnrollWorkflowActionFields({ step, onChange }: ActionConfigProps) {
             try {
                 const token = localStorage.getItem("token");
                 const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/workflows`,
+                    `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/workflows`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                     }

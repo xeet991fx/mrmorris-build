@@ -13,7 +13,7 @@ import {
     ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
-import { getGmailConnectUrl } from "@/lib/api/emailIntegration";
+import { getGmailConnectUrl, getEmailIntegrations } from "@/lib/api/emailIntegration";
 
 interface EmailAccount {
     _id: string;
@@ -30,6 +30,7 @@ interface EmailAccount {
     openRate?: number;
     replyRate?: number;
     createdAt: string;
+    isIntegration?: boolean; // Flag to identify if this is from email integrations
 }
 
 export default function EmailAccountsPage() {
@@ -55,15 +56,50 @@ export default function EmailAccountsPage() {
     const fetchAccounts = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`${apiUrl}/email-accounts`, {
+
+            // Fetch cold email accounts
+            const emailAccountsPromise = fetch(`${apiUrl}/email-accounts`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
-            });
-            const data = await response.json();
-            if (data.success) {
-                setAccounts(data.accounts);
+            }).then(res => res.json()).catch(() => ({ success: false, accounts: [] }));
+
+            // Fetch Gmail integrations from settings
+            const integrationsPromise = getEmailIntegrations(workspaceId);
+
+            const [emailAccountsData, integrationsData] = await Promise.all([
+                emailAccountsPromise,
+                integrationsPromise,
+            ]);
+
+            const coldEmailAccounts = emailAccountsData.success ? emailAccountsData.accounts || [] : [];
+
+            // Convert integrations to match EmailAccount interface
+            const integrationAccounts: EmailAccount[] = [];
+            if (integrationsData.success && integrationsData.data?.integrations) {
+                for (const integration of integrationsData.data.integrations) {
+                    // Skip if already in cold email accounts
+                    if (coldEmailAccounts.some((acc: EmailAccount) => acc.email === integration.email)) {
+                        continue;
+                    }
+                    integrationAccounts.push({
+                        _id: integration._id,
+                        email: integration.email,
+                        provider: "gmail",
+                        status: integration.isActive ? "active" : "paused",
+                        warmupEnabled: false,
+                        warmupCurrentDaily: 0,
+                        warmupTargetDaily: 0,
+                        dailySendLimit: 100,
+                        sentToday: 0,
+                        healthStatus: "healthy",
+                        createdAt: integration.createdAt,
+                        isIntegration: true,
+                    });
+                }
             }
+
+            setAccounts([...coldEmailAccounts, ...integrationAccounts]);
         } catch (error) {
             console.error("Failed to fetch email accounts:", error);
             toast.error("Failed to load email accounts");

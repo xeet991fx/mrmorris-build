@@ -191,7 +191,7 @@ export const apolloApi = {
   ): Promise<EnrichmentResult> => {
     try {
       const result = await apiRequest<EnrichmentResult>(
-        `/api/workspaces/${workspaceId}/apollo/enrich-contact`,
+        `/workspaces/${workspaceId}/apollo/enrich-contact`,
         {
           method: "POST",
           body: JSON.stringify({ contactId }),
@@ -222,7 +222,7 @@ export const apolloApi = {
   ): Promise<SearchResult> => {
     try {
       const result = await apiRequest<SearchResult>(
-        `/api/workspaces/${workspaceId}/apollo/search`,
+        `/workspaces/${workspaceId}/apollo/search`,
         {
           method: "POST",
           body: JSON.stringify(criteria),
@@ -252,7 +252,7 @@ export const apolloApi = {
   ): Promise<EnrichmentResult> => {
     try {
       const result = await apiRequest<EnrichmentResult>(
-        `/api/workspaces/${workspaceId}/apollo/enrich-company`,
+        `/workspaces/${workspaceId}/apollo/enrich-company`,
         {
           method: "POST",
           body: JSON.stringify({ companyId, domain }),
@@ -279,7 +279,7 @@ export const apolloApi = {
   ): Promise<EmailVerification> => {
     try {
       const result = await apiRequest<EmailVerification>(
-        `/api/workspaces/${workspaceId}/apollo/verify-email`,
+        `/workspaces/${workspaceId}/apollo/verify-email`,
         {
           method: "POST",
           body: JSON.stringify({ email }),
@@ -309,7 +309,7 @@ export const apolloApi = {
   ): Promise<BulkEnrichResult> => {
     try {
       const result = await apiRequest<BulkEnrichResult>(
-        `/api/workspaces/${workspaceId}/apollo/bulk-enrich`,
+        `/workspaces/${workspaceId}/apollo/bulk-enrich`,
         {
           method: "POST",
           body: JSON.stringify({ contactIds }),
@@ -335,7 +335,7 @@ export const apolloApi = {
   getCredits: async (workspaceId: string): Promise<CreditsInfo> => {
     try {
       return await apiRequest<CreditsInfo>(
-        `/api/workspaces/${workspaceId}/apollo/credits`,
+        `/workspaces/${workspaceId}/apollo/credits`,
         {
           method: "GET",
         }
@@ -358,7 +358,7 @@ export const apolloApi = {
   ): Promise<ImportResult> => {
     try {
       const result = await apiRequest<ImportResult>(
-        `/api/workspaces/${workspaceId}/apollo/import`,
+        `/workspaces/${workspaceId}/apollo/import`,
         {
           method: "POST",
           body: JSON.stringify({
@@ -389,7 +389,7 @@ export const apolloApi = {
   testConnection: async (workspaceId: string): Promise<boolean> => {
     try {
       const result = await apiRequest<{ success: boolean; connected: boolean }>(
-        `/api/workspaces/${workspaceId}/apollo/test-connection`,
+        `/workspaces/${workspaceId}/apollo/test-connection`,
         {
           method: "GET",
         }
