@@ -89,13 +89,13 @@ router.get("/callback/gmail", async (req, res) => {
         if (error) {
             console.error("Gmail OAuth error:", error);
             return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/email?error=oauth_denied`
+                `${process.env.FRONTEND_URL}/settings/integrations?error=oauth_denied`
             );
         }
 
         if (!code || !state) {
             return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/email?error=invalid_callback`
+                `${process.env.FRONTEND_URL}/settings/integrations?error=invalid_callback`
             );
         }
 
@@ -105,7 +105,7 @@ router.get("/callback/gmail", async (req, res) => {
             stateData = JSON.parse(Buffer.from(state as string, "base64").toString());
         } catch (e) {
             return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/email?error=invalid_state`
+                `${process.env.FRONTEND_URL}/settings/integrations?error=invalid_state`
             );
         }
 
@@ -116,7 +116,7 @@ router.get("/callback/gmail", async (req, res) => {
 
         if (!tokens.access_token || !tokens.refresh_token) {
             return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/email?error=no_tokens`
+                `${process.env.FRONTEND_URL}/settings/integrations?error=no_tokens`
             );
         }
 
@@ -127,7 +127,7 @@ router.get("/callback/gmail", async (req, res) => {
 
         if (!userInfo.email) {
             return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/email?error=no_email`
+                `${process.env.FRONTEND_URL}/settings/integrations?error=no_email`
             );
         }
 
@@ -167,12 +167,12 @@ router.get("/callback/gmail", async (req, res) => {
 
         // Redirect to success
         res.redirect(
-            `${process.env.FRONTEND_URL}/projects/${stateData.workspaceId}/settings/email?success=gmail_connected`
+            `${process.env.FRONTEND_URL}/projects/${stateData.workspaceId}/settings/integrations?success=gmail_connected`
         );
     } catch (error: any) {
         console.error("Gmail callback error:", error);
         res.redirect(
-            `${process.env.FRONTEND_URL}/settings/email?error=callback_failed`
+            `${process.env.FRONTEND_URL}/settings/integrations?error=callback_failed`
         );
     }
 });
