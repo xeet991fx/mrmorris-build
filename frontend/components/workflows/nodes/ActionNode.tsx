@@ -10,6 +10,8 @@ import {
     TagIcon,
     BellIcon,
     ArrowPathIcon,
+    ChartBarIcon,
+    GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 import { WorkflowStep, ACTION_TYPE_LABELS, ActionType } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,8 @@ const actionIcons: Record<ActionType, React.ReactNode> = {
     remove_tag: <TagIcon className="w-4 h-4" />,
     send_notification: <BellIcon className="w-4 h-4" />,
     enroll_workflow: <ArrowPathIcon className="w-4 h-4" />,
+    update_lead_score: <ChartBarIcon className="w-4 h-4" />,
+    send_webhook: <GlobeAltIcon className="w-4 h-4" />,
 };
 
 // ============================================
