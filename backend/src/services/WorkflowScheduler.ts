@@ -28,11 +28,38 @@ class WorkflowScheduler {
         console.log("🚀 Starting WorkflowScheduler...");
         console.log(`📅 Cron expression: ${cronExpression}`);
 
+        // Workflow processing (every minute)
         this.cronJob = cron.schedule(cronExpression, async () => {
             await this.processEnrollments();
         });
 
+        // Campaign sending (every 5 minutes)
+        cron.schedule("*/5 * * * *", async () => {
+            const CampaignService = (await import("./CampaignService")).default;
+            await CampaignService.sendNextBatch();
+        });
+
+        // Warmup emails (every hour)
+        cron.schedule("0 * * * *", async () => {
+            const WarmupService = (await import("./WarmupService")).default;
+            await WarmupService.runDailyWarmup();
+        });
+
+        // Reset daily counters (midnight)
+        cron.schedule("0 0 * * *", async () => {
+            const EmailAccountService = (await import("./EmailAccountService")).default;
+            await EmailAccountService.resetDailyCounters();
+        });
+
+        // Fetch new replies (every 10 minutes) 
+        cron.schedule("*/10 * * * *", async () => {
+            const InboxService = (await import("./InboxService")).default;
+            await InboxService.fetchNewReplies();
+        });
+
         console.log("✅ WorkflowScheduler started successfully");
+        console.log("✅ Campaign scheduler started successfully");
+        console.log("✅ Warmup scheduler started successfully");
     }
 
     /**

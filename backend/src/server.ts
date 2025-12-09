@@ -23,6 +23,9 @@ import emailTemplateRoutes from "./routes/emailTemplate";
 import sequenceRoutes from "./routes/sequence";
 import emailTrackingRoutes from "./routes/emailTracking";
 import leadScoreRoutes from "./routes/leadScore";
+import emailAccountRoutes from "./routes/emailAccount";
+import campaignRoutes from "./routes/campaign";
+import inboxRoutes from "./routes/inbox";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 
 dotenv.config();
@@ -106,6 +109,9 @@ app.use("/api/workspaces", emailTemplateRoutes);
 app.use("/api/workspaces", sequenceRoutes);
 app.use("/api/email-tracking", emailTrackingRoutes);
 app.use("/api/workspaces", leadScoreRoutes);
+app.use("/api/email-accounts", emailAccountRoutes);
+app.use("/api/campaigns", campaignRoutes);
+app.use("/api/inbox", inboxRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

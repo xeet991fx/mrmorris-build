@@ -17,6 +17,9 @@ import {
   Cog6ToothIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  RocketLaunchIcon,
+  InboxIcon,
+  AtSymbolIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -295,6 +298,72 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Sequences
+                  </span>
+                )}
+              </button>
+
+              {/* Cold Email Section Divider */}
+              <div className={cn(
+                "border-t border-border my-2",
+                isExpanded ? "mx-0" : "mx-1"
+              )} />
+
+              {/* Campaigns */}
+              <button
+                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/campaigns`)}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  pathname.includes('/campaigns')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Campaigns" : ""}
+              >
+                <RocketLaunchIcon className="w-5 h-5 flex-shrink-0" />
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Campaigns
+                  </span>
+                )}
+              </button>
+
+              {/* Email Accounts */}
+              <button
+                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/email-accounts`)}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  pathname.includes('/email-accounts')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Email Accounts" : ""}
+              >
+                <AtSymbolIcon className="w-5 h-5 flex-shrink-0" />
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Email Accounts
+                  </span>
+                )}
+              </button>
+
+              {/* Inbox */}
+              <button
+                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/inbox`)}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  pathname.includes('/inbox')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Inbox" : ""}
+              >
+                <InboxIcon className="w-5 h-5 flex-shrink-0" />
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Inbox
                   </span>
                 )}
               </button>

@@ -1,0 +1,176 @@
+import mongoose, { Document, Schema, Types } from "mongoose";
+
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
+
+export type MessageSentiment = 'positive' | 'neutral' | 'negative' | 'out_of_office' | 'unsubscribe';
+
+export interface IEmailMessage extends Document {
+    campaignId: Types.ObjectId;
+    enrollmentId: Types.ObjectId;
+    contactId: Types.ObjectId;
+    workspaceId: Types.ObjectId;
+
+    // Email details
+    fromAccountId: Types.ObjectId;
+    fromEmail: string;
+    toEmail: string;
+
+    subject: string;
+    bodyHtml: string;
+    bodyText: string;
+
+    // Threading
+    messageId: string; // Email Message-ID header
+    threadId?: string; // For grouping replies
+    inReplyTo?: string; // If this is a reply
+
+    // Timestamps
+    sentAt: Date;
+
+    // Tracking
+    opened: boolean;
+    openedAt?: Date;
+    clicked: boolean;
+    clickedAt?: Date;
+    replied: boolean;
+    repliedAt?: Date;
+    bounced: boolean;
+    bouncedAt?: Date;
+
+    // Reply details
+    replySubject?: string;
+    replyBody?: string;
+    replySentiment?: MessageSentiment;
+
+    // Metadata
+    stepId?: string; // Which campaign step this was sent from
+}
+
+// ============================================
+// SCHEMA
+// ============================================
+
+const emailMessageSchema = new Schema<IEmailMessage>(
+    {
+        campaignId: {
+            type: Schema.Types.ObjectId,
+            ref: "Campaign",
+            required: true,
+            index: true,
+        },
+        enrollmentId: {
+            type: Schema.Types.ObjectId,
+            ref: "CampaignEnrollment",
+            required: true,
+            index: true,
+        },
+        contactId: {
+            type: Schema.Types.ObjectId,
+            ref: "Contact",
+            required: true,
+            index: true,
+        },
+        workspaceId: {
+            type: Schema.Types.ObjectId,
+            ref: "Project",
+            required: true,
+            index: true,
+        },
+
+        // Email details
+        fromAccountId: {
+            type: Schema.Types.ObjectId,
+            ref: "EmailAccount",
+            required: true,
+        },
+        fromEmail: {
+            type: String,
+            required: true,
+        },
+        toEmail: {
+            type: String,
+            required: true,
+        },
+
+        subject: {
+            type: String,
+            required: true,
+        },
+        bodyHtml: {
+            type: String,
+            required: true,
+        },
+        bodyText: String,
+
+        // Threading
+        messageId: {
+            type: String,
+            required: true,
+            unique: true,
+        },
+        threadId: String,
+        inReplyTo: String,
+
+        // Timestamps
+        sentAt: {
+            type: Date,
+            default: Date.now,
+            index: true,
+        },
+
+        // Tracking
+        opened: {
+            type: Boolean,
+            default: false,
+        },
+        openedAt: Date,
+        clicked: {
+            type: Boolean,
+            default: false,
+        },
+        clickedAt: Date,
+        replied: {
+            type: Boolean,
+            default: false,
+            index: true,
+        },
+        repliedAt: Date,
+        bounced: {
+            type: Boolean,
+            default: false,
+        },
+        bouncedAt: Date,
+
+        // Reply details
+        replySubject: String,
+        replyBody: String,
+        replySentiment: {
+            type: String,
+            enum: ['positive', 'neutral', 'negative', 'out_of_office', 'unsubscribe'],
+        },
+
+        // Metadata
+        stepId: String,
+    },
+    {
+        timestamps: true,
+    }
+);
+
+// ============================================
+// INDEXES
+// ============================================
+
+emailMessageSchema.index({ workspaceId: 1, replied: 1, sentAt: -1 });
+emailMessageSchema.index({ threadId: 1 });
+emailMessageSchema.index({ campaignId: 1, sentAt: -1 });
+
+// ============================================
+// EXPORT
+// ============================================
+
+const EmailMessage = mongoose.model<IEmailMessage>("EmailMessage", emailMessageSchema);
+
+export default EmailMessage;
