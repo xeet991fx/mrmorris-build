@@ -104,13 +104,24 @@ router.post("/", async (req: any, res) => {
             });
         }
 
+        // Ensure each step has required fields (order, id)
+        const processedSteps = steps.map((step: any, index: number) => ({
+            ...step,
+            id: step.id || `step-${Date.now()}-${index}`,
+            order: typeof step.order === 'number' ? step.order : index,
+            type: step.type || 'email',
+            delayDays: step.delayDays || 0,
+            delayHours: step.delayHours || 0,
+            useAIPersonalization: step.useAIPersonalization || false,
+        }));
+
         const campaign = await CampaignService.createCampaign(workspaceId, userId, {
             name,
             description,
             fromAccounts,
             dailyLimit: dailyLimit || 50,
             sendingSchedule,
-            steps,
+            steps: processedSteps,
         });
 
         res.json({
