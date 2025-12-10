@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Menu } from "@headlessui/react";
 import { EllipsisVerticalIcon, PencilIcon, TrashIcon, BoltIcon } from "@heroicons/react/24/outline";
+import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { Contact } from "@/lib/api/contact";
 import { useContactStore, ContactColumn, BuiltInColumn } from "@/store/useContactStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import EditableCell from "./EditableCell";
 import EnrollInWorkflowModal from "@/components/workflows/EnrollInWorkflowModal";
 import LeadScoreBadge from "./LeadScoreBadge";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { apolloApi } from "@/lib/apollo-api";
+import { toast } from "sonner";
 
 interface ContactTableRowProps {
   contact: Contact;
@@ -36,10 +40,29 @@ export default function ContactTableRow({
     toggleContactSelection,
     customColumns,
   } = useContactStore();
+  const { currentWorkspace } = useWorkspaceStore();
 
   const isSelected = selectedContacts.includes(contact._id);
   const fullName = `${contact.firstName} ${contact.lastName}`;
   const [showWorkflowModal, setShowWorkflowModal] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+
+  // Handle Apollo enrichment
+  const handleEnrich = async () => {
+    if (!currentWorkspace?._id) {
+      toast.error("No workspace selected");
+      return;
+    }
+
+    setIsEnriching(true);
+    try {
+      await apolloApi.enrichContact(currentWorkspace._id, contact._id);
+    } catch (error) {
+      // Error already handled by apolloApi
+    } finally {
+      setIsEnriching(false);
+    }
+  };
 
   // Helper to check if column is built-in
   const isBuiltInColumn = (column: ContactColumn): column is BuiltInColumn => {
@@ -182,7 +205,7 @@ export default function ContactTableRow({
             <EllipsisVerticalIcon className="w-4 h-4" />
           </Menu.Button>
 
-          <Menu.Items className="absolute right-0 mt-1 w-36 origin-top-right bg-card border border-border rounded-lg shadow-xl overflow-hidden z-10">
+          <Menu.Items className="absolute right-0 mt-1 w-44 origin-top-right bg-card border border-border rounded-lg shadow-xl overflow-hidden z-10">
             <Menu.Item>
               {({ active }) => (
                 <button
@@ -208,6 +231,22 @@ export default function ContactTableRow({
                 >
                   <BoltIcon className="w-3.5 h-3.5" />
                   Add to Workflow
+                </button>
+              )}
+            </Menu.Item>
+            <Menu.Item>
+              {({ active }) => (
+                <button
+                  onClick={handleEnrich}
+                  disabled={isEnriching}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
+                    active ? "bg-purple-500/20 text-purple-400" : "text-purple-400",
+                    isEnriching && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {isEnriching ? "Enriching..." : "Enrich with Apollo"}
                 </button>
               )}
             </Menu.Item>

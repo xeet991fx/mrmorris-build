@@ -190,23 +190,39 @@ export const apolloApi = {
     contactId: string
   ): Promise<EnrichmentResult> => {
     try {
-      const result = await apiRequest<EnrichmentResult>(
-        `/workspaces/${workspaceId}/apollo/enrich-contact`,
+      const result = await apiRequest<{
+        success: boolean;
+        contact: any;
+        enrichedFields: string[];
+        creditsUsed: number;
+        message?: string;
+      }>(
+        `/api/enrichment/contact/${contactId}`,
         {
           method: "POST",
-          body: JSON.stringify({ contactId }),
+          body: JSON.stringify({ workspaceId }),
         }
       );
 
-      if (result.success && !result.alreadyEnriched) {
+      const enrichmentResult: EnrichmentResult = {
+        success: result.success,
+        data: result.contact,
+        creditsUsed: result.creditsUsed || 1,
+        fieldsEnriched: result.enrichedFields || [],
+        confidence: 0.9,
+        message: result.message,
+        alreadyEnriched: result.enrichedFields?.length === 0,
+      };
+
+      if (enrichmentResult.success && !enrichmentResult.alreadyEnriched) {
         toast.success(
-          `Contact enriched! ${result.fieldsEnriched.length} fields updated. ${result.creditsUsed} credits used.`
+          `Contact enriched! ${enrichmentResult.fieldsEnriched.length} fields updated.`
         );
-      } else if (result.alreadyEnriched) {
-        toast.info(result.message || "Contact was recently enriched");
+      } else if (enrichmentResult.alreadyEnriched) {
+        toast.info("No new data found for this contact");
       }
 
-      return result;
+      return enrichmentResult;
     } catch (error) {
       console.error("Failed to enrich contact:", error);
       throw error;
@@ -221,21 +237,51 @@ export const apolloApi = {
     criteria: SearchCriteria
   ): Promise<SearchResult> => {
     try {
-      const result = await apiRequest<SearchResult>(
-        `/workspaces/${workspaceId}/apollo/search`,
+      const result = await apiRequest<{
+        success: boolean;
+        people: ApolloPerson[];
+        pagination: {
+          page: number;
+          totalPages: number;
+          totalCount: number;
+        };
+        creditsUsed: number;
+      }>(
+        `/api/enrichment/search`,
         {
           method: "POST",
-          body: JSON.stringify(criteria),
+          body: JSON.stringify({
+            personTitles: criteria.jobTitles,
+            personSeniorities: criteria.seniorities,
+            organizationNames: criteria.companyDomains,
+            personLocations: criteria.locations,
+            organizationIndustries: criteria.industries,
+            limit: criteria.limit || 25,
+            page: criteria.page || 1,
+          }),
         }
       );
 
-      if (result.success) {
+      const searchResult: SearchResult = {
+        success: result.success,
+        results: result.people || [],
+        pagination: {
+          page: result.pagination?.page || 1,
+          per_page: criteria.limit || 25,
+          total_entries: result.pagination?.totalCount || 0,
+          total_pages: result.pagination?.totalPages || 1,
+        },
+        count: result.people?.length || 0,
+        creditsUsed: result.creditsUsed || 0,
+      };
+
+      if (searchResult.success) {
         toast.success(
-          `Found ${result.count} contacts. ${result.creditsUsed} credits used.`
+          `Found ${searchResult.count} contacts.`
         );
       }
 
-      return result;
+      return searchResult;
     } catch (error) {
       console.error("Failed to search people:", error);
       throw error;
@@ -251,19 +297,38 @@ export const apolloApi = {
     domain?: string
   ): Promise<EnrichmentResult> => {
     try {
-      const result = await apiRequest<EnrichmentResult>(
-        `/workspaces/${workspaceId}/apollo/enrich-company`,
+      // Use companyId route if available, otherwise use domain-based
+      const endpoint = companyId
+        ? `/api/enrichment/company/${companyId}`
+        : `/api/enrichment/company`;
+
+      const result = await apiRequest<{
+        success: boolean;
+        company: any;
+        enrichedFields: string[];
+        creditsUsed: number;
+      }>(
+        endpoint,
         {
           method: "POST",
-          body: JSON.stringify({ companyId, domain }),
+          body: JSON.stringify({ name: domain, domain }),
         }
       );
 
-      if (result.success) {
-        toast.success(`Company enriched! ${result.creditsUsed} credits used.`);
+      const enrichmentResult: EnrichmentResult = {
+        success: result.success,
+        data: result.company,
+        creditsUsed: result.creditsUsed || 1,
+        fieldsEnriched: result.enrichedFields || [],
+        confidence: 0.9,
+        alreadyEnriched: result.enrichedFields?.length === 0,
+      };
+
+      if (enrichmentResult.success) {
+        toast.success(`Company enriched! ${enrichmentResult.fieldsEnriched.length} fields updated.`);
       }
 
-      return result;
+      return enrichmentResult;
     } catch (error) {
       console.error("Failed to enrich company:", error);
       throw error;
@@ -308,21 +373,41 @@ export const apolloApi = {
     contactIds: string[]
   ): Promise<BulkEnrichResult> => {
     try {
-      const result = await apiRequest<BulkEnrichResult>(
-        `/workspaces/${workspaceId}/apollo/bulk-enrich`,
+      const result = await apiRequest<{
+        success: boolean;
+        summary: {
+          total: number;
+          enriched: number;
+          failed: number;
+        };
+        results: Array<{
+          contactId: string;
+          success: boolean;
+          error?: string;
+        }>;
+      }>(
+        `/api/enrichment/bulk`,
         {
           method: "POST",
-          body: JSON.stringify({ contactIds }),
+          body: JSON.stringify({ contactIds, workspaceId }),
         }
       );
 
-      if (result.success) {
+      const bulkResult: BulkEnrichResult = {
+        success: result.success,
+        enriched: result.summary?.enriched || 0,
+        failed: result.summary?.failed || 0,
+        totalCreditsUsed: result.summary?.enriched || 0,
+        results: result.results || [],
+      };
+
+      if (bulkResult.success) {
         toast.success(
-          `Enriched ${result.enriched} contacts. ${result.failed} failed. ${result.totalCreditsUsed} credits used.`
+          `Enriched ${bulkResult.enriched} contacts. ${bulkResult.failed} failed.`
         );
       }
 
-      return result;
+      return bulkResult;
     } catch (error) {
       console.error("Failed to bulk enrich:", error);
       throw error;

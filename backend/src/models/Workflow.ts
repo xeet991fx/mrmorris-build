@@ -25,7 +25,8 @@ export type ActionType =
     | 'send_notification'
     | 'enroll_workflow'
     | 'update_lead_score'
-    | 'send_webhook';
+    | 'send_webhook'
+    | 'apollo_enrich';
 
 export type DelayType = 'duration' | 'until_date' | 'until_time' | 'until_weekday';
 
@@ -103,6 +104,9 @@ export interface IWorkflowStep {
         webhookMethod?: 'GET' | 'POST' | 'PUT' | 'PATCH';
         webhookHeaders?: Record<string, string>;
         webhookBody?: string;
+
+        // Apollo enrichment config
+        enrichType?: 'person' | 'company' | 'linkedin_to_email';
     };
     position: {
         x: number;
@@ -200,7 +204,8 @@ const workflowStepSchema = new Schema<IWorkflowStep>(
             actionType: {
                 type: String,
                 enum: ['send_email', 'update_field', 'create_task', 'assign_owner',
-                    'add_tag', 'remove_tag', 'send_notification', 'enroll_workflow'],
+                    'add_tag', 'remove_tag', 'send_notification', 'enroll_workflow',
+                    'update_lead_score', 'send_webhook', 'apollo_enrich'],
             },
             emailTemplateId: String,
             emailSubject: String,
@@ -240,6 +245,21 @@ const workflowStepSchema = new Schema<IWorkflowStep>(
             scoreEventType: String,
             scorePoints: Number,
             scoreReason: String,
+
+            // Webhook config
+            webhookUrl: String,
+            webhookMethod: {
+                type: String,
+                enum: ['GET', 'POST', 'PUT', 'PATCH'],
+            },
+            webhookHeaders: Schema.Types.Mixed,
+            webhookBody: String,
+
+            // Apollo enrichment config
+            enrichType: {
+                type: String,
+                enum: ['person', 'company', 'linkedin_to_email'],
+            },
         },
         position: {
             x: { type: Number, required: true },

@@ -16,6 +16,7 @@ import assignOwnerAction from "./assignOwnerAction";
 import enrollWorkflowAction from "./enrollWorkflowAction";
 import leadScoreAction from "./leadScoreAction";
 import webhookAction from "./webhookAction";
+import apolloEnrichAction from "./apolloEnrichAction";
 
 // ============================================
 // ACTION REGISTRY
@@ -32,6 +33,7 @@ const actionRegistry: Record<string, ActionExecutor> = {
     enroll_workflow: enrollWorkflowAction,
     update_lead_score: leadScoreAction,
     send_webhook: webhookAction,
+    apollo_enrich: apolloEnrichAction,
 };
 
 // ============================================

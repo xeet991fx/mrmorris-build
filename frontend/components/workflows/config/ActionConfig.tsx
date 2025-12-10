@@ -629,6 +629,95 @@ export default function ActionConfig({ step, onChange }: ActionConfigProps) {
             {actionType === "send_webhook" && (
                 <WebhookActionFields step={step} onChange={onChange} />
             )}
+            {actionType === "apollo_enrich" && (
+                <ApolloEnrichActionFields step={step} onChange={onChange} />
+            )}
+        </div>
+    );
+}
+
+// Apollo Enrich Fields
+function ApolloEnrichActionFields({ step, onChange }: ActionConfigProps) {
+    const enrichType = step.config.enrichType || "person";
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Enrichment Type *
+                </label>
+                <select
+                    value={enrichType}
+                    onChange={(e) => onChange({ ...step.config, enrichType: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                    <option value="person">Enrich Person (Contact)</option>
+                    <option value="company">Enrich Company</option>
+                    <option value="linkedin_to_email">LinkedIn to Email</option>
+                </select>
+            </div>
+
+            {enrichType === "person" && (
+                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                    <div className="flex items-center gap-2">
+                        <span className="text-purple-500">👤</span>
+                        <div>
+                            <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                                Person Enrichment
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Find email, phone, LinkedIn, job title, and location from name and company
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {enrichType === "company" && (
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <div className="flex items-center gap-2">
+                        <span className="text-blue-500">🏢</span>
+                        <div>
+                            <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                Company Enrichment
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Find industry, size, revenue, LinkedIn, and website from company name
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {enrichType === "linkedin_to_email" && (
+                <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-lg">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sky-500">🔗</span>
+                        <div>
+                            <p className="text-sm font-medium text-sky-600 dark:text-sky-400">
+                                LinkedIn to Email
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Find email address from contact&apos;s LinkedIn profile URL
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                    <span className="text-amber-500">💡</span>
+                    <div>
+                        <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                            Apollo.io Credits
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Each enrichment uses 1 Apollo credit. Make sure your API key is configured.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

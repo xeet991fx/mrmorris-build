@@ -24,7 +24,8 @@ export type ActionType =
     | 'send_notification'
     | 'enroll_workflow'
     | 'update_lead_score'
-    | 'send_webhook';
+    | 'send_webhook'
+    | 'apollo_enrich';
 
 // Delay Types
 export type DelayType = 'duration' | 'until_date' | 'until_time' | 'until_weekday';
@@ -136,6 +137,9 @@ export interface WorkflowStepConfig {
     eventType?: string;
     points?: number;
     reason?: string;
+
+    // Apollo enrichment config
+    enrichType?: 'person' | 'company' | 'linkedin_to_email';
 }
 
 // ============================================
@@ -303,6 +307,7 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
     enroll_workflow: 'Enroll in Workflow',
     update_lead_score: 'Update Lead Score',
     send_webhook: 'Send Webhook',
+    apollo_enrich: 'Enrich with Apollo',
 };
 
 export const DELAY_UNIT_LABELS: Record<DelayUnit, string> = {
