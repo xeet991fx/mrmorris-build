@@ -83,6 +83,13 @@ export interface IContact extends Document {
   // Title (using jobTitle for compatibility)
   title?: string;
 
+  // Data Stewardship - Employment Tracking
+  employmentStatus?: "active" | "left_company" | "unknown";
+  lastVerifiedAt?: Date;
+  previousCompany?: string;
+  previousJobTitle?: string;
+  linkedContactId?: Types.ObjectId; // Link to new contact after job change
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -245,6 +252,20 @@ const contactSchema = new Schema<IContact>(
 
     // Title
     title: { type: String },
+
+    // Data Stewardship - Employment Tracking
+    employmentStatus: {
+      type: String,
+      enum: ["active", "left_company", "unknown"],
+      default: "active",
+    },
+    lastVerifiedAt: { type: Date },
+    previousCompany: { type: String },
+    previousJobTitle: { type: String },
+    linkedContactId: {
+      type: Schema.Types.ObjectId,
+      ref: "Contact",
+    },
   },
   {
     timestamps: true,

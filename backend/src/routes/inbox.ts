@@ -170,4 +170,58 @@ router.post("/:id/reply", async (req: any, res) => {
     }
 });
 
+/**
+ * POST /api/inbox/:id/draft
+ * Generate AI draft response for a message
+ */
+router.post("/:id/draft", async (req: any, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await InboxService.generateAIDraft(id);
+
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                message: result.error,
+            });
+        }
+
+        res.json({
+            success: true,
+            draft: result.draft,
+        });
+    } catch (error: any) {
+        console.error("Generate AI draft error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
+/**
+ * GET /api/inbox/:id/draft
+ * Get existing AI draft for a message
+ */
+router.get("/:id/draft", async (req: any, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await InboxService.getAIDraft(id);
+
+        res.json({
+            success: true,
+            draft: result.draft,
+            generatedAt: result.generatedAt,
+        });
+    } catch (error: any) {
+        console.error("Get AI draft error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
 export default router;

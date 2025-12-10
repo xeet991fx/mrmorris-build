@@ -27,7 +27,8 @@ export type AgentType =
     | 'workflow_runner'
     | 'pipeline'
     | 'integration'
-    | 'insights';
+    | 'insights'
+    | 'data_stewardship'; // NEW: Autonomous data quality agent
 
 // ============================================
 // AGENT CONTEXT & MEMORY
@@ -107,6 +108,8 @@ export type AgentEventType =
     | 'email:received'
     | 'email:opened'
     | 'email:clicked'
+    // Data Stewardship events
+    | 'contact:job_changed'
     // External events
     | 'webhook:received'
     | 'integration:connected'

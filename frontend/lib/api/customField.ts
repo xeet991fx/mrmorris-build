@@ -152,8 +152,7 @@ export const deleteCustomColumn = async (
 ): Promise<CustomFieldResponse> => {
   try {
     const response = await axiosInstance.delete(
-      `/workspaces/${workspaceId}/custom-fields/${fieldId}${
-        deleteData ? "?deleteData=true" : ""
+      `/workspaces/${workspaceId}/custom-fields/${fieldId}${deleteData ? "?deleteData=true" : ""
       }`
     );
 
@@ -165,3 +164,43 @@ export const deleteCustomColumn = async (
     };
   }
 };
+
+// Alias exports for compatibility with CustomFields page
+export const getCustomFields = async (
+  workspaceId: string,
+  entityType: "contact" | "company" | "deal" = "contact"
+): Promise<{ success: boolean; fields?: any[]; error?: string }> => {
+  const result = await getCustomColumns(workspaceId, entityType as any);
+  return {
+    success: result.success,
+    fields: result.data?.customFields,
+    error: result.error,
+  };
+};
+
+export const createCustomField = async (
+  workspaceId: string,
+  data: any
+): Promise<{ success: boolean; field?: any; error?: string }> => {
+  const result = await createCustomColumn(workspaceId, {
+    entityType: data.entityType,
+    fieldLabel: data.label,
+    fieldType: data.type,
+    selectOptions: data.options,
+    isRequired: data.required,
+  });
+  return {
+    success: result.success,
+    field: result.data?.customField,
+    error: result.error,
+  };
+};
+
+export const updateCustomField = updateCustomColumn;
+export const deleteCustomField = async (
+  workspaceId: string,
+  fieldId: string
+): Promise<{ success: boolean; error?: string }> => {
+  return deleteCustomColumn(workspaceId, fieldId);
+};
+

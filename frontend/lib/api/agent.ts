@@ -202,3 +202,203 @@ export async function getSuggestions(
     throw new Error(error.message || "Failed to get suggestions");
   }
 }
+
+/**
+ * Get agent system status
+ */
+export async function getAgentStatus(): Promise<{
+  status: string;
+  agents: { name: string; status: string }[];
+}> {
+  try {
+    const response = await fetch(`${API_URL}/agent/status`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get agent status");
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to get agent status");
+  }
+}
+
+/**
+ * Get agent configurations for a workspace
+ */
+export async function getAgentConfig(workspaceId: string): Promise<{
+  configs: Record<string, any>;
+}> {
+  try {
+    const response = await fetch(
+      `${API_URL}/agent/config?workspaceId=${workspaceId}`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(),
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get agent config");
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to get agent config");
+  }
+}
+
+/**
+ * Update agent configuration
+ */
+export async function updateAgentConfig(
+  agentType: string,
+  config: Record<string, any>,
+  workspaceId: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${API_URL}/agent/config/${agentType}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      credentials: "include",
+      body: JSON.stringify({ ...config, workspaceId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update agent config");
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to update agent config");
+  }
+}
+
+/**
+ * Confirm a pending AI action
+ */
+export async function confirmAction(
+  actionId: string,
+  workspaceId: string
+): Promise<{ success: boolean; result: any }> {
+  try {
+    const response = await fetch(`${API_URL}/agent/confirm`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      credentials: "include",
+      body: JSON.stringify({ actionId, workspaceId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to confirm action");
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to confirm action");
+  }
+}
+
+/**
+ * Get AI insights for a workspace
+ */
+export async function getAgentInsights(workspaceId: string): Promise<{
+  insights: Array<{
+    type: string;
+    title: string;
+    description: string;
+    priority: string;
+  }>;
+}> {
+  try {
+    const response = await fetch(
+      `${API_URL}/agent/insights?workspaceId=${workspaceId}`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(),
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get agent insights");
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to get agent insights");
+  }
+}
+
+/**
+ * Manage onboarding flow
+ */
+export async function handleOnboarding(
+  workspaceId: string,
+  step: string,
+  data?: Record<string, any>
+): Promise<{ success: boolean; nextStep?: string; completed?: boolean }> {
+  try {
+    const response = await fetch(`${API_URL}/agent/onboarding`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      credentials: "include",
+      body: JSON.stringify({ workspaceId, step, data }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to process onboarding");
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to process onboarding");
+  }
+}
+
+/**
+ * Get recent agent event history
+ */
+export async function getAgentHistory(
+  workspaceId: string,
+  limit: number = 50
+): Promise<{
+  events: Array<{
+    id: string;
+    type: string;
+    message: string;
+    timestamp: string;
+  }>;
+}> {
+  try {
+    const response = await fetch(
+      `${API_URL}/agent/history?workspaceId=${workspaceId}&limit=${limit}`,
+      {
+        method: "GET",
+        headers: getAuthHeaders(),
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get agent history");
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to get agent history");
+  }
+}
+

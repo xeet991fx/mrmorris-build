@@ -27,6 +27,7 @@ import emailAccountRoutes from "./routes/emailAccount";
 import campaignRoutes from "./routes/campaign";
 import inboxRoutes from "./routes/inbox";
 import enrichmentRoutes from "./routes/enrichment";
+import apolloSettingsRoutes from "./routes/apolloSettings";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 
 dotenv.config();
@@ -114,6 +115,7 @@ app.use("/api/email-accounts", emailAccountRoutes);
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/inbox", inboxRoutes);
 app.use("/api/enrichment", enrichmentRoutes);
+app.use("/api/workspaces", apolloSettingsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

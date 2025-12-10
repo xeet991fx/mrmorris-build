@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -16,22 +16,48 @@ import {
     EnvelopeOpenIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import {
+    getInboxMessages,
+    markMessageAsRead,
+    generateAIDraft,
+    sendReply,
+} from "@/lib/api/inbox";
+import { getCampaigns } from "@/lib/api/campaign";
 
-interface InboxMessage {
+// Local type for inbox messages with extended properties
+interface LocalInboxMessage {
     _id: string;
-    campaignId: { _id: string; name: string };
-    contactId: { _id: string; name: string; email: string; company?: string };
+    workspaceId: string;
+    campaignId?: { _id: string; name: string } | string;
+    contactId?: { _id: string; name: string; email: string; company?: string } | string;
+    fromEmail: string;
+    toEmail?: string;
     subject: string;
+    body: string;
+    snippet?: string;
+    isRead: boolean;
+    sentiment?: "positive" | "neutral" | "negative";
+    labels?: string[];
+    assignedTo?: string;
+    threadId?: string;
+    messageId?: string;
+    receivedAt: string;
+    createdAt: string;
+    updatedAt: string;
+    // Extended fields for campaign replies
     replySubject?: string;
     replyBody?: string;
     replySentiment?: "positive" | "negative" | "neutral" | "out_of_office" | "unsubscribe";
-    repliedAt: string;
-    fromEmail: string;
-    toEmail: string;
+    repliedAt?: string;
     metadata?: {
         isRead?: boolean;
         assignedTo?: string;
         labels?: string[];
+    };
+    contact?: {
+        firstName: string;
+        lastName: string;
+        email: string;
     };
 }
 
@@ -39,65 +65,58 @@ export default function InboxPage() {
     const params = useParams();
     const workspaceId = params.id as string;
 
-    const [messages, setMessages] = useState<InboxMessage[]>([]);
+    const [messages, setMessages] = useState<LocalInboxMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [selectedMessage, setSelectedMessage] = useState<LocalInboxMessage | null>(null);
     const [filters, setFilters] = useState({
         campaign: "",
         sentiment: "",
         search: "",
     });
     const [campaigns, setCampaigns] = useState<Array<{ _id: string; name: string }>>([]);
+    const [aiDraft, setAiDraft] = useState<string>("");
+    const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+    const [isSendingReply, setIsSendingReply] = useState(false);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-
-    const fetchMessages = async () => {
+    const fetchMessages = useCallback(async () => {
         try {
-            const token = localStorage.getItem("token");
-            const queryParams = new URLSearchParams();
-            if (filters.campaign) queryParams.set("campaign", filters.campaign);
-            if (filters.sentiment) queryParams.set("sentiment", filters.sentiment);
-            if (filters.search) queryParams.set("search", filters.search);
-
-            const response = await fetch(`${apiUrl}/inbox?${queryParams.toString()}`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+            setError(null);
+            const response = await getInboxMessages(workspaceId, {
+                campaign: filters.campaign || undefined,
+                sentiment: filters.sentiment as any || undefined,
+                search: filters.search || undefined,
             });
-            const data = await response.json();
-            if (data.success) {
-                setMessages(data.messages);
+            if (response.success) {
+                setMessages((response.data?.messages || []) as unknown as LocalInboxMessage[]);
+            } else {
+                setError(response.error || "Failed to load messages");
             }
-        } catch (error) {
-            console.error("Failed to fetch inbox messages:", error);
+        } catch (err: any) {
+            console.error("Failed to fetch inbox messages:", err);
+            setError(err.message || "Failed to load inbox");
             toast.error("Failed to load inbox");
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [workspaceId, filters.campaign, filters.sentiment, filters.search]);
 
-    const fetchCampaigns = async () => {
+    const fetchCampaignsData = useCallback(async () => {
         try {
-            const token = localStorage.getItem("token");
-            const response = await fetch(`${apiUrl}/campaigns`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            const data = await response.json();
-            if (data.success) {
-                setCampaigns(data.campaigns);
+            const response = await getCampaigns(workspaceId);
+            if (response.success) {
+                const campaignList = response.campaigns || response.data?.campaigns || [];
+                setCampaigns(campaignList.map(c => ({ _id: c._id, name: c.name })));
             }
-        } catch (error) {
-            console.error("Failed to fetch campaigns:", error);
+        } catch (err) {
+            console.error("Failed to fetch campaigns:", err);
         }
-    };
+    }, [workspaceId]);
 
     useEffect(() => {
         fetchMessages();
-        fetchCampaigns();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filters.campaign, filters.sentiment]);
+        fetchCampaignsData();
+    }, [fetchMessages, fetchCampaignsData]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -106,16 +125,10 @@ export default function InboxPage() {
 
     const handleMarkAsRead = async (messageId: string) => {
         try {
-            const token = localStorage.getItem("token");
-            await fetch(`${apiUrl}/inbox/${messageId}/read`, {
-                method: "PUT",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+            await markMessageAsRead(messageId);
             fetchMessages();
-        } catch (error) {
-            console.error("Failed to mark as read:", error);
+        } catch (err) {
+            console.error("Failed to mark as read:", err);
         }
     };
 
@@ -152,7 +165,8 @@ export default function InboxPage() {
         );
     };
 
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return "—";
         const date = new Date(dateString);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
@@ -166,6 +180,31 @@ export default function InboxPage() {
         } else {
             return date.toLocaleDateString();
         }
+    };
+
+    // Type-safe accessors for contactId which can be string or object
+    const getContactName = (message: LocalInboxMessage): string => {
+        if (!message.contactId) return message.toEmail || message.fromEmail || "Unknown";
+        if (typeof message.contactId === "string") return message.toEmail || message.fromEmail || "Unknown";
+        return message.contactId.name || message.toEmail || message.fromEmail || "Unknown";
+    };
+
+    const getContactCompany = (message: LocalInboxMessage): string => {
+        if (!message.contactId) return message.toEmail || "";
+        if (typeof message.contactId === "string") return message.toEmail || "";
+        return message.contactId.company || message.toEmail || "";
+    };
+
+    const getCampaignName = (message: LocalInboxMessage): string => {
+        if (!message.campaignId) return "Unknown Campaign";
+        if (typeof message.campaignId === "string") return "Campaign";
+        return message.campaignId.name || "Unknown Campaign";
+    };
+
+    const getContactEmail = (message: LocalInboxMessage): string => {
+        if (!message.contactId) return message.toEmail || message.fromEmail || "";
+        if (typeof message.contactId === "string") return message.toEmail || message.fromEmail || "";
+        return message.contactId.email || message.toEmail || message.fromEmail || "";
     };
 
     if (isLoading) {
@@ -272,10 +311,10 @@ export default function InboxPage() {
                                             </div>
                                             <div>
                                                 <p className="font-medium text-foreground text-sm">
-                                                    {message.contactId?.name || message.toEmail}
+                                                    {getContactName(message)}
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {message.contactId?.company || message.toEmail}
+                                                    {getContactCompany(message)}
                                                 </p>
                                             </div>
                                         </div>
@@ -295,7 +334,7 @@ export default function InboxPage() {
                                     <div className="flex items-center gap-2 mt-2">
                                         {getSentimentBadge(message.replySentiment)}
                                         <span className="text-xs text-muted-foreground">
-                                            {message.campaignId?.name}
+                                            {getCampaignName(message)}
                                         </span>
                                     </div>
                                 </motion.button>
@@ -317,10 +356,10 @@ export default function InboxPage() {
                                         </div>
                                         <div>
                                             <p className="font-medium text-foreground">
-                                                {selectedMessage.contactId?.name || selectedMessage.toEmail}
+                                                {getContactName(selectedMessage)}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                {selectedMessage.contactId?.email || selectedMessage.toEmail}
+                                                {getContactEmail(selectedMessage)}
                                             </p>
                                         </div>
                                     </div>
@@ -330,7 +369,7 @@ export default function InboxPage() {
                                     {selectedMessage.replySubject || selectedMessage.subject}
                                 </h3>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    From campaign: {selectedMessage.campaignId?.name} • {formatDate(selectedMessage.repliedAt)}
+                                    From campaign: {getCampaignName(selectedMessage)} • {formatDate(selectedMessage.repliedAt)}
                                 </p>
                             </div>
 
@@ -343,14 +382,107 @@ export default function InboxPage() {
                                 </div>
                             </div>
 
-                            {/* Reply Actions */}
-                            <div className="p-4 border-t border-border flex-shrink-0">
-                                <button
-                                    disabled
-                                    className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg opacity-50 cursor-not-allowed"
-                                >
-                                    Reply (Coming Soon)
-                                </button>
+                            {/* Reply Actions with AI Draft */}
+                            <div className="p-4 border-t border-border flex-shrink-0 space-y-3">
+                                {/* AI Draft Preview */}
+                                {aiDraft && (
+                                    <div className="bg-muted/30 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-medium text-primary flex items-center gap-1">
+                                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                                AI Draft Ready
+                                            </span>
+                                            <button
+                                                onClick={() => setAiDraft("")}
+                                                className="text-xs text-muted-foreground hover:text-foreground"
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                        <textarea
+                                            value={aiDraft}
+                                            onChange={(e) => setAiDraft(e.target.value)}
+                                            rows={4}
+                                            className="w-full bg-background border border-border rounded-lg p-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                            placeholder="Edit your response..."
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                    {/* Generate AI Draft Button */}
+                                    <button
+                                        onClick={async () => {
+                                            if (!selectedMessage) return;
+                                            setIsGeneratingDraft(true);
+                                            try {
+                                                const response = await generateAIDraft(selectedMessage._id);
+                                                if (response.success && response.draft) {
+                                                    setAiDraft(response.draft);
+                                                    toast.success("AI draft generated!");
+                                                } else {
+                                                    toast.error(response.message || "Failed to generate draft");
+                                                }
+                                            } catch (err: any) {
+                                                toast.error(err.message || "Failed to generate draft");
+                                            } finally {
+                                                setIsGeneratingDraft(false);
+                                            }
+                                        }}
+                                        disabled={isGeneratingDraft}
+                                        className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {isGeneratingDraft ? (
+                                            <>
+                                                <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                                Generating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                ✨ Generate AI Draft
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* Send Button */}
+                                    <button
+                                        onClick={async () => {
+                                            if (!selectedMessage || !aiDraft.trim()) {
+                                                toast.error("Please generate or write a reply first");
+                                                return;
+                                            }
+                                            setIsSendingReply(true);
+                                            try {
+                                                const response = await sendReply(
+                                                    selectedMessage._id,
+                                                    aiDraft,
+                                                    `Re: ${selectedMessage.replySubject || selectedMessage.subject}`
+                                                );
+                                                if (response.success) {
+                                                    toast.success("Reply sent!");
+                                                    setAiDraft("");
+                                                } else {
+                                                    toast.error(response.message || "Failed to send reply");
+                                                }
+                                            } catch (err: any) {
+                                                toast.error(err.message || "Failed to send reply");
+                                            } finally {
+                                                setIsSendingReply(false);
+                                            }
+                                        }}
+                                        disabled={!aiDraft.trim() || isSendingReply}
+                                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isSendingReply ? (
+                                            <>
+                                                <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                                Sending...
+                                            </>
+                                        ) : (
+                                            "Send →"
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </>
                     ) : (

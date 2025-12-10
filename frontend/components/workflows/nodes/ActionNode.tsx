@@ -12,6 +12,7 @@ import {
     ArrowPathIcon,
     ChartBarIcon,
     GlobeAltIcon,
+    SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { WorkflowStep, ACTION_TYPE_LABELS, ActionType } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ const actionIcons: Record<ActionType, React.ReactNode> = {
     enroll_workflow: <ArrowPathIcon className="w-4 h-4" />,
     update_lead_score: <ChartBarIcon className="w-4 h-4" />,
     send_webhook: <GlobeAltIcon className="w-4 h-4" />,
+    apollo_enrich: <SparklesIcon className="w-4 h-4" />,
 };
 
 // ============================================

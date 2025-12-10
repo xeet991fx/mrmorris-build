@@ -101,6 +101,7 @@ class ApolloService {
             headers: {
                 "Content-Type": "application/json",
                 "Cache-Control": "no-cache",
+                "X-Api-Key": this.apiKey,  // Apollo requires API key in this header
             },
         });
     }

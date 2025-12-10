@@ -7,6 +7,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 export type TriggerType =
     | 'contact_created'
     | 'contact_updated'
+    | 'contact_job_changed'  // NEW: Data Stewardship trigger
     | 'deal_stage_changed'
     | 'deal_created'
     | 'email_opened'
@@ -195,9 +196,9 @@ const workflowStepSchema = new Schema<IWorkflowStep>(
             // Trigger config
             triggerType: {
                 type: String,
-                enum: ['contact_created', 'contact_updated', 'deal_stage_changed',
-                    'deal_created', 'email_opened', 'email_clicked',
-                    'form_submitted', 'manual'],
+                enum: ['contact_created', 'contact_updated', 'contact_job_changed',
+                    'deal_stage_changed', 'deal_created', 'email_opened', 'email_clicked',
+                    'form_submitted', 'manual', 'webhook_received'],
             },
 
             // Action config

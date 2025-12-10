@@ -493,6 +493,111 @@ export const apolloApi = {
       return false;
     }
   },
+
+  /**
+   * Check Apollo API configuration status
+   */
+  checkStatus: async (): Promise<{
+    success: boolean;
+    configured: boolean;
+    message: string;
+  }> => {
+    try {
+      const result = await apiRequest<{
+        success: boolean;
+        configured: boolean;
+        message: string;
+      }>(`/api/enrichment/status`, {
+        method: "GET",
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Failed to check Apollo status:", error);
+      return {
+        success: false,
+        configured: false,
+        message: "Failed to check Apollo API status",
+      };
+    }
+  },
+
+  /**
+   * Enrich a person by name/email/LinkedIn
+   */
+  enrichPerson: async (params: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    linkedinUrl?: string;
+    organizationName?: string;
+    domain?: string;
+  }): Promise<EnrichmentResult> => {
+    try {
+      const result = await apiRequest<{
+        success: boolean;
+        data: any;
+        creditsUsed: number;
+        error?: string;
+      }>(`/api/enrichment/person`, {
+        method: "POST",
+        body: JSON.stringify(params),
+      });
+
+      if (result.success) {
+        toast.success("Person enriched successfully!");
+      }
+
+      return {
+        success: result.success,
+        data: result.data,
+        creditsUsed: result.creditsUsed || 1,
+        fieldsEnriched: Object.keys(result.data || {}),
+        confidence: 0.9,
+      };
+    } catch (error) {
+      console.error("Failed to enrich person:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Find email from LinkedIn URL
+   */
+  linkedInToEmail: async (
+    linkedinUrl: string
+  ): Promise<{
+    success: boolean;
+    email?: string;
+    emailStatus?: string;
+    person?: ApolloPerson;
+    creditsUsed: number;
+  }> => {
+    try {
+      const result = await apiRequest<{
+        success: boolean;
+        email: string;
+        emailStatus: string;
+        person: ApolloPerson;
+        creditsUsed: number;
+        error?: string;
+      }>(`/api/enrichment/linkedin-to-email`, {
+        method: "POST",
+        body: JSON.stringify({ linkedinUrl }),
+      });
+
+      if (result.success && result.email) {
+        toast.success(`Email found: ${result.email}`);
+      } else {
+        toast.info("No email found for this LinkedIn profile");
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Failed to find email from LinkedIn:", error);
+      throw error;
+    }
+  },
 };
 
 export default apolloApi;

@@ -211,6 +211,111 @@ class InboxService {
     }
 
     /**
+     * Generate AI draft response for a message using Gemini
+     */
+    async generateAIDraft(messageId: string): Promise<{
+        success: boolean;
+        draft?: string;
+        error?: string;
+    }> {
+        try {
+            const message = await EmailMessage.findById(messageId)
+                .populate("contactId", "firstName lastName email company jobTitle tags")
+                .populate("campaignId", "name description");
+
+            if (!message) {
+                return { success: false, error: "Message not found" };
+            }
+
+            // Build context for AI
+            const contact = message.contactId as any;
+            const campaign = message.campaignId as any;
+
+            const contextInfo = `
+Contact Information:
+- Name: ${contact?.firstName || ""} ${contact?.lastName || ""}
+- Company: ${contact?.company || "Unknown"}
+- Job Title: ${contact?.jobTitle || "Unknown"}
+- Email: ${contact?.email || ""}
+- Tags: ${contact?.tags?.join(", ") || "None"}
+
+Campaign: ${campaign?.name || "Unknown Campaign"}
+Campaign Description: ${campaign?.description || "N/A"}
+
+Original Email Subject: ${message.subject}
+Original Email Body: ${(message.bodyText || message.bodyHtml || "").substring(0, 500)}
+
+Reply Subject: ${message.replySubject || message.subject}
+Reply Body: ${message.replyBody || ""}
+Reply Sentiment: ${message.replySentiment || "neutral"}
+            `.trim();
+
+            // Use Gemini to generate draft
+            const { GoogleGenerativeAI } = require("@google/generative-ai");
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+            const prompt = `You are a helpful sales assistant drafting a professional email response.
+
+Based on the following context, draft a concise and professional response to the incoming email.
+
+${contextInfo}
+
+Guidelines:
+- Be professional but friendly
+- Keep the response concise (under 150 words)
+- If the sentiment is positive, build on their interest
+- If the sentiment is negative/unsubscribe, politely acknowledge
+- If out of office, draft a follow-up for when they return
+- Use their first name if available
+- Do NOT include subject line, just the email body
+- End with a clear call-to-action when appropriate
+
+Draft the email response:`;
+
+            const result = await model.generateContent(prompt);
+            const draft = result.response.text();
+
+            // Store the draft on the message
+            await EmailMessage.findByIdAndUpdate(messageId, {
+                $set: {
+                    "metadata.aiDraft": draft,
+                    "metadata.aiDraftGeneratedAt": new Date(),
+                },
+            });
+
+            console.log(`🤖 AI draft generated for message: ${messageId}`);
+
+            return {
+                success: true,
+                draft,
+            };
+        } catch (err: any) {
+            console.error("Failed to generate AI draft:", err);
+            return {
+                success: false,
+                error: err.message || "Failed to generate AI draft",
+            };
+        }
+    }
+
+    /**
+     * Get AI draft for a message (if already generated)
+     */
+    async getAIDraft(messageId: string): Promise<{
+        draft?: string;
+        generatedAt?: Date;
+    }> {
+        const message = await EmailMessage.findById(messageId).lean();
+        if (!message) return {};
+
+        return {
+            draft: (message as any).metadata?.aiDraft,
+            generatedAt: (message as any).metadata?.aiDraftGeneratedAt,
+        };
+    }
+
+    /**
      * Fetch new replies from email accounts
      * Called by cron job
      * 
