@@ -33,13 +33,44 @@ export default function ContactForm({ form }: ContactFormProps) {
     register,
     formState: { errors },
     setValue,
+    watch,
   } = form;
 
   const [source, setSource] = useState("");
   const [status, setStatus] = useState("lead");
+  const [tagInput, setTagInput] = useState("");
+
+  // Watch tags field
+  const watchedTags = watch("tags" as any);
+  const tags: string[] = Array.isArray(watchedTags) ? watchedTags : [];
+
+  // Initialize from form values
+  useEffect(() => {
+    const formValues = form.getValues();
+    if (formValues.source) setSource(formValues.source);
+    if (formValues.status) setStatus(formValues.status);
+  }, [form]);
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setValue("tags" as any, [...tags, tagInput.trim()]);
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setValue("tags" as any, tags.filter((t: string) => t !== tagToRemove));
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Name Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -123,6 +154,149 @@ export default function ContactForm({ form }: ContactFormProps) {
           {errors.jobTitle && (
             <p className="mt-1 text-xs text-red-400">{errors.jobTitle.message}</p>
           )}
+        </div>
+      </div>
+
+      {/* Social Links */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-foreground">Social Profiles</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              LinkedIn
+            </label>
+            <TextInput
+              type="url"
+              placeholder="https://linkedin.com/in/..."
+              error={!!errors.linkedin}
+              {...register("linkedin")}
+            />
+            {errors.linkedin && (
+              <p className="mt-1 text-xs text-red-400">{errors.linkedin.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Twitter
+            </label>
+            <TextInput
+              type="url"
+              placeholder="https://twitter.com/..."
+              error={!!errors.twitter}
+              {...register("twitter")}
+            />
+            {errors.twitter && (
+              <p className="mt-1 text-xs text-red-400">{errors.twitter.message}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Website
+            </label>
+            <TextInput
+              type="url"
+              placeholder="https://example.com"
+              error={!!errors.website}
+              {...register("website")}
+            />
+            {errors.website && (
+              <p className="mt-1 text-xs text-red-400">{errors.website.message}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Address */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-foreground">Address</h3>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            Street
+          </label>
+          <TextInput
+            error={!!errors.address?.street}
+            {...register("address.street")}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              City
+            </label>
+            <TextInput
+              error={!!errors.address?.city}
+              {...register("address.city")}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              State
+            </label>
+            <TextInput
+              error={!!errors.address?.state}
+              {...register("address.state")}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Country
+            </label>
+            <TextInput
+              error={!!errors.address?.country}
+              {...register("address.country")}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Zip Code
+            </label>
+            <TextInput
+              error={!!errors.address?.zipCode}
+              {...register("address.zipCode")}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Tags */}
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Tags
+        </label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {tags.map((tag: string) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => handleRemoveTag(tag)}
+                className="hover:text-primary/70"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <TextInput
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            placeholder="Add a tag..."
+            className="flex-1"
+          />
+          <button
+            type="button"
+            onClick={handleAddTag}
+            className="px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-lg transition-colors"
+          >
+            Add
+          </button>
         </div>
       </div>
 

@@ -48,6 +48,7 @@ export default function EditCompanyModal({
       status: company.status || "lead",
       source: company.source || "",
       notes: company.notes || "",
+      tags: company.tags || [],
     },
   });
 
@@ -76,6 +77,7 @@ export default function EditCompanyModal({
       status: company.status || "lead",
       source: company.source || "",
       notes: company.notes || "",
+      tags: company.tags || [],
     });
   }, [company, reset]);
 

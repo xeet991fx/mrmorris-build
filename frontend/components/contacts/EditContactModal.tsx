@@ -37,6 +37,17 @@ export default function EditContactModal({
       source: contact.source || "",
       status: contact.status || "lead",
       notes: contact.notes || "",
+      tags: contact.tags || [],
+      linkedin: contact.linkedin || "",
+      twitter: contact.twitter || "",
+      website: contact.website || "",
+      address: {
+        street: contact.address?.street || "",
+        city: contact.address?.city || "",
+        state: contact.address?.state || "",
+        country: contact.address?.country || "",
+        zipCode: contact.address?.zipCode || "",
+      },
     },
   });
 
@@ -54,6 +65,17 @@ export default function EditContactModal({
       source: contact.source || "",
       status: contact.status || "lead",
       notes: contact.notes || "",
+      tags: contact.tags || [],
+      linkedin: contact.linkedin || "",
+      twitter: contact.twitter || "",
+      website: contact.website || "",
+      address: {
+        street: contact.address?.street || "",
+        city: contact.address?.city || "",
+        state: contact.address?.state || "",
+        country: contact.address?.country || "",
+        zipCode: contact.address?.zipCode || "",
+      },
     });
   }, [contact, reset]);
 

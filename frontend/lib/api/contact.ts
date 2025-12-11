@@ -10,6 +10,7 @@ export interface Contact {
   email?: string;
   phone?: string;
   company?: string;
+  companyId?: string;
   jobTitle?: string;
   tags?: string[];
   source?: string;

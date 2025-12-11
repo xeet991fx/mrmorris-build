@@ -15,6 +15,7 @@ import {
     CursorArrowRaysIcon,
     ChatBubbleLeftIcon,
     ExclamationCircleIcon,
+    PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { getEmailIntegrations } from "@/lib/api/emailIntegration";
@@ -51,6 +52,12 @@ export default function CampaignsPage() {
     const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
     const [isEnrolling, setIsEnrolling] = useState(false);
     const [contactsLoading, setContactsLoading] = useState(false);
+
+    // Test email state
+    const [showTestEmailModal, setShowTestEmailModal] = useState(false);
+    const [testEmailCampaign, setTestEmailCampaign] = useState<Campaign | null>(null);
+    const [testEmailAddress, setTestEmailAddress] = useState("");
+    const [isSendingTest, setIsSendingTest] = useState(false);
 
     // Create form state
     const [createForm, setCreateForm] = useState<{
@@ -96,14 +103,17 @@ export default function CampaignsPage() {
 
     const fetchEmailAccountsData = useCallback(async () => {
         try {
-            // Fetch cold email accounts using API client
+            // Fetch cold email accounts
             const coldAccountsPromise = getEmailAccounts(workspaceId).catch(() => ({
                 success: false,
                 data: { accounts: [] }
             }));
 
             // Fetch Gmail integrations
-            const integrationsPromise = getEmailIntegrations(workspaceId);
+            const integrationsPromise = getEmailIntegrations(workspaceId).catch(() => ({
+                success: false,
+                data: { integrations: [] }
+            }));
 
             const [coldData, integrationsData] = await Promise.all([
                 coldAccountsPromise,
@@ -112,20 +122,27 @@ export default function CampaignsPage() {
 
             const accounts: Array<{ _id: string; email: string }> = [];
 
-            // Add cold email accounts
-            if (coldData.success && coldData.data?.accounts) {
-                for (const acc of coldData.data.accounts) {
+            // Add cold email accounts (handle both response formats)
+            const coldAccounts = coldData.data?.accounts || (coldData as any).accounts || [];
+            if (coldData.success && coldAccounts.length > 0) {
+                for (const acc of coldAccounts) {
                     accounts.push({ _id: acc._id, email: acc.email });
                 }
             }
 
-            // Add Gmail integrations (avoid duplicates)
-            if (integrationsData.success && integrationsData.data?.integrations) {
-                for (const integration of integrationsData.data.integrations) {
+            // Add Gmail integrations (these can also send emails)
+            const integrations = integrationsData.data?.integrations || [];
+            if (integrationsData.success && integrations.length > 0) {
+                for (const integration of integrations) {
+                    // Avoid duplicates
                     if (!accounts.some(acc => acc.email === integration.email)) {
                         accounts.push({ _id: integration._id, email: integration.email });
                     }
                 }
+            }
+
+            if (accounts.length === 0) {
+                console.warn("No email accounts found. Connect accounts in Email Accounts or Settings > Integrations.");
             }
 
             setEmailAccounts(accounts);
@@ -306,6 +323,52 @@ export default function CampaignsPage() {
         }
     };
 
+    // Open test email modal
+    const handleOpenTestEmail = (campaign: Campaign) => {
+        setTestEmailCampaign(campaign);
+        setTestEmailAddress("");
+        setShowTestEmailModal(true);
+    };
+
+    // Send test email
+    const handleSendTestEmail = async () => {
+        if (!testEmailCampaign || !testEmailAddress) {
+            toast.error("Please enter an email address");
+            return;
+        }
+
+        setIsSendingTest(true);
+        try {
+            const token = localStorage.getItem("token");
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+            const response = await fetch(`${apiUrl}/campaigns/${testEmailCampaign._id}/test`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    testEmail: testEmailAddress,
+                    workspaceId
+                }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                toast.success(`Test email sent to ${testEmailAddress}`);
+                setShowTestEmailModal(false);
+            } else {
+                toast.error(data.message || "Failed to send test email");
+            }
+        } catch (err: any) {
+            console.error("Failed to send test email:", err);
+            toast.error(err.message || "Failed to send test email");
+        } finally {
+            setIsSendingTest(false);
+        }
+    };
+
     const getStatusBadge = (status: string) => {
         const badges: Record<string, { bg: string; text: string; label: string }> = {
             draft: { bg: "bg-gray-500/20", text: "text-gray-400", label: "Draft" },
@@ -448,6 +511,13 @@ export default function CampaignsPage() {
                                         title="Add Contacts"
                                     >
                                         <UserGroupIcon className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleOpenTestEmail(campaign)}
+                                        className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                        title="Send Test Email"
+                                    >
+                                        <PaperAirplaneIcon className="w-5 h-5" />
                                     </button>
                                     <button
                                         onClick={() => handleDeleteCampaign(campaign._id)}
@@ -797,6 +867,65 @@ export default function CampaignsPage() {
                                     `Enroll ${selectedContacts.length} Contact${selectedContacts.length !== 1 ? 's' : ''}`
                                 )}
                             </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Test Email Modal */}
+            {showTestEmailModal && testEmailCampaign && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4"
+                    >
+                        <h2 className="text-xl font-semibold text-foreground mb-2">
+                            Send Test Email
+                        </h2>
+                        <p className="text-sm text-muted-foreground mb-6">
+                            Send a test email from campaign &quot;{testEmailCampaign.name}&quot; to verify it works correctly.
+                        </p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-1">
+                                    Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    value={testEmailAddress}
+                                    onChange={(e) => setTestEmailAddress(e.target.value)}
+                                    placeholder="your@email.com"
+                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowTestEmailModal(false)}
+                                    className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSendTestEmail}
+                                    disabled={isSendingTest || !testEmailAddress}
+                                    className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {isSendingTest ? (
+                                        <>
+                                            <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                            Sending...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PaperAirplaneIcon className="w-4 h-4" />
+                                            Send Test
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 </div>

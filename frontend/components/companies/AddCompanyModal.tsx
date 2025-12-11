@@ -45,6 +45,7 @@ export default function AddCompanyModal({
       status: "lead",
       source: "",
       notes: "",
+      tags: [],
     },
   });
 

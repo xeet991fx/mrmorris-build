@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+// Address schema
+const addressSchema = z.object({
+  street: z.string().trim().optional().or(z.literal("")),
+  city: z.string().trim().optional().or(z.literal("")),
+  state: z.string().trim().optional().or(z.literal("")),
+  country: z.string().trim().optional().or(z.literal("")),
+  zipCode: z.string().trim().optional().or(z.literal("")),
+}).optional();
+
 // Create contact schema
 export const createContactSchema = z.object({
   firstName: z
@@ -26,6 +35,7 @@ export const createContactSchema = z.object({
     .trim()
     .optional()
     .or(z.literal("")),
+  companyId: z.string().optional().or(z.literal("")),
   jobTitle: z
     .string()
     .max(100, "Job title must be less than 100 characters")
@@ -36,6 +46,14 @@ export const createContactSchema = z.object({
   status: z.enum(["lead", "prospect", "customer", "inactive"]).optional(),
   notes: z.string().optional().or(z.literal("")),
   tags: z.array(z.string()).optional(),
+  // Social links
+  linkedin: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+  twitter: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+  website: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+  // Address
+  address: addressSchema,
+  // Assignment
+  assignedTo: z.string().optional().or(z.literal("")),
 });
 
 // Update contact schema - all fields optional
@@ -44,3 +62,4 @@ export const updateContactSchema = createContactSchema.partial();
 // Type exports for TypeScript
 export type CreateContactInput = z.infer<typeof createContactSchema>;
 export type UpdateContactInput = z.infer<typeof updateContactSchema>;
+

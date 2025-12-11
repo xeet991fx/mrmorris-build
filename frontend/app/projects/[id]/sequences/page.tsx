@@ -30,12 +30,22 @@ interface SequenceStep {
     };
 }
 
+interface SequenceSettings {
+    unenrollOnReply: boolean;
+    sendOnWeekends: boolean;
+    sendWindowStart: string;
+    sendWindowEnd: string;
+    timezone: string;
+    fromAccountId?: string;
+}
+
 interface Sequence {
     _id: string;
     name: string;
     description?: string;
     status: "draft" | "active" | "paused" | "archived";
     steps: SequenceStep[];
+    settings?: SequenceSettings;
     stats: {
         totalEnrolled: number;
         currentlyActive: number;
@@ -204,15 +214,35 @@ function SequenceModal({
     const [steps, setSteps] = useState<SequenceStep[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
+    // Settings state
+    const [unenrollOnReply, setUnenrollOnReply] = useState(true);
+    const [sendOnWeekends, setSendOnWeekends] = useState(false);
+    const [sendWindowStart, setSendWindowStart] = useState("09:00");
+    const [sendWindowEnd, setSendWindowEnd] = useState("17:00");
+    const [timezone, setTimezone] = useState("America/New_York");
+
     useEffect(() => {
         if (sequence) {
             setName(sequence.name);
             setDescription(sequence.description || "");
             setSteps(sequence.steps || []);
+            // Load settings if available
+            if (sequence.settings) {
+                setUnenrollOnReply(sequence.settings.unenrollOnReply ?? true);
+                setSendOnWeekends(sequence.settings.sendOnWeekends ?? false);
+                setSendWindowStart(sequence.settings.sendWindowStart || "09:00");
+                setSendWindowEnd(sequence.settings.sendWindowEnd || "17:00");
+                setTimezone(sequence.settings.timezone || "America/New_York");
+            }
         } else {
             setName("");
             setDescription("");
             setSteps([]);
+            setUnenrollOnReply(true);
+            setSendOnWeekends(false);
+            setSendWindowStart("09:00");
+            setSendWindowEnd("17:00");
+            setTimezone("America/New_York");
         }
     }, [sequence, isOpen]);
 
@@ -247,7 +277,18 @@ function SequenceModal({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
-        await onSave({ name, description, steps });
+        await onSave({
+            name,
+            description,
+            steps,
+            settings: {
+                unenrollOnReply,
+                sendOnWeekends,
+                sendWindowStart,
+                sendWindowEnd,
+                timezone,
+            },
+        });
         setIsSaving(false);
     };
 
@@ -387,6 +428,73 @@ function SequenceModal({
                                     <p>No steps added yet. Click &quot;Add Step&quot; to create your first email.</p>
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Settings Section */}
+                    <div className="border-t border-border pt-4">
+                        <h4 className="text-sm font-medium text-foreground mb-3">Sequence Settings</h4>
+
+                        <div className="space-y-4">
+                            {/* Unenroll on Reply */}
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={unenrollOnReply}
+                                    onChange={(e) => setUnenrollOnReply(e.target.checked)}
+                                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                                />
+                                <span className="text-sm text-foreground">Stop sequence when contact replies</span>
+                            </label>
+
+                            {/* Send on Weekends */}
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={sendOnWeekends}
+                                    onChange={(e) => setSendOnWeekends(e.target.checked)}
+                                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                                />
+                                <span className="text-sm text-foreground">Send emails on weekends</span>
+                            </label>
+
+                            {/* Send Window */}
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-foreground">Send window:</span>
+                                <input
+                                    type="time"
+                                    value={sendWindowStart}
+                                    onChange={(e) => setSendWindowStart(e.target.value)}
+                                    className="px-2 py-1 rounded border border-border bg-card text-foreground text-sm"
+                                />
+                                <span className="text-sm text-muted-foreground">to</span>
+                                <input
+                                    type="time"
+                                    value={sendWindowEnd}
+                                    onChange={(e) => setSendWindowEnd(e.target.value)}
+                                    className="px-2 py-1 rounded border border-border bg-card text-foreground text-sm"
+                                />
+                            </div>
+
+                            {/* Timezone */}
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-foreground">Timezone:</span>
+                                <select
+                                    value={timezone}
+                                    onChange={(e) => setTimezone(e.target.value)}
+                                    className="px-2 py-1 rounded border border-border bg-card text-foreground text-sm"
+                                >
+                                    <option value="America/New_York">Eastern Time (ET)</option>
+                                    <option value="America/Chicago">Central Time (CT)</option>
+                                    <option value="America/Denver">Mountain Time (MT)</option>
+                                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                                    <option value="Europe/London">London (GMT)</option>
+                                    <option value="Europe/Paris">Paris (CET)</option>
+                                    <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                    <option value="Asia/Kolkata">India (IST)</option>
+                                    <option value="Australia/Sydney">Sydney (AEST)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 

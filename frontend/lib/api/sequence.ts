@@ -7,13 +7,24 @@ import { axiosInstance } from "../axios";
 
 export interface SequenceStep {
     id: string;
-    type: "email" | "delay" | "task";
+    type: "email" | "delay" | "task" | "linkedin";
     subject?: string;
     body?: string;
     delayDays?: number;
     delayHours?: number;
     taskTitle?: string;
     taskDescription?: string;
+    linkedinAction?: "connect" | "message" | "view_profile";
+    emailTemplateId?: string;
+}
+
+export interface SequenceSettings {
+    unenrollOnReply: boolean;
+    sendOnWeekends: boolean;
+    sendWindowStart: string; // e.g. "09:00"
+    sendWindowEnd: string; // e.g. "17:00"
+    timezone: string; // e.g. "America/New_York"
+    fromAccountId?: string;
 }
 
 export interface Sequence {
@@ -23,13 +34,17 @@ export interface Sequence {
     description?: string;
     status: "draft" | "active" | "paused";
     steps: SequenceStep[];
+    settings?: SequenceSettings;
     enrollmentCount: number;
     completedCount: number;
     stats?: {
+        totalEnrolled: number;
+        currentlyActive: number;
+        completed: number;
+        replied: number;
         sent: number;
         opened: number;
         clicked: number;
-        replied: number;
     };
     createdAt: string;
     updatedAt: string;
@@ -39,12 +54,14 @@ export interface CreateSequenceData {
     name: string;
     description?: string;
     steps: SequenceStep[];
+    settings?: Partial<SequenceSettings>;
 }
 
 export interface UpdateSequenceData {
     name?: string;
     description?: string;
     steps?: SequenceStep[];
+    settings?: Partial<SequenceSettings>;
 }
 
 export interface SequenceResponse {

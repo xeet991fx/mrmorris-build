@@ -10,7 +10,7 @@ export interface EmailAccount {
     workspaceId: string;
     email: string;
     provider: "smtp" | "gmail";
-    status: "active" | "warming" | "paused" | "error";
+    status: "active" | "warming_up" | "paused" | "error" | "disconnected";
     dailyLimit: number;
     sentToday: number;
     warmupEnabled: boolean;

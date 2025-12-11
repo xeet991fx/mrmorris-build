@@ -34,6 +34,17 @@ export default function AddContactModal({
       source: "",
       status: "lead",
       notes: "",
+      tags: [],
+      linkedin: "",
+      twitter: "",
+      website: "",
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        country: "",
+        zipCode: "",
+      },
     },
   });
 
