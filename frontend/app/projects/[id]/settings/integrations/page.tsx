@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronRightIcon, EnvelopeIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { EnvelopeIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import IntegrationCard from "@/components/settings/IntegrationCard";
 import EmailIntegrationSection from "@/components/settings/EmailIntegrationSection";
 import ApolloIntegrationSection from "@/components/settings/ApolloIntegrationSection";
 
 export default function IntegrationsPage() {
   const params = useParams();
-  const router = useRouter();
   const workspaceId = params.id as string;
 
   const [expandedSections, setExpandedSections] = useState({
@@ -27,22 +26,6 @@ export default function IntegrationsPage() {
 
   return (
     <div className="min-h-screen bg-background px-8 pt-14 pb-8">
-      {/* Breadcrumb */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="mb-5 flex items-center gap-2 text-sm"
-      >
-        <button
-          onClick={() => router.push(`/projects/${workspaceId}`)}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Dashboard
-        </button>
-        <ChevronRightIcon className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-foreground font-medium">Integrations</span>
-      </motion.div>
-
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
