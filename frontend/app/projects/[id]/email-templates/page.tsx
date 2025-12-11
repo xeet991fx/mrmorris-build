@@ -386,7 +386,7 @@ export default function EmailTemplatesPage() {
         try {
             const token = localStorage.getItem("token");
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/email-templates`,
+                `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates`,
                 {
                     headers: { Authorization: `Bearer ${token}` },
                 }
@@ -416,8 +416,8 @@ export default function EmailTemplatesPage() {
         try {
             const token = localStorage.getItem("token");
             const url = editingTemplate
-                ? `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/email-templates/${editingTemplate._id}`
-                : `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/email-templates`;
+                ? `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates/${editingTemplate._id}`
+                : `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates`;
 
             await fetch(url, {
                 method: editingTemplate ? "PUT" : "POST",
@@ -439,7 +439,7 @@ export default function EmailTemplatesPage() {
         try {
             const token = localStorage.getItem("token");
             await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/email-templates/${template._id}/duplicate`,
+                `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates/${template._id}/duplicate`,
                 {
                     method: "POST",
                     headers: { Authorization: `Bearer ${token}` },
@@ -457,7 +457,7 @@ export default function EmailTemplatesPage() {
         try {
             const token = localStorage.getItem("token");
             await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/workspaces/${workspaceId}/email-templates/${template._id}`,
+                `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates/${template._id}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${token}` },
