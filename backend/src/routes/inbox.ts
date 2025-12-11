@@ -19,8 +19,16 @@ router.use(authenticate);
  */
 router.get("/", async (req: any, res) => {
     try {
-        const { workspaceId } = req.user;
-        const { campaign, sentiment, assignedTo, isRead, search, page = 1, limit = 50 } = req.query;
+        const { workspaceId, campaign, sentiment, assignedTo, isRead, search, page = 1, limit = 50 } = req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                message: "workspaceId is required",
+            });
+        }
+
+        console.log(`📥 Fetching inbox for workspace: ${workspaceId}`);
 
         const result = await InboxService.getInboxMessages(
             workspaceId,
@@ -35,12 +43,36 @@ router.get("/", async (req: any, res) => {
             parseInt(limit)
         );
 
+        console.log(`📥 Found ${result.messages?.length || 0} inbox messages`);
+
         res.json({
             success: true,
             ...result,
         });
     } catch (error: any) {
         console.error("Get inbox error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
+/**
+ * POST /api/inbox/sync
+ * Manually trigger inbox sync to fetch new replies
+ */
+router.post("/sync", async (req: any, res) => {
+    try {
+        const count = await InboxService.fetchNewReplies();
+
+        res.json({
+            success: true,
+            message: `Synced ${count} new replies`,
+            repliesFound: count,
+        });
+    } catch (error: any) {
+        console.error("Sync inbox error:", error);
         res.status(500).json({
             success: false,
             message: error.message,

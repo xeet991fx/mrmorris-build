@@ -51,8 +51,8 @@ class WorkflowScheduler {
             await EmailAccountService.resetDailyCounters();
         });
 
-        // Fetch new replies (every 10 minutes) 
-        cron.schedule("*/10 * * * *", async () => {
+        // Fetch new replies (every 6 hours) 
+        cron.schedule("0 */6 * * *", async () => {
             const InboxService = (await import("./InboxService")).default;
             await InboxService.fetchNewReplies();
         });

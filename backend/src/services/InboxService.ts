@@ -317,17 +317,181 @@ Draft the email response:`;
 
     /**
      * Fetch new replies from email accounts
-     * Called by cron job
-     * 
-     * NOTE: This is a placeholder. In production, implement:
-     * - IMAP polling for SMTP accounts
-     * - Gmail API for Gmail accounts
-     * - Webhook receivers for instant notifications
+     * Called by cron job every 10 minutes
      */
     async fetchNewReplies(): Promise<number> {
-        console.log("📥 Fetching new replies... (TODO: Implement IMAP/Gmail API)");
-        // TODO: Implement actual email fetching
-        return 0;
+        console.log("📥 Fetching new replies from Gmail...");
+
+        let totalRepliesProcessed = 0;
+
+        try {
+            // Get all active Gmail integrations
+            const EmailIntegration = (await import("../models/EmailIntegration")).default;
+            const integrations = await EmailIntegration.find({
+                provider: "gmail",
+                isActive: true,
+            }).select("+accessToken +refreshToken");
+
+            console.log(`📥 Found ${integrations.length} Gmail integrations`);
+
+            if (integrations.length === 0) {
+                console.log("📥 No active Gmail integrations found");
+                return 0;
+            }
+
+            const { google } = await import("googleapis");
+
+            for (const integration of integrations) {
+                try {
+                    console.log(`📥 Processing integration: ${integration.email}, workspace: ${integration.workspaceId}`);
+
+                    // Setup OAuth client
+                    const oauth2Client = new google.auth.OAuth2(
+                        process.env.GOOGLE_CLIENT_ID,
+                        process.env.GOOGLE_CLIENT_SECRET,
+                        `${process.env.BACKEND_URL || "http://localhost:5000"}/api/email/callback/gmail`
+                    );
+
+                    oauth2Client.setCredentials({
+                        access_token: integration.getAccessToken(),
+                        refresh_token: integration.getRefreshToken(),
+                    });
+
+                    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+                    // Get messages from inbox - look at last 7 days for testing
+                    const query = `in:inbox -from:me newer_than:7d`;
+                    console.log(`📥 Gmail query: ${query}`);
+
+                    const listResponse = await gmail.users.messages.list({
+                        userId: "me",
+                        q: query,
+                        maxResults: 50,
+                    });
+
+                    const messages = listResponse.data.messages || [];
+                    console.log(`📬 Found ${messages.length} emails in inbox for ${integration.email}`);
+
+                    // Get all campaign emails we've sent from this workspace (not yet replied)
+                    const sentEmails = await EmailMessage.find({
+                        workspaceId: integration.workspaceId,
+                        replied: { $ne: true },
+                    }).lean();
+
+                    console.log(`📧 Found ${sentEmails.length} unreplied campaign emails in workspace`);
+
+                    // Create maps for matching
+                    const sentToEmails = new Map<string, any>();
+                    const sentSubjects = new Map<string, any>();
+                    for (const email of sentEmails) {
+                        if (email.toEmail) {
+                            sentToEmails.set(email.toEmail.toLowerCase(), email);
+                        }
+                        if (email.subject) {
+                            // Store by subject without Re: prefix for matching
+                            const cleanSubject = email.subject.replace(/^re:\s*/i, "").toLowerCase().trim();
+                            sentSubjects.set(cleanSubject, email);
+                        }
+                    }
+
+                    console.log(`📧 Tracking ${sentToEmails.size} recipient emails, ${sentSubjects.size} subjects`);
+
+                    for (const msg of messages) {
+                        try {
+                            // Get full message
+                            const fullMessage = await gmail.users.messages.get({
+                                userId: "me",
+                                id: msg.id!,
+                                format: "full",
+                            });
+
+                            const headers = fullMessage.data.payload?.headers || [];
+                            const getHeader = (name: string) =>
+                                headers.find((h: any) => h.name?.toLowerCase() === name.toLowerCase())?.value || "";
+
+                            const from = getHeader("From");
+                            const subject = getHeader("Subject");
+                            const date = getHeader("Date");
+                            const inReplyTo = getHeader("In-Reply-To");
+                            const references = getHeader("References");
+
+                            // Extract sender email
+                            const fromEmail = from.match(/<(.+?)>/)?.[1] || from.split(" ")[0];
+                            const cleanSubject = subject.replace(/^re:\s*/i, "").toLowerCase().trim();
+
+                            console.log(`📧 Checking email from: ${fromEmail}, subject: ${subject.substring(0, 50)}`);
+
+                            // Try to match by sender email first
+                            let originalEmail = sentToEmails.get(fromEmail.toLowerCase());
+                            let matchedBy = "email";
+
+                            // If not found by email, try matching by subject
+                            if (!originalEmail && subject.toLowerCase().startsWith("re:")) {
+                                originalEmail = sentSubjects.get(cleanSubject);
+                                matchedBy = "subject";
+                            }
+
+                            if (!originalEmail) {
+                                console.log(`⏭️ No match found for ${fromEmail}`);
+                                continue;
+                            }
+
+                            console.log(`✅ Matched by ${matchedBy}! Original email ID: ${originalEmail._id}`);
+
+                            // Check if this is actually a reply
+                            const isReply = subject.toLowerCase().startsWith("re:") ||
+                                inReplyTo ||
+                                references;
+
+                            if (!isReply) {
+                                console.log(`⏭️ Not a reply (no Re: prefix or headers)`);
+                                continue;
+                            }
+
+                            // Get email body
+                            let body = "";
+                            const parts = fullMessage.data.payload?.parts || [];
+                            if (parts.length > 0) {
+                                for (const part of parts) {
+                                    if (part.mimeType === "text/plain" && part.body?.data) {
+                                        body = Buffer.from(part.body.data, "base64").toString("utf-8");
+                                        break;
+                                    }
+                                }
+                            } else if (fullMessage.data.payload?.body?.data) {
+                                body = Buffer.from(fullMessage.data.payload.body.data, "base64").toString("utf-8");
+                            }
+
+                            // Process this reply
+                            await this.processReply(originalEmail.messageId, {
+                                subject,
+                                body,
+                                receivedAt: new Date(date),
+                            });
+
+                            totalRepliesProcessed++;
+                            console.log(`✅ Reply processed from ${fromEmail}: ${subject}`);
+
+                        } catch (msgError: any) {
+                            console.error(`Error processing message ${msg.id}:`, msgError.message);
+                        }
+                    }
+
+                    // Update last sync time
+                    integration.lastSyncAt = new Date();
+                    await integration.save();
+
+                } catch (integrationError: any) {
+                    console.error(`Error fetching replies for ${integration.email}:`, integrationError.message);
+                }
+            }
+
+        } catch (error: any) {
+            console.error("Error in fetchNewReplies:", error.message);
+        }
+
+        console.log(`📥 Processed ${totalRepliesProcessed} new replies`);
+        return totalRepliesProcessed;
     }
 }
 
