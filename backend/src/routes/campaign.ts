@@ -43,9 +43,46 @@ router.get("/", async (req: any, res) => {
         const query: any = { workspaceId };
         if (status) query.status = status;
 
+        // Get campaigns with basic populate
         const campaigns = await Campaign.find(query)
             .populate("fromAccounts", "email provider status")
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // For campaigns with empty fromAccounts after populate, try EmailIntegration
+        const EmailIntegration = (await import("../models/EmailIntegration")).default;
+
+        for (const campaign of campaigns) {
+            // Filter out null populated entries and check for missing accounts
+            const populatedAccounts: any[] = ((campaign as any).fromAccounts || []).filter((a: any) => a && a._id);
+            const originalIds = (campaign as any).fromAccounts?.map((a: any) => a?._id?.toString() || a?.toString()) || [];
+
+            // If some accounts didn't populate (they might be EmailIntegrations)
+            if (populatedAccounts.length < originalIds.length) {
+                // Get the IDs that didn't populate
+                const populatedIds = populatedAccounts.map((a: any) => a._id.toString());
+                const missingIds = originalIds.filter((id: string) => id && !populatedIds.includes(id));
+
+                if (missingIds.length > 0) {
+                    // Try to find these in EmailIntegration
+                    const integrations = await EmailIntegration.find({
+                        _id: { $in: missingIds },
+                    }).select("email provider isActive").lean();
+
+                    // Add integrations as accounts
+                    for (const integration of integrations) {
+                        populatedAccounts.push({
+                            _id: integration._id,
+                            email: integration.email,
+                            provider: integration.provider || "gmail",
+                            status: integration.isActive ? "active" : "inactive",
+                        });
+                    }
+                }
+            }
+
+            campaign.fromAccounts = populatedAccounts;
+        }
 
         res.json({
             success: true,
@@ -58,6 +95,7 @@ router.get("/", async (req: any, res) => {
             message: error.message,
         });
     }
+
 });
 
 /**

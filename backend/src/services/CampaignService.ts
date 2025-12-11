@@ -133,6 +133,22 @@ class CampaignService {
                 const campaign = enrollment.campaignId as unknown as any;
                 const contact = enrollment.contactId as unknown as any;
 
+                // Check if campaign exists (might have been deleted)
+                if (!campaign || !campaign._id) {
+                    console.log(`⚠️ Enrollment ${enrollment._id} has no campaign, marking as completed`);
+                    enrollment.status = "completed";
+                    await enrollment.save();
+                    continue;
+                }
+
+                // Check if contact exists (might have been deleted)
+                if (!contact || !contact._id) {
+                    console.log(`⚠️ Enrollment ${enrollment._id} has no contact, marking as completed`);
+                    enrollment.status = "completed";
+                    await enrollment.save();
+                    continue;
+                }
+
                 // Check if campaign is active
                 if (campaign.status !== "active") {
                     continue;
@@ -142,6 +158,7 @@ class CampaignService {
                 if (!this.isWithinSendingWindow(campaign)) {
                     continue;
                 }
+
 
                 //Check daily limit
                 const sentTodayForCampaign = await this.getCampaignSentToday(campaign._id);
@@ -245,35 +262,95 @@ class CampaignService {
         error?: string;
     }> {
         try {
-            // Get sending account
-            const account = await EmailAccountService.rotateSendingAccount(
+            // Get sending account (try EmailAccount first)
+            let account = await EmailAccountService.rotateSendingAccount(
                 campaign.workspaceId,
                 campaign.fromAccounts
             );
+
+            // If no EmailAccount found, try EmailIntegration (Gmail OAuth from Settings)
+            if (!account && campaign.fromAccounts && campaign.fromAccounts.length > 0) {
+                const EmailIntegration = (await import("../models/EmailIntegration")).default;
+
+                // Try to find a Gmail integration that matches one of the fromAccounts
+                const integration = await EmailIntegration.findOne({
+                    _id: { $in: campaign.fromAccounts },
+                    workspaceId: campaign.workspaceId,
+                    isActive: true,
+                }).select("+accessToken +refreshToken");
+
+                if (integration) {
+                    // Use integration as account (create compatible object)
+                    account = {
+                        _id: integration._id,
+                        email: integration.email,
+                        provider: "gmail",
+                        accessToken: integration.getAccessToken(),
+                        refreshToken: integration.getRefreshToken(),
+                    } as any;
+                    console.log(`📧 Using Gmail integration: ${integration.email}`);
+                }
+            }
 
             if (!account) {
                 return { success: false, error: "No available email accounts" };
             }
 
+
             // Personalize subject and body
             const subject = this.personalizeText(step.subject, contact);
             const body = this.personalizeText(step.body, contact);
+            const htmlBody = `<p>${body.replace(/\n/g, "<br>")}</p>`;
 
-            // Create transporter
-            let transporter;
-            if (account.provider === "gmail") {
-                transporter = nodemailer.createTransport({
-                    service: "gmail",
-                    auth: {
-                        type: "OAuth2",
-                        user: account.email,
-                        accessToken: account.accessToken,
-                        refreshToken: account.refreshToken,
+            let messageId: string | undefined;
+
+            // Check if this is a Gmail Integration (use Gmail API) or EmailAccount (use nodemailer)
+            if (account.provider === "gmail" && account.accessToken) {
+                // Use Gmail API to send (for EmailIntegration accounts)
+                const { google } = await import("googleapis");
+
+                const oauth2Client = new google.auth.OAuth2(
+                    process.env.GOOGLE_CLIENT_ID,
+                    process.env.GOOGLE_CLIENT_SECRET,
+                    `${process.env.BACKEND_URL || "http://localhost:5000"}/api/email/callback/gmail`
+                );
+
+                oauth2Client.setCredentials({
+                    access_token: account.accessToken,
+                    refresh_token: account.refreshToken,
+                });
+
+                const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+                // Create email message in RFC 2822 format
+                const emailLines = [
+                    `From: ${account.email}`,
+                    `To: ${contact.email}`,
+                    `Subject: ${subject}`,
+                    "Content-Type: text/html; charset=utf-8",
+                    "",
+                    htmlBody,
+                ];
+
+                const rawMessage = emailLines.join("\r\n");
+                const encodedMessage = Buffer.from(rawMessage)
+                    .toString("base64")
+                    .replace(/\+/g, "-")
+                    .replace(/\//g, "_")
+                    .replace(/=+$/, "");
+
+                const response = await gmail.users.messages.send({
+                    userId: "me",
+                    requestBody: {
+                        raw: encodedMessage,
                     },
                 });
+
+                messageId = response.data.id || undefined;
             } else {
+                // Use nodemailer for SMTP accounts
                 const password = EmailAccountService.getSMTPPassword(account);
-                transporter = nodemailer.createTransport({
+                const transporter = nodemailer.createTransport({
                     host: account.smtpHost,
                     port: account.smtpPort,
                     secure: account.smtpPort === 465,
@@ -282,16 +359,17 @@ class CampaignService {
                         pass: password,
                     },
                 });
-            }
 
-            // Send email
-            const info = await transporter.sendMail({
-                from: account.email,
-                to: contact.email,
-                subject,
-                text: body,
-                html: `<p>${body.replace(/\n/g, "<br>")}</p>`,
-            });
+                const info = await transporter.sendMail({
+                    from: account.email,
+                    to: contact.email,
+                    subject,
+                    text: body,
+                    html: htmlBody,
+                });
+
+                messageId = info.messageId;
+            }
 
             // Track email message
             await EmailMessage.create({
@@ -303,21 +381,23 @@ class CampaignService {
                 fromEmail: account.email,
                 toEmail: contact.email,
                 subject,
-                bodyHtml: `<p>${body.replace(/\n/g, "<br>")}</p>`,
+                bodyHtml: htmlBody,
                 bodyText: body,
-                messageId: info.messageId,
+                messageId: messageId,
                 sentAt: new Date(),
                 stepId: step.id,
             });
 
-            // Increment account sent count
-            await EmailAccountService.incrementSentCount(account._id as Types.ObjectId);
+            // Increment account sent count (only for EmailAccount, not integrations)
+            if (!account.accessToken) {
+                await EmailAccountService.incrementSentCount(account._id as Types.ObjectId);
+            }
 
             console.log(`✅ Sent: ${subject} → ${contact.email}`);
 
             return {
                 success: true,
-                messageId: info.messageId,
+                messageId: messageId,
                 fromAccountId: account._id as Types.ObjectId,
             };
         } catch (error: any) {
