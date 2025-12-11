@@ -632,6 +632,9 @@ export default function ActionConfig({ step, onChange }: ActionConfigProps) {
             {actionType === "apollo_enrich" && (
                 <ApolloEnrichActionFields step={step} onChange={onChange} />
             )}
+            {actionType === "wait_event" && (
+                <WaitEventActionFields step={step} onChange={onChange} />
+            )}
         </div>
     );
 }
@@ -877,6 +880,127 @@ function WebhookActionFields({ step, onChange }: ActionConfigProps) {
                         </p>
                         <p className="text-xs text-muted-foreground">
                             Sends HTTP request to external service (10 second timeout)
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Wait Event Action Fields
+function WaitEventActionFields({ step, onChange }: ActionConfigProps) {
+    const eventType = step.config.waitEventType || "email_reply";
+    const timeoutDays = step.config.waitTimeoutDays || 3;
+    const hasTimeout = step.config.waitHasTimeout !== false;
+    const timeoutAction = step.config.waitTimeoutAction || "continue";
+
+    const EVENT_TYPES = [
+        { value: "email_reply", label: "Email Reply", description: "Wait until contact replies to an email" },
+        { value: "email_opened", label: "Email Opened", description: "Wait until contact opens an email" },
+        { value: "email_clicked", label: "Link Clicked", description: "Wait until contact clicks a link in email" },
+        { value: "form_submit", label: "Form Submitted", description: "Wait until contact submits a form" },
+        { value: "deal_stage_changed", label: "Deal Stage Changed", description: "Wait until deal stage is updated" },
+        { value: "field_updated", label: "Field Updated", description: "Wait until a specific field is updated" },
+    ];
+
+    const selectedEvent = EVENT_TYPES.find(e => e.value === eventType);
+
+    return (
+        <div className="space-y-5">
+            {/* Event Type Selector */}
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Wait For Event
+                </label>
+                <select
+                    value={eventType}
+                    onChange={(e) => onChange({ ...step.config, waitEventType: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                    {EVENT_TYPES.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                            {label}
+                        </option>
+                    ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                    {selectedEvent?.description}
+                </p>
+            </div>
+
+            {/* Timeout Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card/50">
+                <div>
+                    <p className="text-sm font-medium text-foreground">Enable Timeout</p>
+                    <p className="text-xs text-muted-foreground">
+                        Continue workflow if event doesn't occur within time limit
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => onChange({ ...step.config, waitHasTimeout: !hasTimeout })}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${hasTimeout ? "bg-primary" : "bg-muted"
+                        }`}
+                >
+                    <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${hasTimeout ? "translate-x-6" : "translate-x-1"
+                            }`}
+                    />
+                </button>
+            </div>
+
+            {/* Timeout Duration */}
+            {hasTimeout && (
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                        Timeout After
+                    </label>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            min={1}
+                            max={90}
+                            value={timeoutDays}
+                            onChange={(e) => onChange({ ...step.config, waitTimeoutDays: parseInt(e.target.value) || 1 })}
+                            className="w-24 px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                        <span className="text-sm text-muted-foreground">days</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Timeout Action */}
+            {hasTimeout && (
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-1.5">
+                        On Timeout
+                    </label>
+                    <select
+                        value={timeoutAction}
+                        onChange={(e) => onChange({ ...step.config, waitTimeoutAction: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    >
+                        <option value="continue">Continue to next step</option>
+                        <option value="exit">Exit workflow</option>
+                    </select>
+                </div>
+            )}
+
+            {/* Preview Card */}
+            <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-lg p-4 border border-purple-500/20">
+                <div className="flex items-start gap-3">
+                    <span className="text-purple-500 text-lg">⏳</span>
+                    <div>
+                        <p className="text-sm text-foreground font-medium">
+                            {hasTimeout
+                                ? `Wait for "${selectedEvent?.label}" (timeout: ${timeoutDays} days)`
+                                : `Wait for "${selectedEvent?.label}" indefinitely`}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            {hasTimeout
+                                ? `The workflow will pause and wait up to ${timeoutDays} days for this event`
+                                : "The workflow will wait indefinitely until this event occurs"}
                         </p>
                     </div>
                 </div>

@@ -297,6 +297,19 @@ export const pauseWorkflow = async (
     return response.data;
 };
 
+/**
+ * Clone/duplicate a workflow
+ */
+export const cloneWorkflow = async (
+    workspaceId: string,
+    workflowId: string
+): Promise<WorkflowResponse> => {
+    const response = await axiosInstance.post(
+        `/workspaces/${workspaceId}/workflows/${workflowId}/clone`
+    );
+    return response.data;
+};
+
 // ============================================
 // WORKFLOW TESTING
 // ============================================

@@ -130,6 +130,12 @@ class InboxService {
             return;
         }
 
+        // If already replied, check if this is a newer reply
+        if (message.replied && message.repliedAt && new Date(replyData.receivedAt) <= new Date(message.repliedAt)) {
+            console.log(`⏭️ Skipping older reply for ${messageId}`);
+            return;
+        }
+
         // Update message with reply
         message.replied = true;
         message.repliedAt = replyData.receivedAt;
@@ -253,7 +259,7 @@ Reply Sentiment: ${message.replySentiment || "neutral"}
             // Use Gemini to generate draft
             const { GoogleGenerativeAI } = require("@google/generative-ai");
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             const prompt = `You are a helpful sales assistant drafting a professional email response.
 
@@ -372,10 +378,10 @@ Draft the email response:`;
                     const messages = listResponse.data.messages || [];
                     console.log(`📬 Found ${messages.length} emails in inbox for ${integration.email}`);
 
-                    // Get all campaign emails we've sent from this workspace (not yet replied)
+                    // Get all campaign emails we've sent from this workspace
+                    // Removed replied: { $ne: true } to check for newer replies on existing conversations
                     const sentEmails = await EmailMessage.find({
                         workspaceId: integration.workspaceId,
-                        replied: { $ne: true },
                     }).lean();
 
                     console.log(`📧 Found ${sentEmails.length} unreplied campaign emails in workspace`);

@@ -465,6 +465,91 @@ router.post(
     }
 );
 
+/**
+ * @route   POST /api/workspaces/:workspaceId/workflows/:id/clone
+ * @desc    Clone/duplicate a workflow
+ * @access  Private
+ */
+router.post(
+    "/:workspaceId/workflows/:id/clone",
+    authenticate,
+    workflowLimiter,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = (req.user?._id as any).toString();
+
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const originalWorkflow = await Workflow.findOne({ _id: id, workspaceId });
+
+            if (!originalWorkflow) {
+                return res.status(404).json({
+                    success: false,
+                    error: "Workflow not found.",
+                });
+            }
+
+            // Generate new step IDs to avoid conflicts
+            const stepIdMap = new Map<string, string>();
+            const clonedSteps = originalWorkflow.steps.map((step: any) => {
+                const newStepId = new (require("mongoose").Types.ObjectId)().toString();
+                stepIdMap.set(step.id || step._id?.toString(), newStepId);
+                return {
+                    ...step.toObject ? step.toObject() : step,
+                    id: newStepId,
+                    _id: undefined, // Remove old _id
+                };
+            });
+
+            // Update nextStepId references
+            clonedSteps.forEach((step: any) => {
+                if (step.nextStepId && stepIdMap.has(step.nextStepId)) {
+                    step.nextStepId = stepIdMap.get(step.nextStepId);
+                }
+                if (step.config?.yesStepId && stepIdMap.has(step.config.yesStepId)) {
+                    step.config.yesStepId = stepIdMap.get(step.config.yesStepId);
+                }
+                if (step.config?.noStepId && stepIdMap.has(step.config.noStepId)) {
+                    step.config.noStepId = stepIdMap.get(step.config.noStepId);
+                }
+            });
+
+            // Create cloned workflow
+            const clonedWorkflow = new Workflow({
+                workspaceId,
+                name: `${originalWorkflow.name} (Copy)`,
+                description: originalWorkflow.description,
+                status: "draft",
+                steps: clonedSteps,
+                triggerEntityType: originalWorkflow.triggerEntityType,
+                allowReenrollment: originalWorkflow.allowReenrollment,
+                createdBy: userId,
+                // Reset all stats
+                stats: {
+                    totalEnrolled: 0,
+                    totalCompleted: 0,
+                    activeEnrollments: 0,
+                },
+            });
+
+            await clonedWorkflow.save();
+
+            res.status(201).json({
+                success: true,
+                message: "Workflow cloned successfully!",
+                data: { workflow: clonedWorkflow },
+            });
+        } catch (error: any) {
+            console.error("Clone workflow error:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to clone workflow. Please try again.",
+            });
+        }
+    }
+);
+
 // DEBUG: Simple test ping route
 router.get(
     "/:workspaceId/workflows/:id/test-ping",

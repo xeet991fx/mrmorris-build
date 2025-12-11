@@ -25,7 +25,8 @@ export type ActionType =
     | 'enroll_workflow'
     | 'update_lead_score'
     | 'send_webhook'
-    | 'apollo_enrich';
+    | 'apollo_enrich'
+    | 'wait_event';
 
 // Delay Types
 export type DelayType = 'duration' | 'until_date' | 'until_time' | 'until_weekday';
@@ -308,6 +309,7 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
     update_lead_score: 'Update Lead Score',
     send_webhook: 'Send Webhook',
     apollo_enrich: 'Enrich with Apollo',
+    wait_event: 'Wait for Event',
 };
 
 export const DELAY_UNIT_LABELS: Record<DelayUnit, string> = {

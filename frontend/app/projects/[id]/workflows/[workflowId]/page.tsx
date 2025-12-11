@@ -14,6 +14,7 @@ import ReactFlow, {
     BackgroundVariant,
     Panel,
     MarkerType,
+    MiniMap,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
@@ -26,13 +27,18 @@ import {
     UserGroupIcon,
     BeakerIcon,
     ExclamationCircleIcon,
+    ArrowUturnLeftIcon,
+    ArrowUturnRightIcon,
+    DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { WorkflowStep, TRIGGER_TYPE_LABELS, ACTION_TYPE_LABELS } from "@/lib/workflow/types";
 import { generateStepId } from "@/lib/workflow/api";
+import { cloneWorkflow } from "@/lib/api/workflow";
 import { cn } from "@/lib/utils";
 import { validateWorkflow, ValidationError } from "@/lib/workflow/validation";
 import Cookies from "js-cookie";
+import toast from "react-hot-toast";
 
 // Import custom components
 import WorkflowSidebar from "@/components/workflows/WorkflowSidebar";
@@ -142,6 +148,62 @@ export default function WorkflowEditorPage() {
     const [showTestModal, setShowTestModal] = useState(false);
     const [showFailedPanel, setShowFailedPanel] = useState(false);
     const [failedCount, setFailedCount] = useState(0);
+    const [isCloning, setIsCloning] = useState(false);
+
+    // Undo/Redo history
+    const [history, setHistory] = useState<WorkflowStep[][]>([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
+    const MAX_HISTORY = 50;
+
+    // Push to history when steps change (for undo/redo)
+    const pushToHistory = useCallback((steps: WorkflowStep[]) => {
+        setHistory(prev => {
+            const newHistory = prev.slice(0, historyIndex + 1);
+            newHistory.push(JSON.parse(JSON.stringify(steps)));
+            if (newHistory.length > MAX_HISTORY) {
+                newHistory.shift();
+            }
+            return newHistory;
+        });
+        setHistoryIndex(prev => Math.min(prev + 1, MAX_HISTORY - 1));
+    }, [historyIndex]);
+
+    // Undo function
+    const handleUndo = useCallback(() => {
+        if (historyIndex > 0 && history[historyIndex - 1]) {
+            setHistoryIndex(prev => prev - 1);
+            updateStepsFromCanvas(history[historyIndex - 1]);
+        }
+    }, [historyIndex, history, updateStepsFromCanvas]);
+
+    // Redo function
+    const handleRedo = useCallback(() => {
+        if (historyIndex < history.length - 1 && history[historyIndex + 1]) {
+            setHistoryIndex(prev => prev + 1);
+            updateStepsFromCanvas(history[historyIndex + 1]);
+        }
+    }, [historyIndex, history, updateStepsFromCanvas]);
+
+    // Clone workflow handler
+    const handleClone = useCallback(async () => {
+        if (!currentWorkflow || isCloning) return;
+
+        setIsCloning(true);
+        try {
+            const result = await cloneWorkflow(workspaceId, workflowId);
+            if (result.success && result.data?.workflow) {
+                toast.success('Workflow cloned!');
+                // Navigate to the cloned workflow
+                router.push(`/projects/${workspaceId}/workflows/${result.data.workflow._id}`);
+            } else {
+                toast.error(result.error || 'Failed to clone workflow');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to clone workflow');
+        } finally {
+            setIsCloning(false);
+        }
+    }, [currentWorkflow, isCloning, workspaceId, workflowId, router]);
 
     // Save workflow
     const handleSave = useCallback(async () => {
@@ -169,6 +231,18 @@ export default function WorkflowEditorPage() {
                 if (hasUnsavedChanges && !isSaving) {
                     handleSave();
                 }
+            }
+
+            // Cmd/Ctrl + Z to undo
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                handleUndo();
+            }
+
+            // Cmd/Ctrl + Y or Cmd/Ctrl + Shift + Z to redo
+            if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                handleRedo();
             }
 
             // Delete key to remove selected step
@@ -200,7 +274,7 @@ export default function WorkflowEditorPage() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [hasUnsavedChanges, isSaving, selectedStepId, showConfigPanel, currentWorkflow?.status, handleSave, removeStep, selectStep]);
+    }, [hasUnsavedChanges, isSaving, selectedStepId, showConfigPanel, currentWorkflow?.status, handleSave, handleUndo, handleRedo, removeStep, selectStep]);
 
     // Fetch failed enrollment count
     useEffect(() => {
@@ -555,12 +629,61 @@ export default function WorkflowEditorPage() {
                         className="bg-muted/30"
                     >
                         <Controls className="!bg-card !border-border !shadow-lg" />
+                        <MiniMap
+                            nodeStrokeColor="#6366f1"
+                            nodeColor={(node) => {
+                                switch (node.type) {
+                                    case 'trigger': return '#22c55e';
+                                    case 'action': return '#3b82f6';
+                                    case 'delay': return '#f59e0b';
+                                    case 'condition': return '#8b5cf6';
+                                    default: return '#6b7280';
+                                }
+                            }}
+                            maskColor="rgba(0, 0, 0, 0.2)"
+                            className="!bg-card !border-border !rounded-lg"
+                        />
                         <Background
                             variant={BackgroundVariant.Dots}
                             gap={20}
                             size={1}
                             color="var(--border)"
                         />
+
+                        {/* Top-right toolbar with undo/redo/clone */}
+                        <Panel position="top-right" className="!m-4">
+                            <div className="bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2 py-1 flex items-center gap-1">
+                                <button
+                                    onClick={handleUndo}
+                                    disabled={historyIndex <= 0}
+                                    className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                    title="Undo (Ctrl+Z)"
+                                >
+                                    <ArrowUturnLeftIcon className="w-4 h-4 text-muted-foreground" />
+                                </button>
+                                <button
+                                    onClick={handleRedo}
+                                    disabled={historyIndex >= history.length - 1}
+                                    className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                    title="Redo (Ctrl+Y)"
+                                >
+                                    <ArrowUturnRightIcon className="w-4 h-4 text-muted-foreground" />
+                                </button>
+                                <div className="w-px h-4 bg-border mx-1" />
+                                <button
+                                    onClick={handleClone}
+                                    disabled={isCloning}
+                                    className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-50"
+                                    title="Duplicate workflow"
+                                >
+                                    {isCloning ? (
+                                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                                    ) : (
+                                        <DocumentDuplicateIcon className="w-4 h-4 text-muted-foreground" />
+                                    )}
+                                </button>
+                            </div>
+                        </Panel>
 
                         {/* Help panel */}
                         <Panel position="bottom-left" className="!m-4 !mb-20">
@@ -570,6 +693,8 @@ export default function WorkflowEditorPage() {
                                 <p>• Click nodes to configure</p>
                                 <p className="font-medium text-foreground mt-2 mb-1">Keyboard Shortcuts</p>
                                 <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + S</kbd> Save workflow</p>
+                                <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Z</kbd> Undo</p>
+                                <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Y</kbd> Redo</p>
                                 <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Delete</kbd> Remove selected node</p>
                                 <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Esc</kbd> Deselect</p>
                                 {currentWorkflow.status === "active" && (
