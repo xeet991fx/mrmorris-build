@@ -1,16 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronRightIcon, EnvelopeIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { EnvelopeIcon } from "@heroicons/react/24/outline";
 import IntegrationCard from "@/components/settings/IntegrationCard";
 import EmailIntegrationSection from "@/components/settings/EmailIntegrationSection";
 import ApolloIntegrationSection from "@/components/settings/ApolloIntegrationSection";
 
+// Apollo.io Logo Component
+const ApolloLogo = () => (
+  <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-7 h-7">
+    <path
+      d="M100 20L180 60V140L100 180L20 140V60L100 20Z"
+      fill="white"
+      fillOpacity="0.95"
+    />
+    <path
+      d="M100 45L85 80H75L100 30L125 80H115L100 45Z"
+      fill="#6B46C1"
+    />
+    <path
+      d="M70 85H130L135 100H65L70 85Z"
+      fill="#6B46C1"
+    />
+    <path
+      d="M60 105H140V120H60V105Z"
+      fill="#6B46C1"
+    />
+    <path
+      d="M75 125H90V155H75V125Z"
+      fill="#6B46C1"
+    />
+    <path
+      d="M110 125H125V155H110V125Z"
+      fill="#6B46C1"
+    />
+  </svg>
+);
+
 export default function IntegrationsPage() {
   const params = useParams();
-  const router = useRouter();
   const workspaceId = params.id as string;
 
   const [expandedSections, setExpandedSections] = useState({
@@ -27,22 +57,6 @@ export default function IntegrationsPage() {
 
   return (
     <div className="min-h-screen bg-background px-8 pt-14 pb-8">
-      {/* Breadcrumb */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="mb-5 flex items-center gap-2 text-sm"
-      >
-        <button
-          onClick={() => router.push(`/projects/${workspaceId}`)}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Dashboard
-        </button>
-        <ChevronRightIcon className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-foreground font-medium">Integrations</span>
-      </motion.div>
-
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -79,8 +93,8 @@ export default function IntegrationsPage() {
           title="Apollo.io"
           description="Enrich contacts with business emails, verify email addresses, and access 250M+ contacts"
           icon={
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-              <SparklesIcon className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+              <ApolloLogo />
             </div>
           }
           status="not-connected"

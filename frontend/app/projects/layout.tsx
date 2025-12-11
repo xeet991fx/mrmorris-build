@@ -22,14 +22,12 @@ import {
   AtSymbolIcon,
   ShieldCheckIcon,
   ChartBarIcon,
-  AdjustmentsHorizontalIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/shared/theme-toggle";
 
 function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -364,26 +362,6 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
-              {/* Integrations */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings/integrations`)}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
-                  pathname.includes('/settings/integrations')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Integrations" : ""}
-              >
-                <Cog6ToothIcon className="w-5 h-5 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Integrations
-                  </span>
-                )}
-              </button>
-
               {/* Analytics & Settings Divider */}
               <div className={cn(
                 "border-t border-border my-2",
@@ -430,22 +408,22 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
-              {/* Custom Fields */}
+              {/* Settings */}
               <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings/custom-fields`)}
+                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
-                  pathname.includes('/settings/custom-fields')
+                  pathname.includes('/settings')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
-                title={!isExpanded ? "Custom Fields" : ""}
+                title={!isExpanded ? "Settings" : ""}
               >
-                <AdjustmentsHorizontalIcon className="w-5 h-5 flex-shrink-0" />
+                <Cog6ToothIcon className="w-5 h-5 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
-                    Custom Fields
+                    Settings
                   </span>
                 )}
               </button>
@@ -456,24 +434,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Bottom Actions */}
       <div className="mt-auto border-t border-border">
-        {/* Theme Toggle */}
-        <div
-          className={cn(
-            "w-full flex items-center transition-all text-sm text-muted-foreground",
-            isExpanded ? "gap-2 px-4 py-2 text-left" : "justify-center p-2"
-          )}
-        >
-          <ThemeToggle />
-          {isExpanded && (
-            <span className="ml-1">Toggle theme</span>
-          )}
-        </div>
-
         {/* Log Out */}
         <button
           onClick={handleLogout}
           className={cn(
-            "w-full flex items-center transition-all text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground border-t border-border",
+            "w-full flex items-center transition-all text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground",
             isExpanded ? "gap-2 px-4 py-2 text-left" : "justify-center p-2"
           )}
           title={!isExpanded ? "Log out" : ""}
