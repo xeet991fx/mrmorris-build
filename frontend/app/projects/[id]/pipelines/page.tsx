@@ -12,7 +12,6 @@ import PipelineTableView from "@/components/pipelines/PipelineTableView";
 import AddOpportunityModal from "@/components/pipelines/AddOpportunityModal";
 import EditOpportunityModal from "@/components/pipelines/EditOpportunityModal";
 import ManagePipelinesModal from "@/components/pipelines/ManagePipelinesModal";
-import { useAgentContextSync } from "@/lib/hooks/useAgentContextSync";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 
 export default function PipelinesPage() {
@@ -22,8 +21,6 @@ export default function PipelinesPage() {
   // Get workspace name for context
   const { currentWorkspace } = useWorkspaceStore();
 
-  // Sync agent context to show "Pipelines" in chatbot
-  useAgentContextSync(currentWorkspace?.name, "pipelines");
 
   const {
     pipelines,
