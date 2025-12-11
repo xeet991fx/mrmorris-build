@@ -6,9 +6,6 @@ import { AgentMessage } from "@/store/useAgentStore";
 import { SparklesIcon } from "@heroicons/react/24/solid";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { parseActionFromResponse } from "@/lib/agent/actionParser";
-import ActionCard from "./ActionCard";
-import { useParams } from "next/navigation";
 
 interface AssistantMessageProps {
   message: AgentMessage;
@@ -16,16 +13,8 @@ interface AssistantMessageProps {
 }
 
 const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(({ message, isLatest }, ref) => {
-  const params = useParams();
-  const workspaceId = params?.id as string;
-
-  // Parse action from message content
-  const parsedAction = parseActionFromResponse(message.content);
-
-  // Remove action code block from displayed content
-  const displayContent = parsedAction
-    ? message.content.replace(parsedAction.rawText || '', '').trim()
-    : message.content;
+  // Display the full message content
+  const displayContent = message.content;
 
   return (
     <motion.div
@@ -76,27 +65,6 @@ const AssistantMessage = forwardRef<HTMLDivElement, AssistantMessageProps>(({ me
               {displayContent}
             </ReactMarkdown>
           </div>
-
-          {/* Action card for executable actions */}
-          {parsedAction && workspaceId && (
-            <div className="mt-4">
-              <ActionCard
-                action={parsedAction}
-                workspaceId={workspaceId}
-                messageId={message.id}
-              />
-            </div>
-          )}
-
-          {/* Action result display */}
-          {message.metadata?.actionResult && (
-            <div className="mt-4 p-4 bg-muted rounded-lg">
-              <div className="text-xs font-medium text-muted-foreground mb-2">Result</div>
-              <pre className="text-sm text-foreground overflow-x-auto">
-                {JSON.stringify(message.metadata.actionResult, null, 2)}
-              </pre>
-            </div>
-          )}
         </div>
       </div>
     </motion.div>

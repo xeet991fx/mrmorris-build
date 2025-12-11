@@ -30,7 +30,6 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { useAgentContextSync } from "@/lib/hooks/useAgentContextSync";
 
 function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -98,12 +97,6 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const currentWorkspaceFromUrl = isInsideWorkspace
     ? workspaces.find(w => pathname.includes(w._id))
     : null;
-
-  // Sync agent context with current workspace and page
-  useAgentContextSync(
-    currentWorkspaceFromUrl?.name,
-    pathname.includes('/contacts') ? 'contacts' : pathname.includes('/companies') ? 'companies' : 'dashboard'
-  );
 
   const SidebarContent = ({ isExpanded }: { isExpanded: boolean }) => (
     <div className="flex flex-col h-full">
@@ -463,11 +456,24 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Bottom Actions */}
       <div className="mt-auto border-t border-border">
+        {/* Theme Toggle */}
+        <div
+          className={cn(
+            "w-full flex items-center transition-all text-sm text-muted-foreground",
+            isExpanded ? "gap-2 px-4 py-2 text-left" : "justify-center p-2"
+          )}
+        >
+          <ThemeToggle />
+          {isExpanded && (
+            <span className="ml-1">Toggle theme</span>
+          )}
+        </div>
+
         {/* Log Out */}
         <button
           onClick={handleLogout}
           className={cn(
-            "w-full flex items-center transition-all text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+            "w-full flex items-center transition-all text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground border-t border-border",
             isExpanded ? "gap-2 px-4 py-2 text-left" : "justify-center p-2"
           )}
           title={!isExpanded ? "Log out" : ""}
@@ -584,13 +590,6 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             </>
           )}
         </AnimatePresence>
-
-        {/* Floating Right Actions */}
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-          <div className="bg-card border border-border shadow-lg rounded-lg p-1">
-            <ThemeToggle />
-          </div>
-        </div>
 
         {/* Sidebar - Always visible */}
         <aside

@@ -21,7 +21,17 @@ export interface AgentContext {
     contacts?: string[];
     companies?: string[];
   };
+  autonomousMode?: boolean;
+  selectedModel?: string;
 }
+
+export type AIModel =
+  | 'gemini-2.5-flash'
+  | 'gemini-2.0-flash'
+  | 'gemini-1.5-pro'
+  | 'gpt-4o'
+  | 'gpt-4o-mini'
+  | 'gpt-3.5-turbo';
 
 interface AgentState {
   // UI State
@@ -55,6 +65,15 @@ interface AgentState {
     result?: any
   ) => void;
   retryMessage: (messageId: string) => Promise<void>;
+
+  // Autonomous mode
+  autonomousMode: boolean;
+  toggleAutonomousMode: () => void;
+  setAutonomousMode: (enabled: boolean) => void;
+
+  // Model selection
+  selectedModel: AIModel;
+  setSelectedModel: (model: AIModel) => void;
 }
 
 export const useAgentStore = create<AgentState>()(
@@ -72,8 +91,11 @@ export const useAgentStore = create<AgentState>()(
         workspaceName: null,
         currentPage: "dashboard",
         selectedItems: {},
+        autonomousMode: false,
       },
       error: null,
+      autonomousMode: false,
+      selectedModel: 'gemini-2.5-flash',
 
       // Toggle sidebar open/close
       toggleSidebar: () => {
@@ -113,7 +135,7 @@ export const useAgentStore = create<AgentState>()(
 
       // Send message to agent
       sendMessage: async (content: string) => {
-        const { context, messages } = get();
+        const { context, messages, selectedModel, autonomousMode } = get();
 
         // Add user message
         const userMessage: AgentMessage = {
@@ -142,12 +164,20 @@ export const useAgentStore = create<AgentState>()(
           let assistantMessageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           let fullResponse = "";
 
+          // Merge current settings into context for API call
+          const apiContext = {
+            ...context,
+            selectedModel,
+            autonomousMode,
+          };
+
           // Stream the response
           await sendChatMessageStreaming(
             content,
-            context,
+            apiContext,
             conversationHistory,
             (chunk) => {
+
               if (chunk.error) {
                 throw new Error(chunk.error);
               }
@@ -276,6 +306,29 @@ export const useAgentStore = create<AgentState>()(
         if (message && message.role === "user") {
           await get().sendMessage(message.content);
         }
+      },
+
+      // Autonomous mode controls
+      toggleAutonomousMode: () => {
+        set((state) => ({
+          autonomousMode: !state.autonomousMode,
+          context: { ...state.context, autonomousMode: !state.autonomousMode },
+        }));
+      },
+
+      setAutonomousMode: (enabled: boolean) => {
+        set({
+          autonomousMode: enabled,
+          context: { ...get().context, autonomousMode: enabled },
+        });
+      },
+
+      // Model selection
+      setSelectedModel: (model: AIModel) => {
+        set({
+          selectedModel: model,
+          context: { ...get().context, selectedModel: model },
+        });
       },
     }),
     {
