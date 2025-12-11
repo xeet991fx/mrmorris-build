@@ -22,7 +22,6 @@ import {
   AtSymbolIcon,
   ShieldCheckIcon,
   ChartBarIcon,
-  AdjustmentsHorizontalIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -409,33 +408,13 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
-              {/* Custom Fields */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings/custom-fields`)}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
-                  pathname.includes('/settings/custom-fields')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Custom Fields" : ""}
-              >
-                <AdjustmentsHorizontalIcon className="w-5 h-5 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Custom Fields
-                  </span>
-                )}
-              </button>
-
               {/* Settings */}
               <button
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
-                  pathname.includes('/settings') && !pathname.includes('/custom-fields')
+                  pathname.includes('/settings')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
