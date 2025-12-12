@@ -566,6 +566,7 @@ export default function SequencesPage() {
         if (workspaceId) {
             fetchSequences();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspaceId]);
 
     const fetchSequences = async () => {

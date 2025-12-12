@@ -379,6 +379,7 @@ export default function EmailTemplatesPage() {
         if (workspaceId) {
             fetchTemplates();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspaceId]);
 
     const fetchTemplates = async () => {

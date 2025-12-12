@@ -13,6 +13,7 @@ import {
     ChartBarIcon,
     GlobeAltIcon,
     SparklesIcon,
+    ClockIcon,
 } from "@heroicons/react/24/outline";
 import { WorkflowStep, ACTION_TYPE_LABELS, ActionType } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ const actionIcons: Record<ActionType, React.ReactNode> = {
     update_lead_score: <ChartBarIcon className="w-4 h-4" />,
     send_webhook: <GlobeAltIcon className="w-4 h-4" />,
     apollo_enrich: <SparklesIcon className="w-4 h-4" />,
+    wait_event: <ClockIcon className="w-4 h-4" />,
 };
 
 // ============================================

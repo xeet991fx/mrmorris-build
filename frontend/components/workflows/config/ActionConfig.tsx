@@ -69,6 +69,7 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
         if (workspaceId) {
             fetchTemplates();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspaceId]);
 
     const fetchTemplates = async () => {
@@ -934,7 +935,7 @@ function WaitEventActionFields({ step, onChange }: ActionConfigProps) {
                 <div>
                     <p className="text-sm font-medium text-foreground">Enable Timeout</p>
                     <p className="text-xs text-muted-foreground">
-                        Continue workflow if event doesn't occur within time limit
+                        Continue workflow if event doesn&apos;t occur within time limit
                     </p>
                 </div>
                 <button
