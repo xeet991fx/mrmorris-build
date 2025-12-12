@@ -33,6 +33,7 @@ export default function WorkflowAnalytics({ workflow, workspaceId }: WorkflowAna
 
     useEffect(() => {
         fetchAnalytics();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workflow._id]);
 
     const fetchAnalytics = async () => {

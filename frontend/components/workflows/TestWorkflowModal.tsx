@@ -74,6 +74,7 @@ export default function TestWorkflowModal({
             setTestResults(null);
             setSelectedContactId("");
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
     const fetchContacts = async () => {

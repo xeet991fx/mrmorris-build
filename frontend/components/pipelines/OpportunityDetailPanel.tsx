@@ -69,14 +69,14 @@ export default function OpportunityDetailPanel({
         getAISuggestions(workspaceId, opportunity._id),
       ]);
 
-      if (analysisResult.success) {
+      if (analysisResult.success && analysisResult.data) {
         setAiInsights(analysisResult.data.insights);
         toast.success('AI analysis complete!');
       } else {
         toast.error(analysisResult.error || 'Analysis failed');
       }
 
-      if (suggestionsResult.success) {
+      if (suggestionsResult.success && suggestionsResult.data) {
         setSuggestions(suggestionsResult.data.suggestions || []);
       }
     } catch (error) {

@@ -55,6 +55,7 @@ export default function FailedEnrollmentsPanel({
         if (isOpen) {
             fetchFailedEnrollments();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, workspaceId, workflowId]);
 
     const fetchFailedEnrollments = async () => {

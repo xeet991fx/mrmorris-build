@@ -308,7 +308,7 @@ export default function AccountSettingsPage() {
           <div className="space-y-3">
             <div>
               <p className="text-sm text-muted-foreground">Account ID</p>
-              <p className="text-foreground font-mono text-sm">{user?._id || "Not available"}</p>
+              <p className="text-foreground font-mono text-sm">{user?.id || "Not available"}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Account Created</p>
