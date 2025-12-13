@@ -29,7 +29,6 @@ export default function DelayConfig({ step, onChange }: DelayConfigProps) {
     const delayDate = step.config.delayDate || "";
     const delayTime = step.config.delayTime || "09:00";
     const delayWeekday = step.config.delayWeekday || "1"; // Monday
-
     const handleTypeChange = (type: string) => {
         onChange({ ...step.config, delayType: type });
     };
