@@ -11,43 +11,23 @@ export default function BulkEnrichPage() {
   const workspaceId = params.id as string;
 
   return (
-    <div className="min-h-screen bg-background px-8 pt-14 pb-8">
-      {/* Breadcrumb */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="mb-5 flex items-center gap-2 text-sm"
-      >
-        <button
-          onClick={() => router.push(`/projects/${workspaceId}`)}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Dashboard
-        </button>
-        <ChevronRightIcon className="w-3.5 h-3.5 text-muted-foreground" />
-        <button
-          onClick={() => router.push(`/projects/${workspaceId}/contacts`)}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Contacts
-        </button>
-        <ChevronRightIcon className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-foreground font-medium">Bulk Enrich</span>
-      </motion.div>
-
+    <div className="min-h-screen bg-card/95">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <h1 className="text-2xl font-bold text-foreground mb-1">
-          Bulk Enrich Contacts
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Enrich multiple contacts at once with Apollo.io data
-        </p>
-      </motion.div>
+      <div className="h-12 px-6 border-b border-border flex items-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center gap-3"
+        >
+          <SparklesIcon className="w-5 h-5 text-muted-foreground" />
+          <h1 className="text-lg font-semibold text-foreground">Bulk Enrich Contacts</h1>
+          <p className="text-xs text-muted-foreground">
+            Enrich multiple contacts with Apollo.io
+          </p>
+        </motion.div>
+      </div>
+
+      <div className="px-8 pt-8 pb-8">
 
       {/* Info Card */}
       <motion.div
@@ -68,36 +48,36 @@ export default function BulkEnrichPage() {
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground mb-4">
                 <li className="flex items-start gap-2">
-                  <span className="text-primary">•</span>
+                  <span className="text-[#9ACD32]">•</span>
                   <span>Select multiple contacts for enrichment</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary">•</span>
+                  <span className="text-[#9ACD32]">•</span>
                   <span>Filter contacts by missing data (email, phone, etc.)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary">•</span>
+                  <span className="text-[#9ACD32]">•</span>
                   <span>Preview credit cost before enriching</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary">•</span>
+                  <span className="text-[#9ACD32]">•</span>
                   <span>Track enrichment progress in real-time</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary">•</span>
+                  <span className="text-[#9ACD32]">•</span>
                   <span>View detailed results and success rate</span>
                 </li>
               </ul>
               <div className="flex gap-3">
                 <button
                   onClick={() => router.push(`/projects/${workspaceId}/settings/integrations`)}
-                  className="text-sm text-primary hover:underline"
+                  className="text-sm text-[#9ACD32] hover:underline"
                 >
                   Configure Integrations →
                 </button>
                 <button
                   onClick={() => router.push(`/projects/${workspaceId}/contacts`)}
-                  className="text-sm text-primary hover:underline"
+                  className="text-sm text-[#9ACD32] hover:underline"
                 >
                   View Contacts →
                 </button>
@@ -117,12 +97,13 @@ export default function BulkEnrichPage() {
           </p>
           <button
             onClick={() => router.push(`/projects/${workspaceId}/contacts`)}
-            className="text-sm text-primary hover:underline"
+            className="text-sm text-[#9ACD32] hover:underline"
           >
             Go to Contacts →
           </button>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 }

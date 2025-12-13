@@ -41,7 +41,7 @@ export default function DraggableColumnHeader({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide relative",
+        "px-4 py-2 h-8 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide relative",
         "border-r border-border last:border-r-0",
         isDragging && "opacity-50 bg-muted/50"
       )}
@@ -52,12 +52,7 @@ export default function DraggableColumnHeader({
         className="flex items-center gap-1 cursor-grab active:cursor-grabbing select-none"
         onClick={() => onSort(column)}
       >
-        {/* Drag indicator */}
-        <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-50 transition-opacity">
-          <div className="w-1 h-1 bg-muted-foreground rounded-full" />
-          <div className="w-1 h-1 bg-muted-foreground rounded-full" />
-          <div className="w-1 h-1 bg-muted-foreground rounded-full" />
-        </div>
+
 
         {/* Column label */}
         <span className="hover:text-foreground transition-colors truncate">

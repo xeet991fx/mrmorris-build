@@ -55,7 +55,7 @@ function WorkflowCard({
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer"
+            className="group bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 hover:shadow-lg transition-all cursor-pointer"
             onClick={onEdit}
         >
             {/* Header */}
@@ -154,7 +154,7 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
             </p>
             <button
                 onClick={onCreateNew}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
             >
                 <PlusIcon className="w-5 h-5" />
                 Create Your First Workflow
@@ -255,7 +255,7 @@ export default function WorkflowsPage() {
     });
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-card/95">
             {/* Template Selector Modal */}
             <TemplateSelector
                 isOpen={showTemplateSelector}
@@ -265,34 +265,34 @@ export default function WorkflowsPage() {
             />
 
             {/* Header */}
-            <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">Workflows</h1>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                                Automate your sales process with visual workflows
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleCreateNew}
-                            disabled={isCreating}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-                        >
-                            {isCreating ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Creating...
-                                </>
-                            ) : (
-                                <>
-                                    <PlusIcon className="w-5 h-5" />
-                                    New Workflow
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </div>
+            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-3"
+                >
+                    <h1 className="text-lg font-semibold text-foreground">Workflows</h1>
+                    <p className="text-xs text-muted-foreground">
+                        Automate your sales process
+                    </p>
+                </motion.div>
+                <button
+                    onClick={handleCreateNew}
+                    disabled={isCreating}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all disabled:opacity-50"
+                >
+                    {isCreating ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
+                            Creating...
+                        </>
+                    ) : (
+                        <>
+                            <PlusIcon className="w-5 h-5" />
+                            New Workflow
+                        </>
+                    )}
+                </button>
             </div>
 
             {/* Filters */}
@@ -306,7 +306,7 @@ export default function WorkflowsPage() {
                             placeholder="Search workflows..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                         />
                     </div>
 
@@ -316,7 +316,7 @@ export default function WorkflowsPage() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as WorkflowStatus | "all")}
-                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                         >
                             <option value="all">All Status</option>
                             <option value="draft">Draft</option>

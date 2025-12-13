@@ -176,7 +176,7 @@ export default function CompanyTableRow({
       )}
     >
       {/* Checkbox */}
-      <td className="px-4 py-3">
+      <td className="px-4 py-1 h-8">
         <input
           type="checkbox"
           checked={isSelected}
@@ -189,7 +189,7 @@ export default function CompanyTableRow({
       {orderedColumns.map((column) => (
         <td
           key={column}
-          className="px-4 py-3 text-sm text-foreground"
+          className="px-4 py-1 h-8 text-sm text-foreground border-r border-border"
         >
           {/* Note: EditableCell would need to be adapted for companies or we pass company prop */}
           <div className="overflow-hidden text-ellipsis">
@@ -199,7 +199,7 @@ export default function CompanyTableRow({
       ))}
 
       {/* Actions */}
-      <td className="px-4 py-3">
+      <td className="px-4 py-1 h-8">
         <div className="flex items-center gap-1">
           {/* Edit Button - Always visible */}
           <button

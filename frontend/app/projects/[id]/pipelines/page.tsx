@@ -92,7 +92,7 @@ export default function PipelinesPage() {
 
   if (isLoading && pipelines.length === 0) {
     return (
-      <div className="min-h-screen bg-background px-8 pt-14 pb-8">
+      <div className="min-h-screen bg-card/95 px-8 pt-14 pb-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -105,7 +105,7 @@ export default function PipelinesPage() {
 
   // Render empty state content
   const renderEmptyState = () => (
-    <div className="min-h-screen bg-background px-8 pt-14 pb-8">
+    <div className="min-h-screen bg-card/95 px-8 pt-14 pb-8">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -150,7 +150,7 @@ export default function PipelinesPage() {
       {!isLoading && pipelines.length === 0 ? (
         renderEmptyState()
       ) : (
-        <div className="min-h-screen bg-background px-8 pt-14 pb-8">
+        <div className="min-h-screen bg-card/95 px-8 pt-14 pb-8">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}

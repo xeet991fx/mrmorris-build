@@ -419,7 +419,7 @@ export default function CampaignsPage() {
                             setError(null);
                             fetchCampaignsData();
                         }}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        className="px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
                     >
                         Try Again
                     </button>
@@ -440,7 +440,7 @@ export default function CampaignsPage() {
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
                 >
                     <PlusIcon className="w-5 h-5" />
                     New Campaign
@@ -461,7 +461,7 @@ export default function CampaignsPage() {
                     </p>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
                     >
                         <PlusIcon className="w-5 h-5" />
                         Create Campaign
@@ -474,7 +474,7 @@ export default function CampaignsPage() {
                             key={campaign._id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="bg-card border border-border rounded-xl p-5 hover:border-primary/50 transition-colors"
+                            className="bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 transition-colors"
                         >
                             {/* Campaign Header */}
                             <div className="flex items-start justify-between mb-4">
@@ -620,7 +620,7 @@ export default function CampaignsPage() {
                                         value={createForm.name}
                                         onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                                         required
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                         placeholder="Q1 Outreach Campaign"
                                     />
                                 </div>
@@ -632,7 +632,7 @@ export default function CampaignsPage() {
                                         type="text"
                                         value={createForm.description}
                                         onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                         placeholder="Target: Marketing Managers at SaaS companies"
                                     />
                                 </div>
@@ -660,7 +660,7 @@ export default function CampaignsPage() {
                                             <label
                                                 key={account._id}
                                                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors ${createForm.fromAccounts.includes(account._id)
-                                                    ? "bg-primary text-primary-foreground"
+                                                    ? "bg-[#9ACD32] text-background"
                                                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                                                     }`}
                                             >
@@ -700,7 +700,7 @@ export default function CampaignsPage() {
                                     onChange={(e) => setCreateForm({ ...createForm, dailyLimit: parseInt(e.target.value) || 50 })}
                                     min={1}
                                     max={500}
-                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                    className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                 />
                             </div>
 
@@ -721,7 +721,7 @@ export default function CampaignsPage() {
                                                     steps: [{ ...createForm.steps[0], subject: e.target.value }],
                                                 })
                                             }
-                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                            className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                             placeholder="Hi {{firstName}}, quick question about {{company}}"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">
@@ -741,7 +741,7 @@ export default function CampaignsPage() {
                                                 })
                                             }
                                             rows={6}
-                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                            className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] resize-none"
                                             placeholder="Hi {{firstName}},&#10;&#10;I noticed..."
                                         />
                                     </div>
@@ -761,7 +761,7 @@ export default function CampaignsPage() {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {isSubmitting ? (
                                         <>
@@ -827,7 +827,7 @@ export default function CampaignsPage() {
                                                 type="checkbox"
                                                 checked={selectedContacts.includes(contact._id)}
                                                 onChange={() => toggleContactSelection(contact._id)}
-                                                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                className="w-4 h-4 rounded border-border text-primary focus:ring-[#9ACD32]"
                                             />
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-foreground truncate">
@@ -856,7 +856,7 @@ export default function CampaignsPage() {
                             <button
                                 onClick={handleEnrollContacts}
                                 disabled={isEnrolling || selectedContacts.length === 0}
-                                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {isEnrolling ? (
                                     <>
@@ -897,7 +897,7 @@ export default function CampaignsPage() {
                                     value={testEmailAddress}
                                     onChange={(e) => setTestEmailAddress(e.target.value)}
                                     placeholder="your@email.com"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                                    className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] text-foreground"
                                 />
                             </div>
 
@@ -911,7 +911,7 @@ export default function CampaignsPage() {
                                 <button
                                     onClick={handleSendTestEmail}
                                     disabled={isSendingTest || !testEmailAddress}
-                                    className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {isSendingTest ? (
                                         <>

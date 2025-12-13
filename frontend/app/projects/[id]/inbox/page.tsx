@@ -222,12 +222,12 @@ export default function InboxPage() {
     }
 
     return (
-        <div className="h-[calc(100vh-2rem)] flex flex-col p-6 bg-gradient-to-br from-background via-background to-primary/5">
+        <div className="h-[calc(100vh-2rem)] flex flex-col p-6 bg-gradient-to-br from-card/95 via-card/95 to-[#9ACD32]/5">
             {/* Header with gradient accent */}
             <div className="flex items-center justify-between mb-6 flex-shrink-0">
                 <div>
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9ACD32] to-[#9ACD32]/60 flex items-center justify-center shadow-lg shadow-[#9ACD32]/20">
                             <EnvelopeOpenIcon className="w-5 h-5 text-white" />
                         </div>
                         <div>
@@ -255,7 +255,7 @@ export default function InboxPage() {
                             }
                         }}
                         disabled={isSyncing}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 disabled:opacity-50 font-medium"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#9ACD32] text-background rounded-xl hover:bg-[#8AB82E] hover:shadow-lg hover:shadow-[#9ACD32]/30 transition-all duration-300 disabled:opacity-50 font-medium"
                     >
                         <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                         {isSyncing ? 'Syncing...' : 'Sync Gmail'}
@@ -280,7 +280,7 @@ export default function InboxPage() {
                             value={filters.search}
                             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                             placeholder="Search replies..."
-                            className="w-full pl-12 pr-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                            className="w-full pl-12 pr-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 focus:border-[#9ACD32] transition-all"
                         />
                     </div>
                 </form>
@@ -288,7 +288,7 @@ export default function InboxPage() {
                 <select
                     value={filters.campaign}
                     onChange={(e) => setFilters({ ...filters, campaign: e.target.value })}
-                    className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+                    className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
                 >
                     <option value="">All Campaigns</option>
                     {campaigns.map((campaign) => (
@@ -299,7 +299,7 @@ export default function InboxPage() {
                 <select
                     value={filters.sentiment}
                     onChange={(e) => setFilters({ ...filters, sentiment: e.target.value })}
-                    className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+                    className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
                 >
                     <option value="">All Sentiments</option>
                     <option value="positive">😊 Positive</option>
@@ -352,7 +352,7 @@ export default function InboxPage() {
                                             setAiDraft("");
                                         }}
                                         className={`w-full p-4 text-left transition-all duration-200 border-b border-border/30 ${isSelected
-                                            ? "bg-primary/10 border-l-4 border-l-primary"
+                                            ? "bg-[#9ACD32]/10 border-l-4 border-l-[#9ACD32]"
                                             : "hover:bg-muted/40"
                                             }`}
                                     >
@@ -398,7 +398,7 @@ export default function InboxPage() {
                             <div className="p-6 border-b border-border/50 bg-gradient-to-r from-muted/30 to-transparent">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
+                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#9ACD32] to-[#9ACD32]/60 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-[#9ACD32]/20">
                                             {getContactName(selectedMessage).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
                                         </div>
                                         <div>
@@ -417,7 +417,7 @@ export default function InboxPage() {
                                         {selectedMessage.replySubject || selectedMessage.subject}
                                     </h3>
                                     <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-md font-medium">
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#9ACD32]/10 text-[#9ACD32] text-xs rounded-md font-medium">
                                             📧 {getCampaignName(selectedMessage)}
                                         </span>
                                         <span>•</span>
@@ -461,7 +461,7 @@ export default function InboxPage() {
                                             value={aiDraft}
                                             onChange={(e) => setAiDraft(e.target.value)}
                                             rows={5}
-                                            className="w-full bg-background border border-border rounded-xl p-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                                            className="w-full bg-background border border-border rounded-xl p-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 resize-none"
                                             placeholder="Edit your response..."
                                         />
                                     </motion.div>
@@ -527,7 +527,7 @@ export default function InboxPage() {
                                             }
                                         }}
                                         disabled={!aiDraft.trim() || isSendingReply}
-                                        className="px-8 py-3 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg hover:shadow-primary/30 transition-all disabled:opacity-50 disabled:hover:shadow-none flex items-center gap-2 font-semibold"
+                                        className="px-8 py-3 bg-[#9ACD32] text-background rounded-xl hover:bg-[#8AB82E] hover:shadow-lg hover:shadow-[#9ACD32]/30 transition-all disabled:opacity-50 disabled:hover:shadow-none flex items-center gap-2 font-semibold"
                                     >
                                         {isSendingReply ? (
                                             <>

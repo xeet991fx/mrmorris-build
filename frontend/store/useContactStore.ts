@@ -26,16 +26,16 @@ export type ContactColumn = BuiltInColumn | string; // string for custom field k
 
 // Default column widths in pixels
 export const DEFAULT_COLUMN_WIDTHS: Record<BuiltInColumn, number> = {
-  name: 192,
-  email: 208,
-  phone: 144,
-  company: 176,
-  jobTitle: 160,
-  source: 144,
-  status: 112,
-  leadScore: 128,
-  notes: 256,
-  createdAt: 144,
+  name: 120,
+  email: 120,
+  phone: 120,
+  company: 120,
+  jobTitle: 120,
+  source: 120,
+  status: 120,
+  leadScore: 120,
+  notes: 120,
+  createdAt: 120,
 };
 
 // Default column order

@@ -100,15 +100,15 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-full">
       {/* Workspace Header - Clickable */}
       <div className={cn(
-        "border-b border-border transition-all duration-150 relative flex-shrink-0",
-        isExpanded ? "px-4 py-3" : "px-2 py-3"
+        "h-12 border-b border-border transition-all duration-150 relative flex-shrink-0 flex items-center",
+        isExpanded ? "px-3" : "px-2"
       )}>
         {isExpanded ? (
           <button
             onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
-            className="w-full flex items-center gap-3 hover:bg-muted/20 rounded-md p-1 -m-1 transition-colors"
+            className="w-full flex items-center gap-2.5 hover:bg-muted/20 rounded-md p-1 -m-1 transition-colors"
           >
-            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 overflow-visible">
+            <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 overflow-visible">
               <Image
                 src="/Clianta-logo-removebg-preview.png"
                 alt="Company Logo"
@@ -129,7 +129,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
             className="flex items-center justify-center w-full hover:bg-muted/20 rounded-md p-1 -m-1 transition-colors"
           >
-            <div className="w-8 h-8 flex items-center justify-center overflow-visible">
+            <div className="w-7 h-7 flex items-center justify-center overflow-visible">
               <Image
                 src="/Clianta-logo-removebg-preview.png"
                 alt="Company Logo"
@@ -148,7 +148,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         {/* CRM Pages - Show when inside a workspace */}
         {isInsideWorkspace && currentWorkspaceFromUrl && (
           <div className={cn(
-            "py-3 border-t border-border",
+            "py-3",
             isExpanded ? "px-3" : "px-2"
           )}>
             <div className={cn(isExpanded ? "space-y-0.5" : "space-y-1")}>
@@ -157,14 +157,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname === `/projects/${currentWorkspaceFromUrl._id}`
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Dashboard" : ""}
               >
-                <HomeIcon className="w-5 h-5 flex-shrink-0" />
+                <HomeIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Dashboard
@@ -177,14 +177,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/contacts`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/contacts')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Contacts" : ""}
               >
-                <UserGroupIcon className="w-5 h-5 flex-shrink-0" />
+                <UserGroupIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Contacts
@@ -197,14 +197,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/companies`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/companies')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Companies" : ""}
               >
-                <BuildingOffice2Icon className="w-5 h-5 flex-shrink-0" />
+                <BuildingOffice2Icon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Companies
@@ -217,14 +217,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/pipelines`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/pipelines')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Pipelines" : ""}
               >
-                <Squares2X2Icon className="w-5 h-5 flex-shrink-0" />
+                <Squares2X2Icon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Pipelines
@@ -237,14 +237,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/workflows`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/workflows')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Workflows" : ""}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
                 </svg>
                 {isExpanded && (
@@ -259,14 +259,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/email-templates`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/email-templates')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Templates" : ""}
               >
-                <EnvelopeIcon className="w-5 h-5 flex-shrink-0" />
+                <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Templates
@@ -279,14 +279,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/sequences`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/sequences')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Sequences" : ""}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                 </svg>
                 {isExpanded && (
@@ -296,25 +296,19 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
-              {/* Cold Email Section Divider */}
-              <div className={cn(
-                "border-t border-border my-2",
-                isExpanded ? "mx-0" : "mx-1"
-              )} />
-
               {/* Campaigns */}
               <button
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/campaigns`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/campaigns')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Campaigns" : ""}
               >
-                <RocketLaunchIcon className="w-5 h-5 flex-shrink-0" />
+                <RocketLaunchIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Campaigns
@@ -327,14 +321,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/email-accounts`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/email-accounts')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Email Accounts" : ""}
               >
-                <AtSymbolIcon className="w-5 h-5 flex-shrink-0" />
+                <AtSymbolIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Email Accounts
@@ -347,14 +341,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/inbox`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/inbox')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Inbox" : ""}
               >
-                <InboxIcon className="w-5 h-5 flex-shrink-0" />
+                <InboxIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Inbox
@@ -362,25 +356,19 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </button>
 
-              {/* Analytics & Settings Divider */}
-              <div className={cn(
-                "border-t border-border my-2",
-                isExpanded ? "mx-0" : "mx-1"
-              )} />
-
               {/* Data Stewardship */}
               <button
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/data-stewardship`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/data-stewardship')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Data Stewardship" : ""}
               >
-                <ShieldCheckIcon className="w-5 h-5 flex-shrink-0" />
+                <ShieldCheckIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Data Quality
@@ -393,14 +381,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/email-analytics`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/email-analytics')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Email Analytics" : ""}
               >
-                <ChartBarIcon className="w-5 h-5 flex-shrink-0" />
+                <ChartBarIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Analytics
@@ -413,14 +401,14 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings`)}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
                   pathname.includes('/settings')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
                 title={!isExpanded ? "Settings" : ""}
               >
-                <Cog6ToothIcon className="w-5 h-5 flex-shrink-0" />
+                <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Settings
@@ -443,7 +431,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
           )}
           title={!isExpanded ? "Log out" : ""}
         >
-          <ArrowRightOnRectangleIcon className="w-5 h-5 flex-shrink-0" />
+          <ArrowRightOnRectangleIcon className="w-4 h-4 flex-shrink-0" />
           {isExpanded && (
             <span>Log out</span>
           )}
@@ -459,9 +447,9 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
           title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
         >
           {isExpanded ? (
-            <ChevronLeftIcon className="w-5 h-5 flex-shrink-0" />
+            <ChevronLeftIcon className="w-4 h-4 flex-shrink-0" />
           ) : (
-            <ChevronRightIcon className="w-5 h-5 flex-shrink-0" />
+            <ChevronRightIcon className="w-4 h-4 flex-shrink-0" />
           )}
           {isExpanded && (
             <span>Collapse</span>
@@ -478,7 +466,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-card">
         {/* Workspace Switcher Popup */}
         <AnimatePresence>
           {isWorkspaceSwitcherOpen && (
@@ -559,7 +547,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Sidebar - Always visible */}
         <aside
           className={cn(
-            "fixed top-0 left-0 bottom-0 bg-card/95 backdrop-blur-xl border-r border-border z-30 overflow-hidden shadow-xl transition-all duration-200 ease-out"
+            "fixed top-0 left-0 bottom-0 bg-card/95 backdrop-blur-xl border-r border-border z-30 overflow-hidden transition-all duration-200 ease-out"
           )}
           style={{
             width: isSidebarExpanded ? `${EXPANDED_WIDTH}px` : `${COLLAPSED_WIDTH}px`
@@ -573,7 +561,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <main className="min-h-screen">
           <div
-            className="min-h-screen transition-all duration-200 ease-out"
+            className="min-h-screen bg-card transition-all duration-200 ease-out"
             style={{
               marginLeft: isSidebarExpanded ? `${EXPANDED_WIDTH}px` : `${COLLAPSED_WIDTH}px`,
             }}
