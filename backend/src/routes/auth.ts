@@ -64,10 +64,29 @@ router.post("/register", authLimiter, async (req: Request, res: Response) => {
     const existingUser = await User.findOne({ email: validatedData.email });
 
     if (existingUser) {
+      // If user registered via Google OAuth, tell them to use Google login
+      if (existingUser.authProvider === "google") {
+        return res.status(400).json({
+          success: false,
+          error: "This email is registered with Google. Please use 'Login with Google' to access your account.",
+          useGoogleAuth: true,
+        });
+      }
       return res.status(400).json({
         success: false,
         error: "An account with this email already exists.",
       });
+    }
+
+    // Check username uniqueness if provided
+    if (validatedData.username) {
+      const existingUsername = await User.findOne({ username: validatedData.username.toLowerCase() });
+      if (existingUsername) {
+        return res.status(400).json({
+          success: false,
+          error: "This username is already taken. Please choose another.",
+        });
+      }
     }
 
     // Create user
@@ -75,6 +94,8 @@ router.post("/register", authLimiter, async (req: Request, res: Response) => {
       email: validatedData.email,
       password: validatedData.password,
       name: validatedData.name,
+      username: validatedData.username?.toLowerCase(),
+      profilePicture: validatedData.profilePicture,
       isVerified: false,
     });
 
@@ -103,6 +124,8 @@ router.post("/register", authLimiter, async (req: Request, res: Response) => {
           id: user._id,
           email: user.email,
           name: user.name,
+          username: user.username,
+          profilePicture: user.profilePicture,
           isVerified: user.isVerified,
         },
       },
@@ -143,6 +166,15 @@ router.post("/login", authLimiter, async (req: Request, res: Response) => {
       return res.status(401).json({
         success: false,
         error: "Invalid email or password.",
+      });
+    }
+
+    // Check if user registered via Google OAuth - they must login via Google
+    if (user.authProvider === "google") {
+      return res.status(400).json({
+        success: false,
+        error: "This account was created using Google. Please login with Google instead.",
+        useGoogleAuth: true,
       });
     }
 
@@ -429,6 +461,8 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
           id: user._id,
           email: user.email,
           name: user.name,
+          username: user.username,
+          profilePicture: user.profilePicture,
           isVerified: user.isVerified,
           createdAt: user.createdAt,
         },
@@ -610,6 +644,14 @@ router.post("/send-otp", emailLimiter, async (req: Request, res: Response) => {
     if (purpose === "registration") {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
+        // If user registered via Google OAuth, tell them to use Google login
+        if (existingUser.authProvider === "google") {
+          return res.status(400).json({
+            success: false,
+            error: "This email is registered with Google. Please use 'Login with Google' to access your account.",
+            useGoogleAuth: true,
+          });
+        }
         return res.status(400).json({
           success: false,
           error: "An account with this email already exists.",
@@ -763,10 +805,29 @@ router.post(
       // Check if user already exists
       const existingUser = await User.findOne({ email });
       if (existingUser) {
+        // If user registered via Google OAuth, tell them to use Google login
+        if (existingUser.authProvider === "google") {
+          return res.status(400).json({
+            success: false,
+            error: "This email is registered with Google. Please use 'Login with Google' to access your account.",
+            useGoogleAuth: true,
+          });
+        }
         return res.status(400).json({
           success: false,
           error: "An account with this email already exists.",
         });
+      }
+
+      // Check username uniqueness if provided
+      if (validatedData.username) {
+        const existingUsername = await User.findOne({ username: validatedData.username.toLowerCase() });
+        if (existingUsername) {
+          return res.status(400).json({
+            success: false,
+            error: "This username is already taken. Please choose another.",
+          });
+        }
       }
 
       // Create user (already verified via OTP)
@@ -774,6 +835,8 @@ router.post(
         email,
         password,
         name,
+        username: validatedData.username?.toLowerCase(),
+        profilePicture: validatedData.profilePicture,
         isVerified: true, // Auto-verified via OTP
         authProvider: "email",
       });
@@ -797,6 +860,8 @@ router.post(
             id: user._id,
             email: user.email,
             name: user.name,
+            username: user.username,
+            profilePicture: user.profilePicture,
             isVerified: user.isVerified,
           },
         },

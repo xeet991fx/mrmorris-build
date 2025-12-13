@@ -5,6 +5,7 @@ export interface IUser extends Document {
   email: string;
   password?: string; // Optional for OAuth users
   name: string;
+  username?: string; // Optional unique username
   isVerified: boolean;
   authProvider: "email" | "google";
   googleId?: string;
@@ -42,6 +43,16 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: [true, "Name is required"],
       trim: true,
+    },
+    username: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows null values while maintaining uniqueness
+      trim: true,
+      lowercase: true,
+      minlength: [3, "Username must be at least 3 characters"],
+      maxlength: [30, "Username must be less than 30 characters"],
+      match: [/^[a-z0-9_]+$/, "Username can only contain lowercase letters, numbers, and underscores"],
     },
     isVerified: {
       type: Boolean,
@@ -116,7 +127,7 @@ userSchema.methods.comparePassword = async function (
 // Generate verification token
 userSchema.methods.generateVerificationToken = function (): string {
   const token = Math.random().toString(36).substring(2, 15) +
-                Math.random().toString(36).substring(2, 15);
+    Math.random().toString(36).substring(2, 15);
 
   this.verificationToken = token;
   this.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -127,7 +138,7 @@ userSchema.methods.generateVerificationToken = function (): string {
 // Generate password reset token
 userSchema.methods.generatePasswordResetToken = function (): string {
   const token = Math.random().toString(36).substring(2, 15) +
-                Math.random().toString(36).substring(2, 15);
+    Math.random().toString(36).substring(2, 15);
 
   this.resetPasswordToken = token;
   this.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour

@@ -136,7 +136,7 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-primary to-primary hover:from-primary/90 hover:to-primary/90 text-white font-semibold rounded-lg shadow-lg shadow-primary/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-3 bg-[#9ACD32] hover:bg-[#8AB82E] text-white font-semibold rounded-lg shadow-lg shadow-[#9ACD32]/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLoading ? "Creating..." : "Create"}
                   </button>

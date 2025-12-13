@@ -17,6 +17,16 @@ export const registerSchema = z.object({
     .string()
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name must be less than 50 characters"),
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(30, "Username must be less than 30 characters")
+    .regex(/^[a-z0-9_]+$/, "Username can only contain lowercase letters, numbers, and underscores")
+    .optional(),
+  profilePicture: z
+    .string()
+    .url("Please provide a valid URL")
+    .optional(),
 });
 
 // Login validation schema
@@ -104,6 +114,16 @@ export const completeRegistrationSchema = z.object({
     .string()
     .min(2, "Name must be at least 2 characters")
     .max(50, "Name must be less than 50 characters"),
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(30, "Username must be less than 30 characters")
+    .regex(/^[a-z0-9_]+$/, "Username can only contain lowercase letters, numbers, and underscores")
+    .optional(),
+  profilePicture: z
+    .string()
+    .url("Please provide a valid URL")
+    .optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Loader2, Mail, Lock, User, CheckCircle2, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail, Lock, User, CheckCircle2, ArrowRight, AtSign, ImageIcon } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuthStore } from "@/store/useAuthStore";
 import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
@@ -104,13 +104,21 @@ function RegisterContent() {
 
   const onSubmit = async (data: RegisterInput) => {
     try {
-      await registerUser(data.email, data.password, data.name);
+      // Filter out empty optional fields
+      const username = data.username?.trim() || undefined;
+      const profilePicture = data.profilePicture?.trim() || undefined;
+      await registerUser(data.email, data.password, data.name, username, profilePicture);
       toast.success("Registration successful!");
       setRegisteredEmail(data.email);
       setRegistrationSuccess(true);
     } catch (error: any) {
       const message = error.response?.data?.error || "Registration failed. Please try again.";
-      toast.error(message);
+      // Check if user needs to use Google OAuth
+      if (error.response?.data?.useGoogleAuth) {
+        toast.error(message + " Click 'Sign up with Google' below.");
+      } else {
+        toast.error(message);
+      }
     }
   };
 
@@ -377,6 +385,75 @@ function RegisterContent() {
                     className="mt-1 text-sm text-red-400"
                   >
                     {errors.password.message}
+                  </motion.p>
+                )}
+              </motion.div>
+
+              {/* Username field (Optional) */}
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.45, duration: 0.5 }}
+              >
+                <label
+                  htmlFor="username"
+                  className="block text-sm font-medium text-foreground mb-2"
+                >
+                  Username <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <div className="relative">
+                  <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    {...register("username")}
+                    id="username"
+                    type="text"
+                    placeholder="johndoe123"
+                    className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Only lowercase letters, numbers, and underscores
+                </p>
+                {errors.username && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-1 text-sm text-red-400"
+                  >
+                    {errors.username.message}
+                  </motion.p>
+                )}
+              </motion.div>
+
+              {/* Profile Picture URL field (Optional) */}
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.48, duration: 0.5 }}
+              >
+                <label
+                  htmlFor="profilePicture"
+                  className="block text-sm font-medium text-foreground mb-2"
+                >
+                  Profile Picture URL <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <div className="relative">
+                  <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    {...register("profilePicture")}
+                    id="profilePicture"
+                    type="url"
+                    placeholder="https://example.com/your-photo.jpg"
+                    className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                  />
+                </div>
+                {errors.profilePicture && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-1 text-sm text-red-400"
+                  >
+                    {errors.profilePicture.message}
                   </motion.p>
                 )}
               </motion.div>

@@ -13,7 +13,7 @@ interface AuthState {
 
   // Actions
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (email: string, password: string, name: string, username?: string, profilePicture?: string) => Promise<void>;
   logout: () => Promise<void>;
   verifyEmail: (token: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -27,7 +27,7 @@ interface AuthState {
   // OTP Actions
   sendOTP: (email: string, purpose: "registration" | "login" | "password-reset") => Promise<void>;
   verifyOTP: (email: string, code: string, purpose: "registration" | "login" | "password-reset") => Promise<void>;
-  completeRegistration: (email: string, password: string, name: string) => Promise<void>;
+  completeRegistration: (email: string, password: string, name: string, username?: string, profilePicture?: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -80,11 +80,11 @@ export const useAuthStore = create<AuthState>()(
       /**
        * Register new user
        */
-      register: async (email: string, password: string, name: string) => {
+      register: async (email: string, password: string, name: string, username?: string, profilePicture?: string) => {
         set({ isLoading: true, error: null });
 
         try {
-          const response = await authApi.register({ email, password, name });
+          const response = await authApi.register({ email, password, name, username, profilePicture });
 
           if (response.success) {
             set({
@@ -380,11 +380,11 @@ export const useAuthStore = create<AuthState>()(
       /**
        * Complete registration after OTP verification
        */
-      completeRegistration: async (email: string, password: string, name: string) => {
+      completeRegistration: async (email: string, password: string, name: string, username?: string, profilePicture?: string) => {
         set({ isLoading: true, error: null });
 
         try {
-          const response = await authApi.completeRegistration({ email, password, name });
+          const response = await authApi.completeRegistration({ email, password, name, username, profilePicture });
 
           if (response.success && response.data) {
             const { token, user } = response.data;

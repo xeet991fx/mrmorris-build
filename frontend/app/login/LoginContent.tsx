@@ -74,7 +74,12 @@ export default function LoginContent() {
             router.push("/projects");
         } catch (error: any) {
             const message = error.response?.data?.error || "Login failed. Please check your credentials.";
-            toast.error(message);
+            // Check if user needs to use Google OAuth
+            if (error.response?.data?.useGoogleAuth) {
+                toast.error(message + " Click 'Continue with Google' below.");
+            } else {
+                toast.error(message);
+            }
         }
     };
 

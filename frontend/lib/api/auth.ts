@@ -4,6 +4,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  username?: string;
+  profilePicture?: string;
   isVerified: boolean;
   createdAt?: string;
 }
@@ -22,6 +24,8 @@ export interface RegisterData {
   email: string;
   password: string;
   name: string;
+  username?: string;
+  profilePicture?: string;
 }
 
 export interface LoginData {
@@ -58,6 +62,8 @@ export interface CompleteRegistrationData {
   email: string;
   password: string;
   name: string;
+  username?: string;
+  profilePicture?: string;
 }
 
 /**
