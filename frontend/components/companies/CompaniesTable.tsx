@@ -141,12 +141,13 @@ export default function CompaniesTable({
         {/* Table */}
         <div>
           <table className="w-full" style={{ tableLayout: 'fixed' }}>
+            {/* Checkbox | Dynamic columns | Actions */}
             <colgroup>
-              <col style={{ width: '36px' }} /> {/* Checkbox */}
+              <col style={{ width: '36px' }} />
               {orderedVisibleColumns.map((column) => (
                 <col key={column} style={{ width: `${columnWidths[column]}px` }} />
               ))}
-              <col style={{ width: '36px' }} /> {/* Actions */}
+              <col style={{ width: '36px' }} />
             </colgroup>
             <thead className="bg-card/95">
               <tr className="border-b border-border group">
