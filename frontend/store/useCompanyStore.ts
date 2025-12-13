@@ -27,17 +27,17 @@ export type CompanyColumn = BuiltInColumn | string; // string for custom field k
 
 // Default column widths in pixels
 export const DEFAULT_COLUMN_WIDTHS: Record<BuiltInColumn, number> = {
-  name: 192,
-  industry: 144,
-  website: 208,
-  phone: 144,
-  companySize: 128,
-  annualRevenue: 144,
-  employeeCount: 144,
-  status: 112,
-  source: 144,
-  notes: 256,
-  createdAt: 144,
+  name: 120,
+  industry: 120,
+  website: 120,
+  phone: 120,
+  companySize: 120,
+  annualRevenue: 120,
+  employeeCount: 120,
+  status: 120,
+  source: 120,
+  notes: 120,
+  createdAt: 120,
 };
 
 // Default column order

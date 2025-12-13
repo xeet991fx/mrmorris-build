@@ -431,7 +431,7 @@ export default function CampaignsPage() {
                             setError(null);
                             fetchCampaignsData();
                         }}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        className="px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
                     >
                         Try Again
                     </button>
@@ -452,7 +452,7 @@ export default function CampaignsPage() {
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
                 >
                     <PlusIcon className="w-5 h-5" />
                     New Campaign
@@ -461,6 +461,24 @@ export default function CampaignsPage() {
 
             {/* Campaigns List */}
             {campaigns.length === 0 ? (
+                <div className="bg-card border border-border rounded-xl p-12 text-center">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-muted-foreground">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-foreground mb-2">No campaigns yet</h3>
+                    <p className="text-muted-foreground mb-6">
+                        Create your first cold email campaign to start reaching prospects
+                    </p>
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        Create Campaign
+                    </button>
+                </div>
                 <TemplateGallery
                     title="Launch Your Outreach"
                     description="Select a campaign strategy or start from scratch."
@@ -483,7 +501,7 @@ export default function CampaignsPage() {
                             key={campaign._id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="premium-card p-5 hover:-translate-y-1 transition-all duration-300"
+                            className="bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 transition-colors"
                         >
                             {/* Campaign Header */}
                             <div className="flex items-start justify-between mb-4">
@@ -629,7 +647,7 @@ export default function CampaignsPage() {
                                         value={createForm.name}
                                         onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                                         required
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                         placeholder="Q1 Outreach Campaign"
                                     />
                                 </div>
@@ -641,7 +659,7 @@ export default function CampaignsPage() {
                                         type="text"
                                         value={createForm.description}
                                         onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                         placeholder="Target: Marketing Managers at SaaS companies"
                                     />
                                 </div>
@@ -668,7 +686,7 @@ export default function CampaignsPage() {
                                             <label
                                                 key={account._id}
                                                 className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors ${createForm.fromAccounts.includes(account._id)
-                                                    ? "bg-primary text-primary-foreground"
+                                                    ? "bg-[#9ACD32] text-background"
                                                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                                                     }`}
                                             >
@@ -708,7 +726,7 @@ export default function CampaignsPage() {
                                     onChange={(e) => setCreateForm({ ...createForm, dailyLimit: parseInt(e.target.value) || 50 })}
                                     min={1}
                                     max={500}
-                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                    className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                 />
                             </div>
 
@@ -729,7 +747,7 @@ export default function CampaignsPage() {
                                                     steps: [{ ...createForm.steps[0], subject: e.target.value }],
                                                 })
                                             }
-                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                            className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                             placeholder="Hi {{firstName}}, quick question about {{company}}"
                                         />
                                         <p className="text-xs text-muted-foreground mt-1">
@@ -749,7 +767,7 @@ export default function CampaignsPage() {
                                                 })
                                             }
                                             rows={6}
-                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                            className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] resize-none"
                                             placeholder="Hi {{firstName}},&#10;&#10;I noticed..."
                                         />
                                     </div>
@@ -769,7 +787,7 @@ export default function CampaignsPage() {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {isSubmitting ? (
                                         <>
@@ -835,7 +853,7 @@ export default function CampaignsPage() {
                                                 type="checkbox"
                                                 checked={selectedContacts.includes(contact._id)}
                                                 onChange={() => toggleContactSelection(contact._id)}
-                                                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                className="w-4 h-4 rounded border-border text-primary focus:ring-[#9ACD32]"
                                             />
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-foreground truncate">
@@ -864,7 +882,7 @@ export default function CampaignsPage() {
                             <button
                                 onClick={handleEnrollContacts}
                                 disabled={isEnrolling || selectedContacts.length === 0}
-                                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {isEnrolling ? (
                                     <>
@@ -905,7 +923,7 @@ export default function CampaignsPage() {
                                     value={testEmailAddress}
                                     onChange={(e) => setTestEmailAddress(e.target.value)}
                                     placeholder="your@email.com"
-                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                                    className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] text-foreground"
                                 />
                             </div>
 
@@ -919,7 +937,7 @@ export default function CampaignsPage() {
                                 <button
                                     onClick={handleSendTestEmail}
                                     disabled={isSendingTest || !testEmailAddress}
-                                    className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {isSendingTest ? (
                                         <>

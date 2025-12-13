@@ -49,10 +49,10 @@ function DraggableNode({ type, label, icon, color, description }: DraggableNodeP
                 {icon}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
                     {label}
                 </p>
-                <p className="text-xs text-muted-foreground leading-tight">{description}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{description}</p>
             </div>
             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
         </div>
@@ -70,9 +70,9 @@ export default function WorkflowSidebar() {
             <div className="px-5 py-4 border-b border-border/50 bg-muted/30">
                 <div className="flex items-center gap-2 mb-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    <h2 className="text-sm font-bold text-foreground tracking-tight">Workflow Steps</h2>
+                    <h2 className="text-xs font-bold text-foreground tracking-tight">Workflow Steps</h2>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] text-muted-foreground">
                     Drag and drop to build your automation
                 </p>
             </div>
@@ -83,7 +83,7 @@ export default function WorkflowSidebar() {
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
-                        <h3 className="text-[10px] font-bold text-violet-400 uppercase tracking-widest">
+                        <h3 className="text-[9px] font-bold text-violet-400 uppercase tracking-widest">
                             Triggers
                         </h3>
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
@@ -101,7 +101,7 @@ export default function WorkflowSidebar() {
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
-                        <h3 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+                        <h3 className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">
                             Actions
                         </h3>
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-500/30 to-transparent" />
@@ -119,7 +119,7 @@ export default function WorkflowSidebar() {
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
-                        <h3 className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">
+                        <h3 className="text-[9px] font-bold text-orange-400 uppercase tracking-widest">
                             Timing
                         </h3>
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
@@ -137,7 +137,7 @@ export default function WorkflowSidebar() {
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-teal-500/30 to-transparent" />
-                        <h3 className="text-[10px] font-bold text-teal-400 uppercase tracking-widest">
+                        <h3 className="text-[9px] font-bold text-teal-400 uppercase tracking-widest">
                             Conditions
                         </h3>
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-teal-500/30 to-transparent" />
@@ -155,7 +155,7 @@ export default function WorkflowSidebar() {
                 <div className="mt-8 space-y-3">
                     <div className="flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
-                        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <h3 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                             Coming Soon
                         </h3>
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -166,8 +166,8 @@ export default function WorkflowSidebar() {
                                 <span className="text-xl">🔀</span>
                             </div>
                             <div>
-                                <p className="text-sm font-semibold text-muted-foreground">Conditions</p>
-                                <p className="text-xs text-muted-foreground">If/else branching</p>
+                                <p className="text-xs font-semibold text-muted-foreground">Conditions</p>
+                                <p className="text-[10px] text-muted-foreground">If/else branching</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 border-dashed border-border/50 bg-muted/20">
@@ -175,8 +175,8 @@ export default function WorkflowSidebar() {
                                 <span className="text-xl">🎯</span>
                             </div>
                             <div>
-                                <p className="text-sm font-semibold text-muted-foreground">Goals</p>
-                                <p className="text-xs text-muted-foreground">Exit on achievement</p>
+                                <p className="text-xs font-semibold text-muted-foreground">Goals</p>
+                                <p className="text-[10px] text-muted-foreground">Exit on achievement</p>
                             </div>
                         </div>
                     </div>
@@ -187,7 +187,7 @@ export default function WorkflowSidebar() {
             <div className="p-4 border-t border-border/50 bg-muted/40">
                 <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/20">
                     <span className="text-lg">💡</span>
-                    <p className="text-xs text-muted-foreground flex-1">
+                    <p className="text-[10px] text-muted-foreground flex-1">
                         Connect nodes by dragging handles
                     </p>
                 </div>

@@ -74,21 +74,23 @@ export default function AccountSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-8 pt-14 pb-8">
+    <div className="min-h-screen bg-card/95">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <h1 className="text-2xl font-bold text-foreground mb-1 flex items-center gap-2">
-          <UserCircleIcon className="w-7 h-7 text-primary" />
-          Account Settings
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your account information and preferences
-        </p>
-      </motion.div>
+      <div className="h-12 px-6 border-b border-border flex items-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center gap-3"
+        >
+          <UserCircleIcon className="w-5 h-5 text-muted-foreground" />
+          <h1 className="text-lg font-semibold text-foreground">Account Settings</h1>
+          <p className="text-xs text-muted-foreground">
+            Manage your account and preferences
+          </p>
+        </motion.div>
+      </div>
+
+      <div className="px-8 pt-8 pb-8">
 
       <div className="max-w-3xl space-y-6">
         {/* Profile Information */}
@@ -120,7 +122,7 @@ export default function AccountSettingsPage() {
                   type="text"
                   value={profileData.name}
                   onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32]"
                 />
               </div>
 
@@ -132,14 +134,14 @@ export default function AccountSettingsPage() {
                   type="email"
                   value={profileData.email}
                   onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32]"
                 />
               </div>
 
               <div className="flex items-center gap-2 pt-2">
                 <button
                   onClick={handleUpdateProfile}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-all"
                 >
                   <CheckIcon className="w-4 h-4" />
                   Save Changes
@@ -238,7 +240,7 @@ export default function AccountSettingsPage() {
                   type="password"
                   value={passwordData.currentPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32]"
                 />
               </div>
 
@@ -250,7 +252,7 @@ export default function AccountSettingsPage() {
                   type="password"
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32]"
                 />
               </div>
 
@@ -262,14 +264,14 @@ export default function AccountSettingsPage() {
                   type="password"
                   value={passwordData.confirmPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32]"
                 />
               </div>
 
               <div className="flex items-center gap-2 pt-2">
                 <button
                   onClick={handleChangePassword}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-all"
                 >
                   <CheckIcon className="w-4 h-4" />
                   Update Password
@@ -318,6 +320,7 @@ export default function AccountSettingsPage() {
             </div>
           </div>
         </motion.div>
+      </div>
       </div>
     </div>
   );

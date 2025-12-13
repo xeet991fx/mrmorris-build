@@ -36,36 +36,23 @@ export default function ApolloSearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-8 pt-14 pb-8">
-      {/* Breadcrumb */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="mb-5 flex items-center gap-2 text-sm"
-      >
-        <Link
-          href={`/projects/${workspaceId}`}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Dashboard
-        </Link>
-        <ChevronRightIcon className="w-3.5 h-3.5 text-muted-foreground" />
-        <span className="text-foreground font-medium">Apollo Search</span>
-      </motion.div>
-
+    <div className="min-h-screen bg-card/95">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <h1 className="text-2xl font-bold text-foreground mb-1">
-          Find Contacts with Apollo
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Search Apollo.io&apos;s database of 275M+ contacts and companies
-        </p>
-      </motion.div>
+      <div className="h-12 px-6 border-b border-border flex items-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center gap-3"
+        >
+          <MagnifyingGlassIcon className="w-5 h-5 text-muted-foreground" />
+          <h1 className="text-lg font-semibold text-foreground">Apollo Search</h1>
+          <p className="text-xs text-muted-foreground">
+            Find contacts and companies
+          </p>
+        </motion.div>
+      </div>
+
+      <div className="px-8 pt-8 pb-8">
 
       {/* Search Form */}
       <motion.div
@@ -86,7 +73,7 @@ export default function ApolloSearchPage() {
                 value={jobTitles}
                 onChange={(e) => setJobTitles(e.target.value)}
                 placeholder="VP Sales, CTO, Head of Marketing"
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
               />
             </div>
 
@@ -99,7 +86,7 @@ export default function ApolloSearchPage() {
                 value={locations}
                 onChange={(e) => setLocations(e.target.value)}
                 placeholder="San Francisco, New York, Remote"
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
               />
             </div>
 
@@ -112,14 +99,14 @@ export default function ApolloSearchPage() {
                 value={companyDomains}
                 onChange={(e) => setCompanyDomains(e.target.value)}
                 placeholder="example.com, company.com"
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
               />
             </div>
 
             <button
               onClick={handleSearch}
               disabled={isSearching}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#9ACD32] text-background text-sm font-medium rounded-md hover:bg-[#8AB82E] transition-all disabled:opacity-50"
             >
               {isSearching ? (
                 <>
@@ -144,14 +131,15 @@ export default function ApolloSearchPage() {
             Apollo integration in the settings and use the EnrichButton component on contact
             pages to enrich individual contacts.
           </p>
-          <Link
-            href={`/projects/${workspaceId}/settings/integrations`}
-            className="mt-4 text-sm text-primary hover:underline"
+          <button
+            onClick={() => router.push(`/projects/${workspaceId}/settings/integrations`)}
+            className="mt-4 text-sm text-[#9ACD32] hover:underline"
           >
             Go to Integrations →
           </Link>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 }

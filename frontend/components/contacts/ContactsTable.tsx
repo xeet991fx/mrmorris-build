@@ -138,15 +138,19 @@ export default function ContactsTable({
     >
       <div>
         {/* Table */}
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div>
           <table className="w-full" style={{ tableLayout: 'fixed' }}>
-            <colgroup><col style={{ width: '48px' }} />{orderedVisibleColumns.map((column) => (
-              <col key={column} style={{ width: `${columnWidths[column]}px` }} />
-            ))}<col style={{ width: '48px' }} /></colgroup>
+            <colgroup>
+              <col style={{ width: '36px' }} /> {/* Checkbox */}
+              {orderedVisibleColumns.map((column) => (
+                <col key={column} style={{ width: `${columnWidths[column]}px` }} />
+              ))}
+              <col style={{ width: '36px' }} /> {/* Actions */}
+            </colgroup>
             <thead className="bg-card/95">
               <tr className="border-b border-border group">
                 {/* Checkbox Header */}
-                <th className="px-4 py-3 w-12">
+                <th className="px-4 py-2 w-9 h-8">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -179,7 +183,7 @@ export default function ContactsTable({
                 </SortableContext>
 
                 {/* Actions Header */}
-                <th className="px-4 py-3 w-12"></th>
+                <th className="px-4 py-2 w-9 h-8"></th>
               </tr>
             </thead>
             <tbody>

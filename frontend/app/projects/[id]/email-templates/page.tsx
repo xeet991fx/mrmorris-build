@@ -73,7 +73,7 @@ function TemplateCard({
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 hover:shadow-lg transition-all"
+            className="group bg-card border border-border rounded-xl overflow-hidden hover:border-[#9ACD32]/50 hover:shadow-lg transition-all"
         >
             {/* Color Header */}
             <div className={`h-2 bg-gradient-to-r ${gradientClass}`} />
@@ -322,7 +322,7 @@ function TemplateModal({
                         <button
                             type="submit"
                             disabled={isSaving || !name || !subject || !body}
-                            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                            className="px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all disabled:opacity-50"
                         >
                             {isSaving ? "Saving..." : template ? "Update Template" : "Create Template"}
                         </button>
@@ -350,7 +350,7 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
             </p>
             <button
                 onClick={onCreateNew}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
             >
                 <PlusIcon className="w-5 h-5" />
                 Create Your First Template
@@ -481,7 +481,7 @@ export default function EmailTemplatesPage() {
     });
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-card/95">
             {/* Modal */}
             <TemplateModal
                 isOpen={isModalOpen}
@@ -491,24 +491,24 @@ export default function EmailTemplatesPage() {
             />
 
             {/* Header */}
-            <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">Email Templates</h1>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                                Create reusable email templates for your workflows
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleCreate}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
-                        >
-                            <PlusIcon className="w-5 h-5" />
-                            New Template
-                        </button>
-                    </div>
-                </div>
+            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-3"
+                >
+                    <h1 className="text-lg font-semibold text-foreground">Email Templates</h1>
+                    <p className="text-xs text-muted-foreground">
+                        Reusable templates for your workflows
+                    </p>
+                </motion.div>
+                <button
+                    onClick={handleCreate}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+                >
+                    <PlusIcon className="w-5 h-5" />
+                    New Template
+                </button>
             </div>
 
             {/* Filters */}
@@ -522,7 +522,7 @@ export default function EmailTemplatesPage() {
                             placeholder="Search templates..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                         />
                     </div>
 
@@ -530,7 +530,7 @@ export default function EmailTemplatesPage() {
                     <select
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                     >
                         <option value="all">All Categories</option>
                         {CATEGORIES.map((cat) => (

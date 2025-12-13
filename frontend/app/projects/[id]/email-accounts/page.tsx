@@ -269,23 +269,29 @@ export default function EmailAccountsPage() {
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="min-h-screen bg-card/95">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Email Accounts</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Connect and manage email accounts for cold outreach
+            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-3"
+                >
+                    <h1 className="text-lg font-semibold text-foreground">Email Accounts</h1>
+                    <p className="text-xs text-muted-foreground">
+                        Manage email accounts for outreach
                     </p>
-                </div>
+                </motion.div>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-all"
                 >
                     <PlusIcon className="w-5 h-5" />
                     Add Account
                 </button>
             </div>
+
+            <div className="p-6 max-w-7xl mx-auto">
 
             {/* Accounts Grid */}
             {accounts.length === 0 ? (
@@ -301,7 +307,7 @@ export default function EmailAccountsPage() {
                     </p>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-all"
                     >
                         <PlusIcon className="w-5 h-5" />
                         Connect Account
@@ -314,7 +320,7 @@ export default function EmailAccountsPage() {
                             key={account._id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="premium-card p-6 hover:-translate-y-1 transition-all duration-300"
+                            className="bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 transition-colors"
                         >
                             {/* Header */}
                             <div className="flex items-start justify-between mb-4">
@@ -401,7 +407,7 @@ export default function EmailAccountsPage() {
                                             onChange={(e) => handleToggleWarmup(account._id, e.target.checked)}
                                             className="sr-only peer"
                                         />
-                                        <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                        <div className="w-9 h-5 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#9ACD32]"></div>
                                     </label>
                                 )}
                             </div>
@@ -425,7 +431,7 @@ export default function EmailAccountsPage() {
                             <button
                                 onClick={() => setAddType("smtp")}
                                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${addType === "smtp"
-                                    ? "bg-primary text-primary-foreground"
+                                    ? "bg-[#9ACD32] text-background"
                                     : "bg-muted text-muted-foreground hover:text-foreground"
                                     }`}
                             >
@@ -434,7 +440,7 @@ export default function EmailAccountsPage() {
                             <button
                                 onClick={() => setAddType("gmail")}
                                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${addType === "gmail"
-                                    ? "bg-primary text-primary-foreground"
+                                    ? "bg-[#9ACD32] text-background"
                                     : "bg-muted text-muted-foreground hover:text-foreground"
                                     }`}
                             >
@@ -453,7 +459,7 @@ export default function EmailAccountsPage() {
                                         value={smtpForm.email}
                                         onChange={(e) => setSmtpForm({ ...smtpForm, email: e.target.value })}
                                         required
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                         placeholder="you@company.com"
                                     />
                                 </div>
@@ -467,7 +473,7 @@ export default function EmailAccountsPage() {
                                             value={smtpForm.smtpHost}
                                             onChange={(e) => setSmtpForm({ ...smtpForm, smtpHost: e.target.value })}
                                             required
-                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                             placeholder="smtp.example.com"
                                         />
                                     </div>
@@ -480,7 +486,7 @@ export default function EmailAccountsPage() {
                                             value={smtpForm.smtpPort}
                                             onChange={(e) => setSmtpForm({ ...smtpForm, smtpPort: e.target.value })}
                                             required
-                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                             placeholder="587"
                                         />
                                     </div>
@@ -494,7 +500,7 @@ export default function EmailAccountsPage() {
                                         value={smtpForm.smtpUser}
                                         onChange={(e) => setSmtpForm({ ...smtpForm, smtpUser: e.target.value })}
                                         required
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                         placeholder="your-username"
                                     />
                                 </div>
@@ -507,7 +513,7 @@ export default function EmailAccountsPage() {
                                         value={smtpForm.smtpPassword}
                                         onChange={(e) => setSmtpForm({ ...smtpForm, smtpPassword: e.target.value })}
                                         required
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
                                         placeholder="••••••••"
                                     />
                                 </div>
@@ -522,7 +528,7 @@ export default function EmailAccountsPage() {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                                        className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-all"
                                     >
                                         Connect
                                     </button>
@@ -592,6 +598,7 @@ export default function EmailAccountsPage() {
                     </motion.div>
                 </div>
             )}
+            </div>
 
             {/* Disconnect Confirmation Dialog */}
             <ConfirmDialog

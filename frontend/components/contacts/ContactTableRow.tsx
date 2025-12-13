@@ -175,7 +175,7 @@ export default function ContactTableRow({
       )}
     >
       {/* Checkbox */}
-      <td className="px-4 py-3">
+      <td className="px-4 py-1 h-8">
         <input
           type="checkbox"
           checked={isSelected}
@@ -188,7 +188,7 @@ export default function ContactTableRow({
       {orderedColumns.map((column) => (
         <td
           key={column}
-          className="px-4 py-3 text-sm text-foreground"
+          className="px-4 py-1 h-8 text-sm text-foreground border-r border-border"
         >
           <EditableCell
             contact={contact}
@@ -199,7 +199,7 @@ export default function ContactTableRow({
       ))}
 
       {/* Actions */}
-      <td className="px-4 py-3">
+      <td className="px-4 py-1 h-8">
         <Menu as="div" className="relative inline-block text-left">
           <Menu.Button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <EllipsisVerticalIcon className="w-4 h-4" />

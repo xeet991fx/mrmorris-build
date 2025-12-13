@@ -95,7 +95,7 @@ function SequenceCard({
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer"
+            className="group bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 hover:shadow-lg transition-all cursor-pointer"
             onClick={onEdit}
         >
             {/* Header */}
@@ -510,7 +510,7 @@ function SequenceModal({
                         <button
                             type="submit"
                             disabled={isSaving || !name}
-                            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                            className="px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all disabled:opacity-50"
                         >
                             {isSaving ? "Saving..." : sequence ? "Update Sequence" : "Create Sequence"}
                         </button>
@@ -538,7 +538,7 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
             </p>
             <button
                 onClick={onCreateNew}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
             >
                 <PlusIcon className="w-5 h-5" />
                 Create Your First Sequence
@@ -684,7 +684,7 @@ export default function SequencesPage() {
     });
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-card/95">
             {/* Modal */}
             <SequenceModal
                 isOpen={isModalOpen}
@@ -694,24 +694,24 @@ export default function SequencesPage() {
             />
 
             {/* Header */}
-            <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">Email Sequences</h1>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                                Create multi-step email campaigns to nurture leads
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleCreate}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
-                        >
-                            <PlusIcon className="w-5 h-5" />
-                            New Sequence
-                        </button>
-                    </div>
-                </div>
+            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-3"
+                >
+                    <h1 className="text-lg font-semibold text-foreground">Email Sequences</h1>
+                    <p className="text-xs text-muted-foreground">
+                        Multi-step email campaigns
+                    </p>
+                </motion.div>
+                <button
+                    onClick={handleCreate}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+                >
+                    <PlusIcon className="w-5 h-5" />
+                    New Sequence
+                </button>
             </div>
 
             {/* Filters */}
@@ -724,14 +724,14 @@ export default function SequencesPage() {
                             placeholder="Search sequences..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                         />
                     </div>
 
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value as Sequence["status"] | "all")}
-                        className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                        className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                     >
                         <option value="all">All Status</option>
                         <option value="draft">Draft</option>
