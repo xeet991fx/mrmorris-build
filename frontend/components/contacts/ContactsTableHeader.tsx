@@ -69,7 +69,7 @@ export default function ContactsTableHeader({
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {selectedContacts.length > 0 && onBulkDelete && (
             <button
-              onClick={handleBulkDelete}
+              onClick={onBulkDelete}
               className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-xs font-medium transition-all rounded"
             >
               <TrashIcon className="w-3.5 h-3.5" />
