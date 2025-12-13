@@ -501,8 +501,14 @@ class CampaignService {
 
     /**
      * Check if within sending time window
+     * TODO: Re-enable for production
      */
     private isWithinSendingWindow(campaign: any): boolean {
+        // TESTING MODE: Send 24/7
+        // Remove this return statement to enable time window checks
+        return true;
+
+        /* PRODUCTION CODE - uncomment when ready:
         const now = new Date();
         const schedule = campaign.sendingSchedule;
 
@@ -522,6 +528,7 @@ class CampaignService {
         }
 
         return true;
+        */
     }
 
     /**

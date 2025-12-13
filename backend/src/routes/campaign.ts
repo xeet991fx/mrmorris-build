@@ -224,13 +224,13 @@ router.put("/:id", async (req: any, res) => {
 
 /**
  * DELETE /api/campaigns/:id
- * Delete a campaign
+ * Delete a campaign and all associated data
  */
 router.delete("/:id", async (req: any, res) => {
     try {
         const { id } = req.params;
 
-        const campaign = await Campaign.findByIdAndDelete(id);
+        const campaign = await Campaign.findById(id);
 
         if (!campaign) {
             return res.status(404).json({
@@ -239,9 +239,28 @@ router.delete("/:id", async (req: any, res) => {
             });
         }
 
+        // Import models for cleanup
+        const CampaignEnrollment = (await import("../models/CampaignEnrollment")).default;
+        const EmailMessage = (await import("../models/EmailMessage")).default;
+
+        // Delete all enrollments for this campaign
+        const enrollmentResult = await CampaignEnrollment.deleteMany({ campaignId: id });
+        console.log(`🗑️ Deleted ${enrollmentResult.deletedCount} enrollments for campaign ${id}`);
+
+        // Delete all email messages for this campaign
+        const messageResult = await EmailMessage.deleteMany({ campaignId: id });
+        console.log(`🗑️ Deleted ${messageResult.deletedCount} email messages for campaign ${id}`);
+
+        // Delete the campaign itself
+        await Campaign.findByIdAndDelete(id);
+
         res.json({
             success: true,
-            message: "Campaign deleted successfully",
+            message: "Campaign and all associated data deleted successfully",
+            deleted: {
+                enrollments: enrollmentResult.deletedCount,
+                messages: messageResult.deletedCount,
+            },
         });
     } catch (error: any) {
         console.error("Delete campaign error:", error);
