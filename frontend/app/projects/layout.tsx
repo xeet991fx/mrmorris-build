@@ -28,6 +28,8 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
+import { CommandPalette } from "@/components/ui/CommandPalette";
+import { OnboardingWizard } from "@/components/dashboard/OnboardingWizard";
 
 function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -477,6 +479,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <CommandPalette />
+      <OnboardingWizard />
       <Toaster position="top-right" />
       <div className="min-h-screen bg-background">
         {/* Workspace Switcher Popup */}

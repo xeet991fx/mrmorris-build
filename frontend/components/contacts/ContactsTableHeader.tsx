@@ -12,12 +12,14 @@ import { useDebounce } from "@/hooks/useDebounce";
 interface ContactsTableHeaderProps {
   onAddContact: () => void;
   onToggleColumnManager: () => void;
+  onBulkDelete?: () => void;
   workspaceId: string;
 }
 
 export default function ContactsTableHeader({
   onAddContact,
   onToggleColumnManager,
+  onBulkDelete,
   workspaceId,
 }: ContactsTableHeaderProps) {
   const {
@@ -48,25 +50,6 @@ export default function ContactsTableHeader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
-  const handleBulkDelete = async () => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete ${selectedContacts.length} contact(s)?`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      for (const contactId of selectedContacts) {
-        await deleteContact(workspaceId, contactId);
-      }
-      clearSelectedContacts();
-    } catch (error) {
-      console.error("Bulk delete error:", error);
-    }
-  };
-
   return (
     <div className="mb-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -84,9 +67,9 @@ export default function ContactsTableHeader({
 
         {/* Actions */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {selectedContacts.length > 0 && (
+          {selectedContacts.length > 0 && onBulkDelete && (
             <button
-              onClick={handleBulkDelete}
+              onClick={onBulkDelete}
               className="inline-flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 rounded-lg text-sm font-medium transition-all"
             >
               <TrashIcon className="w-4 h-4" />

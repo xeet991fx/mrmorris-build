@@ -67,6 +67,19 @@ router.post(
         contact.customFields = Object.fromEntries(contact.customFields);
       }
 
+      // Auto-initialize lead score for new contact
+      try {
+        const leadScore = await LeadScore.getOrCreate(workspaceId, (contactDoc._id as any).toString());
+        contact.leadScore = {
+          currentScore: leadScore.currentScore,
+          grade: leadScore.grade,
+        };
+        console.log(`📊 Lead score initialized for contact ${contactDoc._id}: ${leadScore.currentScore} (${leadScore.grade})`);
+      } catch (leadErr) {
+        console.error("Failed to initialize lead score:", leadErr);
+        // Don't fail contact creation if lead score init fails
+      }
+
       // Trigger workflow enrollment (async, don't wait)
       workflowService.checkAndEnroll("contact:created", contactDoc, workspaceId)
         .catch((err) => console.error("Workflow enrollment error:", err));

@@ -17,6 +17,8 @@ import { Workflow, WorkflowStatus, STATUS_COLORS } from "@/lib/workflow/types";
 import { instantiateTemplate, WorkflowTemplate } from "@/lib/workflow/templates";
 import { cn } from "@/lib/utils";
 import TemplateSelector from "@/components/workflows/TemplateSelector";
+import { TemplateGallery } from "@/components/shared/TemplateGallery";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 // Status badge component
 function StatusBadge({ status }: { status: WorkflowStatus }) {
@@ -183,6 +185,8 @@ export default function WorkflowsPage() {
     const [statusFilter, setStatusFilter] = useState<WorkflowStatus | "all">("all");
     const [isCreating, setIsCreating] = useState(false);
     const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
 
     useEffect(() => {
         if (workspaceId) {
@@ -238,10 +242,15 @@ export default function WorkflowsPage() {
         await pauseWorkflow(workspaceId, workflowId);
     };
 
-    const handleDelete = async (workflowId: string) => {
-        if (confirm("Are you sure you want to delete this workflow?")) {
-            await deleteWorkflow(workspaceId, workflowId);
-        }
+    const handleDelete = async () => {
+        if (!workflowToDelete) return;
+        await deleteWorkflow(workspaceId, workflowToDelete);
+        setWorkflowToDelete(null);
+    };
+
+    const openDeleteConfirm = (workflowId: string) => {
+        setWorkflowToDelete(workflowId);
+        setDeleteConfirmOpen(true);
     };
 
     // Filter workflows
@@ -341,7 +350,31 @@ export default function WorkflowsPage() {
                     </div>
                 ) : filteredWorkflows.length === 0 ? (
                     workflows.length === 0 ? (
-                        <EmptyState onCreateNew={handleCreateNew} />
+                        <TemplateGallery
+                            title="Start Automating"
+                            description="Choose a template to get started quickly or build from scratch."
+                            onCreateBlank={handleCreateBlank}
+                            onSelect={(id) => {
+                                // Find template and instantiate
+                                // In a real app we'd have a look up
+                                const template = [
+                                    { id: "nurture", title: "Nurture Sequence", description: "Send a series of emails to warm up leads.", icon: "🌱", tags: ["Popular"] },
+                                    { id: "onboarding", title: "Onboarding Flow", description: "Welcome new users and guide them to activation.", icon: "👋" },
+                                    { id: "reengagement", title: "Re-engagement", description: "Win back inactive users with special offers.", icon: "🎣" }
+                                ].find(t => t.id === id);
+
+                                if (template) {
+                                    // Mock template instantiation for now as we don't have the full template list imported here yet
+                                    // In real impl, we'd import { WORKFLOW_TEMPLATES }
+                                    handleCreateBlank();
+                                }
+                            }}
+                            templates={[
+                                { id: "nurture", title: "Nurture Sequence", description: "Send a series of emails to warm up leads.", icon: "🌱", tags: ["Popular"] },
+                                { id: "onboarding", title: "Onboarding Flow", description: "Welcome new users and guide them to activation.", icon: "👋" },
+                                { id: "reengagement", title: "Re-engagement", description: "Win back inactive users with special offers.", icon: "🎣" }
+                            ]}
+                        />
                     ) : (
                         <div className="text-center py-12">
                             <p className="text-muted-foreground">No workflows match your search.</p>
@@ -356,12 +389,27 @@ export default function WorkflowsPage() {
                                 onEdit={() => handleEdit(workflow._id)}
                                 onActivate={() => handleActivate(workflow._id)}
                                 onPause={() => handlePause(workflow._id)}
-                                onDelete={() => handleDelete(workflow._id)}
+                                onDelete={() => openDeleteConfirm(workflow._id)}
                             />
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={deleteConfirmOpen}
+                onClose={() => {
+                    setDeleteConfirmOpen(false);
+                    setWorkflowToDelete(null);
+                }}
+                onConfirm={handleDelete}
+                title="Delete Workflow"
+                message="Are you sure you want to delete this workflow? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 }

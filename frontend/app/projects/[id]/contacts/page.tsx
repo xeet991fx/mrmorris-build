@@ -13,6 +13,7 @@ import AddContactModal from "@/components/contacts/AddContactModal";
 import EditContactModal from "@/components/contacts/EditContactModal";
 import ColumnManager from "@/components/contacts/ColumnManager";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { BulkActionBar } from "@/components/contacts/BulkActionBar";
 
 export default function ContactsPage() {
   const params = useParams();
@@ -26,6 +27,7 @@ export default function ContactsPage() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
   // Fetch contacts and custom columns on mount
   useEffect(() => {
@@ -55,6 +57,20 @@ export default function ContactsPage() {
       setContactToDelete(null);
     } catch (error) {
       toast.error("Failed to delete contact");
+    }
+  };
+
+  const { selectedContacts, clearSelectedContacts } = useContactStore();
+
+  const handleBulkDeleteConfirm = async () => {
+    try {
+      for (const contactId of selectedContacts) {
+        await deleteContact(workspaceId, contactId);
+      }
+      clearSelectedContacts();
+      toast.success(`Deleted ${selectedContacts.length} contact(s)`);
+    } catch (error) {
+      toast.error("Failed to delete contacts");
     }
   };
 
@@ -95,6 +111,7 @@ export default function ContactsPage() {
           <ContactsTableHeader
             onAddContact={() => setIsAddModalOpen(true)}
             onToggleColumnManager={() => setIsColumnManagerOpen(true)}
+            onBulkDelete={() => setBulkDeleteConfirmOpen(true)}
             workspaceId={workspaceId}
           />
         </motion.div>
@@ -176,6 +193,23 @@ export default function ContactsPage() {
         confirmText="Delete Contact"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={bulkDeleteConfirmOpen}
+        onClose={() => setBulkDeleteConfirmOpen(false)}
+        onConfirm={handleBulkDeleteConfirm}
+        title="Delete Contacts"
+        message={`Are you sure you want to delete ${selectedContacts.length} contact(s)? This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        variant="danger"
+      />
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        onDelete={() => setBulkDeleteConfirmOpen(true)}
       />
     </>
   );

@@ -32,6 +32,8 @@ import {
 } from "@/lib/api/campaign";
 import { getEmailAccounts } from "@/lib/api/emailAccount";
 import { axiosInstance } from "@/lib/axios";
+import { TemplateGallery } from "@/components/shared/TemplateGallery";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function CampaignsPage() {
     const params = useParams();
@@ -58,6 +60,10 @@ export default function CampaignsPage() {
     const [testEmailCampaign, setTestEmailCampaign] = useState<Campaign | null>(null);
     const [testEmailAddress, setTestEmailAddress] = useState("");
     const [isSendingTest, setIsSendingTest] = useState(false);
+
+    // Delete confirmation state
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
 
     // Create form state
     const [createForm, setCreateForm] = useState<{
@@ -236,12 +242,10 @@ export default function CampaignsPage() {
         }
     };
 
-    const handleDeleteCampaign = async (campaignId: string) => {
-        if (!confirm("Are you sure you want to delete this campaign?")) {
-            return;
-        }
+    const handleDeleteCampaign = async () => {
+        if (!campaignToDelete) return;
         try {
-            const response = await deleteCampaign(campaignId);
+            const response = await deleteCampaign(campaignToDelete);
             if (response.success) {
                 toast.success("Campaign deleted");
                 fetchCampaignsData();
@@ -250,7 +254,14 @@ export default function CampaignsPage() {
             }
         } catch (err: any) {
             toast.error(err.message || "Failed to delete campaign");
+        } finally {
+            setCampaignToDelete(null);
         }
+    };
+
+    const openDeleteConfirm = (campaignId: string) => {
+        setCampaignToDelete(campaignId);
+        setDeleteConfirmOpen(true);
     };
 
     // Fetch contacts for enrollment
@@ -449,24 +460,21 @@ export default function CampaignsPage() {
 
             {/* Campaigns List */}
             {campaigns.length === 0 ? (
-                <div className="bg-card border border-border rounded-xl p-12 text-center">
-                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-muted-foreground">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                        </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-foreground mb-2">No campaigns yet</h3>
-                    <p className="text-muted-foreground mb-6">
-                        Create your first cold email campaign to start reaching prospects
-                    </p>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                    >
-                        <PlusIcon className="w-5 h-5" />
-                        Create Campaign
-                    </button>
-                </div>
+                <TemplateGallery
+                    title="Launch Your Outreach"
+                    description="Select a campaign strategy or start from scratch."
+                    onCreateBlank={() => setShowCreateModal(true)}
+                    actionLabel="New Campaign"
+                    onSelect={(id) => {
+                        setShowCreateModal(true);
+                        // Pre-fill logic could go here based on ID
+                    }}
+                    templates={[
+                        { id: "cold-outreach", title: "Cold Outreach", description: "Standard 3-step sequence for cold prospects.", icon: "❄️" },
+                        { id: "newsletter", title: "Newsletter Blast", description: "One-off announcement to your list.", icon: "📰" },
+                        { id: "event-invite", title: "Event Invitation", description: "Invite and follow up sequence.", icon: "🎟️" }
+                    ]}
+                />
             ) : (
                 <div className="space-y-4">
                     {campaigns.map((campaign) => (
@@ -474,7 +482,7 @@ export default function CampaignsPage() {
                             key={campaign._id}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="bg-card border border-border rounded-xl p-5 hover:border-primary/50 transition-colors"
+                            className="premium-card p-5 hover:-translate-y-1 transition-all duration-300"
                         >
                             {/* Campaign Header */}
                             <div className="flex items-start justify-between mb-4">
@@ -520,7 +528,7 @@ export default function CampaignsPage() {
                                         <PaperAirplaneIcon className="w-5 h-5" />
                                     </button>
                                     <button
-                                        onClick={() => handleDeleteCampaign(campaign._id)}
+                                        onClick={() => openDeleteConfirm(campaign._id)}
                                         className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                                         title="Delete Campaign"
                                     >
@@ -930,6 +938,21 @@ export default function CampaignsPage() {
                     </motion.div>
                 </div>
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={deleteConfirmOpen}
+                onClose={() => {
+                    setDeleteConfirmOpen(false);
+                    setCampaignToDelete(null);
+                }}
+                onConfirm={handleDeleteCampaign}
+                title="Delete Campaign"
+                message="Are you sure you want to delete this campaign? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 }
