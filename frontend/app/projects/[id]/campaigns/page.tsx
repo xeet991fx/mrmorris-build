@@ -461,39 +461,41 @@ export default function CampaignsPage() {
 
             {/* Campaigns List */}
             {campaigns.length === 0 ? (
-                <div className="bg-card border border-border rounded-xl p-12 text-center">
-                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-muted-foreground">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                        </svg>
+                <>
+                    <div className="bg-card border border-border rounded-xl p-12 text-center">
+                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-muted-foreground">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-foreground mb-2">No campaigns yet</h3>
+                        <p className="text-muted-foreground mb-6">
+                            Create your first cold email campaign to start reaching prospects
+                        </p>
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
+                        >
+                            <PlusIcon className="w-5 h-5" />
+                            Create Campaign
+                        </button>
                     </div>
-                    <h3 className="text-lg font-medium text-foreground mb-2">No campaigns yet</h3>
-                    <p className="text-muted-foreground mb-6">
-                        Create your first cold email campaign to start reaching prospects
-                    </p>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
-                    >
-                        <PlusIcon className="w-5 h-5" />
-                        Create Campaign
-                    </button>
-                </div>
-                <TemplateGallery
-                    title="Launch Your Outreach"
-                    description="Select a campaign strategy or start from scratch."
-                    onCreateBlank={() => setShowCreateModal(true)}
-                    actionLabel="New Campaign"
-                    onSelect={(id) => {
-                        setShowCreateModal(true);
-                        // Pre-fill logic could go here based on ID
-                    }}
-                    templates={[
-                        { id: "cold-outreach", title: "Cold Outreach", description: "Standard 3-step sequence for cold prospects.", icon: "❄️" },
-                        { id: "newsletter", title: "Newsletter Blast", description: "One-off announcement to your list.", icon: "📰" },
-                        { id: "event-invite", title: "Event Invitation", description: "Invite and follow up sequence.", icon: "🎟️" }
-                    ]}
-                />
+                    <TemplateGallery
+                        title="Launch Your Outreach"
+                        description="Select a campaign strategy or start from scratch."
+                        onCreateBlank={() => setShowCreateModal(true)}
+                        actionLabel="New Campaign"
+                        onSelect={(id) => {
+                            setShowCreateModal(true);
+                            // Pre-fill logic could go here based on ID
+                        }}
+                        templates={[
+                            { id: "cold-outreach", title: "Cold Outreach", description: "Standard 3-step sequence for cold prospects.", icon: "❄️" },
+                            { id: "newsletter", title: "Newsletter Blast", description: "One-off announcement to your list.", icon: "📰" },
+                            { id: "event-invite", title: "Event Invitation", description: "Invite and follow up sequence.", icon: "🎟️" }
+                        ]}
+                    />
+                </>
             ) : (
                 <div className="space-y-4">
                     {campaigns.map((campaign) => (
