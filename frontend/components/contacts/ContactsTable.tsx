@@ -140,13 +140,9 @@ export default function ContactsTable({
         {/* Table */}
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full" style={{ tableLayout: 'fixed' }}>
-            <colgroup>
-              <col style={{ width: '48px' }} /> {/* Checkbox */}
-              {orderedVisibleColumns.map((column) => (
-                <col key={column} style={{ width: `${columnWidths[column]}px` }} />
-              ))}
-              <col style={{ width: '48px' }} /> {/* Actions */}
-            </colgroup>
+            <colgroup><col style={{ width: '48px' }} />{orderedVisibleColumns.map((column) => (
+              <col key={column} style={{ width: `${columnWidths[column]}px` }} />
+            ))}<col style={{ width: '48px' }} /></colgroup>
             <thead className="bg-card/95">
               <tr className="border-b border-border group">
                 {/* Checkbox Header */}
@@ -215,45 +211,45 @@ export default function ContactsTable({
           </table>
         </div>
 
-      {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing{" "}
-            <span className="font-medium text-foreground">
-              {(pagination.page - 1) * pagination.limit + 1}
-            </span>{" "}
-            to{" "}
-            <span className="font-medium text-foreground">
-              {Math.min(pagination.page * pagination.limit, pagination.total)}
-            </span>{" "}
-            of <span className="font-medium text-foreground">{pagination.total}</span>{" "}
-            contacts
-          </p>
+        {/* Pagination */}
+        {pagination.pages > 1 && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing{" "}
+              <span className="font-medium text-foreground">
+                {(pagination.page - 1) * pagination.limit + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-medium text-foreground">
+                {Math.min(pagination.page * pagination.limit, pagination.total)}
+              </span>{" "}
+              of <span className="font-medium text-foreground">{pagination.total}</span>{" "}
+              contacts
+            </p>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-              className="px-3 py-1.5 rounded-lg bg-card/95 border border-border text-foreground hover:text-foreground hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
-            >
-              <ChevronLeftIcon className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="px-3 py-1.5 rounded-lg bg-card/95 border border-border text-foreground hover:text-foreground hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+              >
+                <ChevronLeftIcon className="w-4 h-4" />
+              </button>
 
-            <span className="text-sm text-muted-foreground">
-              Page {pagination.page} of {pagination.pages}
-            </span>
+              <span className="text-sm text-muted-foreground">
+                Page {pagination.page} of {pagination.pages}
+              </span>
 
-            <button
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.pages}
-              className="px-3 py-1.5 rounded-lg bg-card/95 border border-border text-foreground hover:text-foreground hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
-            >
-              <ChevronRightIcon className="w-4 h-4" />
-            </button>
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.pages}
+                className="px-3 py-1.5 rounded-lg bg-card/95 border border-border text-foreground hover:text-foreground hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+              >
+                <ChevronRightIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </DndContext>
   );

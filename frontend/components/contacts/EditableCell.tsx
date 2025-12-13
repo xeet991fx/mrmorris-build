@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import React, { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { useParams } from "next/navigation";
 import { Contact } from "@/lib/api/contact";
 import { useContactStore, ContactColumn } from "@/store/useContactStore";
@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 interface EditableCellProps {
   contact: Contact;
   column: ContactColumn;
-  value: string | JSX.Element;
+  value: string | React.ReactNode;
 }
 
 const STATUS_OPTIONS = [
