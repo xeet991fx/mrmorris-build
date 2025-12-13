@@ -39,6 +39,7 @@ class InboxService {
         const query: any = {
             workspaceId,
             replied: true, // Only show messages that have replies
+            campaignId: { $ne: null }, // Exclude orphaned messages from deleted campaigns
         };
 
         if (filters?.campaign) {

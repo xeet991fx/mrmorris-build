@@ -1,32 +1,44 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-async function cleanupOrphanedEnrollments() {
+async function cleanupOrphanedData() {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('Connected to MongoDB');
 
-    const enrollments = await mongoose.connection.db.collection('campaignenrollments').find({}).toArray();
+    // Get all campaigns
     const campaigns = await mongoose.connection.db.collection('campaigns').find({}).project({ _id: 1 }).toArray();
+    const campaignIds = campaigns.map(c => c._id);
 
-    const campaignIds = campaigns.map(c => c._id.toString());
-    const orphaned = enrollments.filter(e => !campaignIds.includes(e.campaignId.toString()));
-
-    console.log('Total enrollments:', enrollments.length);
     console.log('Active campaigns:', campaignIds.length);
-    console.log('Orphaned enrollments:', orphaned.length);
 
-    if (orphaned.length > 0) {
-        const orphanedIds = orphaned.map(e => e._id);
+    // Clean up orphaned enrollments
+    const enrollments = await mongoose.connection.db.collection('campaignenrollments').find({}).toArray();
+    const orphanedEnrollments = enrollments.filter(e => !campaignIds.some(id => id.toString() === e.campaignId.toString()));
+    console.log('Orphaned enrollments:', orphanedEnrollments.length);
+
+    if (orphanedEnrollments.length > 0) {
+        const orphanedEnrollmentIds = orphanedEnrollments.map(e => e._id);
         const result = await mongoose.connection.db.collection('campaignenrollments').deleteMany({
-            _id: { $in: orphanedIds }
+            _id: { $in: orphanedEnrollmentIds }
         });
         console.log('Deleted orphaned enrollments:', result.deletedCount);
-    } else {
-        console.log('No orphaned enrollments to clean up.');
+    }
+
+    // Clean up orphaned email messages
+    const emails = await mongoose.connection.db.collection('emailmessages').find({}).toArray();
+    const orphanedEmails = emails.filter(e => e.campaignId && !campaignIds.some(id => id.toString() === e.campaignId.toString()));
+    console.log('Orphaned email messages:', orphanedEmails.length);
+
+    if (orphanedEmails.length > 0) {
+        const orphanedEmailIds = orphanedEmails.map(e => e._id);
+        const result = await mongoose.connection.db.collection('emailmessages').deleteMany({
+            _id: { $in: orphanedEmailIds }
+        });
+        console.log('Deleted orphaned email messages:', result.deletedCount);
     }
 
     await mongoose.disconnect();
     console.log('Done!');
 }
 
-cleanupOrphanedEnrollments().catch(console.error);
+cleanupOrphanedData().catch(console.error);
