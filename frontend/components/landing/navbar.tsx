@@ -1,11 +1,20 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
 export function Navbar() {
+  const router = useRouter()
+
+  // Prefetch login page for instant navigation
+  useEffect(() => {
+    router.prefetch("/login")
+    router.prefetch("/register")
+  }, [router])
   return (
     <nav className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
