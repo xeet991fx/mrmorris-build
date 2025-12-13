@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { getGmailConnectUrl, getEmailIntegrations } from "@/lib/api/emailIntegration";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface EmailAccount {
     _id: string;
@@ -41,6 +42,8 @@ export default function EmailAccountsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [addType, setAddType] = useState<"smtp" | "gmail">("smtp");
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
 
     // SMTP form state
     const [smtpForm, setSmtpForm] = useState({
@@ -168,13 +171,11 @@ export default function EmailAccountsPage() {
         }
     };
 
-    const handleDisconnect = async (accountId: string) => {
-        if (!confirm("Are you sure you want to disconnect this email account?")) {
-            return;
-        }
+    const handleDisconnect = async () => {
+        if (!accountToDelete) return;
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`${apiUrl}/email-accounts/${accountId}`, {
+            const response = await fetch(`${apiUrl}/email-accounts/${accountToDelete}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -188,7 +189,14 @@ export default function EmailAccountsPage() {
         } catch (error) {
             console.error("Failed to disconnect account:", error);
             toast.error("Failed to disconnect account");
+        } finally {
+            setAccountToDelete(null);
         }
+    };
+
+    const openDisconnectConfirm = (accountId: string) => {
+        setAccountToDelete(accountId);
+        setDeleteConfirmOpen(true);
     };
 
     const getStatusBadge = (status: string) => {
@@ -331,7 +339,7 @@ export default function EmailAccountsPage() {
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => handleDisconnect(account._id)}
+                                    onClick={() => openDisconnectConfirm(account._id)}
                                     className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors"
                                     title="Disconnect"
                                 >
@@ -591,6 +599,21 @@ export default function EmailAccountsPage() {
                 </div>
             )}
             </div>
+
+            {/* Disconnect Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={deleteConfirmOpen}
+                onClose={() => {
+                    setDeleteConfirmOpen(false);
+                    setAccountToDelete(null);
+                }}
+                onConfirm={handleDisconnect}
+                title="Disconnect Email Account"
+                message="Are you sure you want to disconnect this email account? This cannot be undone."
+                confirmText="Disconnect"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 }

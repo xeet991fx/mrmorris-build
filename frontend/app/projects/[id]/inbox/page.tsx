@@ -313,7 +313,7 @@ export default function InboxPage() {
             {/* Messages List & Detail View */}
             <div className="flex-1 flex gap-6 min-h-0">
                 {/* Messages List */}
-                <div className="w-2/5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl overflow-hidden flex flex-col shadow-xl shadow-black/5">
+                <div className="w-2/5 premium-card overflow-hidden flex flex-col">
                     <div className="px-5 py-4 border-b border-border/50 bg-muted/30">
                         <h2 className="font-semibold text-foreground flex items-center gap-2">
                             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -391,7 +391,7 @@ export default function InboxPage() {
                 </div>
 
                 {/* Message Detail */}
-                <div className="w-3/5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl overflow-hidden flex flex-col shadow-xl shadow-black/5">
+                <div className="w-3/5 premium-card overflow-hidden flex flex-col">
                     {selectedMessage ? (
                         <>
                             {/* Detail Header */}

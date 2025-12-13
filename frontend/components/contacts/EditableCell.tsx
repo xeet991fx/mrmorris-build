@@ -1,14 +1,15 @@
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import React, { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { useParams } from "next/navigation";
 import { Contact } from "@/lib/api/contact";
 import { useContactStore, ContactColumn } from "@/store/useContactStore";
+import { updateLeadScore } from "@/lib/api/leadScore";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 interface EditableCellProps {
   contact: Contact;
   column: ContactColumn;
-  value: string | JSX.Element;
+  value: string | React.ReactNode;
 }
 
 const STATUS_OPTIONS = [
@@ -36,6 +37,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
 
   // Don't allow editing for certain columns
   const isReadOnly = column === "createdAt";
+  const isLeadScore = column === "leadScore";
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -82,6 +84,9 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
         case "status":
           currentValue = contact.status || "lead";
           break;
+        case "leadScore":
+          currentValue = String(contact.leadScore?.currentScore || 0);
+          break;
       }
     }
 
@@ -101,11 +106,27 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
 
     setIsSaving(true);
     try {
-      await updateContactField(workspaceId, contact._id, column, localValue);
-      toast.success("Contact updated");
+      if (isLeadScore) {
+        // Special handling for lead score
+        const newScore = parseInt(localValue, 10);
+        if (isNaN(newScore)) {
+          toast.error("Please enter a valid number");
+          return;
+        }
+        const currentScore = contact.leadScore?.currentScore || 0;
+        const pointsDiff = newScore - currentScore;
+        await updateLeadScore(workspaceId, contact._id, { points: pointsDiff, reason: "Manual update" });
+        toast.success("Lead score updated");
+        // Refresh contacts to get updated score
+        const { fetchContacts } = useContactStore.getState();
+        fetchContacts(workspaceId);
+      } else {
+        await updateContactField(workspaceId, contact._id, column, localValue);
+        toast.success("Contact updated");
+      }
     } catch (error) {
-      toast.error("Failed to update contact");
-      console.error("Error updating contact:", error);
+      toast.error(isLeadScore ? "Failed to update lead score" : "Failed to update contact");
+      console.error("Error updating:", error);
     } finally {
       setIsSaving(false);
       setEditingCell(null);
@@ -251,6 +272,25 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
           </option>
         ))}
       </select>
+    );
+  }
+
+  // Lead score - special number input
+  if (isLeadScore) {
+    return (
+      <input
+        ref={inputRef as React.RefObject<HTMLInputElement>}
+        type="number"
+        min="0"
+        max="100"
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        disabled={isSaving}
+        className="w-20 px-2 py-1 bg-input border border-primary/50 rounded text-sm text-foreground text-center focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+        placeholder="0"
+      />
     );
   }
 

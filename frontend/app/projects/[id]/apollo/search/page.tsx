@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   MagnifyingGlassIcon,
@@ -135,7 +136,7 @@ export default function ApolloSearchPage() {
             className="mt-4 text-sm text-[#9ACD32] hover:underline"
           >
             Go to Integrations →
-          </button>
+          </Link>
         </div>
       </motion.div>
       </div>

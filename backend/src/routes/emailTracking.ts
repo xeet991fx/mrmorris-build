@@ -3,10 +3,108 @@ import mongoose from "mongoose";
 import Workflow from "../models/Workflow";
 import Contact from "../models/Contact";
 import Activity from "../models/Activity";
+import Campaign from "../models/Campaign";
+import EmailMessage from "../models/EmailMessage";
+import { authenticate } from "../middleware/auth";
 import { workflowService } from "../services/workflow";
 import leadScoringService from "../services/leadScoring";
 
 const router = express.Router();
+
+/**
+ * Email Tracking API Routes
+ */
+
+// ============================================
+// GET TRACKING STATS
+// ============================================
+
+/**
+ * @route   GET /api/email-tracking/stats/:workspaceId
+ * @desc    Get email tracking statistics for a workspace
+ * @access  Private
+ */
+router.get("/stats/:workspaceId", authenticate, async (req: Request, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+
+        // Recalculate stats from EmailMessage for accuracy
+        const messages = await EmailMessage.find({ workspaceId });
+
+        const totalSent = messages.length;
+        const totalOpened = messages.filter((m) => m.opened).length;
+        const totalClicked = messages.filter((m) => m.clicked).length;
+        const totalReplied = messages.filter((m) => m.replied).length;
+        const totalBounced = messages.filter((m) => m.bounced).length;
+
+        const openRate = totalSent > 0 ? (totalOpened / totalSent) * 100 : 0;
+        const clickRate = totalSent > 0 ? (totalClicked / totalSent) * 100 : 0;
+        const replyRate = totalSent > 0 ? (totalReplied / totalSent) * 100 : 0;
+        const bounceRate = totalSent > 0 ? (totalBounced / totalSent) * 100 : 0;
+
+        res.json({
+            success: true,
+            data: {
+                totalSent,
+                totalOpened,
+                totalClicked,
+                totalReplied,
+                totalBounced,
+                openRate,
+                clickRate,
+                replyRate,
+                bounceRate,
+            },
+        });
+    } catch (error: any) {
+        console.error("Get tracking stats error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// GET CAMPAIGN PERFORMANCE
+// ============================================
+
+/**
+ * @route   GET /api/email-tracking/campaigns/:workspaceId
+ * @desc    Get campaign performance data
+ * @access  Private
+ */
+router.get("/campaigns/:workspaceId", authenticate, async (req: Request, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+
+        const campaigns = await Campaign.find({ workspaceId }).sort({ createdAt: -1 });
+
+        const performanceData = campaigns.map((campaign) => {
+            const sent = campaign.stats?.sent || 0;
+            const opened = campaign.stats?.opened || 0;
+            const clicked = campaign.stats?.clicked || 0;
+            const replied = campaign.stats?.replied || 0;
+
+            return {
+                campaignId: campaign._id,
+                campaignName: campaign.name,
+                sent,
+                opened,
+                clicked,
+                replied,
+                openRate: sent > 0 ? (opened / sent) * 100 : 0,
+                clickRate: sent > 0 ? (clicked / sent) * 100 : 0,
+                replyRate: sent > 0 ? (replied / sent) * 100 : 0,
+            };
+        });
+
+        res.json({
+            success: true,
+            campaigns: performanceData,
+        });
+    } catch (error: any) {
+        console.error("Get campaign performance error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 /**
  * Email Tracking Webhook Routes
@@ -24,7 +122,7 @@ const router = express.Router();
  * @desc    Track email opens via tracking pixel
  * @access  Public (but uses encrypted tracking ID)
  * 
- * The trackingId format: base64(workspaceId:contactId:emailType:timestamp)
+ * The trackingId format: base64(workspaceId:contactId:emailType:campaignId:timestamp)
  */
 router.get("/open/:trackingId", async (req: Request, res: Response) => {
     try {
@@ -32,7 +130,11 @@ router.get("/open/:trackingId", async (req: Request, res: Response) => {
 
         // Decode tracking ID
         const decoded = Buffer.from(trackingId, "base64").toString("utf-8");
-        const [workspaceId, contactId, emailType, timestamp] = decoded.split(":");
+        const parts = decoded.split(":");
+        const workspaceId = parts[0];
+        const contactId = parts[1];
+        const emailType = parts[2];
+        const campaignId = parts[3];
 
         if (!workspaceId || !contactId) {
             // Return 1x1 transparent pixel anyway to not break email
@@ -40,12 +142,29 @@ router.get("/open/:trackingId", async (req: Request, res: Response) => {
         }
 
         // Log the open event
-        console.log(`📧 Email opened: contact=${contactId}, type=${emailType}`);
+        console.log(`📧 Email opened: contact=${contactId}, type=${emailType}, campaign=${campaignId}`);
 
         // Get contact
         const contact = await Contact.findById(contactId);
         if (!contact) {
             return sendTrackingPixel(res);
+        }
+
+        // Update EmailMessage record if this is a campaign email
+        if (emailType === "campaign" && campaignId) {
+            const emailMessage = await EmailMessage.findOneAndUpdate(
+                { campaignId, contactId, opened: false },
+                { opened: true, openedAt: new Date() },
+                { new: true }
+            );
+
+            if (emailMessage) {
+                // Update campaign stats
+                await Campaign.findByIdAndUpdate(campaignId, {
+                    $inc: { "stats.opened": 1 }
+                });
+                console.log(`📊 Updated EmailMessage and Campaign stats for open`);
+            }
         }
 
         // Log activity
@@ -58,6 +177,7 @@ router.get("/open/:trackingId", async (req: Request, res: Response) => {
             description: `Contact opened ${emailType || "automated"} email`,
             metadata: {
                 emailType,
+                campaignId,
                 openedAt: new Date(),
                 trackingId,
             },
@@ -102,7 +222,7 @@ router.get("/open/:trackingId", async (req: Request, res: Response) => {
  * Query params:
  * - url: The actual URL to redirect to (base64 encoded)
  * 
- * The trackingId format: base64(workspaceId:contactId:emailType:linkId)
+ * The trackingId format: base64(workspaceId:contactId:emailType:campaignId:timestamp)
  */
 router.get("/click/:trackingId", async (req: Request, res: Response) => {
     try {
@@ -111,7 +231,11 @@ router.get("/click/:trackingId", async (req: Request, res: Response) => {
 
         // Decode tracking ID
         const decoded = Buffer.from(trackingId, "base64").toString("utf-8");
-        const [workspaceId, contactId, emailType, linkId] = decoded.split(":");
+        const parts = decoded.split(":");
+        const workspaceId = parts[0];
+        const contactId = parts[1];
+        const emailType = parts[2];
+        const campaignId = parts[3];
 
         // Decode destination URL
         let destinationUrl = "https://example.com"; // Fallback
@@ -128,12 +252,29 @@ router.get("/click/:trackingId", async (req: Request, res: Response) => {
         }
 
         // Log the click event
-        console.log(`🔗 Email link clicked: contact=${contactId}, link=${linkId}`);
+        console.log(`🔗 Email link clicked: contact=${contactId}, campaign=${campaignId}`);
 
         // Get contact
         const contact = await Contact.findById(contactId);
         if (!contact) {
             return res.redirect(destinationUrl);
+        }
+
+        // Update EmailMessage record if this is a campaign email
+        if (emailType === "campaign" && campaignId) {
+            const emailMessage = await EmailMessage.findOneAndUpdate(
+                { campaignId, contactId, clicked: false },
+                { clicked: true, clickedAt: new Date() },
+                { new: true }
+            );
+
+            if (emailMessage) {
+                // Update campaign stats
+                await Campaign.findByIdAndUpdate(campaignId, {
+                    $inc: { "stats.clicked": 1 }
+                });
+                console.log(`📊 Updated EmailMessage and Campaign stats for click`);
+            }
         }
 
         // Log activity
@@ -146,7 +287,7 @@ router.get("/click/:trackingId", async (req: Request, res: Response) => {
             description: `Contact clicked link in ${emailType || "automated"} email`,
             metadata: {
                 emailType,
-                linkId,
+                campaignId,
                 destinationUrl,
                 clickedAt: new Date(),
                 trackingId,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
     PlusIcon,
@@ -32,6 +33,8 @@ import {
 } from "@/lib/api/campaign";
 import { getEmailAccounts } from "@/lib/api/emailAccount";
 import { axiosInstance } from "@/lib/axios";
+import { TemplateGallery } from "@/components/shared/TemplateGallery";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function CampaignsPage() {
     const params = useParams();
@@ -58,6 +61,10 @@ export default function CampaignsPage() {
     const [testEmailCampaign, setTestEmailCampaign] = useState<Campaign | null>(null);
     const [testEmailAddress, setTestEmailAddress] = useState("");
     const [isSendingTest, setIsSendingTest] = useState(false);
+
+    // Delete confirmation state
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
 
     // Create form state
     const [createForm, setCreateForm] = useState<{
@@ -236,12 +243,10 @@ export default function CampaignsPage() {
         }
     };
 
-    const handleDeleteCampaign = async (campaignId: string) => {
-        if (!confirm("Are you sure you want to delete this campaign?")) {
-            return;
-        }
+    const handleDeleteCampaign = async () => {
+        if (!campaignToDelete) return;
         try {
-            const response = await deleteCampaign(campaignId);
+            const response = await deleteCampaign(campaignToDelete);
             if (response.success) {
                 toast.success("Campaign deleted");
                 fetchCampaignsData();
@@ -250,7 +255,14 @@ export default function CampaignsPage() {
             }
         } catch (err: any) {
             toast.error(err.message || "Failed to delete campaign");
+        } finally {
+            setCampaignToDelete(null);
         }
+    };
+
+    const openDeleteConfirm = (campaignId: string) => {
+        setCampaignToDelete(campaignId);
+        setDeleteConfirmOpen(true);
     };
 
     // Fetch contacts for enrollment
@@ -467,6 +479,21 @@ export default function CampaignsPage() {
                         Create Campaign
                     </button>
                 </div>
+                <TemplateGallery
+                    title="Launch Your Outreach"
+                    description="Select a campaign strategy or start from scratch."
+                    onCreateBlank={() => setShowCreateModal(true)}
+                    actionLabel="New Campaign"
+                    onSelect={(id) => {
+                        setShowCreateModal(true);
+                        // Pre-fill logic could go here based on ID
+                    }}
+                    templates={[
+                        { id: "cold-outreach", title: "Cold Outreach", description: "Standard 3-step sequence for cold prospects.", icon: "❄️" },
+                        { id: "newsletter", title: "Newsletter Blast", description: "One-off announcement to your list.", icon: "📰" },
+                        { id: "event-invite", title: "Event Invitation", description: "Invite and follow up sequence.", icon: "🎟️" }
+                    ]}
+                />
             ) : (
                 <div className="space-y-4">
                     {campaigns.map((campaign) => (
@@ -520,7 +547,7 @@ export default function CampaignsPage() {
                                         <PaperAirplaneIcon className="w-5 h-5" />
                                     </button>
                                     <button
-                                        onClick={() => handleDeleteCampaign(campaign._id)}
+                                        onClick={() => openDeleteConfirm(campaign._id)}
                                         className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                                         title="Delete Campaign"
                                     >
@@ -646,13 +673,12 @@ export default function CampaignsPage() {
                                 {emailAccounts.length === 0 ? (
                                     <p className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
                                         No email accounts connected.{" "}
-                                        <button
-                                            type="button"
-                                            onClick={() => router.push(`/projects/${workspaceId}/email-accounts`)}
+                                        <Link
+                                            href={`/projects/${workspaceId}/email-accounts`}
                                             className="text-primary hover:underline"
                                         >
                                             Add one now
-                                        </button>
+                                        </Link>
                                     </p>
                                 ) : (
                                     <div className="flex flex-wrap gap-2">
@@ -930,6 +956,21 @@ export default function CampaignsPage() {
                     </motion.div>
                 </div>
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={deleteConfirmOpen}
+                onClose={() => {
+                    setDeleteConfirmOpen(false);
+                    setCampaignToDelete(null);
+                }}
+                onConfirm={handleDeleteCampaign}
+                title="Delete Campaign"
+                message="Are you sure you want to delete this campaign? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 }
