@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   MagnifyingGlassIcon,
@@ -42,12 +43,12 @@ export default function ApolloSearchPage() {
         animate={{ opacity: 1, x: 0 }}
         className="mb-5 flex items-center gap-2 text-sm"
       >
-        <button
-          onClick={() => router.push(`/projects/${workspaceId}`)}
+        <Link
+          href={`/projects/${workspaceId}`}
           className="text-muted-foreground hover:text-foreground transition-colors"
         >
           Dashboard
-        </button>
+        </Link>
         <ChevronRightIcon className="w-3.5 h-3.5 text-muted-foreground" />
         <span className="text-foreground font-medium">Apollo Search</span>
       </motion.div>
@@ -143,12 +144,12 @@ export default function ApolloSearchPage() {
             Apollo integration in the settings and use the EnrichButton component on contact
             pages to enrich individual contacts.
           </p>
-          <button
-            onClick={() => router.push(`/projects/${workspaceId}/settings/integrations`)}
+          <Link
+            href={`/projects/${workspaceId}/settings/integrations`}
             className="mt-4 text-sm text-primary hover:underline"
           >
             Go to Integrations →
-          </button>
+          </Link>
         </div>
       </motion.div>
     </div>

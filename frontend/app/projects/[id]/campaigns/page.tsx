@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
     PlusIcon,
@@ -654,13 +655,12 @@ export default function CampaignsPage() {
                                 {emailAccounts.length === 0 ? (
                                     <p className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
                                         No email accounts connected.{" "}
-                                        <button
-                                            type="button"
-                                            onClick={() => router.push(`/projects/${workspaceId}/email-accounts`)}
+                                        <Link
+                                            href={`/projects/${workspaceId}/email-accounts`}
                                             className="text-primary hover:underline"
                                         >
                                             Add one now
-                                        </button>
+                                        </Link>
                                     </p>
                                 ) : (
                                     <div className="flex flex-wrap gap-2">

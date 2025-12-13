@@ -36,6 +36,22 @@ export function CommandPalette() {
         return () => document.removeEventListener("keydown", down);
     }, []);
 
+    // Prefetch routes when command palette opens for instant navigation
+    useEffect(() => {
+        if (open && currentWorkspace) {
+            const baseUrl = `/projects/${currentWorkspace._id}`;
+            router.prefetch(baseUrl);
+            router.prefetch(`${baseUrl}/contacts`);
+            router.prefetch(`${baseUrl}/companies`);
+            router.prefetch(`${baseUrl}/pipelines`);
+            router.prefetch(`${baseUrl}/campaigns`);
+            router.prefetch(`${baseUrl}/workflows`);
+            router.prefetch(`${baseUrl}/inbox`);
+            router.prefetch(`${baseUrl}/email-accounts`);
+            router.prefetch(`${baseUrl}/email-analytics`);
+        }
+    }, [open, currentWorkspace, router]);
+
     const runCommand = (command: () => void) => {
         setOpen(false);
         command();

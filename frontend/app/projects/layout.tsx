@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FolderIcon,
@@ -155,8 +156,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
           )}>
             <div className={cn(isExpanded ? "space-y-0.5" : "space-y-1")}>
               {/* Dashboard */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -172,11 +173,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Dashboard
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Contacts */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/contacts`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/contacts`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -192,11 +193,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Contacts
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Companies */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/companies`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/companies`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -212,11 +213,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Companies
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Pipelines */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/pipelines`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/pipelines`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -232,11 +233,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Pipelines
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Workflows */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/workflows`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/workflows`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -254,11 +255,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Workflows
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Email Templates */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/email-templates`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/email-templates`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -274,11 +275,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Templates
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Sequences */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/sequences`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/sequences`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -296,7 +297,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Sequences
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Cold Email Section Divider */}
               <div className={cn(
@@ -305,8 +306,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
               )} />
 
               {/* Campaigns */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/campaigns`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/campaigns`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -322,11 +323,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Campaigns
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Email Accounts */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/email-accounts`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/email-accounts`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -342,11 +343,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Email Accounts
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Inbox */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/inbox`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/inbox`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -362,7 +363,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Inbox
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Analytics & Settings Divider */}
               <div className={cn(
@@ -371,8 +372,8 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
               )} />
 
               {/* Data Stewardship */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/data-stewardship`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/data-stewardship`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -388,11 +389,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Data Quality
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Email Analytics */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/email-analytics`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/email-analytics`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -408,11 +409,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Analytics
                   </span>
                 )}
-              </button>
+              </Link>
 
               {/* Settings */}
-              <button
-                onClick={() => router.push(`/projects/${currentWorkspaceFromUrl._id}/settings`)}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/settings`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1.5 text-left" : "justify-center p-2",
@@ -428,7 +429,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     Settings
                   </span>
                 )}
-              </button>
+              </Link>
             </div>
           </div>
         )}
