@@ -300,7 +300,20 @@ class CampaignService {
             // Personalize subject and body
             const subject = this.personalizeText(step.subject, contact);
             const body = this.personalizeText(step.body, contact);
-            const htmlBody = `<p>${body.replace(/\n/g, "<br>")}</p>`;
+            let htmlBody = `<p>${body.replace(/\n/g, "<br>")}</p>`;
+
+            // Generate email tracking ID (will be saved to EmailMessage later)
+            const trackingId = Buffer.from(
+                `${campaign.workspaceId}:${contact._id}:campaign:${campaign._id}:${Date.now()}`
+            ).toString("base64");
+
+            // Add tracking pixel for open tracking
+            const baseUrl = process.env.BACKEND_URL || "http://localhost:5000";
+            const trackingPixel = `<img src="${baseUrl}/api/email-tracking/open/${trackingId}" width="1" height="1" style="display:none" alt="" />`;
+            htmlBody += trackingPixel;
+
+            // Wrap links with click tracking
+            htmlBody = this.wrapLinksWithTracking(htmlBody, trackingId, baseUrl);
 
             let messageId: string | undefined;
 
@@ -419,6 +432,28 @@ class CampaignService {
             .replace(/\{\{name\}\}/g, contact.name || "")
             .replace(/\{\{email\}\}/g, contact.email || "")
             .replace(/\{\{company\}\}/g, contact.company || "");
+    }
+
+    /**
+     * Wrap all links in email with click tracking
+     */
+    private wrapLinksWithTracking(htmlBody: string, trackingId: string, baseUrl: string): string {
+        // Match all <a href="..."> tags
+        return htmlBody.replace(
+            /<a\s+([^>]*?)href=["']([^"']+)["']([^>]*?)>/gi,
+            (match, beforeHref, url, afterHref) => {
+                // Don't track if it's already a tracking link
+                if (url.includes('/api/email-tracking/')) {
+                    return match;
+                }
+
+                // Encode the original URL
+                const encodedUrl = Buffer.from(url).toString("base64");
+                const trackingUrl = `${baseUrl}/api/email-tracking/click/${trackingId}?url=${encodedUrl}`;
+
+                return `<a ${beforeHref}href="${trackingUrl}"${afterHref}>`;
+            }
+        );
     }
 
     /**
