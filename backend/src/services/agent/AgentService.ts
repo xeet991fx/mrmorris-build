@@ -20,7 +20,7 @@ export class AgentService {
     private workspaceId: string,
     private userId: string,
     private autonomousMode: boolean = true,
-    private modelType: ModelType = "gemini"
+    private modelType: ModelType = "gemini-2.5-flash"
   ) {
     this.agent = new LangGraphCRMAgent(
       workspaceId,

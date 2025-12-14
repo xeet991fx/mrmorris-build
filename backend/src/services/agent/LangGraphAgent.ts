@@ -18,7 +18,7 @@ export class LangGraphCRMAgent {
     workspaceId: string,
     userId: string,
     autonomousMode: boolean,
-    modelType: ModelType = "gemini"
+    modelType: ModelType = "gemini-2.5-flash"
   ) {
     this.workspaceId = workspaceId;
     this.userId = userId;
@@ -68,17 +68,24 @@ Be professional, efficient, and proactive in helping users succeed with their CR
         new SystemMessage(this.buildSystemPrompt()),
       ];
 
-      // Add conversation history
-      history.forEach((msg) => {
-        if (msg.role === "user") {
-          messages.push(new HumanMessage(msg.content));
-        } else if (msg.role === "assistant") {
-          messages.push(new AIMessage(msg.content));
-        }
-      });
+      // Add conversation history - ensure content is always a string
+      if (history && Array.isArray(history)) {
+        history.forEach((msg) => {
+          if (!msg || !msg.content) return;
 
-      // Add current message
-      messages.push(new HumanMessage(message));
+          const content = typeof msg.content === 'string' ? msg.content : String(msg.content);
+
+          if (msg.role === "user") {
+            messages.push(new HumanMessage({ content }));
+          } else if (msg.role === "assistant") {
+            messages.push(new AIMessage({ content }));
+          }
+        });
+      }
+
+      // Add current message - ensure it's a string
+      const currentMessage = typeof message === 'string' ? message : String(message);
+      messages.push(new HumanMessage({ content: currentMessage }));
 
       // Bind tools to the model
       const tools = this.toolRegistry.getAllTools().map((t) => t.toLangChainTool());
@@ -86,6 +93,11 @@ Be professional, efficient, and proactive in helping users succeed with their CR
 
       // Get response from model
       const response = await modelWithTools.invoke(messages);
+
+      // Validate response
+      if (!response) {
+        throw new Error("Model returned no response");
+      }
 
       // Check if model wants to use tools
       if (response.tool_calls && response.tool_calls.length > 0) {
@@ -99,8 +111,13 @@ Be professional, efficient, and proactive in helping users succeed with their CR
         // Execute the tool
         const toolResult = await tool.execute(toolCall.args);
 
-        // Format the response
-        let responseText = response.content || "";
+        // Format the response - safely extract content
+        let responseText = "";
+        if (response.content) {
+          responseText = typeof response.content === 'string'
+            ? response.content
+            : JSON.stringify(response.content);
+        }
 
         // Add tool execution result
         if (toolResult.success) {
@@ -167,9 +184,16 @@ Be professional, efficient, and proactive in helping users succeed with their CR
       }
 
       // No tool calls, return model's response
-      return response.content || "I'm not sure how to help with that.";
+      if (response.content) {
+        return typeof response.content === 'string'
+          ? response.content
+          : JSON.stringify(response.content);
+      }
+
+      return "I'm not sure how to help with that.";
     } catch (error: any) {
       console.error("LangGraphAgent error:", error);
+      console.error("Error stack:", error.stack);
       return `I encountered an error: ${error.message}. Please try again or rephrase your question.`;
     }
   }

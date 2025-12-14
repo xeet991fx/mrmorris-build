@@ -50,8 +50,8 @@ export async function sendChatMessageStreaming(
                 message,
                 context,
                 conversationHistory: conversationHistory.map((msg) => ({
-                    role: msg.role === "assistant" ? "model" : "user",
-                    parts: msg.content,
+                    role: msg.role,
+                    content: msg.content,
                 })),
                 streaming: true,
             }),

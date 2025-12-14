@@ -6,15 +6,6 @@ import Project from "../models/Project";
 
 const router = express.Router();
 
-// Map frontend model names to backend ModelType
-function mapModelName(frontendModel: string): ModelType {
-  if (frontendModel.startsWith('gemini')) return 'gemini';
-  if (frontendModel.startsWith('gpt-4')) return 'gpt-4';
-  if (frontendModel.startsWith('gpt-3.5')) return 'gpt-3.5';
-  if (frontendModel.startsWith('claude')) return 'claude';
-  return 'gemini'; // default
-}
-
 router.post("/chat", authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { message, context, conversationHistory } = req.body;
@@ -30,8 +21,13 @@ router.post("/chat", authenticate, async (req: AuthRequest, res: Response) => {
     const workspaceId = context.workspaceId;
     const userId = (req.user?._id as any).toString();
     const autonomousMode = context.autonomousMode !== false; // Default to true
-    const modelName = context.selectedModel || context.model || "gemini";
-    const model: ModelType = mapModelName(modelName);
+    const modelName = context.selectedModel || context.model || "gemini-2.5-flash";
+
+    // Validate model type
+    const validModels: ModelType[] = ["gemini-2.5-flash", "gemini-2.5-pro"];
+    const model: ModelType = validModels.includes(modelName as ModelType)
+      ? (modelName as ModelType)
+      : "gemini-2.5-flash";
 
     // Validate workspace access
     const workspace = await Project.findById(workspaceId);
@@ -114,7 +110,13 @@ router.post(
 
       const workspaceId = context.workspaceId;
       const userId = (req.user?._id as any).toString();
-      const model: ModelType = context.model || "gemini";
+      const modelName = context.selectedModel || context.model || "gemini-2.5-flash";
+
+      // Validate model type
+      const validModels: ModelType[] = ["gemini-2.5-flash", "gemini-2.5-pro"];
+      const model: ModelType = validModels.includes(modelName as ModelType)
+        ? (modelName as ModelType)
+        : "gemini-2.5-flash";
 
       // Validate workspace access
       const workspace = await Project.findById(workspaceId);
