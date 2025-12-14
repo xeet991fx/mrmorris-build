@@ -60,7 +60,9 @@
       "Bash(ls:*)",
       "Bash(wc:*)",
       "Bash(grep:*)",
-      "Bash(git -C \"C:\\Users\\imkum\\SDE\\mr-morrisv2\\mrmorris-build\" log --all --grep=\"ultrathink\" --oneline -i)"
+      "Bash(git -C \"C:\\Users\\imkum\\SDE\\mr-morrisv2\\mrmorris-build\" log --all --grep=\"ultrathink\" --oneline -i)",
+      "WebFetch(domain:docs.langchain.com)",
+      "Bash(exit 0)"
     ],
     "deny": [],
     "ask": []
