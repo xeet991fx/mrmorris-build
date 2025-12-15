@@ -116,6 +116,7 @@ export interface WorkflowStepConfig {
     delayTime?: string;
     delayWeekdays?: number[];
     delayWeekday?: string;        // Single weekday (for "until_weekday" delay type)
+    timezone?: string;            // Timezone for delay execution
 
     // Condition config
     conditions?: WorkflowCondition[];
