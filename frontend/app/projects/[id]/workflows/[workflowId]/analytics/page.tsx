@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeftIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { getWorkflow, getWorkflowAnalytics, type WorkflowAnalytics } from "@/lib/api/workflow";
-import { Workflow } from "@/lib/workflow/types";
+import { getWorkflow, getWorkflowAnalytics, type WorkflowAnalytics, type Workflow } from "@/lib/api/workflow";
 import { Line, Bar } from "react-chartjs-2";
 import {
     Chart as ChartJS,
@@ -368,13 +367,12 @@ export default function WorkflowAnalyticsPage() {
                                             </td>
                                             <td className="py-3 text-right">
                                                 <span
-                                                    className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                                                        successRate >= 80
+                                                    className={`inline-block px-2 py-1 rounded text-xs font-medium ${successRate >= 80
                                                             ? "bg-green-100 text-green-700"
                                                             : successRate >= 50
-                                                            ? "bg-yellow-100 text-yellow-700"
-                                                            : "bg-red-100 text-red-700"
-                                                    }`}
+                                                                ? "bg-yellow-100 text-yellow-700"
+                                                                : "bg-red-100 text-red-700"
+                                                        }`}
                                                 >
                                                     {successRate}%
                                                 </span>
@@ -414,9 +412,8 @@ function StatCard({
 
     return (
         <div
-            className={`p-4 rounded-xl bg-gradient-to-br border ${
-                colorClasses[color] || colorClasses.blue
-            }`}
+            className={`p-4 rounded-xl bg-gradient-to-br border ${colorClasses[color] || colorClasses.blue
+                }`}
         >
             <div className="flex items-center gap-2 mb-2">
                 <span className="text-xl">{icon}</span>
