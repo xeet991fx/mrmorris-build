@@ -117,6 +117,11 @@ export interface WorkflowStepConfig {
     delayWeekdays?: number[];
     delayWeekday?: string;        // Single weekday (for "until_weekday" delay type)
     timezone?: string;            // Timezone for delay execution
+    businessHoursOnly?: boolean;  // Only execute during business hours
+    businessHoursStart?: string;  // Business hours start time (e.g., "09:00")
+    businessHoursEnd?: string;    // Business hours end time (e.g., "17:00")
+    skipWeekends?: boolean;       // Skip Saturday and Sunday
+    respectContactTimezone?: boolean; // Use contact's timezone if available
 
     // Condition config
     conditions?: WorkflowCondition[];
