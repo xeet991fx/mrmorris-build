@@ -1,4 +1,5 @@
 import nodemailer, { Transporter } from "nodemailer";
+import { Resend } from "resend";
 
 interface EmailOptions {
   to: string;
@@ -7,47 +8,58 @@ interface EmailOptions {
 }
 
 class EmailService {
-  private transporter: Transporter;
+  private transporter: Transporter | null = null;
+  private resend: Resend | null = null;
+  private useResend: boolean = false;
 
   constructor() {
-    const port = parseInt(process.env.EMAIL_PORT || "465");
-    const isSecure = port === 465;
+    // Check if Resend API key is available (preferred for production/Railway)
+    if (process.env.RESEND_API_KEY) {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
+      this.useResend = true;
+      console.log("✅ Email service is ready (using Resend)");
+      console.log(`📧 Sending from: ${process.env.EMAIL_FROM || "onboarding@resend.dev"}`);
+    } else {
+      // Fallback to Nodemailer for local development
+      const port = parseInt(process.env.EMAIL_PORT || "465");
+      const isSecure = port === 465;
 
-    this.transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || "smtp.gmail.com",
-      port: port,
-      secure: isSecure, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS?.replace(/\s/g, ''), // Remove any spaces from password
-      },
-      tls: {
-        rejectUnauthorized: false,
-        minVersion: 'TLSv1.2',
-      },
-      connectionTimeout: 15000, // 15 seconds
-      greetingTimeout: 15000,
-      socketTimeout: 15000,
-      logger: false,
-      debug: false,
-    });
-
-    // Verify transporter on startup
-    this.transporter.verify((error, success) => {
-      if (error) {
-        console.error("❌ Email service error:", error.message);
-        console.error("Please check your EMAIL_USER and EMAIL_PASS in .env file");
-        console.error("Email config:", {
-          host: process.env.EMAIL_HOST,
-          port: port,
-          secure: isSecure,
+      this.transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST || "smtp.gmail.com",
+        port: port,
+        secure: isSecure,
+        auth: {
           user: process.env.EMAIL_USER,
-        });
-      } else {
-        console.log("✅ Email service is ready");
-        console.log(`📧 Using ${process.env.EMAIL_USER} on ${process.env.EMAIL_HOST}:${port}`);
-      }
-    });
+          pass: process.env.EMAIL_PASS?.replace(/\s/g, ''),
+        },
+        tls: {
+          rejectUnauthorized: false,
+          minVersion: 'TLSv1.2',
+        },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 15000,
+        logger: false,
+        debug: false,
+      });
+
+      // Verify transporter on startup
+      this.transporter.verify((error, success) => {
+        if (error) {
+          console.error("❌ Email service error:", error.message);
+          console.error("Please check your EMAIL_USER and EMAIL_PASS in .env file");
+          console.error("Email config:", {
+            host: process.env.EMAIL_HOST,
+            port: port,
+            secure: isSecure,
+            user: process.env.EMAIL_USER,
+          });
+        } else {
+          console.log("✅ Email service is ready (using Nodemailer)");
+          console.log(`📧 Using ${process.env.EMAIL_USER} on ${process.env.EMAIL_HOST}:${port}`);
+        }
+      });
+    }
   }
 
   /**
@@ -55,21 +67,40 @@ class EmailService {
    */
   private async sendEmail(options: EmailOptions): Promise<void> {
     try {
-      const info = await this.transporter.sendMail({
-        from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${process.env.EMAIL_USER
-          }>`,
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-      });
-      console.log(`✅ Email sent successfully to ${options.to} (ID: ${info.messageId})`);
+      if (this.useResend && this.resend) {
+        // Use Resend for production/Railway
+        const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
+        const fromName = process.env.EMAIL_FROM_NAME || "MrMorris";
+
+        const { data, error } = await this.resend.emails.send({
+          from: `${fromName} <${fromEmail}>`,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+        console.log(`✅ Email sent successfully to ${options.to} (ID: ${data?.id})`);
+      } else if (this.transporter) {
+        // Use Nodemailer for local development
+        const info = await this.transporter.sendMail({
+          from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${process.env.EMAIL_USER}>`,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+        });
+        console.log(`✅ Email sent successfully to ${options.to} (ID: ${info.messageId})`);
+      } else {
+        throw new Error("No email transport configured");
+      }
     } catch (error: any) {
       console.error("❌ Error sending email:", error.message);
-      console.error("Error code:", error.code);
       console.error("Email details:", {
         to: options.to,
         subject: options.subject,
-        from: process.env.EMAIL_USER,
+        useResend: this.useResend,
       });
       throw new Error(`Failed to send email: ${error.message}`);
     }
@@ -159,16 +190,39 @@ class EmailService {
         }
       }
 
-      // Send the email
-      const info = await this.transporter.sendMail({
-        from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${process.env.EMAIL_USER}>`,
-        to,
-        subject: processedSubject,
-        html: this.getWorkflowEmailTemplate(processedSubject, processedBody),
-      });
+      const htmlContent = this.getWorkflowEmailTemplate(processedSubject, processedBody);
 
-      console.log(`✅ Workflow email sent to ${to} (ID: ${info.messageId})`);
-      return { success: true, messageId: info.messageId };
+      if (this.useResend && this.resend) {
+        // Use Resend for production/Railway
+        const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
+        const fromName = process.env.EMAIL_FROM_NAME || "MrMorris";
+
+        const { data, error } = await this.resend.emails.send({
+          from: `${fromName} <${fromEmail}>`,
+          to,
+          subject: processedSubject,
+          html: htmlContent,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+        console.log(`✅ Workflow email sent to ${to} (ID: ${data?.id})`);
+        return { success: true, messageId: data?.id };
+      } else if (this.transporter) {
+        // Use Nodemailer for local development
+        const info = await this.transporter.sendMail({
+          from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${process.env.EMAIL_USER}>`,
+          to,
+          subject: processedSubject,
+          html: htmlContent,
+        });
+
+        console.log(`✅ Workflow email sent to ${to} (ID: ${info.messageId})`);
+        return { success: true, messageId: info.messageId };
+      } else {
+        throw new Error("No email transport configured");
+      }
     } catch (error: any) {
       console.error(`❌ Failed to send workflow email to ${to}:`, error.message);
       return { success: false, error: error.message };

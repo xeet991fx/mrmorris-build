@@ -34,12 +34,17 @@ dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy - Required for Railway/cloud deployments
+// This allows express-rate-limit to correctly identify users via X-Forwarded-For header
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors({
   origin: [
     process.env.FRONTEND_URL || "http://localhost:3000",
     "http://localhost:3001", // Allow both ports for local development
     "http://localhost:3002", // Allow both ports for local development
+    "https://mrmorris-build-front.vercel.app", //vercel dev
   ],
   credentials: true,
 }));
