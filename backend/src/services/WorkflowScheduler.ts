@@ -75,6 +75,7 @@ class WorkflowScheduler {
 
     /**
      * Process all enrollments ready for execution
+     * Loops until no more immediate enrollments (max 10 iterations to prevent infinite loops)
      */
     private async processEnrollments(): Promise<void> {
         if (this.isRunning) {
@@ -86,8 +87,25 @@ class WorkflowScheduler {
         this.lastRunTime = new Date();
 
         try {
-            await workflowService.processReadyEnrollments();
-            this.processedCount++;
+            const MAX_ITERATIONS = 10; // Safety limit
+            let iteration = 0;
+            let processedInIteration = 0;
+
+            // Keep processing until no more ready enrollments or max iterations reached
+            do {
+                processedInIteration = await workflowService.processReadyEnrollments();
+                this.processedCount++;
+                iteration++;
+
+                // Small delay between iterations to let DB settle
+                if (processedInIteration > 0 && iteration < MAX_ITERATIONS) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            } while (processedInIteration > 0 && iteration < MAX_ITERATIONS);
+
+            if (iteration >= MAX_ITERATIONS) {
+                console.log(`⚠️ Reached max iterations (${MAX_ITERATIONS}), will continue on next tick`);
+            }
         } catch (error) {
             console.error("❌ Error processing workflow enrollments:", error);
         } finally {

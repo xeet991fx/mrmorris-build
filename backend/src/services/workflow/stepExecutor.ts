@@ -101,7 +101,15 @@ export async function executeNextStep(
 
             // Move to next step
             enrollment.currentStepId = nextStepId;
-            enrollment.nextExecutionTime = nextStepId ? new Date() : undefined;
+
+            // Set nextExecutionTime for the next step
+            // For non-delay steps, schedule immediately but let scheduler pick it up
+            // This avoids version conflicts from recursive execution
+            if (nextStepId) {
+                enrollment.nextExecutionTime = new Date();
+            } else {
+                enrollment.nextExecutionTime = undefined;
+            }
 
             if (!nextStepId) {
                 // Check if goal criteria is met before completing
@@ -110,18 +118,8 @@ export async function executeNextStep(
                 await completeEnrollment(enrollment, completionStatus);
             } else {
                 await enrollment.save();
-
-                // Chain to next non-delay step immediately
-                // IMPORTANT: Refresh enrollment to get latest version before recursive call
-                const nextStep = workflow.steps.find((s) => s.id === nextStepId);
-                if (nextStep && nextStep.type !== "delay") {
-                    // Refresh enrollment from DB to avoid version conflicts
-                    const WorkflowEnrollment = (await import("../../models/WorkflowEnrollment")).default;
-                    const refreshedEnrollment = await WorkflowEnrollment.findById(enrollment._id);
-                    if (refreshedEnrollment && refreshedEnrollment.status === "active") {
-                        await executeNextStep(refreshedEnrollment);
-                    }
-                }
+                // DO NOT chain to next step here - let the scheduler handle it
+                // This prevents version conflicts from rapid recursive saves
             }
         } catch (error: any) {
             await handleStepError(enrollment, workflow, error);

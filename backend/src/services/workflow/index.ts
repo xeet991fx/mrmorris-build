@@ -110,9 +110,10 @@ class WorkflowService {
     /**
      * Process all enrollments ready for execution
      * Called by the scheduler or cron job
+     * Returns the number of enrollments processed
      */
-    async processReadyEnrollments(): Promise<void> {
-        await processReadyEnrollments();
+    async processReadyEnrollments(): Promise<number> {
+        return processReadyEnrollments();
     }
 
     // ==========================================
