@@ -6,6 +6,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 export type EnrollmentStatus =
     | 'active'
+    | 'processing'  // Currently being processed (lock)
     | 'completed'
     | 'goal_met'
     | 'failed'
@@ -128,7 +129,7 @@ const workflowEnrollmentSchema = new Schema<IWorkflowEnrollment>(
         // Progress tracking
         status: {
             type: String,
-            enum: ['active', 'completed', 'goal_met', 'failed', 'cancelled', 'paused', 'retrying', 'waiting_for_event'],
+            enum: ['active', 'processing', 'completed', 'goal_met', 'failed', 'cancelled', 'paused', 'retrying', 'waiting_for_event'],
             default: 'active',
             index: true,
         },

@@ -216,47 +216,48 @@ export async function completeEnrollment(
  * Maximum number of enrollments to process per batch
  * This prevents timeout issues on Vercel (10 min limit)
  */
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 50;
 
 /**
  * Find and lock enrollments ready for execution.
- * Uses atomic findOneAndUpdate to prevent race conditions where
- * multiple scheduler runs pick up the same enrollment.
+ * Uses atomic findOneAndUpdate to set status to 'processing',
+ * preventing other scheduler runs from picking up the same enrollment.
  */
 export async function findReadyEnrollments(): Promise<IWorkflowEnrollment[]> {
     const lockedEnrollments: IWorkflowEnrollment[] = [];
 
-    // Find enrollments that are ready
-    const readyEnrollments = await WorkflowEnrollment.find({
-        status: { $in: ["active", "retrying"] },
-        nextExecutionTime: { $lte: new Date() },
-    })
-        .limit(BATCH_SIZE)
-        .sort({ nextExecutionTime: 1 }); // Process oldest first (FIFO)
-
-    // Lock each enrollment atomically to prevent duplicate processing
-    for (const enrollment of readyEnrollments) {
+    // Find and lock each enrollment atomically - one at a time to prevent race conditions
+    for (let i = 0; i < BATCH_SIZE; i++) {
         try {
-            // Atomically set status to "processing" only if it's still "active" or "retrying"
-            // This prevents race conditions where multiple schedulers pick up the same enrollment
+            // Atomically find ONE ready enrollment and set its status to "processing"
+            // This is the ONLY way to prevent duplicate processing
             const locked = await WorkflowEnrollment.findOneAndUpdate(
                 {
-                    _id: enrollment._id,
                     status: { $in: ["active", "retrying"] },
                     nextExecutionTime: { $lte: new Date() },
                 },
                 {
-                    $set: { status: "active" }, // Keep as active but we've "claimed" it by updating
-                    $currentDate: { updatedAt: true }, // Update timestamp to prevent re-pickup
+                    $set: {
+                        status: "processing",  // LOCK IT
+                        nextExecutionTime: null // Clear so it won't be picked up again
+                    },
                 },
-                { new: true }
+                {
+                    new: true,
+                    sort: { nextExecutionTime: 1 } // Process oldest first
+                }
             );
 
             if (locked) {
                 lockedEnrollments.push(locked);
+            } else {
+                // No more ready enrollments
+                break;
             }
         } catch (error) {
-            // Ignore - another process may have grabbed it
+            // Database error - stop processing
+            console.error("Error locking enrollment:", error);
+            break;
         }
     }
 

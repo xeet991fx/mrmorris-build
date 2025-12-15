@@ -117,9 +117,10 @@ export async function executeNextStep(
                 const completionStatus = goalMet ? "goal_met" : "completed";
                 await completeEnrollment(enrollment, completionStatus);
             } else {
+                // Set status back to "active" so scheduler can pick up next step
+                // (it was set to "processing" when locked)
+                enrollment.status = "active";
                 await enrollment.save();
-                // DO NOT chain to next step here - let the scheduler handle it
-                // This prevents version conflicts from rapid recursive saves
             }
         } catch (error: any) {
             await handleStepError(enrollment, workflow, error);

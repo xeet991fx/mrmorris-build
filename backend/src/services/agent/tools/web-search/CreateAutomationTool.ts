@@ -202,21 +202,21 @@ export class CreateAutomationTool extends BaseCRMTool {
         description: `Automatically nurture new leads for ${business} with a series of educational emails`,
         steps: linkSteps([
           createTriggerStep("New Lead Created", "contact_created", 0),
-          createDelayStep("Wait 1 Hour", 1, "hours", 100),
+          createDelayStep("Wait 1 Minute", 1, "minutes", 100),
           createEmailStep(
             "Welcome Email",
             `Welcome! Here's how ${business} can help you`,
             `Hi {{firstName}},\n\nThank you for your interest in ${business}. We're excited to help you achieve your goals.\n\nHere's what you can expect from us:\n- Personalized guidance\n- Continuous support\n- Industry best practices\n\nBest regards,\nThe ${business} Team`,
             200
           ),
-          createDelayStep("Wait 3 Days", 3, "days", 300),
+          createDelayStep("Wait 5 Minutes", 5, "minutes", 300),
           createEmailStep(
             "Value Email",
             `How companies succeed with ${business}`,
             `Hi {{firstName}},\n\nWe wanted to share some insights on how businesses like yours are achieving real results.\n\nWould you like to see how we can help you specifically? Reply to this email and let's chat!\n\nBest,\nThe ${business} Team`,
             400
           ),
-          createDelayStep("Wait 5 Days", 5, "days", 500),
+          createDelayStep("Wait 10 Minutes", 10, "minutes", 500),
           createEmailStep(
             "CTA Email",
             "Ready to take the next step?",
@@ -233,14 +233,14 @@ export class CreateAutomationTool extends BaseCRMTool {
         description: "Follow up with leads that haven't responded",
         steps: linkSteps([
           createTriggerStep("Lead Created", "contact_created", 0),
-          createDelayStep("Wait 2 Days", 2, "days", 100),
+          createDelayStep("Wait 2 Minutes", 2, "minutes", 100),
           createEmailStep(
             "First Follow-up",
             "Following up on our conversation",
             `Hi {{firstName}},\n\nI wanted to check in and see if you had any questions about ${business}.\n\nI'm here to help if you need anything!\n\nBest,\nThe ${business} Team`,
             200
           ),
-          createDelayStep("Wait 5 Days", 5, "days", 300),
+          createDelayStep("Wait 5 Minutes", 5, "minutes", 300),
           createEmailStep(
             "Second Follow-up",
             "Quick question for you",
