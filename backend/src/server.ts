@@ -133,12 +133,14 @@ const startServer = async () => {
     await connectDB();
 
     app.listen(PORT, () => {
+      const backendUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
       console.log("🚀 Server is running");
       console.log(`📍 Port: ${PORT}`);
+      console.log(`🔗 Backend URL: ${backendUrl}`);
       console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:3000"}`);
-      console.log(`🔑 Auth endpoints: http://localhost:${PORT}/api/auth`);
-      console.log(`📋 Waitlist endpoints: http://localhost:${PORT}/api/waitlist`);
-      console.log(`📁 Project endpoints: http://localhost:${PORT}/api/projects`);
+      console.log(`🔑 Auth endpoints: ${backendUrl}/api/auth`);
+      console.log(`📋 Waitlist endpoints: ${backendUrl}/api/waitlist`);
+      console.log(`📁 Project endpoints: ${backendUrl}/api/projects`);
 
       // Start workflow scheduler (runs every minute)
       workflowScheduler.start();
