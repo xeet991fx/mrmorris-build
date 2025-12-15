@@ -8,10 +8,13 @@ export class WebSearchTool extends BaseCRMTool {
   constructor(workspaceId: string, userId: string) {
     super(workspaceId, userId);
 
-    if (!process.env.TAVILY_API_KEY) {
+    const apiKey = process.env.TAVILY_API_KEY;
+    console.log(`🔑 TAVILY_API_KEY exists: ${!!apiKey}, length: ${apiKey?.length || 0}`);
+
+    if (!apiKey) {
       console.warn("TAVILY_API_KEY not configured - web search will be limited");
     } else {
-      this.tavilyClient = new TavilyClient({ apiKey: process.env.TAVILY_API_KEY });
+      this.tavilyClient = new TavilyClient({ apiKey });
       console.log("✅ Tavily web search initialized");
     }
   }

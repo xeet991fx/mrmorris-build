@@ -89,6 +89,7 @@ Be professional, efficient, and proactive in helping users succeed with their CR
 
       // Bind tools to the model
       const tools = this.toolRegistry.getAllTools().map((t) => t.toLangChainTool());
+      console.log(`📦 Available tools: ${this.toolRegistry.getToolNames().join(", ")}`);
       const modelWithTools = this.model.bindTools(tools);
 
       // Get response from model
@@ -97,6 +98,12 @@ Be professional, efficient, and proactive in helping users succeed with their CR
       // Validate response
       if (!response) {
         throw new Error("Model returned no response");
+      }
+
+      // Debug: Log tool calls
+      console.log(`🔧 Tool calls from model: ${response.tool_calls?.length || 0}`);
+      if (response.tool_calls && response.tool_calls.length > 0) {
+        console.log(`🔧 Tool requested: ${response.tool_calls[0].name}`);
       }
 
       // Check if model wants to use tools
@@ -111,22 +118,20 @@ Be professional, efficient, and proactive in helping users succeed with their CR
         // Execute the tool
         const toolResult = await tool.execute(toolCall.args);
 
-        // Format the response - safely extract content
+        // Initialize response text - DON'T include raw response.content which may contain JSON
         let responseText = "";
-        if (response.content) {
-          responseText = typeof response.content === 'string'
-            ? response.content
-            : JSON.stringify(response.content);
-        }
 
         // Add tool execution result
         if (toolResult.success) {
-          responseText += `\n\nI executed the ${toolCall.name} tool and here's what I found:\n`;
+          // Add intro for non-web_search tools (web_search has its own formatting)
+          if (toolCall.name !== "web_search") {
+            responseText = `✅ I executed the **${toolCall.name.replace(/_/g, ' ')}** tool:\n\n`;
+          }
 
           // Format different tool responses
           if (toolCall.name === "search_contacts") {
             if (toolResult.contacts && toolResult.contacts.length > 0) {
-              responseText += `Found ${toolResult.count} contact(s):\n`;
+              responseText += `**Found ${toolResult.count} contact(s):**\n\n`;
               toolResult.contacts.slice(0, 5).forEach((contact: any, i: number) => {
                 responseText += `${i + 1}. ${contact.name} (${contact.email}) - ${contact.status}`;
                 if (contact.company) responseText += ` at ${contact.company}`;
@@ -166,11 +171,31 @@ Be professional, efficient, and proactive in helping users succeed with their CR
               responseText += `\nActions: ${toolResult.automation.actionCount}`;
             }
           } else if (toolCall.name === "web_search") {
-            responseText += `Search results for "${toolResult.query}":\n`;
-            if (typeof toolResult.results === "string") {
+            // Format web search results nicely
+            responseText = `🔍 **Web Search Results for "${toolResult.query}"**\n\n`;
+
+            // Add AI-generated answer if available
+            if (toolResult.answer && toolResult.answer !== "No summarized answer available.") {
+              responseText += `**📝 Summary:**\n${toolResult.answer}\n\n`;
+              responseText += `---\n\n`;
+            }
+
+            // Format individual results
+            if (Array.isArray(toolResult.results) && toolResult.results.length > 0) {
+              responseText += `**📚 Sources (${toolResult.resultCount} results):**\n\n`;
+              toolResult.results.forEach((result: any, index: number) => {
+                responseText += `**${index + 1}. ${result.title}**\n`;
+                responseText += `🔗 ${result.url}\n`;
+                if (result.content) {
+                  // Clean up the content - remove "..." if already added
+                  const content = result.content.replace(/\.\.\.+$/, '').trim();
+                  responseText += `${content}\n\n`;
+                }
+              });
+            } else if (typeof toolResult.results === "string") {
               responseText += toolResult.results;
             } else {
-              responseText += JSON.stringify(toolResult.results, null, 2);
+              responseText += "No results found for this search.";
             }
           } else {
             // Generic tool result display
