@@ -101,7 +101,16 @@ export async function executeNextStep(
                     break;
 
                 case "delay":
-                    await executeDelayStep(step, enrollment, nextStepId);
+                    try {
+                        await executeDelayStep(step, enrollment, nextStepId);
+                    } catch (delayError: any) {
+                        // If delay step fails, ensure we reset status
+                        console.error("❌ Delay step error:", delayError.message);
+                        enrollment.status = "active";
+                        enrollment.nextExecutionTime = new Date(Date.now() + 60000);
+                        enrollment.lastError = delayError.message;
+                        await enrollment.save();
+                    }
                     return; // Delay step schedules future execution
 
                 case "condition":
@@ -523,7 +532,7 @@ export async function processReadyEnrollments(): Promise<number> {
 
     // RECOVERY: Find and reset any enrollments stuck in "processing" status for more than 5 minutes
     // This can happen if the server crashed during processing
-    const stuckThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
+    const stuckThreshold = new Date(Date.now() - 2 * 60 * 1000); // 2 minutes (faster recovery)
     const stuckCount = await WorkflowEnrollment.updateMany(
         {
             status: "processing",
