@@ -150,6 +150,10 @@ router.get("/open/:trackingId", async (req: Request, res: Response) => {
             return sendTrackingPixel(res);
         }
 
+        // Track if this is the first open for this specific email
+        // Use the trackingId as a unique identifier for this email
+        let isFirstOpen = false;
+
         // Update EmailMessage record if this is a campaign email
         if (emailType === "campaign" && campaignId) {
             const emailMessage = await EmailMessage.findOneAndUpdate(
@@ -159,46 +163,64 @@ router.get("/open/:trackingId", async (req: Request, res: Response) => {
             );
 
             if (emailMessage) {
+                isFirstOpen = true;
                 // Update campaign stats
                 await Campaign.findByIdAndUpdate(campaignId, {
                     $inc: { "stats.opened": 1 }
                 });
                 console.log(`📊 Updated EmailMessage and Campaign stats for open`);
             }
-        }
-
-        // Log activity
-        await Activity.create({
-            workspaceId,
-            entityType: "contact",
-            entityId: contactId,
-            type: "email",
-            title: "Email Opened",
-            description: `Contact opened ${emailType || "automated"} email`,
-            metadata: {
-                emailType,
-                campaignId,
-                openedAt: new Date(),
-                trackingId,
-            },
-        });
-
-        // Update lead score
-        try {
-            await leadScoringService.updateLeadScore(
+        } else {
+            // For workflow emails, check if we've already logged an activity for this trackingId
+            const existingActivity = await Activity.findOne({
                 workspaceId,
-                contactId,
-                "email_opened"
-            );
-        } catch (error) {
-            console.error("Failed to update lead score:", error);
+                entityId: contactId,
+                type: "email",
+                "metadata.trackingId": trackingId,
+            });
+
+            if (!existingActivity) {
+                isFirstOpen = true;
+            }
         }
 
-        // Trigger workflows with email_opened trigger
-        try {
-            await workflowService.checkAndEnroll("email_opened", contact, workspaceId);
-        } catch (error) {
-            console.error("Failed to trigger email_opened workflows:", error);
+        // Only log activity and update score on FIRST open
+        if (isFirstOpen) {
+            // Log activity
+            await Activity.create({
+                workspaceId,
+                entityType: "contact",
+                entityId: contactId,
+                type: "email",
+                title: "Email Opened",
+                description: `Contact opened ${emailType || "automated"} email`,
+                metadata: {
+                    emailType,
+                    campaignId,
+                    openedAt: new Date(),
+                    trackingId,
+                },
+            });
+
+            // Update lead score (only on first open)
+            try {
+                await leadScoringService.updateLeadScore(
+                    workspaceId,
+                    contactId,
+                    "email_opened"
+                );
+            } catch (error) {
+                console.error("Failed to update lead score:", error);
+            }
+
+            // Trigger workflows with email_opened trigger (only on first open)
+            try {
+                await workflowService.checkAndEnroll("email_opened", contact, workspaceId);
+            } catch (error) {
+                console.error("Failed to trigger email_opened workflows:", error);
+            }
+        } else {
+            console.log(`📧 Duplicate open ignored for tracking deduplication`);
         }
 
         // Return tracking pixel
@@ -260,6 +282,9 @@ router.get("/click/:trackingId", async (req: Request, res: Response) => {
             return res.redirect(destinationUrl);
         }
 
+        // Track if this is the first click for this specific email
+        let isFirstClick = false;
+
         // Update EmailMessage record if this is a campaign email
         if (emailType === "campaign" && campaignId) {
             const emailMessage = await EmailMessage.findOneAndUpdate(
@@ -269,47 +294,66 @@ router.get("/click/:trackingId", async (req: Request, res: Response) => {
             );
 
             if (emailMessage) {
+                isFirstClick = true;
                 // Update campaign stats
                 await Campaign.findByIdAndUpdate(campaignId, {
                     $inc: { "stats.clicked": 1 }
                 });
                 console.log(`📊 Updated EmailMessage and Campaign stats for click`);
             }
-        }
-
-        // Log activity
-        await Activity.create({
-            workspaceId,
-            entityType: "contact",
-            entityId: contactId,
-            type: "email",
-            title: "Email Link Clicked",
-            description: `Contact clicked link in ${emailType || "automated"} email`,
-            metadata: {
-                emailType,
-                campaignId,
-                destinationUrl,
-                clickedAt: new Date(),
-                trackingId,
-            },
-        });
-
-        // Update lead score
-        try {
-            await leadScoringService.updateLeadScore(
+        } else {
+            // For workflow emails, check if we've already logged a click activity for this trackingId
+            const existingActivity = await Activity.findOne({
                 workspaceId,
-                contactId,
-                "email_clicked"
-            );
-        } catch (error) {
-            console.error("Failed to update lead score:", error);
+                entityId: contactId,
+                type: "email",
+                title: "Email Link Clicked",
+                "metadata.trackingId": trackingId,
+            });
+
+            if (!existingActivity) {
+                isFirstClick = true;
+            }
         }
 
-        // Trigger workflows with email_clicked trigger
-        try {
-            await workflowService.checkAndEnroll("email_clicked", contact, workspaceId);
-        } catch (error) {
-            console.error("Failed to trigger email_clicked workflows:", error);
+        // Only log activity and update score on FIRST click
+        if (isFirstClick) {
+            // Log activity
+            await Activity.create({
+                workspaceId,
+                entityType: "contact",
+                entityId: contactId,
+                type: "email",
+                title: "Email Link Clicked",
+                description: `Contact clicked link in ${emailType || "automated"} email`,
+                metadata: {
+                    emailType,
+                    campaignId,
+                    destinationUrl,
+                    clickedAt: new Date(),
+                    trackingId,
+                },
+            });
+
+            // Update lead score (only on first click)
+            try {
+                await leadScoringService.updateLeadScore(
+                    workspaceId,
+                    contactId,
+                    "email_clicked"
+                );
+            } catch (error) {
+                console.error("Failed to update lead score:", error);
+            }
+
+            // Trigger workflows with email_clicked trigger (only on first click)
+            try {
+                await workflowService.checkAndEnroll("email_clicked", contact, workspaceId);
+            } catch (error) {
+                console.error("Failed to trigger email_clicked workflows:", error);
+            }
+        } else {
+            console.log(`🔗 Duplicate click ignored for tracking deduplication`);
         }
 
         // Redirect to actual destination
