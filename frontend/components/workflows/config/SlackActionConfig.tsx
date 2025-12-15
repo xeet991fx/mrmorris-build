@@ -153,7 +153,7 @@ export default function SlackActionConfig({ step, onChange }: SlackActionConfigP
                                         type="text"
                                         value={attachment.title || ""}
                                         onChange={(e) => {
-                                            const updated = [...config.attachments];
+                                            const updated = [...(config.attachments || [])];
                                             updated[index] = { ...attachment, title: e.target.value };
                                             onChange({ ...config, attachments: updated });
                                         }}
@@ -163,7 +163,7 @@ export default function SlackActionConfig({ step, onChange }: SlackActionConfigP
                                     <textarea
                                         value={attachment.text || ""}
                                         onChange={(e) => {
-                                            const updated = [...config.attachments];
+                                            const updated = [...(config.attachments || [])];
                                             updated[index] = { ...attachment, text: e.target.value };
                                             onChange({ ...config, attachments: updated });
                                         }}
@@ -175,7 +175,7 @@ export default function SlackActionConfig({ step, onChange }: SlackActionConfigP
                                         type="color"
                                         value={attachment.color || "#36a64f"}
                                         onChange={(e) => {
-                                            const updated = [...config.attachments];
+                                            const updated = [...(config.attachments || [])];
                                             updated[index] = { ...attachment, color: e.target.value };
                                             onChange({ ...config, attachments: updated });
                                         }}
