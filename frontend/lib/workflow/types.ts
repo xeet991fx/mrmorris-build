@@ -150,6 +150,25 @@ export interface WorkflowStepConfig {
 
     // Apollo enrichment config
     enrichType?: 'person' | 'company' | 'linkedin_to_email';
+
+    // Slack action config
+    message?: string;             // Message text (used by Slack and SMS)
+    channel?: string;             // Slack channel
+    username?: string;            // Slack bot username
+    iconEmoji?: string;           // Slack bot icon emoji
+    messageFormat?: 'plain' | 'markdown'; // Slack message format
+    attachments?: Array<{         // Slack rich attachments
+        color?: string;
+        title?: string;
+        text?: string;
+        fields?: Array<{ title: string; value: string; short?: boolean }>;
+    }>;
+
+    // SMS action config
+    provider?: 'twilio' | 'custom'; // SMS provider
+    fromNumber?: string;          // Sender phone number
+    toNumber?: string;            // Recipient phone number (if fixed)
+    toField?: string;             // Contact field for phone (e.g., "phone")
 }
 
 // ============================================
