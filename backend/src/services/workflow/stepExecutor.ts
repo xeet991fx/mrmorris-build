@@ -22,8 +22,11 @@ import { calculateDelayMs, getEntity } from "./utils";
  * Execute the next step for an enrollment
  */
 export async function executeNextStep(
-    enrollment: IWorkflowEnrollment
+    enrollment: IWorkflowEnrollment,
+    retryCount: number = 0
 ): Promise<void> {
+    const MAX_VERSION_RETRIES = 3;
+
     try {
         // Get workflow
         const workflow = await Workflow.findById(enrollment.workflowId);
@@ -49,6 +52,10 @@ export async function executeNextStep(
             console.error(`❌ Step ${enrollment.currentStepId} not found`);
             return;
         }
+
+        // CRITICAL: Clear nextExecutionTime IMMEDIATELY to prevent duplicate processing
+        // The scheduler runs every minute and might pick up this enrollment again if we don't clear it
+        enrollment.nextExecutionTime = undefined;
 
         // Add execution record
         const execution = {
@@ -105,15 +112,37 @@ export async function executeNextStep(
                 await enrollment.save();
 
                 // Chain to next non-delay step immediately
+                // IMPORTANT: Refresh enrollment to get latest version before recursive call
                 const nextStep = workflow.steps.find((s) => s.id === nextStepId);
                 if (nextStep && nextStep.type !== "delay") {
-                    await executeNextStep(enrollment);
+                    // Refresh enrollment from DB to avoid version conflicts
+                    const WorkflowEnrollment = (await import("../../models/WorkflowEnrollment")).default;
+                    const refreshedEnrollment = await WorkflowEnrollment.findById(enrollment._id);
+                    if (refreshedEnrollment && refreshedEnrollment.status === "active") {
+                        await executeNextStep(refreshedEnrollment);
+                    }
                 }
             }
         } catch (error: any) {
             await handleStepError(enrollment, workflow, error);
         }
-    } catch (error) {
+    } catch (error: any) {
+        // Handle version conflict errors with retry
+        if (error.name === "VersionError" && retryCount < MAX_VERSION_RETRIES) {
+            console.log(`🔄 Version conflict, retrying (attempt ${retryCount + 1}/${MAX_VERSION_RETRIES})...`);
+
+            // Wait a bit and refresh the enrollment
+            await new Promise(resolve => setTimeout(resolve, 100 * (retryCount + 1)));
+
+            const WorkflowEnrollment = (await import("../../models/WorkflowEnrollment")).default;
+            const refreshedEnrollment = await WorkflowEnrollment.findById(enrollment._id);
+
+            if (refreshedEnrollment) {
+                await executeNextStep(refreshedEnrollment, retryCount + 1);
+            }
+            return;
+        }
+
         console.error("StepExecutor.executeNextStep error:", error);
     }
 }

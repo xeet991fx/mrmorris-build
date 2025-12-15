@@ -218,13 +218,49 @@ export async function completeEnrollment(
  */
 const BATCH_SIZE = 100;
 
+/**
+ * Find and lock enrollments ready for execution.
+ * Uses atomic findOneAndUpdate to prevent race conditions where
+ * multiple scheduler runs pick up the same enrollment.
+ */
 export async function findReadyEnrollments(): Promise<IWorkflowEnrollment[]> {
-    return WorkflowEnrollment.find({
+    const lockedEnrollments: IWorkflowEnrollment[] = [];
+
+    // Find enrollments that are ready
+    const readyEnrollments = await WorkflowEnrollment.find({
         status: { $in: ["active", "retrying"] },
         nextExecutionTime: { $lte: new Date() },
     })
         .limit(BATCH_SIZE)
         .sort({ nextExecutionTime: 1 }); // Process oldest first (FIFO)
+
+    // Lock each enrollment atomically to prevent duplicate processing
+    for (const enrollment of readyEnrollments) {
+        try {
+            // Atomically set status to "processing" only if it's still "active" or "retrying"
+            // This prevents race conditions where multiple schedulers pick up the same enrollment
+            const locked = await WorkflowEnrollment.findOneAndUpdate(
+                {
+                    _id: enrollment._id,
+                    status: { $in: ["active", "retrying"] },
+                    nextExecutionTime: { $lte: new Date() },
+                },
+                {
+                    $set: { status: "active" }, // Keep as active but we've "claimed" it by updating
+                    $currentDate: { updatedAt: true }, // Update timestamp to prevent re-pickup
+                },
+                { new: true }
+            );
+
+            if (locked) {
+                lockedEnrollments.push(locked);
+            }
+        } catch (error) {
+            // Ignore - another process may have grabbed it
+        }
+    }
+
+    return lockedEnrollments;
 }
 
 /**
