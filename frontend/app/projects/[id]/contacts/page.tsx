@@ -13,19 +13,22 @@ import AddContactModal from "@/components/contacts/AddContactModal";
 import EditContactModal from "@/components/contacts/EditContactModal";
 import ColumnManager from "@/components/contacts/ColumnManager";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ImportModal from "@/components/import/ImportModal";
 
 export default function ContactsPage() {
   const params = useParams();
   const workspaceId = params.id as string;
 
-  const { contacts, isLoading, fetchContacts, deleteContact, fetchCustomColumns } = useContactStore();
+  const { contacts, isLoading, fetchContacts, deleteContact, fetchCustomColumns, selectedContacts, clearSelectedContacts } = useContactStore();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
   // Fetch contacts and custom columns on mount
   useEffect(() => {
@@ -55,6 +58,23 @@ export default function ContactsPage() {
       setContactToDelete(null);
     } catch (error) {
       toast.error("Failed to delete contact");
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedContacts.length === 0) return;
+    setBulkDeleteConfirmOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    try {
+      for (const contactId of selectedContacts) {
+        await deleteContact(workspaceId, contactId);
+      }
+      toast.success(`Deleted ${selectedContacts.length} contacts`);
+      clearSelectedContacts();
+    } catch (error) {
+      toast.error("Failed to delete some contacts");
     }
   };
 
@@ -99,7 +119,9 @@ export default function ContactsPage() {
           >
             <ContactsTableHeader
               onAddContact={() => setIsAddModalOpen(true)}
+              onImportContacts={() => setIsImportModalOpen(true)}
               onToggleColumnManager={() => setIsColumnManagerOpen(true)}
+              onBulkDelete={handleBulkDelete}
               workspaceId={workspaceId}
             />
           </motion.div>
@@ -184,6 +206,25 @@ export default function ContactsPage() {
         confirmText="Delete Contact"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={bulkDeleteConfirmOpen}
+        onClose={() => setBulkDeleteConfirmOpen(false)}
+        onConfirm={confirmBulkDelete}
+        title="Delete Selected Contacts"
+        message={`Are you sure you want to delete ${selectedContacts.length} contact(s)? This action cannot be undone.`}
+        confirmText={`Delete ${selectedContacts.length} Contacts`}
+        cancelText="Cancel"
+        variant="danger"
+      />
+
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        workspaceId={workspaceId}
+        type="contacts"
+        onSuccess={() => fetchContacts(workspaceId)}
       />
     </>
   );

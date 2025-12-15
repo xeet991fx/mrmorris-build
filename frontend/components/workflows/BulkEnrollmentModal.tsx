@@ -39,10 +39,22 @@ export default function BulkEnrollmentModal({
     const fetchContacts = useCallback(async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`/api/workspace/${workspaceId}/contacts`);
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+            // Get token from cookie
+            const token = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('token='))
+                ?.split('=')[1];
+
+            const response = await fetch(`${API_URL}/workspaces/${workspaceId}/contacts`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                },
+            });
             if (!response.ok) throw new Error('Failed to fetch contacts');
             const data = await response.json();
-            setContacts(data.contacts || []);
+            setContacts(data.data?.contacts || data.contacts || []);
         } catch (error) {
             console.error('Failed to fetch contacts:', error);
             toast.error('Failed to load contacts');

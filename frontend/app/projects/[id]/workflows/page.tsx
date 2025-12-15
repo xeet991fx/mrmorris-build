@@ -11,6 +11,7 @@ import {
     TrashIcon,
     MagnifyingGlassIcon,
     FunnelIcon,
+    QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Workflow, WorkflowStatus, STATUS_COLORS } from "@/lib/workflow/types";
@@ -285,23 +286,32 @@ export default function WorkflowsPage() {
                         Automate your sales process
                     </p>
                 </motion.div>
-                <button
-                    onClick={handleCreateNew}
-                    disabled={isCreating}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all disabled:opacity-50"
-                >
-                    {isCreating ? (
-                        <>
-                            <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
-                            Creating...
-                        </>
-                    ) : (
-                        <>
-                            <PlusIcon className="w-5 h-5" />
-                            New Workflow
-                        </>
-                    )}
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => router.push(`/projects/${workspaceId}/workflows/guide`)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-foreground font-medium hover:bg-muted transition-all"
+                    >
+                        <QuestionMarkCircleIcon className="w-5 h-5" />
+                        Help & Guide
+                    </button>
+                    <button
+                        onClick={handleCreateNew}
+                        disabled={isCreating}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all disabled:opacity-50"
+                    >
+                        {isCreating ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
+                                Creating...
+                            </>
+                        ) : (
+                            <>
+                                <PlusIcon className="w-5 h-5" />
+                                New Workflow
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}

@@ -30,6 +30,9 @@ import {
     ArrowUturnLeftIcon,
     ArrowUturnRightIcon,
     DocumentDuplicateIcon,
+    ChartBarIcon,
+    GlobeAltIcon,
+    DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { WorkflowStep, TRIGGER_TYPE_LABELS, ACTION_TYPE_LABELS } from "@/lib/workflow/types";
@@ -47,6 +50,8 @@ import ValidationErrorPanel from "@/components/workflows/ValidationErrorPanel";
 import BulkEnrollmentModal from "@/components/workflows/BulkEnrollmentModal";
 import TestWorkflowModal from "@/components/workflows/TestWorkflowModal";
 import FailedEnrollmentsPanel from "@/components/workflows/FailedEnrollmentsPanel";
+import WebhookPanel from "@/components/workflows/WebhookPanel";
+import GoalSettingsPanel from "@/components/workflows/GoalSettingsPanel";
 import TriggerNode from "@/components/workflows/nodes/TriggerNode";
 import ActionNode from "@/components/workflows/nodes/ActionNode";
 import DelayNode from "@/components/workflows/nodes/DelayNode";
@@ -147,6 +152,8 @@ export default function WorkflowEditorPage() {
     const [showBulkEnrollModal, setShowBulkEnrollModal] = useState(false);
     const [showTestModal, setShowTestModal] = useState(false);
     const [showFailedPanel, setShowFailedPanel] = useState(false);
+    const [showWebhookPanel, setShowWebhookPanel] = useState(false);
+    const [showGoalSettings, setShowGoalSettings] = useState(false);
     const [failedCount, setFailedCount] = useState(0);
     const [isCloning, setIsCloning] = useState(false);
 
@@ -585,8 +592,24 @@ export default function WorkflowEditorPage() {
                     )}
                 </div>
 
-                {/* Right side - status badge with extra margin for AI toggle */}
+                {/* Right side - analytics, settings button and status badge with extra margin for AI toggle */}
                 <div className="flex items-center gap-2 flex-shrink-0 mr-24">
+                    <button
+                        onClick={() => setShowGoalSettings(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+                        title="Workflow Settings & Goals"
+                    >
+                        <Cog6ToothIcon className="w-4 h-4" />
+                        Settings
+                    </button>
+                    <button
+                        onClick={() => router.push(`/projects/${workspaceId}/workflows/${workflowId}/analytics`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+                        title="View Analytics"
+                    >
+                        <ChartBarIcon className="w-4 h-4" />
+                        Analytics
+                    </button>
                     <span
                         className={cn(
                             "px-3 py-1 rounded-full text-xs font-medium capitalize whitespace-nowrap",
@@ -749,6 +772,28 @@ export default function WorkflowEditorPage() {
                         Test Workflow
                     </button>
 
+                    {/* Execution Logs Button */}
+                    <button
+                        onClick={() => router.push(`/projects/${workspaceId}/workflows/${workflowId}/logs`)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+                    >
+                        <DocumentTextIcon className="w-4 h-4" />
+                        Execution Logs
+                    </button>
+
+                    {/* Webhook Info Button - only show if workflow has webhook trigger */}
+                    {currentWorkflow.steps.some(
+                        (s) => s.type === "trigger" && s.config?.triggerType === "webhook_received"
+                    ) && (
+                        <button
+                            onClick={() => setShowWebhookPanel(true)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500/20 bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 transition-colors"
+                        >
+                            <GlobeAltIcon className="w-4 h-4" />
+                            Webhook Info
+                        </button>
+                    )}
+
                     {/* Failed Enrollments Badge */}
                     {failedCount > 0 && (
                         <button
@@ -841,6 +886,110 @@ export default function WorkflowEditorPage() {
                 workspaceId={workspaceId}
                 workflowId={workflowId}
             />
+
+            {/* Webhook Info Modal */}
+            {showWebhookPanel && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                    <div className="bg-background border border-border rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-foreground">Webhook Information</h2>
+                            <button
+                                onClick={() => setShowWebhookPanel(false)}
+                                className="p-2 rounded-lg hover:bg-muted transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <WebhookPanel
+                                workspaceId={workspaceId}
+                                workflowId={workflowId}
+                                workflowName={currentWorkflow.name}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Workflow Settings & Goals Modal */}
+            {showGoalSettings && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                    <div className="bg-background border border-border rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-foreground">Workflow Settings</h2>
+                            <button
+                                onClick={() => setShowGoalSettings(false)}
+                                className="p-2 rounded-lg hover:bg-muted transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-6">
+                            {/* Description */}
+                            <div>
+                                <label className="text-sm font-medium text-foreground mb-2 block">
+                                    Description
+                                </label>
+                                <textarea
+                                    value={currentWorkflow.description || ""}
+                                    onChange={(e) =>
+                                        updateWorkflow(workspaceId, workflowId, {
+                                            description: e.target.value,
+                                        })
+                                    }
+                                    placeholder="Describe what this workflow does..."
+                                    rows={3}
+                                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none"
+                                />
+                            </div>
+
+                            {/* Allow Re-enrollment */}
+                            <div className="flex items-start gap-3">
+                                <input
+                                    type="checkbox"
+                                    id="allow-reenrollment"
+                                    checked={currentWorkflow.allowReenrollment || false}
+                                    onChange={(e) =>
+                                        updateWorkflow(workspaceId, workflowId, {
+                                            allowReenrollment: e.target.checked,
+                                        })
+                                    }
+                                    className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary"
+                                />
+                                <div className="flex-1">
+                                    <label
+                                        htmlFor="allow-reenrollment"
+                                        className="text-sm font-medium text-foreground cursor-pointer"
+                                    >
+                                        Allow Re-enrollment
+                                    </label>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Allow contacts to be enrolled in this workflow multiple times
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Goals */}
+                            <GoalSettingsPanel
+                                goals={(currentWorkflow.goalCriteria as any) || []}
+                                onChange={(goals) =>
+                                    updateWorkflow(workspaceId, workflowId, {
+                                        goalCriteria: goals as any,
+                                    })
+                                }
+                                workflowSteps={currentWorkflow.steps.map((s) => ({
+                                    id: s.id,
+                                    name: s.name,
+                                }))}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

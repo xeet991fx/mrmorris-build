@@ -10,6 +10,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { WorkflowStep, ActionType, ACTION_TYPE_LABELS } from "@/lib/workflow/types";
+import SlackActionConfig from "./SlackActionConfig";
+import SmsActionConfig from "./SmsActionConfig";
 
 // ============================================
 // TYPES
@@ -636,6 +638,12 @@ export default function ActionConfig({ step, onChange }: ActionConfigProps) {
             {actionType === "wait_event" && (
                 <WaitEventActionFields step={step} onChange={onChange} />
             )}
+            {actionType === "send_slack" && (
+                <SlackActionFields step={step} onChange={onChange} />
+            )}
+            {actionType === "send_sms" && (
+                <SmsActionFields step={step} onChange={onChange} />
+            )}
         </div>
     );
 }
@@ -1008,4 +1016,14 @@ function WaitEventActionFields({ step, onChange }: ActionConfigProps) {
             </div>
         </div>
     );
+}
+
+// Slack Action Fields
+function SlackActionFields({ step, onChange }: ActionConfigProps) {
+    return <SlackActionConfig step={step} onChange={onChange} />;
+}
+
+// SMS Action Fields
+function SmsActionFields({ step, onChange }: ActionConfigProps) {
+    return <SmsActionConfig step={step} onChange={onChange} />;
 }

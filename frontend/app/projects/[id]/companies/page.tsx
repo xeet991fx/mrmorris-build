@@ -13,6 +13,7 @@ import AddCompanyModal from "@/components/companies/AddCompanyModal";
 import EditCompanyModal from "@/components/companies/EditCompanyModal";
 import ColumnManager from "@/components/contacts/ColumnManager";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ImportModal from "@/components/import/ImportModal";
 
 export default function CompaniesPage() {
   const params = useParams();
@@ -23,6 +24,7 @@ export default function CompaniesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
@@ -99,6 +101,7 @@ export default function CompaniesPage() {
           >
             <CompaniesTableHeader
               onAddCompany={() => setIsAddModalOpen(true)}
+              onImportCompanies={() => setIsImportModalOpen(true)}
               onToggleColumnManager={() => setIsColumnManagerOpen(true)}
               workspaceId={workspaceId}
             />
@@ -183,6 +186,14 @@ export default function CompaniesPage() {
         confirmText="Delete Company"
         cancelText="Cancel"
         variant="danger"
+      />
+
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        workspaceId={workspaceId}
+        type="companies"
+        onSuccess={() => fetchCompanies(workspaceId)}
       />
     </>
   );

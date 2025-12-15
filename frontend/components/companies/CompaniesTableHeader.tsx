@@ -5,18 +5,21 @@ import {
   FunnelIcon,
   AdjustmentsHorizontalIcon,
   TrashIcon,
+  ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline";
 import { useCompanyStore } from "@/store/useCompanyStore";
 import { useDebounce } from "@/hooks/useDebounce";
 
 interface CompaniesTableHeaderProps {
   onAddCompany: () => void;
+  onImportCompanies: () => void;
   onToggleColumnManager: () => void;
   workspaceId: string;
 }
 
 export default function CompaniesTableHeader({
   onAddCompany,
+  onImportCompanies,
   onToggleColumnManager,
   workspaceId,
 }: CompaniesTableHeaderProps) {
@@ -100,6 +103,14 @@ export default function CompaniesTableHeader({
           >
             <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Columns</span>
+          </button>
+
+          <button
+            onClick={onImportCompanies}
+            className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-background border border-border text-foreground hover:bg-muted/50 text-xs font-medium transition-all rounded"
+          >
+            <ArrowUpTrayIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Import</span>
           </button>
 
           <button
