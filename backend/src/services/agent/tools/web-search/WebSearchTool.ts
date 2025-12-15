@@ -1,12 +1,21 @@
 import { z } from "zod";
 import { BaseCRMTool } from "../base/BaseTool";
+import { TavilyClient } from "tavily";
 
 export class WebSearchTool extends BaseCRMTool {
+  private tavilyClient: TavilyClient | null = null;
+
   constructor(workspaceId: string, userId: string) {
     super(workspaceId, userId);
 
-    if (!process.env.TAVILY_API_KEY) {
+    const apiKey = process.env.TAVILY_API_KEY;
+    console.log(`🔑 TAVILY_API_KEY exists: ${!!apiKey}, length: ${apiKey?.length || 0}`);
+
+    if (!apiKey) {
       console.warn("TAVILY_API_KEY not configured - web search will be limited");
+    } else {
+      this.tavilyClient = new TavilyClient({ apiKey });
+      console.log("✅ Tavily web search initialized");
     }
   }
 
@@ -34,10 +43,7 @@ export class WebSearchTool extends BaseCRMTool {
 
   async execute(input: z.infer<typeof this.schema>) {
     try {
-      // For now, return a message indicating web search is not yet fully implemented
-      // In production, you would integrate with Tavily API or another search service
-
-      if (!process.env.TAVILY_API_KEY) {
+      if (!process.env.TAVILY_API_KEY || !this.tavilyClient) {
         return {
           success: false,
           error: "Web search not configured",
@@ -46,21 +52,39 @@ export class WebSearchTool extends BaseCRMTool {
         };
       }
 
-      // Placeholder response
+      console.log(`🔍 Searching web for: "${input.query}"`);
+
+      // Execute Tavily search
+      const response = await this.tavilyClient.search({
+        query: input.query,
+        search_depth: "basic",
+        max_results: 5,
+        include_answer: true,
+      });
+
+      // Format the results
+      const formattedResults = response.results?.map((result: any) => ({
+        title: result.title,
+        url: result.url,
+        content: result.content?.substring(0, 300) + "...",
+      })) || [];
+
+      console.log(`✅ Found ${formattedResults.length} results`);
+
       return {
         success: true,
         query: input.query,
         focus: input.focus,
-        results: `Web search for "${input.query}" would be executed here. Please configure TAVILY_API_KEY to enable this feature.`,
-        message:
-          "Web search integration coming soon. Configure TAVILY_API_KEY to enable.",
+        answer: response.answer || "No summarized answer available.",
+        results: formattedResults,
+        resultCount: formattedResults.length,
       };
     } catch (error: any) {
+      console.error("Tavily search error:", error.message);
       return {
         success: false,
         error: error.message,
-        message:
-          "Web search failed. Ensure TAVILY_API_KEY is set in environment variables.",
+        message: "Web search failed. Please try again later.",
       };
     }
   }

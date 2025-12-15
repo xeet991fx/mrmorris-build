@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpIcon, BoltIcon, ShieldCheckIcon, SparklesIcon, CpuChipIcon } from "@heroicons/react/24/outline";
+import { ArrowUpIcon, BoltIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { useAgentStore, AIModel } from "@/store/useAgentStore";
 import UserMessage from "@/components/agent/UserMessage";
@@ -13,13 +13,9 @@ import StreamingIndicator from "@/components/agent/StreamingIndicator";
 import toast from "react-hot-toast";
 
 // Model options
-const MODEL_OPTIONS: { value: AIModel; label: string; provider: 'gemini' | 'openai' }[] = [
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'gemini' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', provider: 'gemini' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro', provider: 'gemini' },
-  { value: 'gpt-4o', label: 'GPT-4o', provider: 'openai' },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'openai' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', provider: 'openai' },
+const MODEL_OPTIONS: { value: AIModel; label: string; icon: string }[] = [
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', icon: '⚡' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', icon: '✨' },
 ];
 
 export default function WorkspacePage() {
@@ -36,6 +32,7 @@ export default function WorkspacePage() {
     toggleAutonomousMode,
     selectedModel,
     setSelectedModel,
+    updateContext,
   } = useAgentStore();
 
   const [input, setInput] = useState("");
@@ -63,6 +60,17 @@ export default function WorkspacePage() {
     loadWorkspace();
     return () => { cancelled = true; };
   }, [workspaceId, fetchWorkspace]);
+
+  // Update agent context with workspace info
+  useEffect(() => {
+    if (workspaceId && currentWorkspace) {
+      updateContext({
+        workspaceId,
+        workspaceName: currentWorkspace.name,
+        currentPage: "dashboard",
+      });
+    }
+  }, [workspaceId, currentWorkspace, updateContext]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -112,7 +120,7 @@ export default function WorkspacePage() {
     toast.success(`Switched to ${modelInfo?.label || model}`);
   };
 
-  const currentModelInfo = MODEL_OPTIONS.find(m => m.value === selectedModel);
+  const currentModelInfo = MODEL_OPTIONS.find(m => m.value === selectedModel) || MODEL_OPTIONS[0];
 
   if (isInitialLoading || !currentWorkspace) {
     return (
@@ -232,33 +240,17 @@ export default function WorkspacePage() {
                 <select
                   value={selectedModel}
                   onChange={(e) => handleModelChange(e.target.value as AIModel)}
-                  className={`appearance-none pl-7 pr-6 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer focus:outline-none focus:ring-2 ${currentModelInfo?.provider === 'gemini'
-                    ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 ring-1 ring-purple-500/30 focus:ring-purple-500"
-                    : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 ring-1 ring-green-500/30 focus:ring-green-500"
-                    }`}
+                  className="appearance-none pl-8 pr-7 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer focus:outline-none focus:ring-2 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 ring-1 ring-purple-500/30 focus:ring-purple-500"
                 >
-                  <optgroup label="Google Gemini">
-                    {MODEL_OPTIONS.filter(m => m.provider === 'gemini').map((model) => (
-                      <option key={model.value} value={model.value}>
-                        {model.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="OpenAI">
-                    {MODEL_OPTIONS.filter(m => m.provider === 'openai').map((model) => (
-                      <option key={model.value} value={model.value}>
-                        {model.label}
-                      </option>
-                    ))}
-                  </optgroup>
+                  {MODEL_OPTIONS.map((model) => (
+                    <option key={model.value} value={model.value}>
+                      {model.label}
+                    </option>
+                  ))}
                 </select>
-                {/* Provider Icon */}
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  {currentModelInfo?.provider === 'gemini' ? (
-                    <SparklesIcon className="w-3.5 h-3.5" />
-                  ) : (
-                    <CpuChipIcon className="w-3.5 h-3.5" />
-                  )}
+                {/* Model Icon */}
+                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-sm">
+                  {currentModelInfo?.icon}
                 </div>
                 {/* Dropdown Arrow */}
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">

@@ -1,54 +1,44 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatOpenAI } from "@langchain/openai";
-import { ChatAnthropic } from "@langchain/anthropic";
 
-export type ModelType = "gemini" | "gpt-4" | "claude" | "gpt-3.5";
+export type ModelType = "gemini-2.5-flash" | "gemini-2.5-pro";
 
 export class ModelFactory {
-  static createModel(modelType: ModelType = "gemini") {
+  static createModel(modelType: ModelType = "gemini-2.5-flash") {
+    // Use Google Generative AI (Gemini) with API key authentication
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error(
+        "GEMINI_API_KEY is not configured. Please add it to your .env file."
+      );
+    }
+
     switch (modelType) {
-      case "gemini":
+      case "gemini-2.5-flash":
+        console.log("🤖 Initializing model: gemini-2.5-flash");
         return new ChatGoogleGenerativeAI({
-          apiKey: process.env.GEMINI_API_KEY,
-          model: "gemini-2.0-flash-exp",
+          model: "gemini-2.5-flash",
           temperature: 0.7,
+          maxOutputTokens: 8192,
+          apiKey,
         });
 
-      case "gpt-4":
-        if (!process.env.OPENAI_API_KEY) {
-          throw new Error("OPENAI_API_KEY not configured");
-        }
-        return new ChatOpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-          model: "gpt-4-turbo",
+      case "gemini-2.5-pro":
+        console.log("🤖 Initializing model: gemini-2.5-pro");
+        return new ChatGoogleGenerativeAI({
+          model: "gemini-2.5-pro",
           temperature: 0.7,
-        });
-
-      case "claude":
-        if (!process.env.ANTHROPIC_API_KEY) {
-          throw new Error("ANTHROPIC_API_KEY not configured");
-        }
-        return new ChatAnthropic({
-          apiKey: process.env.ANTHROPIC_API_KEY,
-          model: "claude-3-5-sonnet-20241022",
-          temperature: 0.7,
-        });
-
-      case "gpt-3.5":
-        if (!process.env.OPENAI_API_KEY) {
-          throw new Error("OPENAI_API_KEY not configured");
-        }
-        return new ChatOpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-          model: "gpt-3.5-turbo",
-          temperature: 0.7,
+          maxOutputTokens: 8192,
+          apiKey,
         });
 
       default:
+        console.log("🤖 Initializing model: gemini-2.5-flash (default)");
         return new ChatGoogleGenerativeAI({
-          apiKey: process.env.GEMINI_API_KEY,
-          model: "gemini-2.0-flash-exp",
+          model: "gemini-2.5-flash",
           temperature: 0.7,
+          maxOutputTokens: 8192,
+          apiKey,
         });
     }
   }

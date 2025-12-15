@@ -17,6 +17,8 @@ import enrollWorkflowAction from "./enrollWorkflowAction";
 import leadScoreAction from "./leadScoreAction";
 import webhookAction from "./webhookAction";
 import apolloEnrichAction from "./apolloEnrichAction";
+import { executeSlackAction } from "./slackAction";
+import { executeSmsAction } from "./smsAction";
 
 // ============================================
 // ACTION REGISTRY
@@ -34,6 +36,8 @@ const actionRegistry: Record<string, ActionExecutor> = {
     update_lead_score: leadScoreAction,
     send_webhook: webhookAction,
     apollo_enrich: apolloEnrichAction,
+    send_slack: { execute: executeSlackAction },
+    send_sms: { execute: executeSmsAction },
 };
 
 // ============================================

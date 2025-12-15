@@ -18,7 +18,7 @@ export class LangGraphCRMAgent {
     workspaceId: string,
     userId: string,
     autonomousMode: boolean,
-    modelType: ModelType = "gemini"
+    modelType: ModelType = "gemini-2.5-flash"
   ) {
     this.workspaceId = workspaceId;
     this.userId = userId;
@@ -68,24 +68,43 @@ Be professional, efficient, and proactive in helping users succeed with their CR
         new SystemMessage(this.buildSystemPrompt()),
       ];
 
-      // Add conversation history
-      history.forEach((msg) => {
-        if (msg.role === "user") {
-          messages.push(new HumanMessage(msg.content));
-        } else if (msg.role === "assistant") {
-          messages.push(new AIMessage(msg.content));
-        }
-      });
+      // Add conversation history - ensure content is always a string
+      if (history && Array.isArray(history)) {
+        history.forEach((msg) => {
+          if (!msg || !msg.content) return;
 
-      // Add current message
-      messages.push(new HumanMessage(message));
+          const content = typeof msg.content === 'string' ? msg.content : String(msg.content);
+
+          if (msg.role === "user") {
+            messages.push(new HumanMessage({ content }));
+          } else if (msg.role === "assistant") {
+            messages.push(new AIMessage({ content }));
+          }
+        });
+      }
+
+      // Add current message - ensure it's a string
+      const currentMessage = typeof message === 'string' ? message : String(message);
+      messages.push(new HumanMessage({ content: currentMessage }));
 
       // Bind tools to the model
       const tools = this.toolRegistry.getAllTools().map((t) => t.toLangChainTool());
+      console.log(`📦 Available tools: ${this.toolRegistry.getToolNames().join(", ")}`);
       const modelWithTools = this.model.bindTools(tools);
 
       // Get response from model
       const response = await modelWithTools.invoke(messages);
+
+      // Validate response
+      if (!response) {
+        throw new Error("Model returned no response");
+      }
+
+      // Debug: Log tool calls
+      console.log(`🔧 Tool calls from model: ${response.tool_calls?.length || 0}`);
+      if (response.tool_calls && response.tool_calls.length > 0) {
+        console.log(`🔧 Tool requested: ${response.tool_calls[0].name}`);
+      }
 
       // Check if model wants to use tools
       if (response.tool_calls && response.tool_calls.length > 0) {
@@ -99,17 +118,20 @@ Be professional, efficient, and proactive in helping users succeed with their CR
         // Execute the tool
         const toolResult = await tool.execute(toolCall.args);
 
-        // Format the response
-        let responseText = response.content || "";
+        // Initialize response text - DON'T include raw response.content which may contain JSON
+        let responseText = "";
 
         // Add tool execution result
         if (toolResult.success) {
-          responseText += `\n\nI executed the ${toolCall.name} tool and here's what I found:\n`;
+          // Add intro for non-web_search tools (web_search has its own formatting)
+          if (toolCall.name !== "web_search") {
+            responseText = `✅ I executed the **${toolCall.name.replace(/_/g, ' ')}** tool:\n\n`;
+          }
 
           // Format different tool responses
           if (toolCall.name === "search_contacts") {
             if (toolResult.contacts && toolResult.contacts.length > 0) {
-              responseText += `Found ${toolResult.count} contact(s):\n`;
+              responseText += `**Found ${toolResult.count} contact(s):**\n\n`;
               toolResult.contacts.slice(0, 5).forEach((contact: any, i: number) => {
                 responseText += `${i + 1}. ${contact.name} (${contact.email}) - ${contact.status}`;
                 if (contact.company) responseText += ` at ${contact.company}`;
@@ -149,11 +171,31 @@ Be professional, efficient, and proactive in helping users succeed with their CR
               responseText += `\nActions: ${toolResult.automation.actionCount}`;
             }
           } else if (toolCall.name === "web_search") {
-            responseText += `Search results for "${toolResult.query}":\n`;
-            if (typeof toolResult.results === "string") {
+            // Format web search results nicely
+            responseText = `🔍 **Web Search Results for "${toolResult.query}"**\n\n`;
+
+            // Add AI-generated answer if available
+            if (toolResult.answer && toolResult.answer !== "No summarized answer available.") {
+              responseText += `**📝 Summary:**\n${toolResult.answer}\n\n`;
+              responseText += `---\n\n`;
+            }
+
+            // Format individual results
+            if (Array.isArray(toolResult.results) && toolResult.results.length > 0) {
+              responseText += `**📚 Sources (${toolResult.resultCount} results):**\n\n`;
+              toolResult.results.forEach((result: any, index: number) => {
+                responseText += `**${index + 1}. ${result.title}**\n`;
+                responseText += `🔗 ${result.url}\n`;
+                if (result.content) {
+                  // Clean up the content - remove "..." if already added
+                  const content = result.content.replace(/\.\.\.+$/, '').trim();
+                  responseText += `${content}\n\n`;
+                }
+              });
+            } else if (typeof toolResult.results === "string") {
               responseText += toolResult.results;
             } else {
-              responseText += JSON.stringify(toolResult.results, null, 2);
+              responseText += "No results found for this search.";
             }
           } else {
             // Generic tool result display
@@ -167,9 +209,16 @@ Be professional, efficient, and proactive in helping users succeed with their CR
       }
 
       // No tool calls, return model's response
-      return response.content || "I'm not sure how to help with that.";
+      if (response.content) {
+        return typeof response.content === 'string'
+          ? response.content
+          : JSON.stringify(response.content);
+      }
+
+      return "I'm not sure how to help with that.";
     } catch (error: any) {
       console.error("LangGraphAgent error:", error);
+      console.error("Error stack:", error.stack);
       return `I encountered an error: ${error.message}. Please try again or rephrase your question.`;
     }
   }

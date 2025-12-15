@@ -21,6 +21,7 @@ export interface WorkflowStep {
 export interface Workflow {
     _id: string;
     workspaceId: string;
+    userId?: string;
     name: string;
     description?: string;
     status: "draft" | "active" | "paused";
@@ -34,6 +35,7 @@ export interface Workflow {
         currentlyActive: number;
         completed: number;
         failed: number;
+        goalsMet?: number;
     };
     lastActivatedAt?: string;
     createdAt: string;

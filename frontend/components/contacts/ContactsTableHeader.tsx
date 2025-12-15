@@ -5,12 +5,14 @@ import {
   FunnelIcon,
   AdjustmentsHorizontalIcon,
   TrashIcon,
+  ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline";
 import { useContactStore } from "@/store/useContactStore";
 import { useDebounce } from "@/hooks/useDebounce";
 
 interface ContactsTableHeaderProps {
   onAddContact: () => void;
+  onImportContacts: () => void;
   onToggleColumnManager: () => void;
   onBulkDelete?: () => void;
   workspaceId: string;
@@ -18,6 +20,7 @@ interface ContactsTableHeaderProps {
 
 export default function ContactsTableHeader({
   onAddContact,
+  onImportContacts,
   onToggleColumnManager,
   onBulkDelete,
   workspaceId,
@@ -83,6 +86,14 @@ export default function ContactsTableHeader({
           >
             <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Columns</span>
+          </button>
+
+          <button
+            onClick={onImportContacts}
+            className="inline-flex items-center gap-1.5 px-2 py-1.5 bg-background border border-border text-foreground hover:bg-muted/50 text-xs font-medium transition-all rounded"
+          >
+            <ArrowUpTrayIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Import</span>
           </button>
 
           <button

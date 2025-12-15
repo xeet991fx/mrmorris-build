@@ -11,6 +11,7 @@ export type TriggerType =
     | 'email_opened'
     | 'email_clicked'
     | 'form_submitted'
+    | 'webhook_received'
     | 'manual';
 
 // Action Types
@@ -25,6 +26,8 @@ export type ActionType =
     | 'enroll_workflow'
     | 'update_lead_score'
     | 'send_webhook'
+    | 'send_slack'
+    | 'send_sms'
     | 'apollo_enrich'
     | 'wait_event';
 
@@ -294,6 +297,7 @@ export const TRIGGER_TYPE_LABELS: Record<TriggerType, string> = {
     email_opened: 'Email Opened',
     email_clicked: 'Email Clicked',
     form_submitted: 'Form Submitted',
+    webhook_received: 'Webhook Received',
     manual: 'Manual Enrollment',
 };
 
@@ -310,6 +314,8 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
     send_webhook: 'Send Webhook',
     apollo_enrich: 'Enrich with Apollo',
     wait_event: 'Wait for Event',
+    send_slack: 'Send Slack Message',
+    send_sms: 'Send SMS',
 };
 
 export const DELAY_UNIT_LABELS: Record<DelayUnit, string> = {
