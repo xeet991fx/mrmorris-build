@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
-import { BoltIcon, UserPlusIcon, ArrowPathIcon, EnvelopeOpenIcon } from "@heroicons/react/24/outline";
+import { BoltIcon, UserPlusIcon, ArrowPathIcon, EnvelopeOpenIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
 import { WorkflowStep, TRIGGER_TYPE_LABELS, TriggerType } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,7 @@ const triggerIcons: Record<TriggerType, React.ReactNode> = {
     email_opened: <EnvelopeOpenIcon className="w-4 h-4" />,
     email_clicked: <EnvelopeOpenIcon className="w-4 h-4" />,
     form_submitted: <UserPlusIcon className="w-4 h-4" />,
+    webhook_received: <GlobeAltIcon className="w-4 h-4" />,
     manual: <BoltIcon className="w-4 h-4" />,
 };
 

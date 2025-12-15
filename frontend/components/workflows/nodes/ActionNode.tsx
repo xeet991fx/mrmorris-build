@@ -14,6 +14,8 @@ import {
     GlobeAltIcon,
     SparklesIcon,
     ClockIcon,
+    ChatBubbleLeftIcon,
+    DevicePhoneMobileIcon,
 } from "@heroicons/react/24/outline";
 import { WorkflowStep, ACTION_TYPE_LABELS, ActionType } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,8 @@ const actionIcons: Record<ActionType, React.ReactNode> = {
     send_webhook: <GlobeAltIcon className="w-4 h-4" />,
     apollo_enrich: <SparklesIcon className="w-4 h-4" />,
     wait_event: <ClockIcon className="w-4 h-4" />,
+    send_slack: <ChatBubbleLeftIcon className="w-4 h-4" />,
+    send_sms: <DevicePhoneMobileIcon className="w-4 h-4" />,
 };
 
 // ============================================
