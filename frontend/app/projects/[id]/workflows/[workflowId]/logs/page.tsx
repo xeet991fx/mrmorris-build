@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeftIcon, ArrowPathIcon, FunnelIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
-import { getWorkflow, getWorkflowEnrollments, type WorkflowEnrollment } from "@/lib/api/workflow";
-import { Workflow } from "@/lib/workflow/types";
+import { getWorkflow, getWorkflowEnrollments, type WorkflowEnrollment, type Workflow } from "@/lib/api/workflow";
 import { format } from "date-fns";
 
 export default function WorkflowLogsPage() {
@@ -181,11 +180,10 @@ export default function WorkflowLogsPage() {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     onClick={() => setSelectedEnrollment(enrollment)}
-                                    className={`bg-card border rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${
-                                        selectedEnrollment?._id === enrollment._id
+                                    className={`bg-card border rounded-xl p-4 cursor-pointer transition-all hover:shadow-md ${selectedEnrollment?._id === enrollment._id
                                             ? "border-primary ring-2 ring-primary/20"
                                             : "border-border"
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-start justify-between mb-3">
                                         <div className="flex-1">
@@ -220,11 +218,10 @@ export default function WorkflowLogsPage() {
                                                     <div
                                                         className="h-full bg-primary transition-all"
                                                         style={{
-                                                            width: `${
-                                                                (enrollment.stepsExecuted.length /
+                                                            width: `${(enrollment.stepsExecuted.length /
                                                                     workflow.steps.length) *
                                                                 100
-                                                            }%`,
+                                                                }%`,
                                                         }}
                                                     />
                                                 </div>
@@ -368,9 +365,8 @@ function StatusBadge({ status }: { status: string }) {
 
     return (
         <span
-            className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                colors[status] || colors.active
-            }`}
+            className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${colors[status] || colors.active
+                }`}
         >
             {status}
         </span>
@@ -387,9 +383,8 @@ function StepStatusBadge({ status }: { status: string }) {
 
     return (
         <span
-            className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${
-                colors[status] || colors.pending
-            }`}
+            className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${colors[status] || colors.pending
+                }`}
         >
             {status}
         </span>
