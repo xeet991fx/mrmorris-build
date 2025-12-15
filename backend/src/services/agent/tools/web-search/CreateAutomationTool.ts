@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BaseCRMTool } from "../base/BaseTool";
 import Workflow from "../../../../models/Workflow";
+import { v4 as uuidv4 } from "uuid";
 
 export class CreateAutomationTool extends BaseCRMTool {
   get name() {
@@ -56,9 +57,10 @@ export class CreateAutomationTool extends BaseCRMTool {
           name: workflow.name,
           description: workflow.description,
           status: workflow.status,
-          stepCount: workflow.steps?.length || 0,
+          triggerType: this.getTriggerType(input.automationType),
+          actionCount: workflow.steps.filter((s: any) => s.type === "action").length,
         },
-        message: `Created ${input.automationType} automation "${workflow.name}". Review and activate it when ready in the Workflows section.`,
+        message: `✅ Created "${workflow.name}" workflow with ${workflow.steps.length} steps. It's saved as a draft - go to Workflows to review and activate it.`,
       };
     } catch (error: any) {
       return {
@@ -68,140 +70,269 @@ export class CreateAutomationTool extends BaseCRMTool {
     }
   }
 
+  private getTriggerType(automationType: string): string {
+    const triggerMap: Record<string, string> = {
+      "lead-nurture": "contact_created",
+      "follow-up": "contact_created",
+      "onboarding": "deal_created",
+      "win-celebration": "deal_stage_changed",
+      "re-engagement": "manual",
+    };
+    return triggerMap[automationType] || "manual";
+  }
+
+  private generateStepId(): string {
+    return uuidv4();
+  }
+
   private generateWorkflowTemplate(
     type: string,
     business: string,
     custom?: string
   ): any {
+    // Helper to create properly formatted steps
+    const createTriggerStep = (
+      name: string,
+      triggerType: string,
+      yPosition: number
+    ) => ({
+      id: this.generateStepId(),
+      type: "trigger" as const,
+      name,
+      config: { triggerType },
+      position: { x: 250, y: yPosition },
+      nextStepIds: [],
+    });
+
+    const createDelayStep = (
+      name: string,
+      value: number,
+      unit: string,
+      yPosition: number
+    ) => ({
+      id: this.generateStepId(),
+      type: "delay" as const,
+      name,
+      config: {
+        delayType: "duration",
+        delayValue: value,
+        delayUnit: unit,
+      },
+      position: { x: 250, y: yPosition },
+      nextStepIds: [],
+    });
+
+    const createEmailStep = (
+      name: string,
+      subject: string,
+      body: string,
+      yPosition: number
+    ) => ({
+      id: this.generateStepId(),
+      type: "action" as const,
+      name,
+      config: {
+        actionType: "send_email",
+        emailSubject: subject,
+        emailBody: body,
+      },
+      position: { x: 250, y: yPosition },
+      nextStepIds: [],
+    });
+
+    const createTagStep = (name: string, tagName: string, yPosition: number) => ({
+      id: this.generateStepId(),
+      type: "action" as const,
+      name,
+      config: {
+        actionType: "add_tag",
+        tagName,
+      },
+      position: { x: 250, y: yPosition },
+      nextStepIds: [],
+    });
+
+    const createTaskStep = (
+      name: string,
+      title: string,
+      description: string,
+      yPosition: number
+    ) => ({
+      id: this.generateStepId(),
+      type: "action" as const,
+      name,
+      config: {
+        actionType: "create_task",
+        taskTitle: title,
+        taskDescription: description,
+        taskDueInDays: 1,
+      },
+      position: { x: 250, y: yPosition },
+      nextStepIds: [],
+    });
+
+    const createNotificationStep = (
+      name: string,
+      message: string,
+      yPosition: number
+    ) => ({
+      id: this.generateStepId(),
+      type: "action" as const,
+      name,
+      config: {
+        actionType: "send_notification",
+        notificationMessage: message,
+      },
+      position: { x: 250, y: yPosition },
+      nextStepIds: [],
+    });
+
+    // Link steps together by setting nextStepIds
+    const linkSteps = (steps: any[]) => {
+      for (let i = 0; i < steps.length - 1; i++) {
+        steps[i].nextStepIds = [steps[i + 1].id];
+      }
+      return steps;
+    };
+
     const templates: Record<string, any> = {
       "lead-nurture": {
         name: "Lead Nurture Sequence",
         triggerEntityType: "contact",
-        description:
-          "Automatically nurture new leads with a series of educational emails",
-        steps: [
-          {
-            type: "wait",
-            delay: { value: 1, unit: "hours" },
-          },
-          {
-            type: "send_email",
-            subject: "Welcome! Here's how we can help",
-            body: `Thank you for your interest in ${business}. We're here to help you achieve your goals.`,
-          },
-          {
-            type: "wait",
-            delay: { value: 3, unit: "days" },
-          },
-          {
-            type: "send_email",
-            subject: `Case study: How companies succeed with ${business}`,
-            body: "See how businesses like yours have achieved success.",
-          },
-          {
-            type: "wait",
-            delay: { value: 7, unit: "days" },
-          },
-          {
-            type: "tag",
-            tag: "nurtured",
-          },
-        ],
+        description: `Automatically nurture new leads for ${business} with a series of educational emails`,
+        steps: linkSteps([
+          createTriggerStep("New Lead Created", "contact_created", 0),
+          createDelayStep("Wait 1 Hour", 1, "hours", 100),
+          createEmailStep(
+            "Welcome Email",
+            `Welcome! Here's how ${business} can help you`,
+            `Hi {{firstName}},\n\nThank you for your interest in ${business}. We're excited to help you achieve your goals.\n\nHere's what you can expect from us:\n- Personalized guidance\n- Continuous support\n- Industry best practices\n\nBest regards,\nThe ${business} Team`,
+            200
+          ),
+          createDelayStep("Wait 3 Days", 3, "days", 300),
+          createEmailStep(
+            "Value Email",
+            `How companies succeed with ${business}`,
+            `Hi {{firstName}},\n\nWe wanted to share some insights on how businesses like yours are achieving real results.\n\nWould you like to see how we can help you specifically? Reply to this email and let's chat!\n\nBest,\nThe ${business} Team`,
+            400
+          ),
+          createDelayStep("Wait 5 Days", 5, "days", 500),
+          createEmailStep(
+            "CTA Email",
+            "Ready to take the next step?",
+            `Hi {{firstName}},\n\nI hope our previous emails have been helpful. Many of our customers started exactly where you are now.\n\nWould you be interested in a quick call to discuss your specific needs?\n\nBest regards,\nThe ${business} Team`,
+            600
+          ),
+          createTagStep("Tag as Nurtured", "nurtured", 700),
+        ]),
       },
+
       "follow-up": {
-        name: "Cold Lead Follow-Up",
+        name: "Lead Follow-Up Sequence",
         triggerEntityType: "contact",
         description: "Follow up with leads that haven't responded",
-        steps: [
-          {
-            type: "send_email",
-            subject: "Following up on our conversation",
-            body: "I wanted to check in and see if you had any questions.",
-          },
-          {
-            type: "wait",
-            delay: { value: 5, unit: "days" },
-          },
-          {
-            type: "send_email",
-            subject: "Quick question",
-            body: "Do you have 5 minutes to discuss how we can help?",
-          },
-          {
-            type: "create_task",
-            description: "Call lead if no response",
-          },
-        ],
+        steps: linkSteps([
+          createTriggerStep("Lead Created", "contact_created", 0),
+          createDelayStep("Wait 2 Days", 2, "days", 100),
+          createEmailStep(
+            "First Follow-up",
+            "Following up on our conversation",
+            `Hi {{firstName}},\n\nI wanted to check in and see if you had any questions about ${business}.\n\nI'm here to help if you need anything!\n\nBest,\nThe ${business} Team`,
+            200
+          ),
+          createDelayStep("Wait 5 Days", 5, "days", 300),
+          createEmailStep(
+            "Second Follow-up",
+            "Quick question for you",
+            `Hi {{firstName}},\n\nDo you have 5 minutes to discuss how ${business} can help you achieve your goals?\n\nLet me know a good time to connect.\n\nBest,\nThe ${business} Team`,
+            400
+          ),
+          createTaskStep(
+            "Create Call Task",
+            "Call Lead",
+            "Lead hasn't responded to follow-up emails. Give them a call.",
+            500
+          ),
+        ]),
       },
-      "onboarding": {
+
+      onboarding: {
         name: "Customer Onboarding",
         triggerEntityType: "contact",
         description: "Welcome new customers and guide them through setup",
-        steps: [
-          {
-            type: "send_email",
-            subject: `Welcome to ${business}! Let's get started`,
-            body: "We're excited to have you onboard. Here's what to expect next.",
-          },
-          {
-            type: "wait",
-            delay: { value: 2, unit: "days" },
-          },
-          {
-            type: "send_email",
-            subject: "Your onboarding checklist",
-            body: "Follow these steps to get the most out of our platform.",
-          },
-          {
-            type: "create_task",
-            description: "Schedule kickoff call",
-          },
-        ],
+        steps: linkSteps([
+          createTriggerStep("Deal Won", "deal_stage_changed", 0),
+          createEmailStep(
+            "Welcome Email",
+            `Welcome to ${business}! Let's get started`,
+            `Hi {{firstName}},\n\nCongratulations and welcome to ${business}! We're thrilled to have you as a customer.\n\nHere's what happens next:\n1. You'll receive your login credentials\n2. We'll schedule a kickoff call\n3. Our team will guide you through setup\n\nWe're excited to work with you!\n\nBest,\nThe ${business} Team`,
+            100
+          ),
+          createTaskStep(
+            "Schedule Kickoff",
+            "Schedule Kickoff Call",
+            "New customer needs kickoff call scheduled",
+            200
+          ),
+          createDelayStep("Wait 3 Days", 3, "days", 300),
+          createEmailStep(
+            "Onboarding Checklist",
+            "Your onboarding checklist",
+            `Hi {{firstName}},\n\nWe want to make sure you're getting the most out of ${business}.\n\nHere's a quick checklist to ensure a smooth start:\n✅ Complete your profile\n✅ Connect your tools\n✅ Invite your team\n\nNeed help? Just reply to this email!\n\nBest,\nThe ${business} Team`,
+            400
+          ),
+          createTagStep("Tag as Onboarding", "onboarding-complete", 500),
+        ]),
       },
+
       "win-celebration": {
         name: "Deal Won Celebration",
         triggerEntityType: "deal",
         description: "Celebrate wins and request referrals",
-        steps: [
-          {
-            type: "send_email",
-            subject: "Thank you for choosing us!",
-            body: "We're thrilled to work with you. Here's to great success together!",
-          },
-          {
-            type: "notify_team",
-            message: "New deal won!",
-          },
-          {
-            type: "wait",
-            delay: { value: 30, unit: "days" },
-          },
-          {
-            type: "send_email",
-            subject: "How are we doing? + Referral request",
-            body: "We'd love to hear about your experience. Know anyone who might benefit from our services?",
-          },
-        ],
+        steps: linkSteps([
+          createTriggerStep("Deal Won", "deal_stage_changed", 0),
+          createEmailStep(
+            "Thank You Email",
+            "Thank you for choosing us!",
+            `Hi {{firstName}},\n\nWe're thrilled to work with you! Thank you for choosing ${business}.\n\nOur team is committed to your success, and we can't wait to help you achieve great results.\n\nHere's to a fantastic partnership!\n\nBest,\nThe ${business} Team`,
+            100
+          ),
+          createNotificationStep(
+            "Notify Team",
+            "🎉 New deal won! Time to celebrate!",
+            200
+          ),
+          createDelayStep("Wait 30 Days", 30, "days", 300),
+          createEmailStep(
+            "Referral Request",
+            "How are we doing? + A quick favor",
+            `Hi {{firstName}},\n\nIt's been a month since you joined ${business}, and we hope things are going great!\n\nWe'd love to hear about your experience. And if you know anyone who might benefit from our services, we'd really appreciate a referral.\n\nThank you for being a valued customer!\n\nBest,\nThe ${business} Team`,
+            400
+          ),
+        ]),
       },
+
       "re-engagement": {
         name: "Re-engage Inactive Contacts",
         triggerEntityType: "contact",
         description: "Re-engage contacts who haven't interacted recently",
-        steps: [
-          {
-            type: "send_email",
-            subject: "We miss you! Here's what's new",
-            body: `We've been making some exciting updates to ${business}. Thought you'd like to know!`,
-          },
-          {
-            type: "wait",
-            delay: { value: 7, unit: "days" },
-          },
-          {
-            type: "tag",
-            tag: "re-engagement-attempt",
-          },
-        ],
+        steps: linkSteps([
+          createTriggerStep("Manual Trigger", "manual", 0),
+          createEmailStep(
+            "We Miss You",
+            "We miss you! Here's what's new",
+            `Hi {{firstName}},\n\nWe noticed it's been a while since we connected. We've been making some exciting updates to ${business} and thought you'd like to know!\n\nWould you like to catch up? Reply to this email and let's reconnect.\n\nBest,\nThe ${business} Team`,
+            100
+          ),
+          createDelayStep("Wait 7 Days", 7, "days", 200),
+          createEmailStep(
+            "Last Chance",
+            "One last thing...",
+            `Hi {{firstName}},\n\nWe wanted to reach out one more time. Is there anything specific you were looking for that we can help with?\n\nIf not, no worries - we'll be here when you're ready!\n\nBest,\nThe ${business} Team`,
+            300
+          ),
+          createTagStep("Tag as Re-engaged", "re-engagement-attempt", 400),
+        ]),
       },
     };
 
@@ -210,7 +341,15 @@ export class CreateAutomationTool extends BaseCRMTool {
         name: custom || "Custom Automation",
         triggerEntityType: "contact",
         description: custom || "Custom workflow automation",
-        steps: [],
+        steps: linkSteps([
+          createTriggerStep("Manual Trigger", "manual", 0),
+          createEmailStep(
+            "Custom Email",
+            "Hello from " + business,
+            `Hi {{firstName}},\n\nThis is a custom workflow email.\n\nBest,\nThe ${business} Team`,
+            100
+          ),
+        ]),
       }
     );
   }
