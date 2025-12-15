@@ -30,6 +30,7 @@ const TRIGGER_DESCRIPTIONS: Record<TriggerType, string> = {
     form_submitted: "Fires when a form submission is received",
     email_opened: "Fires when a recipient opens an email",
     email_clicked: "Fires when a link in an email is clicked",
+    webhook_received: "Fires when a webhook payload is received",
     manual: "Only triggered manually or via API",
 };
 
