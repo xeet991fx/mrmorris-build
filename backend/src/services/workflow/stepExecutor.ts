@@ -53,9 +53,31 @@ export async function executeNextStep(
             return;
         }
 
+        console.log(`📍 Executing step: ${step.name} (${step.type}) for enrollment ${enrollment._id}`);
+
         // CRITICAL: Clear nextExecutionTime IMMEDIATELY to prevent duplicate processing
         // The scheduler runs every minute and might pick up this enrollment again if we don't clear it
         enrollment.nextExecutionTime = undefined;
+
+        // DEDUPLICATION CHECK: Verify this step wasn't already executed recently
+        // This prevents duplicate emails when there's a race condition
+        const recentExecutionOfSameStep = enrollment.stepsExecuted.find(
+            (exec) => exec.stepId === step.id &&
+                exec.status === "completed" &&
+                exec.completedAt &&
+                (Date.now() - new Date(exec.completedAt).getTime()) < 5 * 60 * 1000 // Within 5 minutes
+        );
+        if (recentExecutionOfSameStep) {
+            console.log(`⚠️ Step ${step.id} was already executed recently, skipping to prevent duplicate`);
+            // Move to next step without re-executing
+            enrollment.currentStepId = step.nextStepIds[0] || undefined;
+            enrollment.status = "active";
+            if (enrollment.currentStepId) {
+                enrollment.nextExecutionTime = new Date();
+            }
+            await enrollment.save();
+            return;
+        }
 
         // Add execution record
         const execution = {
@@ -143,6 +165,23 @@ export async function executeNextStep(
         }
 
         console.error("StepExecutor.executeNextStep error:", error);
+
+        // CRITICAL: Reset enrollment status so it doesn't get stuck in "processing" forever
+        // This allows the scheduler to retry on the next run
+        try {
+            const WorkflowEnrollment = (await import("../../models/WorkflowEnrollment")).default;
+            await WorkflowEnrollment.findByIdAndUpdate(enrollment._id, {
+                $set: {
+                    status: "active",
+                    nextExecutionTime: new Date(Date.now() + 60000), // Retry in 1 minute
+                    lastError: error.message || "Unknown error in step execution",
+                },
+                $inc: { errorCount: 1 },
+            });
+            console.log(`🔄 Reset enrollment ${enrollment._id} to active status for retry`);
+        } catch (resetError) {
+            console.error("Failed to reset enrollment status:", resetError);
+        }
     }
 }
 
@@ -262,6 +301,9 @@ async function executeDelayStep(
 
     enrollment.currentStepId = nextStepId;
     enrollment.nextExecutionTime = scheduledFor;
+    // CRITICAL: Reset status back to "active" so scheduler can pick it up after delay
+    // The enrollment was set to "processing" when locked by findReadyEnrollments
+    enrollment.status = "active";
 
     // Update step execution
     const delayExec = enrollment.stepsExecuted[enrollment.stepsExecuted.length - 1];
@@ -477,6 +519,51 @@ async function checkGoalCriteria(
  */
 export async function processReadyEnrollments(): Promise<number> {
     const { findReadyEnrollments } = await import("./enrollmentManager");
+    const WorkflowEnrollment = (await import("../../models/WorkflowEnrollment")).default;
+
+    // RECOVERY: Find and reset any enrollments stuck in "processing" status for more than 5 minutes
+    // This can happen if the server crashed during processing
+    const stuckThreshold = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes ago
+    const stuckCount = await WorkflowEnrollment.updateMany(
+        {
+            status: "processing",
+            updatedAt: { $lt: stuckThreshold },
+        },
+        {
+            $set: {
+                status: "active",
+                nextExecutionTime: new Date(),
+                lastError: "Recovered from stuck processing state",
+            },
+        }
+    );
+    if (stuckCount.modifiedCount > 0) {
+        console.log(`🔧 Recovered ${stuckCount.modifiedCount} stuck enrollments`);
+    }
+
+    // DEBUG: Log pending enrollments for diagnostics
+    const pendingCount = await WorkflowEnrollment.countDocuments({
+        status: { $in: ["active", "retrying"] },
+        nextExecutionTime: { $lte: new Date() },
+    });
+    if (pendingCount > 0) {
+        console.log(`📊 Found ${pendingCount} pending enrollments ready for processing`);
+    }
+
+    // DEBUG: Also show all active enrollments with their nextExecutionTime
+    const allActive = await WorkflowEnrollment.find({
+        status: { $in: ["active", "processing", "retrying"] },
+    }).select("_id status currentStepId nextExecutionTime").limit(10);
+
+    if (allActive.length > 0) {
+        console.log(`📋 Active enrollments:`);
+        for (const e of allActive) {
+            const nextTime = e.nextExecutionTime ? new Date(e.nextExecutionTime).toLocaleTimeString() : "NOT SET";
+            const now = new Date().toLocaleTimeString();
+            const isReady = e.nextExecutionTime && new Date(e.nextExecutionTime) <= new Date();
+            console.log(`   - ${e._id}: status=${e.status}, next=${nextTime}, now=${now}, ready=${isReady}`);
+        }
+    }
 
     const enrollments = await findReadyEnrollments();
     console.log(`🔄 Processing ${enrollments.length} ready enrollments...`);

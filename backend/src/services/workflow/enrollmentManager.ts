@@ -93,7 +93,8 @@ async function tryEnrollEntity(
         const existing = await WorkflowEnrollment.findOne({
             workflowId: workflow._id,
             entityId: entity._id,
-            status: { $in: ["active", "paused"] },
+            // Include ALL non-terminal statuses to prevent duplicate enrollment
+            status: { $in: ["active", "paused", "processing", "retrying", "waiting_for_event"] },
         });
         if (existing) {
             console.log(
@@ -341,7 +342,8 @@ export async function isEnrolled(
     const count = await WorkflowEnrollment.countDocuments({
         workflowId,
         entityId,
-        status: { $in: ["active", "paused"] },
+        // Include ALL non-terminal statuses
+        status: { $in: ["active", "paused", "processing", "retrying", "waiting_for_event"] },
     });
     return count > 0;
 }

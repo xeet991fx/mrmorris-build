@@ -17,7 +17,7 @@ class WorkflowScheduler {
 
     /**
      * Start the workflow processor
-     * Runs every minute by default
+     * Runs every 30 seconds for better timing accuracy
      */
     start(cronExpression: string = "* * * * *"): void {
         if (this.cronJob) {
@@ -26,12 +26,15 @@ class WorkflowScheduler {
         }
 
         console.log("🚀 Starting WorkflowScheduler...");
-        console.log(`📅 Cron expression: ${cronExpression}`);
 
-        // Workflow processing (every minute)
-        this.cronJob = cron.schedule(cronExpression, async () => {
+        // Workflow processing (every 30 seconds for better accuracy with short delays)
+        // Using setInterval because node-cron only supports minute granularity
+        setInterval(async () => {
             await this.processEnrollments();
-        });
+        }, 30 * 1000); // 30 seconds
+
+        // Also run immediately on startup
+        setTimeout(() => this.processEnrollments(), 1000);
 
         // Campaign sending (every 5 minutes)
         cron.schedule("*/5 * * * *", async () => {
@@ -57,7 +60,10 @@ class WorkflowScheduler {
             await InboxService.fetchNewReplies();
         });
 
-        console.log("✅ WorkflowScheduler started successfully");
+        // Mark as running (even though we're using setInterval now)
+        this.cronJob = cron.schedule(cronExpression, () => { }); // Dummy to track running state
+
+        console.log("✅ WorkflowScheduler started (runs every 30 seconds)");
         console.log("✅ Campaign scheduler started successfully");
         console.log("✅ Warmup scheduler started successfully");
     }

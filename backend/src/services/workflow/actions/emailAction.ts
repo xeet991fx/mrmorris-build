@@ -112,7 +112,15 @@ export class EmailActionExecutor extends BaseActionExecutor {
         }
 
         const sentFrom = gmailIntegration?.email || process.env.EMAIL_USER || "system";
-        this.log(`📧 Email sent from ${sentFrom} to ${toEmail}: "${subject}"`);
+
+        // Clear console log for email sent
+        console.log(`\n========================================`);
+        console.log(`📧 EMAIL SENT SUCCESSFULLY!`);
+        console.log(`   To: ${toEmail}`);
+        console.log(`   From: ${sentFrom}`);
+        console.log(`   Subject: ${subject}`);
+        console.log(`   Via: ${result.sentVia || "gmail"}`);
+        console.log(`========================================\n`);
 
         // Note: Activity logging skipped for workflow emails
         // The Activity model requires opportunityId and userId which aren't available in workflow context
