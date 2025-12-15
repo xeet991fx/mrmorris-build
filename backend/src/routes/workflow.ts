@@ -1121,8 +1121,7 @@ router.get(
                 WorkflowEnrollment.find(filter)
                     .sort({ enrolledAt: -1 })
                     .skip(skip)
-                    .limit(limit)
-                    .populate("entityId"),
+                    .limit(limit),
                 WorkflowEnrollment.countDocuments(filter),
             ]);
 
