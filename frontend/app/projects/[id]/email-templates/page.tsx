@@ -11,7 +11,9 @@ import {
     DocumentDuplicateIcon,
     MagnifyingGlassIcon,
     XMarkIcon,
+    SparklesIcon,
 } from "@heroicons/react/24/outline";
+import AITemplateGeneratorModal from "@/components/templates/AITemplateGeneratorModal";
 
 // ============================================
 // TYPES
@@ -373,6 +375,7 @@ export default function EmailTemplatesPage() {
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
     // Fetch templates
     useEffect(() => {
@@ -490,6 +493,17 @@ export default function EmailTemplatesPage() {
                 onSave={handleSave}
             />
 
+            {/* AI Generator Modal */}
+            <AITemplateGeneratorModal
+                isOpen={isAIModalOpen}
+                workspaceId={workspaceId}
+                onClose={() => setIsAIModalOpen(false)}
+                onSave={(data) => {
+                    handleSave(data);
+                    setIsAIModalOpen(false);
+                }}
+            />
+
             {/* Header */}
             <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10">
                 <motion.div
@@ -502,13 +516,22 @@ export default function EmailTemplatesPage() {
                         Reusable templates for your workflows
                     </p>
                 </motion.div>
-                <button
-                    onClick={handleCreate}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
-                >
-                    <PlusIcon className="w-5 h-5" />
-                    New Template
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setIsAIModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:from-violet-600 hover:to-purple-700 transition-all shadow-lg shadow-violet-500/20"
+                    >
+                        <SparklesIcon className="w-5 h-5" />
+                        Generate with AI
+                    </button>
+                    <button
+                        onClick={handleCreate}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        New Template
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}

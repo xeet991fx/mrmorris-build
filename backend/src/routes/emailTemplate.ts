@@ -2,8 +2,10 @@ import express, { Response } from "express";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import EmailTemplate from "../models/EmailTemplate";
 import Project from "../models/Project";
+import { templateGeneratorService, GenerateTemplateOptions } from "../services/TemplateGeneratorService";
 
 const router = express.Router();
+
 
 /**
  * Email Template Routes
@@ -436,4 +438,89 @@ router.post("/:workspaceId/email-templates/:id/use", authenticate, async (req: A
     }
 });
 
+// ============================================
+// AI TEMPLATE GENERATION
+// ============================================
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/generate
+ * Generate a template using AI (Gemini 2.5 Pro)
+ */
+router.post("/:workspaceId/email-templates/generate", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const {
+            templateType,
+            purpose,
+            tone,
+            length,
+            additionalDetails,
+            sampleImage,
+            industry,
+            targetAudience,
+            saveTemplate, // If true, save to database
+        } = req.body;
+
+        // Validate required fields
+        if (!templateType || !purpose || !tone || !length) {
+            return res.status(400).json({
+                success: false,
+                error: "templateType, purpose, tone, and length are required",
+            });
+        }
+
+        // Generate template using AI
+        const options: GenerateTemplateOptions = {
+            templateType,
+            purpose,
+            tone,
+            length,
+            additionalDetails,
+            sampleImage,
+            industry,
+            targetAudience,
+        };
+
+        console.log("🤖 Generating template with AI:", { templateType, purpose, tone, length });
+        const generatedTemplate = await templateGeneratorService.generateTemplate(options);
+
+        // Optionally save to database
+        let savedTemplate = null;
+        if (saveTemplate) {
+            savedTemplate = await EmailTemplate.create({
+                workspaceId,
+                createdBy: req.user?._id,
+                name: generatedTemplate.name,
+                subject: generatedTemplate.subject || "",
+                body: generatedTemplate.body,
+                category: purpose === "welcome" ? "welcome" :
+                    purpose === "follow-up" ? "follow-up" :
+                        purpose === "sales-pitch" ? "promotion" : "custom",
+                description: `AI-generated ${templateType} template for ${purpose}`,
+                variables: generatedTemplate.variables,
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                generated: generatedTemplate,
+                saved: savedTemplate,
+            },
+            message: "Template generated successfully",
+        });
+    } catch (error: any) {
+        console.error("AI generation error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to generate template with AI",
+        });
+    }
+});
+
 export default router;
+
