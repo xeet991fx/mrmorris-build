@@ -27,6 +27,11 @@ import inboxRoutes from "./routes/inbox";
 import enrichmentRoutes from "./routes/enrichment";
 import apolloSettingsRoutes from "./routes/apolloSettings";
 import agentRoutes from "./routes/agent";
+import taskRoutes from "./routes/task";
+import notificationRoutes from "./routes/notification";
+import teamRoutes from "./routes/team";
+import meetingRoutes from "./routes/meeting";
+import reportRoutes from "./routes/report";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 
 dotenv.config();
@@ -119,6 +124,11 @@ app.use("/api/inbox", inboxRoutes);
 app.use("/api/enrichment", enrichmentRoutes);
 app.use("/api/workspaces", apolloSettingsRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/workspaces", taskRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/workspaces", teamRoutes);
+app.use("/api/workspaces", meetingRoutes);
+app.use("/api/workspaces", reportRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
