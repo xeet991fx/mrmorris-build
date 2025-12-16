@@ -20,26 +20,47 @@ export interface ChatMessage {
     content: string;
 }
 
+export interface TodoItem {
+    id: string;
+    text: string;
+    completed: boolean;
+}
+
+export interface AgentStreamEvent {
+    type: "thinking" | "planning" | "tool_start" | "tool_result" | "subagent_start" | "subagent_result" | "message" | "done" | "error";
+    data: {
+        content?: string;
+        toolName?: string;
+        toolArgs?: any;
+        toolResult?: any;
+        subagentName?: string;
+        todos?: TodoItem[];
+        timestamp?: number;
+    };
+}
+
 export interface StreamChunk {
-    chunk: string;
+    chunk?: string;
     done: boolean;
+    error?: string;
+    event?: AgentStreamEvent;
+    fullResponse?: string;
     action?: {
         action: string;
         params: any;
         requiresConfirmation: boolean;
     };
-    fullResponse?: string;
-    error?: string;
 }
 
 /**
- * Send a message to the AI agent and get a streaming response
+ * Send a message to the AI agent and get a streaming response with events
  */
 export async function sendChatMessageStreaming(
     message: string,
     context: AgentContext,
     conversationHistory: ChatMessage[] = [],
-    onChunk: (chunk: StreamChunk) => void
+    onChunk: (chunk: StreamChunk) => void,
+    onEvent?: (event: AgentStreamEvent) => void
 ): Promise<void> {
     try {
         const response = await fetch(`${API_URL}/agent/chat`, {
@@ -91,7 +112,14 @@ export async function sendChatMessageStreaming(
                     const dataStr = line.slice(6);
                     try {
                         const data: StreamChunk = JSON.parse(dataStr);
+
+                        // Call the chunk handler
                         onChunk(data);
+
+                        // If there's an event and event handler, call it separately
+                        if (data.event && onEvent) {
+                            onEvent(data.event);
+                        }
 
                         if (data.done) {
                             return;
@@ -110,4 +138,51 @@ export async function sendChatMessageStreaming(
             error: error.message || "Failed to send message",
         });
     }
+}
+
+/**
+ * Get human-readable description for tool names
+ */
+export function getToolDescription(toolName: string): string {
+    const descriptions: Record<string, string> = {
+        search_contacts: "Searching contacts...",
+        create_contact: "Creating contact...",
+        update_contact: "Updating contact...",
+        score_contacts: "Scoring contacts...",
+        search_opportunities: "Searching deals...",
+        create_opportunity: "Creating opportunity...",
+        move_opportunity_stage: "Moving deal stage...",
+        get_hot_deals: "Finding hot deals...",
+        get_pipeline_stats: "Analyzing pipeline...",
+        list_campaigns: "Getting campaigns...",
+        create_campaign: "Creating campaign...",
+        start_campaign: "Starting campaign...",
+        list_sequences: "Getting sequences...",
+        create_sequence: "Creating sequence...",
+        enroll_in_sequence: "Enrolling contacts...",
+        get_dashboard_metrics: "Loading metrics...",
+        get_pipeline_analytics: "Analyzing pipeline...",
+        generate_report: "Generating report...",
+        forecast_revenue: "Forecasting revenue...",
+        analyze_business: "Analyzing business...",
+        list_workflows: "Getting workflows...",
+        write_todos: "Creating plan...",
+        read_todos: "Checking plan...",
+        task: "Delegating to subagent...",
+        tavily_search: "Searching the web...",
+    };
+    return descriptions[toolName] || `Running ${toolName}...`;
+}
+
+/**
+ * Get human-readable name for subagents
+ */
+export function getSubagentDisplayName(name: string): string {
+    const names: Record<string, string> = {
+        "contact-manager": "Contact Manager",
+        "sales-pipeline": "Sales Pipeline",
+        "campaign-manager": "Campaign Manager",
+        "analytics": "Analytics",
+    };
+    return names[name] || name;
 }
