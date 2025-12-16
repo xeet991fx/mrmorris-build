@@ -3,13 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpIcon, BoltIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { ArrowUpIcon, BoltIcon, ShieldCheckIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { useAgentStore, AIModel } from "@/store/useAgentStore";
 import UserMessage from "@/components/agent/UserMessage";
 import AssistantMessage from "@/components/agent/AssistantMessage";
 import SystemMessage from "@/components/agent/SystemMessage";
-import StreamingIndicator from "@/components/agent/StreamingIndicator";
+import ThinkingIndicator from "@/components/agent/ThinkingIndicator";
+import AgentActivityPanel from "@/components/agent/AgentActivityPanel";
 import toast from "react-hot-toast";
 
 // Model options
@@ -33,6 +34,9 @@ export default function WorkspacePage() {
     selectedModel,
     setSelectedModel,
     updateContext,
+    currentPhase,
+    activeSubagent,
+    activities,
   } = useAgentStore();
 
   const [input, setInput] = useState("");
@@ -40,6 +44,8 @@ export default function WorkspacePage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Get the current tool being executed
+  const currentToolName = activities.find(a => a.status === "active" && a.type === "tool")?.name;
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -75,7 +81,7 @@ export default function WorkspacePage() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, isStreaming]);
+  }, [messages, isLoading, isStreaming, currentPhase]);
 
   const handleSubmit = async () => {
     if (!input.trim() || isLoading || isStreaming) return;
@@ -197,7 +203,15 @@ export default function WorkspacePage() {
               }
             })}
 
-            {(isLoading || isStreaming) && <StreamingIndicator key="streaming" />}
+            {/* Enhanced Streaming Indicator */}
+            {(isLoading || isStreaming) && currentPhase !== "idle" && (
+              <ThinkingIndicator
+                key="thinking"
+                phase={currentPhase}
+                toolName={currentToolName}
+                subagentName={activeSubagent || undefined}
+              />
+            )}
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
@@ -205,9 +219,16 @@ export default function WorkspacePage() {
 
       {/* Input Area */}
       <div className="sticky bottom-0 bg-background pb-6 pt-4">
-        <div className="max-w-2xl mx-auto px-6">
+        <div className="max-w-2xl mx-auto px-6 space-y-3">
+          {/* Activity Panel - Shows above input when streaming */}
+          <AnimatePresence>
+            {(isStreaming || currentPhase !== "idle") && (
+              <AgentActivityPanel className="mb-3" />
+            )}
+          </AnimatePresence>
+
           {/* Controls Row: Autonomous Mode + Model Selector */}
-          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             {/* Autonomous Mode Toggle */}
             <button
               onClick={handleToggleAutonomous}
@@ -291,4 +312,3 @@ export default function WorkspacePage() {
     </div>
   );
 }
-

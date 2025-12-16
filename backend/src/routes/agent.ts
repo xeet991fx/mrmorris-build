@@ -1,11 +1,15 @@
 import express, { Response } from "express";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import { AgentService } from "../services/agent/AgentService";
-import { ModelType } from "../services/agent/ModelFactory";
+import { ModelType } from "../services/agent/DeepAgentService";
 import Project from "../models/Project";
 
 const router = express.Router();
 
+/**
+ * POST /api/agent/chat
+ * Main streaming chat endpoint with SSE
+ */
 router.post("/chat", authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { message, context, conversationHistory } = req.body;
@@ -51,12 +55,29 @@ router.post("/chat", authenticate, async (req: AuthRequest, res: Response) => {
     );
 
     try {
-      // Stream agent response
+      // Stream agent response with events
       await agentService.chat(
         message,
         conversationHistory || [],
         (chunk) => {
-          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          // Send both the chunk and the event for rich frontend display
+          const payload: any = {
+            done: chunk.done,
+          };
+
+          if (chunk.chunk) {
+            payload.chunk = chunk.chunk;
+          }
+
+          if (chunk.error) {
+            payload.error = chunk.error;
+          }
+
+          if (chunk.event) {
+            payload.event = chunk.event;
+          }
+
+          res.write(`data: ${JSON.stringify(payload)}\n\n`);
         }
       );
 
@@ -69,6 +90,10 @@ router.post("/chat", authenticate, async (req: AuthRequest, res: Response) => {
         `data: ${JSON.stringify({
           error: agentError.message,
           done: true,
+          event: {
+            type: "error",
+            data: { content: agentError.message },
+          },
         })}\n\n`
       );
       res.end();
@@ -92,7 +117,10 @@ router.post("/chat", authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Simple non-streaming endpoint for testing
+/**
+ * POST /api/agent/chat-simple
+ * Simple non-streaming endpoint for testing
+ */
 router.post(
   "/chat-simple",
   authenticate,
