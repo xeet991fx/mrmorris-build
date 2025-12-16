@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { AgentStreamEvent, TodoItem } from "@/lib/api/agent";
 
 export interface AgentMessage {
   id: string;
@@ -29,16 +30,36 @@ export type AIModel =
   | 'gemini-2.5-flash'
   | 'gemini-2.5-pro';
 
+// Activity tracking for DeepAgent visualization
+export interface AgentActivity {
+  id: string;
+  type: "thinking" | "planning" | "tool" | "subagent";
+  status: "active" | "completed" | "failed";
+  name?: string;
+  description?: string;
+  args?: any;
+  result?: any;
+  startTime: number;
+  endTime?: number;
+}
+
 interface AgentState {
   // UI State
   isOpen: boolean;
   isMinimized: boolean;
+  showActivityPanel: boolean;
 
   // Conversation State
   messages: AgentMessage[];
   conversationId: string | null;
   isStreaming: boolean;
   isLoading: boolean;
+
+  // DeepAgent Activity State
+  activities: AgentActivity[];
+  currentTodos: TodoItem[];
+  activeSubagent: string | null;
+  currentPhase: "idle" | "thinking" | "planning" | "executing" | "responding";
 
   // Context State
   context: AgentContext;
@@ -50,6 +71,7 @@ interface AgentState {
   toggleSidebar: () => void;
   setSidebarOpen: (isOpen: boolean) => void;
   minimize: () => void;
+  toggleActivityPanel: () => void;
   sendMessage: (content: string) => Promise<void>;
   updateContext: (context: Partial<AgentContext>) => void;
   clearConversation: () => void;
@@ -61,6 +83,15 @@ interface AgentState {
     result?: any
   ) => void;
   retryMessage: (messageId: string) => Promise<void>;
+
+  // Activity actions
+  addActivity: (activity: AgentActivity) => void;
+  updateActivity: (id: string, updates: Partial<AgentActivity>) => void;
+  setTodos: (todos: TodoItem[]) => void;
+  setActiveSubagent: (name: string | null) => void;
+  setCurrentPhase: (phase: "idle" | "thinking" | "planning" | "executing" | "responding") => void;
+  clearActivities: () => void;
+  handleAgentEvent: (event: AgentStreamEvent) => void;
 
   // Autonomous mode
   autonomousMode: boolean;
@@ -78,10 +109,15 @@ export const useAgentStore = create<AgentState>()(
       // Initial state
       isOpen: false,
       isMinimized: false,
+      showActivityPanel: true,
       messages: [],
       conversationId: null,
       isStreaming: false,
       isLoading: false,
+      activities: [],
+      currentTodos: [],
+      activeSubagent: null,
+      currentPhase: "idle",
       context: {
         workspaceId: null,
         workspaceName: null,
@@ -108,6 +144,11 @@ export const useAgentStore = create<AgentState>()(
         set((state) => ({ isMinimized: !state.isMinimized }));
       },
 
+      // Toggle activity panel
+      toggleActivityPanel: () => {
+        set((state) => ({ showActivityPanel: !state.showActivityPanel }));
+      },
+
       // Update context from pages
       updateContext: (newContext: Partial<AgentContext>) => {
         set((state) => ({
@@ -121,6 +162,10 @@ export const useAgentStore = create<AgentState>()(
           messages: [],
           conversationId: null,
           error: null,
+          activities: [],
+          currentTodos: [],
+          activeSubagent: null,
+          currentPhase: "idle",
         });
       },
 
@@ -129,9 +174,142 @@ export const useAgentStore = create<AgentState>()(
         set({ error: null });
       },
 
+      // Activity management
+      addActivity: (activity: AgentActivity) => {
+        set((state) => ({
+          activities: [...state.activities, activity],
+        }));
+      },
+
+      updateActivity: (id: string, updates: Partial<AgentActivity>) => {
+        set((state) => ({
+          activities: state.activities.map((a) =>
+            a.id === id ? { ...a, ...updates } : a
+          ),
+        }));
+      },
+
+      setTodos: (todos: TodoItem[]) => {
+        set({ currentTodos: todos });
+      },
+
+      setActiveSubagent: (name: string | null) => {
+        set({ activeSubagent: name });
+      },
+
+      setCurrentPhase: (phase) => {
+        set({ currentPhase: phase });
+      },
+
+      clearActivities: () => {
+        set({
+          activities: [],
+          currentTodos: [],
+          activeSubagent: null,
+          currentPhase: "idle",
+        });
+      },
+
+      // Handle agent events from SSE stream
+      handleAgentEvent: (event: AgentStreamEvent) => {
+        const { type, data } = event;
+
+        switch (type) {
+          case "thinking":
+            set({ currentPhase: "thinking" });
+            break;
+
+          case "planning":
+            set({ currentPhase: "planning" });
+            if (data.todos) {
+              set({ currentTodos: data.todos });
+            }
+            break;
+
+          case "tool_start":
+            set({ currentPhase: "executing" });
+            if (data.toolName) {
+              const activity: AgentActivity = {
+                id: `tool-${Date.now()}`,
+                type: "tool",
+                status: "active",
+                name: data.toolName,
+                args: data.toolArgs,
+                startTime: data.timestamp || Date.now(),
+              };
+              get().addActivity(activity);
+            }
+            break;
+
+          case "tool_result":
+            if (data.toolName) {
+              const activities = get().activities;
+              const activeToolActivity = activities.find(
+                (a) => a.type === "tool" && a.name === data.toolName && a.status === "active"
+              );
+              if (activeToolActivity) {
+                get().updateActivity(activeToolActivity.id, {
+                  status: "completed",
+                  result: data.toolResult,
+                  endTime: data.timestamp || Date.now(),
+                });
+              }
+            }
+            break;
+
+          case "subagent_start":
+            set({ currentPhase: "executing" });
+            if (data.subagentName) {
+              set({ activeSubagent: data.subagentName });
+              const activity: AgentActivity = {
+                id: `subagent-${Date.now()}`,
+                type: "subagent",
+                status: "active",
+                name: data.subagentName,
+                description: data.content,
+                startTime: data.timestamp || Date.now(),
+              };
+              get().addActivity(activity);
+            }
+            break;
+
+          case "subagent_result":
+            set({ activeSubagent: null });
+            if (data.subagentName) {
+              const activities = get().activities;
+              const activeSubagentActivity = activities.find(
+                (a) => a.type === "subagent" && a.status === "active"
+              );
+              if (activeSubagentActivity) {
+                get().updateActivity(activeSubagentActivity.id, {
+                  status: "completed",
+                  result: data.toolResult,
+                  endTime: data.timestamp || Date.now(),
+                });
+              }
+            }
+            break;
+
+          case "message":
+            set({ currentPhase: "responding" });
+            break;
+
+          case "done":
+            set({ currentPhase: "idle", activeSubagent: null });
+            break;
+
+          case "error":
+            set({ currentPhase: "idle", activeSubagent: null });
+            break;
+        }
+      },
+
       // Send message to agent
       sendMessage: async (content: string) => {
         const { context, messages, selectedModel, autonomousMode } = get();
+
+        // Clear previous activities
+        get().clearActivities();
 
         // Add user message
         const userMessage: AgentMessage = {
@@ -145,6 +323,7 @@ export const useAgentStore = create<AgentState>()(
           messages: [...state.messages, userMessage],
           isStreaming: true,
           error: null,
+          currentPhase: "thinking",
         }));
 
         try {
@@ -173,9 +352,13 @@ export const useAgentStore = create<AgentState>()(
             apiContext,
             conversationHistory,
             (chunk) => {
-
               if (chunk.error) {
                 throw new Error(chunk.error);
+              }
+
+              // Handle agent events
+              if (chunk.event) {
+                get().handleAgentEvent(chunk.event);
               }
 
               if (chunk.chunk) {
@@ -233,6 +416,7 @@ export const useAgentStore = create<AgentState>()(
                   return {
                     messages: updatedMessages,
                     isStreaming: false,
+                    currentPhase: "idle",
                   };
                 });
               }
@@ -242,6 +426,7 @@ export const useAgentStore = create<AgentState>()(
           set({
             error: error.message || "Failed to send message",
             isStreaming: false,
+            currentPhase: "idle",
           });
           throw error;
         }
@@ -332,7 +517,10 @@ export const useAgentStore = create<AgentState>()(
       partialize: (state) => ({
         isOpen: state.isOpen,
         isMinimized: state.isMinimized,
+        showActivityPanel: state.showActivityPanel,
         messages: state.messages.slice(-50), // Keep last 50 messages
+        autonomousMode: state.autonomousMode,
+        selectedModel: state.selectedModel,
       }),
     }
   )
