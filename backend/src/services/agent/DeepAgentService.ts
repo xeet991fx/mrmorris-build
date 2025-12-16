@@ -1,8 +1,7 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { ToolNode } from "@langchain/langgraph/prebuilt";
+import { createDeepAgent } from "deepagents";
 
 // Import subagents
 import { getContactTools } from "./subagents/ContactSubagent";
