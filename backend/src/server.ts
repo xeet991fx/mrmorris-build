@@ -156,6 +156,18 @@ const startServer = async () => {
       // Start workflow scheduler (runs every minute)
       workflowScheduler.start();
       console.log(`⚡ Workflow scheduler: Running`);
+
+      // Initialize event consumers (NEW)
+      (async () => {
+        try {
+          const { initializeConsumers } = await import('./events/consumers');
+          initializeConsumers();
+          console.log(`⚡ Event consumers: Running`);
+        } catch (eventError) {
+          console.error('❌ Failed to initialize event consumers:', eventError);
+          // Don't crash server - events are non-critical
+        }
+      })();
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
@@ -170,5 +182,38 @@ const startServer = async () => {
 if (process.env.VERCEL !== '1') {
   startServer();
 }
+
+// Graceful shutdown handlers
+process.on('SIGTERM', async () => {
+  console.log('🔄 SIGTERM received, shutting down gracefully...');
+
+  try {
+    const { queueManager } = await import('./events/queue/QueueManager');
+    const { closeRedisConnection } = await import('./config/redis');
+
+    await queueManager.shutdown();
+    await closeRedisConnection();
+  } catch (error) {
+    console.error('Error during graceful shutdown:', error);
+  }
+
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('🔄 SIGINT received, shutting down gracefully...');
+
+  try {
+    const { queueManager } = await import('./events/queue/QueueManager');
+    const { closeRedisConnection } = await import('./config/redis');
+
+    await queueManager.shutdown();
+    await closeRedisConnection();
+  } catch (error) {
+    console.error('Error during graceful shutdown:', error);
+  }
+
+  process.exit(0);
+});
 
 export default app;

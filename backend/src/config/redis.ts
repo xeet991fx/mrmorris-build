@@ -1,0 +1,73 @@
+import { Redis } from 'ioredis';
+
+// Singleton Redis connection
+let redisClient: Redis | null = null;
+
+export const getRedisClient = (): Redis => {
+  if (!redisClient) {
+    // Support both REDIS_URL (Railway, Heroku, etc.) and individual params (local)
+    if (process.env.REDIS_URL) {
+      // Production: Use REDIS_URL connection string
+      redisClient = new Redis(process.env.REDIS_URL, {
+        maxRetriesPerRequest: 3,
+        enableReadyCheck: true,
+        retryStrategy(times: number) {
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        },
+        reconnectOnError(err: Error) {
+          const targetError = 'READONLY';
+          if (err.message.includes(targetError)) {
+            return true;
+          }
+          return false;
+        },
+      });
+    } else {
+      // Local development: Use individual connection parameters
+      redisClient = new Redis({
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD || undefined,
+        db: parseInt(process.env.REDIS_DB || '0'),
+        maxRetriesPerRequest: 3,
+        enableReadyCheck: true,
+        retryStrategy(times: number) {
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        },
+        reconnectOnError(err: Error) {
+          const targetError = 'READONLY';
+          if (err.message.includes(targetError)) {
+            return true;
+          }
+          return false;
+        },
+      });
+    }
+
+    redisClient.on('connect', () => {
+      console.log('✅ Redis connected');
+    });
+
+    redisClient.on('error', (err) => {
+      console.error('❌ Redis connection error:', err);
+    });
+
+    redisClient.on('ready', () => {
+      console.log('✅ Redis ready for operations');
+    });
+  }
+
+  return redisClient;
+};
+
+export const closeRedisConnection = async (): Promise<void> => {
+  if (redisClient) {
+    await redisClient.quit();
+    redisClient = null;
+    console.log('🔌 Redis connection closed');
+  }
+};
+
+export default getRedisClient;

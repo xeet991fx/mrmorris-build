@@ -12,6 +12,8 @@ import {
   opportunityQuerySchema,
 } from "../validations/opportunity";
 import { workflowService } from "../services/WorkflowService";
+import { eventPublisher } from "../events/publisher/EventPublisher";
+import { DEAL_EVENTS } from "../events/types/deal.events";
 
 const router = express.Router();
 
@@ -126,13 +128,36 @@ router.post(
         );
       }
 
+      // Publish deal.created event (non-blocking)
+      eventPublisher.publish(
+        DEAL_EVENTS.CREATED,
+        {
+          dealId: (opportunityDoc._id as any).toString(),
+          name: (opportunityDoc as any).name,
+          value: opportunityDoc.value,
+          pipelineId: opportunityDoc.pipelineId.toString(),
+          stageId: stage._id.toString(),
+          stageName: stage.name,
+          contactId: opportunityDoc.contactId?.toString(),
+          companyId: opportunityDoc.companyId?.toString(),
+          assignedTo: opportunityDoc.assignedTo?.toString(),
+          expectedCloseDate: opportunityDoc.expectedCloseDate,
+          source: opportunityDoc.source,
+        },
+        {
+          workspaceId,
+          userId: (req.user?._id as any)?.toString(),
+          source: 'api',
+        }
+      ).catch(err => console.error('Event publish error:', err));
+
       res.status(201).json({
         success: true,
         message: "Opportunity created successfully!",
         data: { opportunity },
       });
 
-      // Trigger workflow enrollment for deal creation (async, don't wait)
+      // Trigger workflow enrollment for deal creation (async, don't wait) - kept for backward compatibility
       workflowService.checkAndEnroll("deal:created", opportunityDoc, workspaceId)
         .catch((err) => console.error("Workflow enrollment error:", err));
     } catch (error: any) {
@@ -709,13 +734,42 @@ router.patch(
         );
       }
 
+      // Publish deal.stage_changed event (non-blocking)
+      eventPublisher.publish(
+        DEAL_EVENTS.STAGE_CHANGED,
+        {
+          dealId: (opportunity._id as any).toString(),
+          contactId: opportunity.contactId?.toString(),
+          companyId: opportunity.companyId?.toString(),
+          pipelineId: opportunity.pipelineId.toString(),
+          oldStageId: opportunity.stageHistory[currentStageIndex]?.stageId?.toString() || '',
+          oldStageName: previousStageName,
+          newStageId: stage._id.toString(),
+          newStageName: stage.name,
+          value: opportunity.value,
+          movedAt: new Date(),
+          movedBy: (req.user?._id as any)?.toString(),
+          automated: false,
+          stageHistory: opportunity.stageHistory.map(h => ({
+            stageId: h.stageId.toString(),
+            stageName: h.stageName,
+            enteredAt: h.enteredAt,
+          })),
+        },
+        {
+          workspaceId,
+          userId: (req.user?._id as any)?.toString(),
+          source: 'api',
+        }
+      ).catch(err => console.error('Event publish error:', err));
+
       res.status(200).json({
         success: true,
         message: "Opportunity moved successfully!",
         data: { opportunity: updatedOpportunity },
       });
 
-      // Trigger workflow enrollment for stage change (async, don't wait)
+      // Trigger workflow enrollment for stage change (async, don't wait) - kept for backward compatibility
       workflowService.checkAndEnroll("deal:stage_changed", opportunity, workspaceId)
         .catch((err) => console.error("Workflow enrollment error:", err));
     } catch (error: any) {

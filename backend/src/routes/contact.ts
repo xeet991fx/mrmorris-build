@@ -13,6 +13,8 @@ import {
 import { workflowService } from "../services/WorkflowService";
 import { fileParserService } from "../services/FileParserService";
 import { aiDataExtractor } from "../services/AIDataExtractor";
+import { eventPublisher } from "../events/publisher/EventPublisher";
+import { CONTACT_EVENTS } from "../events/types/contact.events";
 
 const router = express.Router();
 
@@ -83,7 +85,31 @@ router.post(
         // Don't fail contact creation if lead score init fails
       }
 
-      // Trigger workflow enrollment (async, don't wait)
+      // Publish contact.created event (non-blocking)
+      eventPublisher.publish(
+        CONTACT_EVENTS.CREATED,
+        {
+          contactId: (contactDoc._id as any).toString(),
+          firstName: contactDoc.firstName,
+          lastName: contactDoc.lastName,
+          email: contactDoc.email,
+          phone: contactDoc.phone,
+          company: contactDoc.company,
+          jobTitle: contactDoc.jobTitle,
+          status: contactDoc.status,
+          source: contactDoc.source,
+          tags: contactDoc.tags,
+          assignedTo: contactDoc.assignedTo?.toString(),
+          customFields: contactDoc.customFields ? Object.fromEntries(contactDoc.customFields) : undefined,
+        },
+        {
+          workspaceId,
+          userId: (req.user?._id as any)?.toString(),
+          source: 'api',
+        }
+      ).catch(err => console.error('Event publish error:', err));
+
+      // Trigger workflow enrollment (async, don't wait) - kept for backward compatibility
       workflowService.checkAndEnroll("contact:created", contactDoc, workspaceId)
         .catch((err) => console.error("Workflow enrollment error:", err));
 

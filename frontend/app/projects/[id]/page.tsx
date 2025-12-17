@@ -1,5 +1,10 @@
 "use client";
 
+<<<<<<< HEAD
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+=======
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,10 +23,15 @@ const MODEL_OPTIONS: { value: AIModel; label: string; icon: string }[] = [
   { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', icon: '⚡' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', icon: '✨' },
 ];
+>>>>>>> a3e3b487bbcc6cfe36939efd108d69c6b588a362
 
 export default function WorkspacePage() {
   const params = useParams();
+  const router = useRouter();
   const workspaceId = params.id as string;
+<<<<<<< HEAD
+  const { fetchWorkspace } = useWorkspaceStore();
+=======
   const { currentWorkspace, fetchWorkspace } = useWorkspaceStore();
   const {
     messages,
@@ -46,23 +56,25 @@ export default function WorkspacePage() {
 
   // Get the current tool being executed
   const currentToolName = activities.find(a => a.status === "active" && a.type === "tool")?.name;
+>>>>>>> a3e3b487bbcc6cfe36939efd108d69c6b588a362
 
   useEffect(() => {
     if (!workspaceId) return;
-    let cancelled = false;
 
-    const loadWorkspace = async () => {
-      try {
-        await fetchWorkspace(workspaceId);
-        if (!cancelled) setIsInitialLoading(false);
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to fetch workspace:", error);
-          setIsInitialLoading(false);
-        }
-      }
-    };
+    // Load workspace data
+    fetchWorkspace(workspaceId).catch(console.error);
 
+<<<<<<< HEAD
+    // Redirect to contacts page as default
+    router.replace(`/projects/${workspaceId}/contacts`);
+  }, [workspaceId, fetchWorkspace, router]);
+
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+        <p className="mt-4 text-gray-600">Loading workspace...</p>
+=======
     loadWorkspace();
     return () => { cancelled = true; };
   }, [workspaceId, fetchWorkspace]);
@@ -308,6 +320,7 @@ export default function WorkspacePage() {
             </button>
           </div>
         </div>
+>>>>>>> a3e3b487bbcc6cfe36939efd108d69c6b588a362
       </div>
     </div>
   );
