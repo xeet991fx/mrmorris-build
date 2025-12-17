@@ -39,6 +39,7 @@ interface WorkflowState {
     deleteWorkflow: (workspaceId: string, workflowId: string) => Promise<void>;
     activateWorkflow: (workspaceId: string, workflowId: string) => Promise<void>;
     pauseWorkflow: (workspaceId: string, workflowId: string) => Promise<void>;
+    cloneWorkflow: (workspaceId: string, workflowId: string) => Promise<Workflow | null>;
 
     // Step management
     addStep: (step: WorkflowStep) => void;
@@ -194,6 +195,21 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         } catch (error: any) {
             console.error('Failed to pause workflow:', error);
             toast.error(error.message || 'Failed to pause workflow');
+        }
+    },
+
+    cloneWorkflow: async (workspaceId: string, workflowId: string) => {
+        try {
+            const clonedWorkflow = await workflowApi.cloneWorkflow(workspaceId, workflowId);
+            set((state) => ({
+                workflows: [clonedWorkflow, ...state.workflows],
+            }));
+            toast.success('Workflow cloned successfully!');
+            return clonedWorkflow;
+        } catch (error: any) {
+            console.error('Failed to clone workflow:', error);
+            toast.error(error.message || 'Failed to clone workflow');
+            return null;
         }
     },
 

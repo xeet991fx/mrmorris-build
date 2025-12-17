@@ -30,6 +30,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/ui/CommandPalette";
+import { NotificationBell } from "@/components/ui/NotificationBell";
 import { OnboardingWizard } from "@/components/dashboard/OnboardingWizard";
 
 function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
@@ -235,6 +236,50 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 )}
               </Link>
 
+              {/* Tasks */}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/tasks`}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
+                  pathname.includes('/tasks')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Tasks" : ""}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Tasks
+                  </span>
+                )}
+              </Link>
+
+              {/* Tickets */}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/tickets`}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
+                  pathname.includes('/tickets')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Tickets" : ""}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
+                </svg>
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Tickets
+                  </span>
+                )}
+              </Link>
+
               {/* Workflows */}
               <Link
                 href={`/projects/${currentWorkspaceFromUrl._id}/workflows`}
@@ -295,6 +340,26 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Sequences
+                  </span>
+                )}
+              </Link>
+
+              {/* Reports */}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/reports`}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
+                  pathname.includes('/reports')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Reports" : ""}
+              >
+                <ChartBarIcon className="w-4 h-4 flex-shrink-0" />
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Reports
                   </span>
                 )}
               </Link>
@@ -425,6 +490,17 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Bottom Actions */}
       <div className="mt-auto border-t border-border">
+        {/* Notifications */}
+        <div className={cn(
+          "flex items-center transition-all text-muted-foreground hover:bg-muted/30",
+          isExpanded ? "gap-2 px-4 py-2" : "justify-center p-2"
+        )}>
+          <NotificationBell />
+          {isExpanded && (
+            <span className="text-sm">Notifications</span>
+          )}
+        </div>
+
         {/* Log Out */}
         <button
           onClick={handleLogout}

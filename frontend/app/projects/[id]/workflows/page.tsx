@@ -12,6 +12,7 @@ import {
     MagnifyingGlassIcon,
     FunnelIcon,
     QuestionMarkCircleIcon,
+    DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Workflow, WorkflowStatus, STATUS_COLORS } from "@/lib/workflow/types";
@@ -43,12 +44,14 @@ function WorkflowCard({
     onEdit,
     onActivate,
     onPause,
+    onClone,
     onDelete,
 }: {
     workflow: Workflow;
     onEdit: () => void;
     onActivate: () => void;
     onPause: () => void;
+    onClone: () => void;
     onDelete: () => void;
 }) {
     const triggerStep = workflow.steps.find((s) => s.type === "trigger");
@@ -133,6 +136,13 @@ function WorkflowCard({
                     </button>
                 ) : null}
                 <button
+                    onClick={onClone}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                    title="Clone workflow"
+                >
+                    <DocumentDuplicateIcon className="w-4 h-4" />
+                </button>
+                <button
                     onClick={onDelete}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-auto"
                 >
@@ -179,6 +189,7 @@ export default function WorkflowsPage() {
         createWorkflow,
         activateWorkflow,
         pauseWorkflow,
+        cloneWorkflow,
         deleteWorkflow,
     } = useWorkflowStore();
 
@@ -252,6 +263,10 @@ export default function WorkflowsPage() {
     const openDeleteConfirm = (workflowId: string) => {
         setWorkflowToDelete(workflowId);
         setDeleteConfirmOpen(true);
+    };
+
+    const handleClone = async (workflowId: string) => {
+        await cloneWorkflow(workspaceId, workflowId);
     };
 
     // Filter workflows
@@ -399,6 +414,7 @@ export default function WorkflowsPage() {
                                 onEdit={() => handleEdit(workflow._id)}
                                 onActivate={() => handleActivate(workflow._id)}
                                 onPause={() => handlePause(workflow._id)}
+                                onClone={() => handleClone(workflow._id)}
                                 onDelete={() => openDeleteConfirm(workflow._id)}
                             />
                         ))}
