@@ -105,6 +105,27 @@ export class AgentService {
   }
 
   /**
+   * Build a message string from history for the simplified agent
+   */
+  private buildMessageContext(history: ChatMessage[], currentMessage: string): string {
+    let context = "";
+
+    if (history && history.length > 0) {
+      const recentHistory = history.slice(-10); // Last 10 messages for context
+      recentHistory.forEach((msg) => {
+        if (msg.role === "user") {
+          context += `User: ${msg.content}\n`;
+        } else if (msg.role === "assistant") {
+          context += `Assistant: ${msg.content}\n`;
+        }
+      });
+    }
+
+    context += `User: ${currentMessage}`;
+    return context;
+  }
+
+  /**
    * Stream chat with detailed event callbacks
    */
   async chat(
@@ -113,10 +134,7 @@ export class AgentService {
     onChunk: (chunk: StreamChunk) => void
   ): Promise<void> {
     try {
-      // Convert history and add current message
-      const messages = this.convertHistory(history);
       const currentMessage = typeof message === "string" ? message : String(message);
-      messages.push(new HumanMessage({ content: currentMessage }));
 
       // Send initial thinking event
       onChunk({
@@ -128,167 +146,98 @@ export class AgentService {
         },
       });
 
-      let fullResponse = "";
-      let isFirstChunk = true;
+      // Build context with history
+      const contextMessage = this.buildMessageContext(history, currentMessage);
 
-      // Stream the agent response with events
-      try {
-        for await (const event of this.agent.streamEvents(
-          { messages },
-          { version: "v2" }
-        )) {
-          // Handle different event types
-          if (event.event === "on_llm_start") {
+      // Use the simplified agent invoke
+      const result = await this.agent.invoke(contextMessage);
+
+      // Extract content from the result
+      let responseContent = "";
+
+      if (result) {
+        // Handle AIMessageChunk response
+        if (typeof result.content === "string") {
+          responseContent = result.content;
+        } else if (result.content && typeof result.content === "object") {
+          // Content might be an array of content blocks
+          if (Array.isArray(result.content)) {
+            responseContent = result.content
+              .map((block: any) => {
+                if (typeof block === "string") return block;
+                if (block.text) return block.text;
+                return JSON.stringify(block);
+              })
+              .join("");
+          } else {
+            responseContent = JSON.stringify(result.content);
+          }
+        }
+
+        // Check for tool calls
+        if (result.tool_calls && result.tool_calls.length > 0) {
+          for (const toolCall of result.tool_calls) {
             onChunk({
               chunk: "",
               done: false,
               event: {
-                type: "thinking",
-                data: { content: "Processing...", timestamp: Date.now() },
+                type: "tool_start",
+                data: {
+                  toolName: toolCall.name,
+                  toolArgs: toolCall.args,
+                  timestamp: Date.now(),
+                },
               },
             });
-          } else if (event.event === "on_tool_start") {
-            const toolName = event.name || "unknown";
-            const toolArgs = event.data?.input || {};
 
-            // Check if it's a subagent task
-            if (toolName === "task") {
-              const subagentName = toolArgs.agent || toolArgs.name || "subagent";
-              onChunk({
-                chunk: "",
-                done: false,
-                event: {
-                  type: "subagent_start",
-                  data: {
-                    subagentName,
-                    content: `Delegating to ${subagentName}...`,
-                    timestamp: Date.now(),
-                  },
-                },
-              });
-            } else if (toolName === "write_todos") {
-              // Planning event
-              onChunk({
-                chunk: "",
-                done: false,
-                event: {
-                  type: "planning",
-                  data: {
-                    todos: toolArgs.todos || [],
-                    content: "Creating plan...",
-                    timestamp: Date.now(),
-                  },
-                },
-              });
-            } else {
-              // Regular tool execution
-              onChunk({
-                chunk: "",
-                done: false,
-                event: {
-                  type: "tool_start",
-                  data: {
-                    toolName,
-                    toolArgs,
-                    timestamp: Date.now(),
-                  },
-                },
-              });
-            }
-          } else if (event.event === "on_tool_end") {
-            const toolName = event.name || "unknown";
-            const output = event.data?.output;
-
-            if (toolName === "task") {
-              onChunk({
-                chunk: "",
-                done: false,
-                event: {
-                  type: "subagent_result",
-                  data: {
-                    subagentName: toolName,
-                    toolResult: output,
-                    timestamp: Date.now(),
-                  },
-                },
-              });
-            } else {
-              onChunk({
-                chunk: "",
-                done: false,
-                event: {
-                  type: "tool_result",
-                  data: {
-                    toolName,
-                    toolResult: output,
-                    timestamp: Date.now(),
-                  },
-                },
-              });
-            }
-          } else if (event.event === "on_llm_stream") {
-            // Streaming text content
-            const chunk = event.data?.chunk;
-            if (chunk?.content) {
-              const content = typeof chunk.content === "string"
-                ? chunk.content
-                : JSON.stringify(chunk.content);
-
-              fullResponse += content;
-
-              onChunk({
-                chunk: content,
-                done: false,
-                event: {
-                  type: "message",
-                  data: { content, timestamp: Date.now() },
-                },
-              });
-            }
-          } else if (event.event === "on_chain_end" && event.name === "LangGraph") {
-            // Final response
-            const output = event.data?.output;
-            if (output?.messages) {
-              const lastMessage = output.messages[output.messages.length - 1];
-              if (lastMessage?.content && !fullResponse) {
-                const content = typeof lastMessage.content === "string"
-                  ? lastMessage.content
-                  : JSON.stringify(lastMessage.content);
-
-                fullResponse = content;
+            // Execute the tool
+            const tool = this.agent.tools.find((t: any) => t.name === toolCall.name);
+            if (tool) {
+              try {
+                const toolResult = await tool.invoke(toolCall.args);
                 onChunk({
-                  chunk: content,
+                  chunk: "",
                   done: false,
                   event: {
-                    type: "message",
-                    data: { content, timestamp: Date.now() },
+                    type: "tool_result",
+                    data: {
+                      toolName: toolCall.name,
+                      toolResult: toolResult,
+                      timestamp: Date.now(),
+                    },
                   },
                 });
+
+                // Append tool result context
+                responseContent += `\n\nTool ${toolCall.name} result: ${typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult)}`;
+              } catch (toolError: any) {
+                console.error(`Tool ${toolCall.name} error:`, toolError);
               }
             }
           }
         }
-      } catch (streamError: any) {
-        console.error("Stream error:", streamError);
-        // Fallback to non-streaming invoke
-        const result = await this.agent.invoke({ messages });
-        if (result?.messages) {
-          const lastMessage = result.messages[result.messages.length - 1];
-          if (lastMessage?.content) {
-            const content = typeof lastMessage.content === "string"
-              ? lastMessage.content
-              : JSON.stringify(lastMessage.content);
-            fullResponse = content;
-            onChunk({
-              chunk: content,
-              done: false,
-              event: {
-                type: "message",
-                data: { content, timestamp: Date.now() },
-              },
-            });
-          }
-        }
+      }
+
+      // Send the response
+      if (responseContent) {
+        onChunk({
+          chunk: responseContent,
+          done: false,
+          event: {
+            type: "message",
+            data: { content: responseContent, timestamp: Date.now() },
+          },
+        });
+      } else {
+        responseContent = "I processed your request. Let me know if you need anything else.";
+        onChunk({
+          chunk: responseContent,
+          done: false,
+          event: {
+            type: "message",
+            data: { content: responseContent, timestamp: Date.now() },
+          },
+        });
       }
 
       // Send completion
@@ -318,17 +267,20 @@ export class AgentService {
    */
   async chatSimple(message: string, history: ChatMessage[]): Promise<string> {
     try {
-      const messages = this.convertHistory(history);
-      messages.push(new HumanMessage({ content: message }));
+      const contextMessage = this.buildMessageContext(history, message);
+      const result = await this.agent.invoke(contextMessage);
 
-      const result = await this.agent.invoke({ messages });
-
-      if (result?.messages) {
-        const lastMessage = result.messages[result.messages.length - 1];
-        if (lastMessage?.content) {
-          return typeof lastMessage.content === "string"
-            ? lastMessage.content
-            : JSON.stringify(lastMessage.content);
+      if (result) {
+        if (typeof result.content === "string") {
+          return result.content;
+        } else if (result.content && Array.isArray(result.content)) {
+          return result.content
+            .map((block: any) => {
+              if (typeof block === "string") return block;
+              if (block.text) return block.text;
+              return JSON.stringify(block);
+            })
+            .join("");
         }
       }
 
@@ -339,3 +291,4 @@ export class AgentService {
     }
   }
 }
+

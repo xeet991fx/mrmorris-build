@@ -177,6 +177,22 @@ export async function pauseWorkflow(
     return response.data.data.workflow;
 }
 
+/**
+ * Clone/duplicate a workflow
+ */
+export async function cloneWorkflow(
+    workspaceId: string,
+    workflowId: string
+): Promise<Workflow> {
+    const response = await apiClient.post<ApiResponse<{ workflow: Workflow }>>(
+        `/workspaces/${workspaceId}/workflows/${workflowId}/clone`
+    );
+    if (!response.data.data?.workflow) {
+        throw new Error(response.data.error || 'Failed to clone workflow');
+    }
+    return response.data.data.workflow;
+}
+
 // ============================================
 // ENROLLMENT OPERATIONS
 // ============================================

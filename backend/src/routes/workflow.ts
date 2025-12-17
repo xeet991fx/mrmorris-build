@@ -518,6 +518,7 @@ router.post(
             // Create cloned workflow
             const clonedWorkflow = new Workflow({
                 workspaceId,
+                userId,
                 name: `${originalWorkflow.name} (Copy)`,
                 description: originalWorkflow.description,
                 status: "draft",
