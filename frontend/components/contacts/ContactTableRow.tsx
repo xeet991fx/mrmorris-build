@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Menu } from "@headlessui/react";
 import { EllipsisVerticalIcon, PencilIcon, TrashIcon, BoltIcon } from "@heroicons/react/24/outline";
 import { Sparkles } from "lucide-react";
@@ -35,6 +36,7 @@ export default function ContactTableRow({
   animate,
   transition,
 }: ContactTableRowProps) {
+  const router = useRouter();
   const {
     selectedContacts,
     toggleContactSelection,
@@ -46,6 +48,23 @@ export default function ContactTableRow({
   const fullName = `${contact.firstName} ${contact.lastName}`;
   const [showWorkflowModal, setShowWorkflowModal] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
+
+  // Handle row click to navigate to contact details
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on checkbox or actions
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('input[type="checkbox"]') ||
+      target.closest('[data-actions]') ||
+      target.closest('button') ||
+      target.closest('[role="menu"]')
+    ) {
+      return;
+    }
+    if (currentWorkspace?._id) {
+      router.push(`/projects/${currentWorkspace._id}/contacts/${contact._id}`);
+    }
+  };
 
   // Handle Apollo enrichment
   const handleEnrich = async () => {
@@ -169,8 +188,9 @@ export default function ContactTableRow({
       initial={initial}
       animate={animate}
       transition={transition}
+      onClick={handleRowClick}
       className={cn(
-        "border-b border-border hover:bg-muted/30 transition-colors",
+        "border-b border-border hover:bg-muted/30 transition-colors cursor-pointer",
         isSelected && "bg-muted/20"
       )}
     >
@@ -199,7 +219,7 @@ export default function ContactTableRow({
       ))}
 
       {/* Actions */}
-      <td className="px-4 py-1 h-8">
+      <td className="px-4 py-1 h-8" data-actions>
         <Menu as="div" className="relative inline-block text-left">
           <Menu.Button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <EllipsisVerticalIcon className="w-4 h-4" />
