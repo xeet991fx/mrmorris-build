@@ -1,110 +1,104 @@
 "use client";
 
-<<<<<<< HEAD
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useWorkspaceStore } from "@/store/useWorkspaceStore";
-=======
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpIcon, BoltIcon, ShieldCheckIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
-import { useAgentStore, AIModel } from "@/store/useAgentStore";
-import UserMessage from "@/components/agent/UserMessage";
-import AssistantMessage from "@/components/agent/AssistantMessage";
-import SystemMessage from "@/components/agent/SystemMessage";
-import ThinkingIndicator from "@/components/agent/ThinkingIndicator";
-import AgentActivityPanel from "@/components/agent/AgentActivityPanel";
-import toast from "react-hot-toast";
+import { sendAgentMessage, getAgentStatus } from "@/lib/api/agent";
 
-// Model options
-const MODEL_OPTIONS: { value: AIModel; label: string; icon: string }[] = [
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', icon: '⚡' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', icon: '✨' },
-];
->>>>>>> a3e3b487bbcc6cfe36939efd108d69c6b588a362
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+  toolResults?: Record<string, any>;
+}
 
 export default function WorkspacePage() {
   const params = useParams();
-  const router = useRouter();
   const workspaceId = params.id as string;
-<<<<<<< HEAD
-  const { fetchWorkspace } = useWorkspaceStore();
-=======
   const { currentWorkspace, fetchWorkspace } = useWorkspaceStore();
-  const {
-    messages,
-    isLoading,
-    isStreaming,
-    sendMessage,
-    clearConversation,
-    autonomousMode,
-    toggleAutonomousMode,
-    selectedModel,
-    setSelectedModel,
-    updateContext,
-    currentPhase,
-    activeSubagent,
-    activities,
-  } = useAgentStore();
 
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [agentInfo, setAgentInfo] = useState<{
+    status: string;
+    model: string;
+    agents: { name: string; description: string }[];
+  } | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Get the current tool being executed
-  const currentToolName = activities.find(a => a.status === "active" && a.type === "tool")?.name;
->>>>>>> a3e3b487bbcc6cfe36939efd108d69c6b588a362
-
-  useEffect(() => {
-    if (!workspaceId) return;
-
-    // Load workspace data
-    fetchWorkspace(workspaceId).catch(console.error);
-
-<<<<<<< HEAD
-    // Redirect to contacts page as default
-    router.replace(`/projects/${workspaceId}/contacts`);
-  }, [workspaceId, fetchWorkspace, router]);
-
-  return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-        <p className="mt-4 text-gray-600">Loading workspace...</p>
-=======
-    loadWorkspace();
-    return () => { cancelled = true; };
-  }, [workspaceId, fetchWorkspace]);
-
-  // Update agent context with workspace info
-  useEffect(() => {
-    if (workspaceId && currentWorkspace) {
-      updateContext({
-        workspaceId,
-        workspaceName: currentWorkspace.name,
-        currentPage: "dashboard",
-      });
-    }
-  }, [workspaceId, currentWorkspace, updateContext]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, isStreaming, currentPhase]);
+  }, [messages]);
+
+  // Load workspace and agent status
+  useEffect(() => {
+    if (!workspaceId) return;
+
+    const loadData = async () => {
+      try {
+        await fetchWorkspace(workspaceId);
+
+        // Get agent status
+        const statusRes = await getAgentStatus(workspaceId);
+        if (statusRes.success && statusRes.data) {
+          setAgentInfo({
+            status: statusRes.data.status,
+            model: statusRes.data.model,
+            agents: statusRes.data.availableAgents,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load:", error);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+
+    loadData();
+  }, [workspaceId, fetchWorkspace]);
 
   const handleSubmit = async () => {
-    if (!input.trim() || isLoading || isStreaming) return;
-    const message = input.trim();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    setIsLoading(true);
 
     try {
-      await sendMessage(message);
-    } catch (error) {
-      console.error("Failed to send message:", error);
+      const response = await sendAgentMessage(workspaceId, userMessage.content);
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: response.data?.response || "Sorry, I couldn't process that.",
+        timestamp: new Date(),
+        toolResults: response.data?.toolResults,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error: any) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `Error: ${error.message || "Failed to get response"}`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -115,212 +109,136 @@ export default function WorkspacePage() {
     }
   };
 
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
-    }
-  };
+  const suggestedPrompts = [
+    "Create a contact named John Smith from Acme Corp",
+    "Search for contacts at Google",
+    "Get my pipeline summary",
+    "List all workflows",
+  ];
 
-  const handleToggleAutonomous = () => {
-    toggleAutonomousMode();
-    toast.success(
-      autonomousMode
-        ? "Confirmation Mode - Actions will require approval"
-        : "Autonomous Mode - Actions will execute automatically"
-    );
-  };
-
-  const handleModelChange = (model: AIModel) => {
-    setSelectedModel(model);
-    const modelInfo = MODEL_OPTIONS.find(m => m.value === model);
-    toast.success(`Switched to ${modelInfo?.label || model}`);
-  };
-
-  const currentModelInfo = MODEL_OPTIONS.find(m => m.value === selectedModel) || MODEL_OPTIONS[0];
-
-  if (isInitialLoading || !currentWorkspace) {
+  if (isInitialLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  const suggestedPrompts = [
-    "Show me today's pipeline",
-    "Who are my hottest leads?",
-    "Create a follow-up task",
-    "Deals closing this month",
-  ];
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 py-8">
-          <AnimatePresence mode="popLayout">
-            {messages.length === 0 && !isLoading && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header */}
+      <div className="bg-white border-b px-6 py-4">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">
+              {currentWorkspace?.name || "Workspace"} - AI Assistant
+            </h1>
+            {agentInfo && (
+              <p className="text-sm text-gray-500">
+                {agentInfo.model} • {agentInfo.agents.length} agents available
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {agentInfo?.agents.map((agent) => (
+              <span
+                key={agent.name}
+                className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full capitalize"
               >
-                <h1 className="text-4xl font-semibold text-foreground mb-3">
-                  What can I help with?
-                </h1>
-                <p className="text-muted-foreground mb-12">
-                  Ask about contacts, deals, or your pipeline
-                </p>
+                {agent.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
 
-                {/* Suggested Prompts */}
-                <div className="flex flex-wrap justify-center gap-2">
-                  {suggestedPrompts.map((prompt, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setInput(prompt);
-                        textareaRef.current?.focus();
-                      }}
-                      className="px-4 py-2 text-sm text-muted-foreground border border-border rounded-full hover:bg-muted hover:text-foreground transition-colors"
-                    >
-                      {prompt}
-                    </button>
-                  ))}
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="max-w-3xl mx-auto space-y-4">
+          {messages.length === 0 ? (
+            <div className="text-center py-20">
+              <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                👋 Hi! I'm your CRM Assistant
+              </h2>
+              <p className="text-gray-600 mb-8">
+                I can help you with contacts, emails, deals, and workflows.
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {suggestedPrompts.map((prompt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setInput(prompt)}
+                    className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[80%] px-4 py-3 rounded-2xl ${message.role === "user"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white border border-gray-200 text-gray-900"
+                    }`}
+                >
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.toolResults && (
+                    <div className="mt-2 pt-2 border-t border-gray-200/20 text-xs opacity-70">
+                      Tools used: {Object.keys(message.toolResults).join(", ")}
+                    </div>
+                  )}
                 </div>
-              </motion.div>
-            )}
+              </div>
+            ))
+          )}
 
-            {messages.map((message, index) => {
-              if (message.role === "user") {
-                return (
-                  <UserMessage
-                    key={message.id}
-                    message={message}
-                    isLatest={index === messages.length - 1}
-                  />
-                );
-              } else if (message.role === "assistant") {
-                return (
-                  <AssistantMessage
-                    key={message.id}
-                    message={message}
-                    isLatest={index === messages.length - 1}
-                  />
-                );
-              } else {
-                return <SystemMessage key={message.id} message={message} />;
-              }
-            })}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce delay-100" />
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce delay-200" />
+                  <span className="ml-2 text-sm">Thinking...</span>
+                </div>
+              </div>
+            </div>
+          )}
 
-            {/* Enhanced Streaming Indicator */}
-            {(isLoading || isStreaming) && currentPhase !== "idle" && (
-              <ThinkingIndicator
-                key="thinking"
-                phase={currentPhase}
-                toolName={currentToolName}
-                subagentName={activeSubagent || undefined}
-              />
-            )}
-          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
       </div>
 
       {/* Input Area */}
-      <div className="sticky bottom-0 bg-background pb-6 pt-4">
-        <div className="max-w-2xl mx-auto px-6 space-y-3">
-          {/* Activity Panel - Shows above input when streaming */}
-          <AnimatePresence>
-            {(isStreaming || currentPhase !== "idle") && (
-              <AgentActivityPanel className="mb-3" />
-            )}
-          </AnimatePresence>
-
-          {/* Controls Row: Autonomous Mode + Model Selector */}
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            {/* Autonomous Mode Toggle */}
-            <button
-              onClick={handleToggleAutonomous}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${autonomousMode
-                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 ring-1 ring-amber-500/30"
-                : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 ring-1 ring-blue-500/30"
-                }`}
-              title={autonomousMode
-                ? "Autonomous Mode: Agent executes actions automatically"
-                : "Confirmation Mode: Agent asks before executing actions"
-              }
-            >
-              {autonomousMode ? (
-                <>
-                  <BoltIcon className="w-3.5 h-3.5" />
-                  <span>Autonomous</span>
-                </>
-              ) : (
-                <>
-                  <ShieldCheckIcon className="w-3.5 h-3.5" />
-                  <span>Confirmation</span>
-                </>
-              )}
-            </button>
-
-            {/* Model Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground hidden sm:inline">Model:</span>
-              <div className="relative">
-                <select
-                  value={selectedModel}
-                  onChange={(e) => handleModelChange(e.target.value as AIModel)}
-                  className="appearance-none pl-8 pr-7 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer focus:outline-none focus:ring-2 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 ring-1 ring-purple-500/30 focus:ring-purple-500"
-                >
-                  {MODEL_OPTIONS.map((model) => (
-                    <option key={model.value} value={model.value}>
-                      {model.label}
-                    </option>
-                  ))}
-                </select>
-                {/* Model Icon */}
-                <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-sm">
-                  {currentModelInfo?.icon}
-                </div>
-                {/* Dropdown Arrow */}
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Input */}
-          <div className="flex items-center gap-3 bg-muted rounded-xl p-1.5 pl-4">
+      <div className="bg-white border-t px-6 py-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-end gap-3 bg-gray-100 rounded-xl p-2">
             <textarea
               ref={textareaRef}
               value={input}
-              onChange={handleInput}
+              onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={autonomousMode
-                ? "Ask me to do anything... I'll execute it automatically"
-                : "Message Mr Morris..."
-              }
-              disabled={isLoading || isStreaming}
+              placeholder="Ask me anything about contacts, deals, or workflows..."
+              disabled={isLoading}
               rows={1}
-              className="flex-1 py-2 bg-transparent border-0 resize-none focus:outline-none disabled:opacity-50 text-sm text-foreground placeholder:text-muted-foreground"
-              style={{ minHeight: "36px", maxHeight: "120px" }}
+              className="flex-1 px-3 py-2 bg-transparent border-0 resize-none focus:outline-none disabled:opacity-50 text-sm"
+              style={{ minHeight: "40px", maxHeight: "120px" }}
             />
             <button
               onClick={handleSubmit}
-              disabled={!input.trim() || isLoading || isStreaming}
-              className="flex-shrink-0 p-2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              disabled={!input.trim() || isLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ArrowUpIcon className="w-5 h-5" />
+              Send
             </button>
           </div>
         </div>
->>>>>>> a3e3b487bbcc6cfe36939efd108d69c6b588a362
       </div>
     </div>
   );

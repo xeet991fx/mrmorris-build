@@ -43,11 +43,18 @@ export class EventPublisher {
       const serialized = JSON.stringify(event);
       JSON.parse(serialized);
 
-      // Enqueue event
-      await queueManager.enqueueEvent(event, {
-        priority: options.priority || EVENT_PRIORITIES.MEDIUM,
-        delay: options.delay || 0,
-      });
+      // Enqueue event with timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Event publishing timed out')), 2000)
+      );
+
+      await Promise.race([
+        queueManager.enqueueEvent(event, {
+          priority: options.priority || EVENT_PRIORITIES.MEDIUM,
+          delay: options.delay || 0,
+        }),
+        timeoutPromise
+      ]);
 
       console.log(`✅ Event published: ${eventType} (${metadata.eventId})`);
     } catch (error) {

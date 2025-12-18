@@ -123,7 +123,7 @@ app.use("/api/campaigns", campaignRoutes);
 app.use("/api/inbox", inboxRoutes);
 app.use("/api/enrichment", enrichmentRoutes);
 app.use("/api/workspaces", apolloSettingsRoutes);
-app.use("/api/agent", agentRoutes);
+app.use("/api/workspaces", agentRoutes);
 app.use("/api/workspaces", taskRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/workspaces", teamRoutes);

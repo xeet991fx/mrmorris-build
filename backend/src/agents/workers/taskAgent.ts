@@ -1,0 +1,250 @@
+/**
+ * Task Worker Agent
+ * 
+ * Handles task/to-do management: create, list, complete, assign tasks.
+ * Uses Google Vertex AI with Gemini 2.5 Pro.
+ */
+
+import { ChatVertexAI } from "@langchain/google-vertexai";
+import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { AgentStateType } from "../state";
+import Task from "../../models/Task";
+import Contact from "../../models/Contact";
+
+// Initialize Gemini 2.5 Pro via Vertex AI
+const taskModel = new ChatVertexAI({
+    model: "gemini-2.5-pro",
+    temperature: 0,
+    authOptions: {
+        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
+    },
+    safetySettings: [
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+    ],
+});
+
+function parseToolCall(response: string): { tool: string; args: any } | null {
+    try {
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.tool && parsed.args) return parsed;
+        }
+    } catch (e) { }
+    return null;
+}
+
+async function executeTaskTool(
+    toolName: string,
+    args: any,
+    workspaceId: string,
+    userId: string
+): Promise<any> {
+    switch (toolName) {
+        case "create_task": {
+            const { title, description, dueDate, contactName, priority } = args;
+
+            // Calculate due date
+            let due = new Date();
+            if (dueDate) {
+                if (typeof dueDate === "number") {
+                    due.setDate(due.getDate() + dueDate);
+                } else {
+                    due = new Date(dueDate);
+                }
+            } else {
+                due.setDate(due.getDate() + 1); // Default: tomorrow
+            }
+
+            // Find contact if specified
+            let contactId = null;
+            if (contactName) {
+                const regex = new RegExp(contactName, "i");
+                const contact = await Contact.findOne({
+                    workspaceId,
+                    $or: [{ firstName: regex }, { lastName: regex }],
+                });
+                if (contact) contactId = contact._id;
+            }
+
+            const task = await Task.create({
+                workspaceId,
+                userId,
+                createdBy: userId,
+                title,
+                description: description || "",
+                dueDate: due,
+                priority: priority || "medium",
+                status: "todo",
+                relatedContactId: contactId,
+            });
+
+            return {
+                success: true,
+                taskId: task._id.toString(),
+                message: `Task "${title}" created, due ${due.toLocaleDateString()}`,
+            };
+        }
+
+        case "list_tasks": {
+            const { status, filter } = args;
+
+            const query: any = { workspaceId, userId };
+            if (status) query.status = status;
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            if (filter === "overdue") {
+                query.dueDate = { $lt: today };
+                query.status = { $ne: "completed" };
+            } else if (filter === "today") {
+                query.dueDate = { $gte: today, $lt: tomorrow };
+            } else if (filter === "upcoming") {
+                query.dueDate = { $gte: tomorrow };
+            }
+
+            const tasks = await Task.find(query)
+                .populate("relatedContactId", "firstName lastName")
+                .sort({ dueDate: 1 })
+                .limit(20)
+                .lean();
+
+            return {
+                success: true,
+                count: tasks.length,
+                tasks: tasks.map((t: any) => ({
+                    id: t._id.toString(),
+                    title: t.title,
+                    dueDate: new Date(t.dueDate).toLocaleDateString(),
+                    status: t.status,
+                    priority: t.priority,
+                    contact: t.relatedContactId ? `${t.relatedContactId.firstName} ${t.relatedContactId.lastName}` : null,
+                })),
+            };
+        }
+
+        case "complete_task": {
+            const { taskTitle } = args;
+
+            const regex = new RegExp(taskTitle, "i");
+            const task = await Task.findOneAndUpdate(
+                { workspaceId, title: regex, status: { $ne: "completed" } },
+                { status: "completed", completedAt: new Date() },
+                { new: true }
+            );
+
+            if (!task) {
+                return { success: false, error: `Task "${taskTitle}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Task "${task.title}" marked as complete! ✅`,
+            };
+        }
+
+        case "delete_task": {
+            const { taskTitle } = args;
+
+            const regex = new RegExp(taskTitle, "i");
+            const task = await Task.findOneAndDelete({ workspaceId, title: regex });
+
+            if (!task) {
+                return { success: false, error: `Task "${taskTitle}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Task "${task.title}" deleted`,
+            };
+        }
+
+        default:
+            return { success: false, error: `Unknown tool: ${toolName}` };
+    }
+}
+
+export async function taskAgentNode(
+    state: AgentStateType
+): Promise<Partial<AgentStateType>> {
+    console.log("📋 Task Agent processing...");
+
+    try {
+        const lastMessage = state.messages[state.messages.length - 1];
+        const userRequest = lastMessage.content as string;
+
+        const systemPrompt = `You are a CRM Task Agent. Create and manage tasks.
+
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
+
+Tools:
+1. create_task - Args: { title, dueDate? (number of days), priority? }
+2. list_tasks - Args: { filter? (overdue/today/upcoming) }
+3. complete_task - Args: { taskTitle }
+4. delete_task - Args: { taskTitle }
+
+Examples:
+- "create a task to call John tomorrow" → {"tool": "create_task", "args": {"title": "Call John", "dueDate": 1}}
+- "remind me to follow up" → {"tool": "create_task", "args": {"title": "Follow up", "dueDate": 1}}
+- "show overdue tasks" → {"tool": "list_tasks", "args": {"filter": "overdue"}}
+
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
+
+        const response = await taskModel.invoke([
+            new SystemMessage(systemPrompt),
+            new HumanMessage(userRequest),
+        ]);
+
+        const responseText = response.content as string;
+        console.log("🤖 Task AI Response:", responseText);
+
+        const toolCall = parseToolCall(responseText);
+
+        if (toolCall) {
+            console.log(`🔧 Executing task tool: ${toolCall.tool}`);
+
+            const result = await executeTaskTool(
+                toolCall.tool,
+                toolCall.args,
+                state.workspaceId,
+                state.userId
+            );
+
+            console.log("✅ Task tool result:", result);
+
+            let friendlyResponse = result.success ? result.message : `Sorry: ${result.error}`;
+
+            if (toolCall.tool === "list_tasks" && result.success) {
+                if (result.count === 0) {
+                    friendlyResponse = "No tasks found. You're all caught up! 🎉";
+                } else {
+                    friendlyResponse = `Found ${result.count} task(s):\n${result.tasks.map((t: any) => `• ${t.title} - Due: ${t.dueDate} (${t.priority})${t.contact ? ` - ${t.contact}` : ""}`).join("\n")}`;
+                }
+            }
+
+            return {
+                messages: [new AIMessage(friendlyResponse)],
+                toolResults: { [toolCall.tool]: result },
+                finalResponse: friendlyResponse,
+            };
+        }
+
+        return {
+            messages: [new AIMessage("I can help with tasks! Try:\n• 'Create a task to follow up with John'\n• 'Show my overdue tasks'\n• 'Complete task: Call Sarah'")],
+            finalResponse: "I can help with tasks! Try:\n• 'Create a task to follow up with John'\n• 'Show my overdue tasks'\n• 'Complete task: Call Sarah'",
+        };
+
+    } catch (error: any) {
+        console.error("❌ Task Agent error:", error);
+        return {
+            error: error.message,
+            finalResponse: "I encountered an error. Please try again.",
+        };
+    }
+}
