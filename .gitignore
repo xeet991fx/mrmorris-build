@@ -43,3 +43,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 nul
+
+# secrets
+vertex-key.json
+backend/vertex-key.json
