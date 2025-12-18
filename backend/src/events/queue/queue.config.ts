@@ -11,13 +11,18 @@ export const QUEUE_NAMES = {
 // Get Redis connection config (supports both REDIS_URL and individual params)
 const getRedisConnection = () => {
   if (process.env.REDIS_URL) {
-    // Parse REDIS_URL for Railway/Heroku
+    // Parse REDIS_URL for Upstash/Railway/Heroku
     const url = new URL(process.env.REDIS_URL);
+    const isTLS = url.protocol === 'rediss:';
+
     return {
       host: url.hostname,
       port: parseInt(url.port || '6379'),
       password: url.password || undefined,
       db: parseInt(url.pathname.slice(1) || '0'),
+      // Enable TLS for Upstash (rediss:// protocol)
+      ...(isTLS && { tls: {} }),
+      maxRetriesPerRequest: null, // Required for BullMQ
     };
   }
 
@@ -27,6 +32,7 @@ const getRedisConnection = () => {
     port: parseInt(process.env.REDIS_PORT || '6379'),
     password: process.env.REDIS_PASSWORD || undefined,
     db: parseInt(process.env.REDIS_DB || '0'),
+    maxRetriesPerRequest: null, // Required for BullMQ
   };
 };
 
