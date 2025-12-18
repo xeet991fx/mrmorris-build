@@ -139,7 +139,6 @@ const teamMemberSchema = new Schema<ITeamMember>(
 // Compound indexes
 teamMemberSchema.index({ workspaceId: 1, userId: 1 }, { unique: true, sparse: true });
 teamMemberSchema.index({ workspaceId: 1, status: 1 });
-teamMemberSchema.index({ inviteToken: 1 }, { sparse: true });
 
 // ============================================
 // HELPER METHODS
