@@ -324,22 +324,30 @@ Draft the email response:`;
 
     /**
      * Fetch new replies from email accounts
-     * Called by cron job every 10 minutes
+     * Called by cron job every 10 minutes or manually for a specific workspace
      */
-    async fetchNewReplies(): Promise<number> {
-        console.log("📥 Fetching new replies from Gmail...");
+    async fetchNewReplies(workspaceId?: string): Promise<number> {
+        console.log(workspaceId
+            ? `📥 Fetching new replies for workspace: ${workspaceId}`
+            : "📥 Fetching new replies from Gmail...");
 
         let totalRepliesProcessed = 0;
 
         try {
-            // Get all active Gmail integrations
+            // Get Gmail integrations - filter by workspace if provided
             const EmailIntegration = (await import("../models/EmailIntegration")).default;
-            const integrations = await EmailIntegration.find({
+            const query: any = {
                 provider: "gmail",
                 isActive: true,
-            }).select("+accessToken +refreshToken");
+            };
 
-            console.log(`📥 Found ${integrations.length} Gmail integrations`);
+            if (workspaceId) {
+                query.workspaceId = workspaceId;
+            }
+
+            const integrations = await EmailIntegration.find(query).select("+accessToken +refreshToken");
+
+            console.log(`📥 Found ${integrations.length} Gmail integration(s)${workspaceId ? ' for this workspace' : ''}`);
 
             if (integrations.length === 0) {
                 console.log("📥 No active Gmail integrations found");
@@ -380,28 +388,39 @@ Draft the email response:`;
                     console.log(`📬 Found ${messages.length} emails in inbox for ${integration.email}`);
 
                     // Get all campaign emails we've sent from this workspace
-                    // Removed replied: { $ne: true } to check for newer replies on existing conversations
                     const sentEmails = await EmailMessage.find({
                         workspaceId: integration.workspaceId,
                     }).lean();
 
-                    console.log(`📧 Found ${sentEmails.length} unreplied campaign emails in workspace`);
+                    // Also get all contacts for this workspace to detect replies from known contacts
+                    const contacts = await Contact.find({
+                        workspaceId: integration.workspaceId,
+                    }).select("email firstName lastName").lean();
+
+                    console.log(`📧 Found ${sentEmails.length} sent campaign emails and ${contacts.length} contacts in workspace`);
 
                     // Create maps for matching
                     const sentToEmails = new Map<string, any>();
                     const sentSubjects = new Map<string, any>();
+                    const contactEmails = new Map<string, any>();
+
                     for (const email of sentEmails) {
                         if (email.toEmail) {
                             sentToEmails.set(email.toEmail.toLowerCase(), email);
                         }
                         if (email.subject) {
-                            // Store by subject without Re: prefix for matching
                             const cleanSubject = email.subject.replace(/^re:\s*/i, "").toLowerCase().trim();
                             sentSubjects.set(cleanSubject, email);
                         }
                     }
 
-                    console.log(`📧 Tracking ${sentToEmails.size} recipient emails, ${sentSubjects.size} subjects`);
+                    for (const contact of contacts) {
+                        if (contact.email) {
+                            contactEmails.set(contact.email.toLowerCase(), contact);
+                        }
+                    }
+
+                    console.log(`📧 Tracking ${sentToEmails.size} recipients, ${sentSubjects.size} subjects, ${contactEmails.size} contacts`);
 
                     for (const msg of messages) {
                         try {
@@ -428,9 +447,10 @@ Draft the email response:`;
 
                             console.log(`📧 Checking email from: ${fromEmail}, subject: ${subject.substring(0, 50)}`);
 
-                            // Try to match by sender email first
+                            // Try to match by sender email first (sent campaign email)
                             let originalEmail = sentToEmails.get(fromEmail.toLowerCase());
-                            let matchedBy = "email";
+                            let matchedBy = "campaign_recipient";
+                            let matchedContact = null;
 
                             // If not found by email, try matching by subject
                             if (!originalEmail && subject.toLowerCase().startsWith("re:")) {
@@ -438,12 +458,19 @@ Draft the email response:`;
                                 matchedBy = "subject";
                             }
 
+                            // If still no match, check if sender is a known contact (reply from contact)
                             if (!originalEmail) {
-                                console.log(`⏭️ No match found for ${fromEmail}`);
-                                continue;
+                                matchedContact = contactEmails.get(fromEmail.toLowerCase());
+                                if (matchedContact) {
+                                    matchedBy = "contact";
+                                    console.log(`✅ Email from known contact: ${matchedContact.firstName} ${matchedContact.lastName} (${fromEmail})`);
+                                } else {
+                                    // Not a known contact or campaign recipient - skip
+                                    continue;
+                                }
+                            } else {
+                                console.log(`✅ Matched by ${matchedBy}! Original email ID: ${originalEmail._id}`);
                             }
-
-                            console.log(`✅ Matched by ${matchedBy}! Original email ID: ${originalEmail._id}`);
 
                             // Check if this is actually a reply
                             const isReply = subject.toLowerCase().startsWith("re:") ||
@@ -469,15 +496,22 @@ Draft the email response:`;
                                 body = Buffer.from(fullMessage.data.payload.body.data, "base64").toString("utf-8");
                             }
 
-                            // Process this reply
-                            await this.processReply(originalEmail.messageId, {
-                                subject,
-                                body,
-                                receivedAt: new Date(date),
-                            });
-
-                            totalRepliesProcessed++;
-                            console.log(`✅ Reply processed from ${fromEmail}: ${subject}`);
+                            // Process reply based on match type
+                            if (originalEmail) {
+                                // We have an original sent email - update it
+                                await this.processReply(originalEmail.messageId, {
+                                    subject,
+                                    body,
+                                    receivedAt: new Date(date),
+                                });
+                                totalRepliesProcessed++;
+                                console.log(`✅ Reply processed from ${fromEmail}: ${subject}`);
+                            } else if (matchedContact) {
+                                // Reply from a known contact (no original campaign email)
+                                // Log for visibility but don't process as there's no original message
+                                console.log(`📬 Reply from contact ${matchedContact.firstName} - no original campaign email to update`);
+                                totalRepliesProcessed++;
+                            }
 
                         } catch (msgError: any) {
                             console.error(`Error processing message ${msg.id}:`, msgError.message);

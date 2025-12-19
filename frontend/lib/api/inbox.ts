@@ -174,11 +174,11 @@ export const getAIDraft = async (
 /**
  * Sync inbox to fetch new replies from Gmail
  */
-export const syncInbox = async (): Promise<{
+export const syncInbox = async (workspaceId: string): Promise<{
     success: boolean;
     message: string;
     repliesFound: number;
 }> => {
-    const response = await axiosInstance.post(`/inbox/sync`);
+    const response = await axiosInstance.post(`/inbox/sync`, { workspaceId });
     return response.data;
 };

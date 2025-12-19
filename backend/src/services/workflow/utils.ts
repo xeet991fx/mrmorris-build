@@ -36,12 +36,13 @@ export function calculateDelayMs(
 // ============================================
 
 /**
- * Replace template placeholders like {{firstName}} with actual values
+ * Replace template placeholders like {{firstName}} or {{contact.name}} with actual values
  */
 export function replacePlaceholders(text: string, entity: any): string {
     if (!text) return "";
 
-    return text.replace(/\{\{(\w+)\}\}/g, (match, field) => {
+    // Match both simple patterns like {{firstName}} and dot notation like {{contact.name}}
+    return text.replace(/\{\{([\w.]+)\}\}/g, (match, field) => {
         // Handle nested fields like contact.firstName
         const value = getNestedValue(entity, field);
         return value !== undefined ? String(value) : match;

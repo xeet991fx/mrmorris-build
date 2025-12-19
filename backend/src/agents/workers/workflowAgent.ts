@@ -307,6 +307,111 @@ async function executeWorkflowTool(
             };
         }
 
+        case "update_delay": {
+            const { workflowName, stepName, newDelay, newUnit } = args;
+
+            const workflowRegex = new RegExp(workflowName, "i");
+            const workflow = await Workflow.findOne({ workspaceId, name: workflowRegex });
+
+            if (!workflow) {
+                return { success: false, error: `Workflow "${workflowName}" not found` };
+            }
+
+            // Find delay step by name or just the first delay step
+            const stepRegex = stepName ? new RegExp(stepName, "i") : null;
+            const delayStep = workflow.steps.find((s: any) =>
+                s.type === "delay" && (!stepRegex || stepRegex.test(s.name))
+            );
+
+            if (!delayStep) {
+                return { success: false, error: `No delay step found in workflow "${workflow.name}"` };
+            }
+
+            // Update delay configuration
+            delayStep.config.delayValue = newDelay || delayStep.config.delayValue;
+            delayStep.config.delayUnit = newUnit || delayStep.config.delayUnit;
+            delayStep.name = `Wait ${delayStep.config.delayValue} ${delayStep.config.delayUnit}`;
+
+            await workflow.save();
+
+            return {
+                success: true,
+                message: `Updated delay to ${delayStep.config.delayValue} ${delayStep.config.delayUnit} in workflow "${workflow.name}"`,
+            };
+        }
+
+        case "pause_workflow": {
+            const { workflowName } = args;
+
+            const workflowRegex = new RegExp(workflowName, "i");
+            const workflow = await Workflow.findOneAndUpdate(
+                { workspaceId, name: workflowRegex },
+                { status: "paused" },
+                { new: true }
+            );
+
+            if (!workflow) {
+                return { success: false, error: `Workflow "${workflowName}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Workflow "${workflow.name}" has been paused`,
+            };
+        }
+
+        case "delete_workflow": {
+            const { workflowName } = args;
+
+            const workflowRegex = new RegExp(workflowName, "i");
+            const workflow = await Workflow.findOneAndDelete({ workspaceId, name: workflowRegex });
+
+            if (!workflow) {
+                return { success: false, error: `Workflow "${workflowName}" not found` };
+            }
+
+            // Also delete any enrollments
+            await WorkflowEnrollment.deleteMany({ workflowId: workflow._id });
+
+            return {
+                success: true,
+                message: `Deleted workflow "${workflow.name}" and all its enrollments`,
+            };
+        }
+
+        case "get_workflow_details": {
+            const { workflowName } = args;
+
+            const workflowRegex = new RegExp(workflowName, "i");
+            const workflow = await Workflow.findOne({ workspaceId, name: workflowRegex });
+
+            if (!workflow) {
+                return { success: false, error: `Workflow "${workflowName}" not found` };
+            }
+
+            const steps = workflow.steps.map((s: any, i: number) => {
+                let desc = `${i + 1}. ${s.name} (${s.type})`;
+                if (s.type === "delay" && s.config) {
+                    desc += ` - ${s.config.delayValue} ${s.config.delayUnit}`;
+                }
+                if (s.type === "action" && s.config?.actionType) {
+                    desc += ` - ${s.config.actionType}`;
+                }
+                return desc;
+            });
+
+            return {
+                success: true,
+                workflow: {
+                    id: workflow._id.toString(),
+                    name: workflow.name,
+                    status: workflow.status,
+                    stepCount: workflow.steps.length,
+                    steps: steps,
+                },
+            };
+        }
+
         default:
             return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -324,7 +429,7 @@ export async function workflowAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        const systemPrompt = `You are a CRM Workflow Automation Agent. Create and manage automated workflows.
+        const systemPrompt = `You are a CRM Workflow Automation Agent. Create, edit, and manage automated workflows.
 
 Available tools:
 
@@ -337,18 +442,34 @@ Available tools:
 3. add_email_step - Add an email step to existing workflow
    Args: { workflowName, subject, body, delayDays? }
 
-4. activate_workflow - Activate a draft workflow
+4. update_delay - Update the delay time in a workflow
+   Args: { workflowName, stepName?, newDelay, newUnit (minutes/hours/days) }
+   Example: "change the delay to 2 minutes" -> {"tool": "update_delay", "args": {"workflowName": "Welcome", "newDelay": 2, "newUnit": "minutes"}}
+
+5. activate_workflow - Activate a draft workflow
    Args: { workflowName }
 
-5. list_workflows - List all workflows
+6. pause_workflow - Pause an active workflow
+   Args: { workflowName }
+
+7. delete_workflow - Delete a workflow completely
+   Args: { workflowName }
+
+8. list_workflows - List all workflows
    Args: { status? }
 
-6. enroll_contact - Enroll a contact in a workflow
+9. enroll_contact - Enroll a contact in a workflow
    Args: { contactName, workflowName }
 
+10. get_workflow_details - Get details of a specific workflow
+    Args: { workflowName }
+
 Instructions:
-- For "create a workflow" or "welcome workflow", use create_welcome_workflow
-- For deal follow-ups, use create_follow_up_workflow
+- For "edit workflow" or "change delay", use update_delay
+- For "wait 2 minutes" or "change wait time", use update_delay with newUnit=minutes
+- For "pause" or "stop workflow", use pause_workflow
+- For "delete" or "remove workflow", use delete_workflow
+- For "show workflow" or "workflow details", use get_workflow_details
 - Respond with JSON: {"tool": "...", "args": {...}}
 
 Respond with ONLY the JSON object.`;
@@ -383,6 +504,11 @@ Respond with ONLY the JSON object.`;
                 } else {
                     friendlyResponse = `Found ${result.count} workflow(s):\n${result.workflows.map((w: any) => `• ${w.name} (${w.status}) - ${w.stepCount} steps`).join("\n")}`;
                 }
+            }
+
+            if (toolCall.tool === "get_workflow_details" && result.success) {
+                const w = result.workflow;
+                friendlyResponse = `📋 **${w.name}** (${w.status})\n\nSteps:\n${w.steps.join("\n")}`;
             }
 
             return {

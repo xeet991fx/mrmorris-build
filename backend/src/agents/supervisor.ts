@@ -53,7 +53,7 @@ const PRIORITY_ROUTES: Array<[string[], string]> = [
     [["hot lead", "lead score", "scoring"], "leadscore"],
     [["pipeline stats", "stage", "funnel"], "pipeline"],
     [["dashboard", "summary", "report", "analytics"], "reports"],
-    [["workflow", "automation", "enroll in"], "workflow"],
+    [["workflow", "automation", "enroll in", "edit workflow", "update workflow", "change delay", "wait time"], "workflow"],
     [["sequence", "drip", "multi-step"], "sequence"],
     [["campaign", "blast", "mass email"], "campaign"],
     [["ticket", "support issue", "bug report"], "ticket"],

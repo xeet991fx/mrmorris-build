@@ -243,7 +243,7 @@ export default function InboxPage() {
                         onClick={async () => {
                             setIsSyncing(true);
                             try {
-                                const result = await syncInbox();
+                                const result = await syncInbox(workspaceId);
                                 if (result.success) {
                                     toast.success(result.message);
                                     fetchMessages();

@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { OnboardingWizard } from "@/components/dashboard/OnboardingWizard";
+import { AIChatPanel } from "@/components/chat/AIChatPanel";
 
 function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -546,6 +547,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
     <>
       <CommandPalette />
       <OnboardingWizard />
+      <AIChatPanel />
       <Toaster position="top-right" />
       <div className="min-h-screen bg-card">
         {/* Workspace Switcher Popup */}

@@ -64,7 +64,17 @@ router.get("/", async (req: any, res) => {
  */
 router.post("/sync", async (req: any, res) => {
     try {
-        const count = await InboxService.fetchNewReplies();
+        const { workspaceId } = req.body.workspaceId ? req.body : req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                message: "workspaceId is required",
+            });
+        }
+
+        console.log(`📥 Manual sync triggered for workspace: ${workspaceId}`);
+        const count = await InboxService.fetchNewReplies(workspaceId);
 
         res.json({
             success: true,

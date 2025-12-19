@@ -426,12 +426,25 @@ class CampaignService {
      * Personalize text with contact data
      */
     private personalizeText(text: string, contact: any): string {
+        const firstName = contact.firstName || contact.name?.split(" ")[0] || "";
+        const lastName = contact.lastName || contact.name?.split(" ")[1] || "";
+        const fullName = contact.name || `${firstName} ${lastName}`.trim();
+
         return text
-            .replace(/\{\{firstName\}\}/g, contact.firstName || contact.name?.split(" ")[0] || "")
-            .replace(/\{\{lastName\}\}/g, contact.lastName || contact.name?.split(" ")[1] || "")
-            .replace(/\{\{name\}\}/g, contact.name || "")
+            // Standard patterns
+            .replace(/\{\{firstName\}\}/g, firstName)
+            .replace(/\{\{lastName\}\}/g, lastName)
+            .replace(/\{\{name\}\}/g, fullName)
             .replace(/\{\{email\}\}/g, contact.email || "")
-            .replace(/\{\{company\}\}/g, contact.company || "");
+            .replace(/\{\{company\}\}/g, contact.company || "")
+            .replace(/\{\{phone\}\}/g, contact.phone || "")
+            // contact.* patterns (for legacy/alternative template formats)
+            .replace(/\{\{contact\.name\}\}/g, fullName)
+            .replace(/\{\{contact\.firstName\}\}/g, firstName)
+            .replace(/\{\{contact\.lastName\}\}/g, lastName)
+            .replace(/\{\{contact\.email\}\}/g, contact.email || "")
+            .replace(/\{\{contact\.company\}\}/g, contact.company || "")
+            .replace(/\{\{contact\.phone\}\}/g, contact.phone || "");
     }
 
     /**

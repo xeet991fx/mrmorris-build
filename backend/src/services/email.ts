@@ -173,15 +173,27 @@ class EmailService {
       let processedBody = body;
 
       if (entityData) {
+        const firstName = entityData.firstName || entityData.name?.split(" ")[0] || "";
+        const lastName = entityData.lastName || entityData.name?.split(" ").slice(1).join(" ") || "";
+        const fullName = entityData.name || `${firstName} ${lastName}`.trim();
+
         const variables: Record<string, string> = {
-          "{{firstName}}": entityData.firstName || entityData.name?.split(" ")[0] || "",
-          "{{lastName}}": entityData.lastName || entityData.name?.split(" ").slice(1).join(" ") || "",
+          // Standard patterns
+          "{{firstName}}": firstName,
+          "{{lastName}}": lastName,
           "{{email}}": entityData.email || "",
           "{{phone}}": entityData.phone || "",
           "{{company}}": entityData.company || "",
           "{{status}}": entityData.status || "",
           "{{source}}": entityData.source || "",
-          "{{name}}": entityData.name || `${entityData.firstName || ""} ${entityData.lastName || ""}`.trim(),
+          "{{name}}": fullName,
+          // contact.* patterns (for legacy/alternative template formats)
+          "{{contact.name}}": fullName,
+          "{{contact.firstName}}": firstName,
+          "{{contact.lastName}}": lastName,
+          "{{contact.email}}": entityData.email || "",
+          "{{contact.phone}}": entityData.phone || "",
+          "{{contact.company}}": entityData.company || "",
         };
 
         for (const [key, value] of Object.entries(variables)) {

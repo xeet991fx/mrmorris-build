@@ -6,6 +6,7 @@ import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 
 export default function WorkspacePage() {
   const params = useParams();
+  const router = useRouter();
   const workspaceId = params.id as string;
   const { fetchWorkspace } = useWorkspaceStore();
 
