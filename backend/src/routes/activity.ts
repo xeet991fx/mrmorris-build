@@ -2,6 +2,7 @@ import express from 'express';
 import { z } from 'zod';
 import Activity from '../models/Activity';
 import Opportunity from '../models/Opportunity';
+import Contact from '../models/Contact';
 import { authenticate, AuthRequest } from '../middleware/auth';
 
 const router = express.Router();
@@ -270,6 +271,131 @@ router.delete(
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to delete activity',
+      });
+    }
+  }
+);
+
+// =====================================================
+// CONTACT ACTIVITIES
+// =====================================================
+
+/**
+ * POST /api/workspaces/:workspaceId/contacts/:contactId/activities
+ * Create a new activity for a contact
+ */
+router.post(
+  '/workspaces/:workspaceId/contacts/:contactId/activities',
+  authenticate,
+  async (req: AuthRequest, res) => {
+    try {
+      const { workspaceId, contactId } = req.params;
+      const userId = req.user?._id;
+
+      // Validate request body
+      const validatedData = createActivitySchema.parse(req.body);
+
+      // Verify contact exists and belongs to workspace
+      const contact = await Contact.findOne({
+        _id: contactId,
+        workspaceId,
+      });
+
+      if (!contact) {
+        return res.status(404).json({
+          success: false,
+          error: 'Contact not found',
+        });
+      }
+
+      // Create activity with entity linking
+      const activity = new Activity({
+        workspaceId,
+        userId,
+        entityType: 'contact',
+        entityId: contactId,
+        ...validatedData,
+      });
+
+      await activity.save();
+
+      // Update contact lastContactedAt
+      await Contact.findByIdAndUpdate(contactId, {
+        lastContactedAt: new Date(),
+      });
+
+      // Populate user info
+      await activity.populate('userId', 'name email');
+
+      res.status(201).json({
+        success: true,
+        data: { activity },
+      });
+    } catch (error: any) {
+      console.error('Create contact activity error:', error);
+
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to create activity',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/workspaces/:workspaceId/contacts/:contactId/activities
+ * Get all activities for a contact
+ */
+router.get(
+  '/workspaces/:workspaceId/contacts/:contactId/activities',
+  authenticate,
+  async (req: AuthRequest, res) => {
+    try {
+      const { workspaceId, contactId } = req.params;
+      const { type, limit = '50', offset = '0' } = req.query;
+
+      // Build query using entity linking
+      const query: any = {
+        workspaceId,
+        entityType: 'contact',
+        entityId: contactId,
+      };
+
+      if (type) {
+        query.type = type;
+      }
+
+      // Get activities
+      const activities = await Activity.find(query)
+        .populate('userId', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit as string))
+        .skip(parseInt(offset as string));
+
+      const total = await Activity.countDocuments(query);
+
+      res.json({
+        success: true,
+        data: {
+          activities,
+          total,
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string),
+        },
+      });
+    } catch (error: any) {
+      console.error('Get contact activities error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch activities',
       });
     }
   }

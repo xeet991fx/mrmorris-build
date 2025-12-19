@@ -794,4 +794,83 @@ router.post(
   }
 );
 
+/**
+ * @route   GET /api/workspaces/:workspaceId/contacts/:id/emails
+ * @desc    Get all emails for a contact
+ * @access  Private
+ */
+router.get(
+  "/:workspaceId/contacts/:id/emails",
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId, id } = req.params;
+      const EmailMessage = (await import("../models/EmailMessage")).default;
+
+      // Validate workspace exists and user has access
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Fetch emails for this contact
+      const emails = await EmailMessage.find({
+        workspaceId,
+        contactId: id,
+      })
+        .sort({ sentAt: -1 })
+        .limit(100)
+        .lean();
+
+      // Format response
+      const formattedEmails = emails.map((email: any) => ({
+        _id: email._id,
+        subject: email.subject,
+        bodyHtml: email.bodyHtml,
+        bodyText: email.bodyText,
+        fromEmail: email.fromEmail,
+        toEmail: email.toEmail,
+        direction: "outbound", // Campaign emails are always outbound
+        sentAt: email.sentAt,
+        opened: email.opened,
+        openedAt: email.openedAt,
+        clicked: email.clicked,
+        clickedAt: email.clickedAt,
+        replied: email.replied,
+        repliedAt: email.repliedAt,
+        bounced: email.bounced,
+        bouncedAt: email.bouncedAt,
+        replySubject: email.replySubject,
+        replyBody: email.replyBody,
+        replySentiment: email.replySentiment,
+        createdAt: email.createdAt,
+      }));
+
+      res.status(200).json({
+        success: true,
+        data: {
+          emails: formattedEmails,
+          total: formattedEmails.length,
+        },
+      });
+    } catch (error: any) {
+      console.error("Get contact emails error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch emails. Please try again.",
+      });
+    }
+  }
+);
+
 export default router;
