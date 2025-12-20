@@ -44,6 +44,26 @@ export default function EditOpportunityModal({
         return new Date(dateString).toISOString().split("T")[0];
       };
 
+      // Get assignedTo ID (handle populated object)
+      const getAssignedToId = (assignedTo: any): string => {
+        if (!assignedTo) return "";
+        if (typeof assignedTo === "string") return assignedTo;
+        return assignedTo._id || "";
+      };
+
+      // Get company ID (handle populated object)
+      const getCompanyId = (companyId: any): string => {
+        if (!companyId) return "";
+        if (typeof companyId === "string") return companyId;
+        return companyId._id || "";
+      };
+
+      // Get associatedContacts IDs (handle populated objects)
+      const getAssociatedContactIds = (contacts: any): string[] => {
+        if (!contacts || !Array.isArray(contacts)) return [];
+        return contacts.map((c: any) => (typeof c === "string" ? c : c._id)).filter(Boolean);
+      };
+
       reset({
         pipelineId: opportunity.pipelineId,
         stageId: opportunity.stageId,
@@ -53,12 +73,13 @@ export default function EditOpportunityModal({
         probability: opportunity.probability,
         expectedCloseDate: formatDate(opportunity.expectedCloseDate),
         contactId: opportunity.contactId || "",
-        companyId: opportunity.companyId || "",
+        companyId: getCompanyId(opportunity.companyId),
         description: opportunity.description || "",
         source: opportunity.source || "",
         status: opportunity.status,
         lostReason: opportunity.lostReason || "",
-        assignedTo: opportunity.assignedTo || "",
+        assignedTo: getAssignedToId(opportunity.assignedTo),
+        associatedContacts: getAssociatedContactIds(opportunity.associatedContacts),
         tags: opportunity.tags || [],
         priority: opportunity.priority,
       });
@@ -139,7 +160,7 @@ export default function EditOpportunityModal({
                   {/* Form */}
                   <form onSubmit={handleSubmit(onSubmit)}>
                     <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
-                      <OpportunityForm form={form as any} isEdit />
+                      <OpportunityForm form={form as any} isEdit workspaceId={workspaceId} />
                     </div>
 
                     {/* Footer */}

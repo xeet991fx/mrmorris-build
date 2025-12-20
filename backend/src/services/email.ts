@@ -145,6 +145,25 @@ class EmailService {
   }
 
   /**
+   * Send team invite email
+   */
+  async sendTeamInviteEmail(
+    email: string,
+    inviterName: string,
+    workspaceName: string,
+    inviteToken: string
+  ): Promise<void> {
+    const inviteUrl = `${process.env.FRONTEND_URL}/invite/${inviteToken}`;
+    const html = this.getTeamInviteEmailTemplate(inviterName, workspaceName, inviteUrl);
+
+    await this.sendEmail({
+      to: email,
+      subject: `${inviterName} invited you to join ${workspaceName} - MrMorris`,
+      html,
+    });
+  }
+
+  /**
    * Send welcome email after verification
    */
   async sendWelcomeEmail(email: string, name: string): Promise<void> {
@@ -535,6 +554,95 @@ class EmailService {
           <!-- Footer -->
           <tr>
             <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; color: #94a3b8; font-size: 14px;">
+                © ${new Date().getFullYear()} MrMorris. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+  }
+
+  /**
+   * Team invite email template
+   */
+  private getTeamInviteEmailTemplate(
+    inviterName: string,
+    workspaceName: string,
+    inviteUrl: string
+  ): string {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're Invited to Join ${workspaceName}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">MrMorris</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                  <span style="font-size: 36px;">👥</span>
+                </div>
+                <h2 style="margin: 0 0 10px; color: #1e293b; font-size: 24px; font-weight: 600;">You're Invited!</h2>
+              </div>
+
+              <p style="margin: 0 0 20px; color: #64748b; font-size: 16px; line-height: 1.6; text-align: center;">
+                <strong style="color: #1e293b;">${inviterName}</strong> has invited you to collaborate on 
+                <strong style="color: #1e293b;">${workspaceName}</strong> in MrMorris.
+              </p>
+
+              <p style="margin: 0 0 30px; color: #64748b; font-size: 16px; line-height: 1.6; text-align: center;">
+                Join the team to start collaborating on contacts, deals, campaigns, and more.
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" style="margin: 30px auto;">
+                <tr>
+                  <td align="center">
+                    <a href="${inviteUrl}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                      Accept Invitation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 30px 0 0; color: #f59e0b; font-size: 14px; line-height: 1.6; padding: 16px; background-color: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px; text-align: center;">
+                <strong>⏰ This invitation expires in 7 days</strong>
+              </p>
+
+              <p style="margin: 20px 0 0; color: #94a3b8; font-size: 14px; line-height: 1.6; text-align: center;">
+                Or copy and paste this link into your browser:<br>
+                <a href="${inviteUrl}" style="color: #667eea; text-decoration: none; word-break: break-all;">${inviteUrl}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 10px; color: #94a3b8; font-size: 14px;">
+                If you don't recognize this invitation, you can safely ignore this email.
+              </p>
               <p style="margin: 0; color: #94a3b8; font-size: 14px;">
                 © ${new Date().getFullYear()} MrMorris. All rights reserved.
               </p>
