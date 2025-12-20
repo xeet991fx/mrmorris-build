@@ -23,11 +23,12 @@ export interface Opportunity {
   actualCloseDate?: string;
   contactId?: string;
   companyId?: string;
+  associatedContacts?: string[] | { _id: string; firstName: string; lastName: string; email?: string }[];
   description?: string;
   source?: string;
   status: "open" | "won" | "lost" | "abandoned";
   lostReason?: string;
-  assignedTo?: string;
+  assignedTo?: string | { _id: string; name: string; email: string };
   tags?: string[];
   priority?: "low" | "medium" | "high";
   lastActivityAt?: string;
@@ -62,7 +63,8 @@ export interface CreateOpportunityData {
   source?: string;
   status?: "open" | "won" | "lost" | "abandoned";
   lostReason?: string;
-  assignedTo?: string;
+  assignedTo: string; // Required - Deal Owner
+  associatedContacts?: string[];
   tags?: string[];
   priority?: "low" | "medium" | "high";
   customFields?: Record<string, any>;
