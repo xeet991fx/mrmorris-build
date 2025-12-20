@@ -5,28 +5,13 @@
  * Uses Google Vertex AI with Gemini 2.5 Flash.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Opportunity from "../../models/Opportunity";
 import Pipeline from "../../models/Pipeline";
 import Contact from "../../models/Contact";
 import { eventPublisher } from "../../events";
-
-// Initialize Gemini 2.5 Pro via Vertex AI
-const dealModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 /**
  * Parse tool call from AI response
@@ -242,7 +227,7 @@ Instructions:
 
 Respond with ONLY the JSON object, no other text.`;
 
-        const response = await dealModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

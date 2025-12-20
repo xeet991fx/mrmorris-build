@@ -6,26 +6,12 @@
  * Uses Gemini 2.5 Pro for complex analysis.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Opportunity from "../../models/Opportunity";
 import Pipeline from "../../models/Pipeline";
 import Activity from "../../models/Activity";
-
-const forecastModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.1,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -136,7 +122,7 @@ Return ONLY:
 • Top deal to focus on
 • Confidence: high/medium/low`;
 
-            const analysis = await forecastModel.invoke([new HumanMessage(forecastPrompt)]);
+            const analysis = await getProModel().invoke([new HumanMessage(forecastPrompt)]);
 
             return {
                 success: true,
@@ -237,7 +223,7 @@ Trend: ${trendDirection} ${Math.abs(trendPercent)}%
 
 Return: One insight + one action item.`;
 
-            const trendAnalysis = await forecastModel.invoke([new HumanMessage(trendPrompt)]);
+            const trendAnalysis = await getProModel().invoke([new HumanMessage(trendPrompt)]);
 
             return {
                 success: true,
@@ -352,7 +338,7 @@ Format:
 **Watch:** [Main concern]
 **Focus:** [Top priority this week]`;
 
-            const summary = await forecastModel.invoke([new HumanMessage(summaryPrompt)]);
+            const summary = await getProModel().invoke([new HumanMessage(summaryPrompt)]);
 
             return {
                 success: true,
@@ -479,7 +465,7 @@ Examples:
 - "Which deals are at risk?" → {"tool": "get_risk_alerts", "args": {}}
 - "Weekly summary" → {"tool": "generate_executive_summary", "args": {"reportType": "weekly"}}`;
 
-        const response = await forecastModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

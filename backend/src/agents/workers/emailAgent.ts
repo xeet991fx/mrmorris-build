@@ -5,26 +5,11 @@
  * Uses Google Vertex AI with Gemini 2.5 Flash.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import EmailTemplate from "../../models/EmailTemplate";
 import Contact from "../../models/Contact";
-
-// Initialize Gemini 2.5 Pro via Vertex AI
-const emailModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.3, // Slightly creative for email writing
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 /**
  * Parse tool call from AI response
@@ -57,7 +42,7 @@ async function executeEmailTool(
             let emailBody = body;
             if (!body && purpose) {
                 const draftPrompt = `Write a professional ${tone || "friendly"} email for: ${purpose}`;
-                const draftResponse = await emailModel.invoke([
+                const draftResponse = await getProModel().invoke([
                     new SystemMessage("You are an expert email writer. Write concise, professional emails."),
                     new HumanMessage(draftPrompt),
                 ]);
@@ -176,7 +161,7 @@ Instructions:
 
 Respond with ONLY the JSON object, no other text.`;
 
-        const response = await emailModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

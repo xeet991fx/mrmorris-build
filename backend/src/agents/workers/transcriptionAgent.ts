@@ -6,28 +6,14 @@
  * Uses Gemini 2.5 Pro for understanding nuanced conversations.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import CallRecording from "../../models/CallRecording";
 import Contact from "../../models/Contact";
 import Opportunity from "../../models/Opportunity";
 import Activity from "../../models/Activity";
 import Task from "../../models/Task";
-
-const transcriptionModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.1,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -114,7 +100,7 @@ Provide:
 5. **Next Steps Agreed**
 6. **Overall Call Sentiment** (positive/neutral/negative with reason)`;
 
-                const summary = await transcriptionModel.invoke([new HumanMessage(summaryPrompt)]);
+                const summary = await getProModel().invoke([new HumanMessage(summaryPrompt)]);
                 return {
                     success: true,
                     summary: summary.content,
@@ -141,7 +127,7 @@ Provide:
 5. **Next Steps Agreed**
 6. **Overall Call Sentiment** (positive/neutral/negative with reason)`;
 
-            const summary = await transcriptionModel.invoke([new HumanMessage(summaryPrompt)]);
+            const summary = await getProModel().invoke([new HumanMessage(summaryPrompt)]);
 
             // Update recording with summary
             recording.summary = summary.content as string;
@@ -180,7 +166,7 @@ For each action item, provide:
 Return as JSON array:
 [{"task": "...", "owner": "...", "priority": "...", "dueHint": "..."}]`;
 
-            const actionsResponse = await transcriptionModel.invoke([new HumanMessage(actionsPrompt)]);
+            const actionsResponse = await getProModel().invoke([new HumanMessage(actionsPrompt)]);
 
             let actions = [];
             try {
@@ -258,7 +244,7 @@ Return as JSON:
   "recommendation": "..."
 }`;
 
-            const bantResponse = await transcriptionModel.invoke([new HumanMessage(bantPrompt)]);
+            const bantResponse = await getProModel().invoke([new HumanMessage(bantPrompt)]);
 
             let bant = {};
             try {
@@ -402,7 +388,7 @@ Return as JSON:
   "engagementLevel": "..."
 }`;
 
-            const sentimentResponse = await transcriptionModel.invoke([new HumanMessage(sentimentPrompt)]);
+            const sentimentResponse = await getProModel().invoke([new HumanMessage(sentimentPrompt)]);
 
             let sentiment = {};
             try {
@@ -476,7 +462,7 @@ Examples:
 - "What action items from my last call?" → {"tool": "extract_actions", "args": {}}
 - "Check BANT for this call: [transcript]" → {"tool": "detect_bant", "args": {"transcript": "..."}}`;
 
-        const response = await transcriptionModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

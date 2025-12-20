@@ -6,27 +6,13 @@
  * Uses Gemini 2.5 Pro for creative document generation.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Proposal from "../../models/Proposal";
 import Opportunity from "../../models/Opportunity";
 import Contact from "../../models/Contact";
 import Company from "../../models/Company";
-
-const proposalModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.4,  // Creative for proposal writing
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -108,7 +94,7 @@ Generate a ${templateType} proposal with these sections:
 Be professional, persuasive, and specific. Use confident language.
 Format each section clearly with headers.`;
 
-            const proposalContent = await proposalModel.invoke([new HumanMessage(proposalPrompt)]);
+            const proposalContent = await getProModel().invoke([new HumanMessage(proposalPrompt)]);
 
             // Create proposal record
             const proposal = await Proposal.create({
@@ -231,7 +217,7 @@ Create a professional presentation of this pricing with:
 3. Summary of what's included
 4. Payment terms suggestion`;
 
-            const pricingContent = await proposalModel.invoke([new HumanMessage(pricingPrompt)]);
+            const pricingContent = await getProModel().invoke([new HumanMessage(pricingPrompt)]);
 
             return {
                 success: true,
@@ -359,7 +345,7 @@ Examples:
 - "Find similar deals to reference" → {"tool": "find_similar_deals", "args": {}}
 - "Generate pricing for $50,000 deal" → {"tool": "generate_pricing", "args": {"items": [{"name": "Solution", "quantity": 1, "unitPrice": 50000}]}}`;
 
-        const response = await proposalModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

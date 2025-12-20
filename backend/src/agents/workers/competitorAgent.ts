@@ -6,26 +6,12 @@
  * Uses Gemini 2.5 Pro for analysis and response generation.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Competitor from "../../models/Competitor";
 import Battlecard from "../../models/Battlecard";
 import Opportunity from "../../models/Opportunity";
-
-const competitorModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.2,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -146,7 +132,7 @@ Generate:
 
 Be specific and actionable. This should help a sales rep win against this competitor.`;
 
-                const generatedCard = await competitorModel.invoke([new HumanMessage(generatePrompt)]);
+                const generatedCard = await getProModel().invoke([new HumanMessage(generatePrompt)]);
 
                 return {
                     success: true,
@@ -222,7 +208,7 @@ Return JSON:
   "competitorsDetected": ["list of competitor names found"]
 }`;
 
-            const detectionResult = await competitorModel.invoke([new HumanMessage(detectPrompt)]);
+            const detectionResult = await getProModel().invoke([new HumanMessage(detectPrompt)]);
 
             let parsed = { mentions: [], competitorsDetected: [] };
             try {
@@ -344,7 +330,7 @@ Also provide:
 - Questions to ask that expose competitor weaknesses
 - Proof points to reference`;
 
-            const responseContent = await competitorModel.invoke([new HumanMessage(responsePrompt)]);
+            const responseContent = await getProModel().invoke([new HumanMessage(responsePrompt)]);
 
             return {
                 success: true,
@@ -443,7 +429,7 @@ Examples:
 - "Prospect mentioned they're using Pipedrive" → {"tool": "detect_mentions", "args": {"text": "using Pipedrive"}}
 - "How do I respond when they say Zendesk is cheaper?" → {"tool": "generate_response", "args": {"competitorName": "Zendesk", "objection": "Zendesk is cheaper"}}`;
 
-        const response = await competitorModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

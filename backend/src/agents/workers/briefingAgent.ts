@@ -6,28 +6,14 @@
  * Uses Gemini 2.5 Pro for intelligent document generation.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Contact from "../../models/Contact";
 import Company from "../../models/Company";
 import Opportunity from "../../models/Opportunity";
 import Activity from "../../models/Activity";
 import EmailMessage from "../../models/EmailMessage";
-
-const briefingModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.3,  // Slightly creative for talking points
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -141,7 +127,7 @@ Return ONLY this format (no extra text):
 **Your Goal:**
 • [One clear objective for this meeting]`;
 
-            const briefingResponse = await briefingModel.invoke([new HumanMessage(briefingPrompt)]);
+            const briefingResponse = await getProModel().invoke([new HumanMessage(briefingPrompt)]);
 
             return {
                 success: true,
@@ -196,7 +182,7 @@ Provide:
 4. Relationship status assessment
 5. Recommended next action`;
 
-            const summary = await briefingModel.invoke([new HumanMessage(summaryPrompt)]);
+            const summary = await getProModel().invoke([new HumanMessage(summaryPrompt)]);
 
             return {
                 success: true,
@@ -238,7 +224,7 @@ Generate talking points that:
 
 Format as numbered list with brief explanation for each.`;
 
-            const points = await briefingModel.invoke([new HumanMessage(talkingPointsPrompt)]);
+            const points = await getProModel().invoke([new HumanMessage(talkingPointsPrompt)]);
 
             return {
                 success: true,
@@ -259,7 +245,7 @@ Include:
 
 Note: If you don't have specific recent news, provide industry-relevant insights that would be valuable in a sales conversation.`;
 
-            const news = await briefingModel.invoke([new HumanMessage(newsPrompt)]);
+            const news = await getProModel().invoke([new HumanMessage(newsPrompt)]);
 
             return {
                 success: true,
@@ -300,7 +286,7 @@ Provide:
 4. Communication style recommendation
 5. Risk of disengagement (if any)`;
 
-            const insights = await briefingModel.invoke([new HumanMessage(insightsPrompt)]);
+            const insights = await getProModel().invoke([new HumanMessage(insightsPrompt)]);
 
             return {
                 success: true,
@@ -355,7 +341,7 @@ Examples:
 - "What should I ask about?" → {"tool": "suggest_talking_points", "args": {}}
 - "Summarize my interactions with Sarah" → {"tool": "summarize_interactions", "args": {"contactName": "Sarah"}}`;
 
-        const response = await briefingModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

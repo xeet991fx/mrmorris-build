@@ -5,27 +5,13 @@
  * and prompts reps for updates. Uses Gemini 2.5 Pro for analysis.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Opportunity from "../../models/Opportunity";
 import Activity from "../../models/Activity";
 import Task from "../../models/Task";
 import Pipeline from "../../models/Pipeline";
-
-const hygieneModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.1,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -120,7 +106,7 @@ Days Inactive: ${daysSince((deal as any).lastActivityAt)} | Temperature: ${(deal
 Return ONLY JSON: {"RECOMMENDATION": "advance|stay|regress|at_risk|close_lost", "REASON": "brief reason", "SUGGESTED_ACTION": "one action", "CONFIDENCE": 0-100}`;
 
                 try {
-                    const analysis = await hygieneModel.invoke([new HumanMessage(analysisPrompt)]);
+                    const analysis = await getProModel().invoke([new HumanMessage(analysisPrompt)]);
                     const content = analysis.content as string;
                     const parsed = JSON.parse(content.match(/\{[\s\S]*\}/)?.[0] || "{}");
 
@@ -193,7 +179,7 @@ Return JSON array of 3 recommendations: [{"priority": "high|medium|low", "action
 
             let recommendations = [];
             try {
-                const recs = await hygieneModel.invoke([new HumanMessage(healthPrompt)]);
+                const recs = await getProModel().invoke([new HumanMessage(healthPrompt)]);
                 recommendations = JSON.parse((recs.content as string).match(/\[[\s\S]*\]/)?.[0] || "[]");
             } catch (e) {
                 recommendations = [
@@ -335,7 +321,7 @@ Examples:
 - "Which deals should move stages?" → {"tool": "suggest_stage_changes", "args": {}}
 - "Remind reps to update" → {"tool": "create_update_reminders", "args": {}}`;
 
-        const response = await hygieneModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

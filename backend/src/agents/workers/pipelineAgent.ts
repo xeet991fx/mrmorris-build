@@ -5,26 +5,12 @@
  * Uses Google Vertex AI with Gemini 2.5 Pro.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Pipeline from "../../models/Pipeline";
 import Opportunity from "../../models/Opportunity";
 import { v4 as uuidv4 } from "uuid";
-
-const pipelineModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -193,7 +179,7 @@ Available tools:
 
 Respond with JSON: {"tool": "...", "args": {...}}`;
 
-        const response = await pipelineModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

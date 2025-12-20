@@ -6,25 +6,11 @@
  * Uses Gemini 2.5 Pro for intelligent extraction.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Contact from "../../models/Contact";
 import Company from "../../models/Company";
-
-const dataModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -94,7 +80,7 @@ Extract and return as JSON:
 
 Only include fields that are clearly present. Set confidence based on how complete the extraction is.`;
 
-            const extractResult = await dataModel.invoke([new HumanMessage(parsePrompt)]);
+            const extractResult = await getProModel().invoke([new HumanMessage(parsePrompt)]);
 
             let extracted = {};
             try {
@@ -389,7 +375,7 @@ Extract and return as JSON:
 
 Only include fields with actual content from the notes.`;
 
-            const parseResult = await dataModel.invoke([new HumanMessage(parsePrompt)]);
+            const parseResult = await getProModel().invoke([new HumanMessage(parsePrompt)]);
 
             let parsed = {};
             try {
@@ -536,7 +522,7 @@ Examples:
 - "Parse these meeting notes: [notes]" → {"tool": "parse_meeting_notes", "args": {"notes": "..."}}
 - "Check data quality" → {"tool": "get_data_quality_score", "args": {}}`;
 
-        const response = await dataModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

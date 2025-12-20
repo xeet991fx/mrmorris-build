@@ -5,28 +5,13 @@
  * Uses Google Vertex AI with Gemini 2.5 Pro.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import Workflow from "../../models/Workflow";
 import WorkflowEnrollment from "../../models/WorkflowEnrollment";
 import Contact from "../../models/Contact";
 import { v4 as uuidv4 } from "uuid";
-
-// Initialize Gemini 2.5 Pro via Vertex AI
-const workflowModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 /**
  * Parse tool call from AI response
@@ -474,7 +459,7 @@ Instructions:
 
 Respond with ONLY the JSON object.`;
 
-        const response = await workflowModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

@@ -5,26 +5,12 @@
  * Uses Gemini 2.5 Pro for complex coordination and Flash for quick availability checks.
  */
 
-import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
+import { getProModel } from "../modelFactory";
 import CalendarEvent from "../../models/CalendarEvent";
 import Contact from "../../models/Contact";
 import Task from "../../models/Task";
-
-const schedulingModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.1,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -179,7 +165,7 @@ IMPORTANT: Interpret the time in the USER'S LOCAL TIMEZONE (${userTimezone}), no
 Return ONLY the ISO 8601 datetime string with the correct timezone offset, nothing else.
 For example, if user says "tomorrow 10am" and they're in Asia/Kolkata (+05:30), return: 2024-12-21T10:00:00+05:30`;
 
-                const parseResult = await schedulingModel.invoke([new HumanMessage(parsePrompt)]);
+                const parseResult = await getProModel().invoke([new HumanMessage(parsePrompt)]);
                 const parsed = (parseResult.content as string).trim();
                 parsedStart = new Date(parsed);
             } else {
@@ -307,7 +293,7 @@ User's timezone: ${userTimezone}
 Time to parse: "${newStartTime}"
 IMPORTANT: Interpret in ${userTimezone}, not UTC. Return ISO 8601 with timezone offset.`;
 
-                const parseResult = await schedulingModel.invoke([new HumanMessage(parsePrompt)]);
+                const parseResult = await getProModel().invoke([new HumanMessage(parsePrompt)]);
                 parsedStart = new Date((parseResult.content as string).trim());
             } else {
                 parsedStart = new Date(newStartTime);
@@ -450,7 +436,7 @@ Examples:
 - "What meetings do I have this week?" → {"tool": "list_meetings", "args": {"daysAhead": 7}}
 - "Schedule follow-up with Sarah in 3 days" → {"tool": "create_follow_up", "args": {"contactName": "Sarah", "daysFromNow": 3}}`;
 
-        const response = await schedulingModel.invoke([
+        const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);
