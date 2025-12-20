@@ -32,6 +32,7 @@ import teamRoutes from "./routes/team";
 import ticketRoutes from "./routes/ticket";
 import reportsRoutes from "./routes/reports";
 import agentRoutes from "./routes/agent";
+import calendarIntegrationRoutes from "./routes/calendarIntegration";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 
 dotenv.config();
@@ -130,6 +131,7 @@ app.use("/api/team", teamRoutes);
 app.use("/api/workspaces", ticketRoutes);
 app.use("/api/workspaces", reportsRoutes);
 app.use("/api/workspaces", agentRoutes);
+app.use("/api/calendar", calendarIntegrationRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

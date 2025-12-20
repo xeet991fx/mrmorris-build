@@ -23,6 +23,7 @@ import {
   AtSymbolIcon,
   ShieldCheckIcon,
   ChartBarIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -255,6 +256,26 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 {isExpanded && (
                   <span className="text-sm font-normal">
                     Tasks
+                  </span>
+                )}
+              </Link>
+
+              {/* Meetings */}
+              <Link
+                href={`/projects/${currentWorkspaceFromUrl._id}/meetings`}
+                className={cn(
+                  "w-full flex items-center rounded-md transition-all",
+                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
+                  pathname.includes('/meetings')
+                    ? "bg-muted/70 text-foreground"
+                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                )}
+                title={!isExpanded ? "Meetings" : ""}
+              >
+                <CalendarDaysIcon className="w-4 h-4 flex-shrink-0" />
+                {isExpanded && (
+                  <span className="text-sm font-normal">
+                    Meetings
                   </span>
                 )}
               </Link>

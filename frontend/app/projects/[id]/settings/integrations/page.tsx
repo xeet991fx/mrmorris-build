@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { EnvelopeIcon } from "@heroicons/react/24/outline";
+import { EnvelopeIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
 import IntegrationCard from "@/components/settings/IntegrationCard";
 import EmailIntegrationSection from "@/components/settings/EmailIntegrationSection";
 import ApolloIntegrationSection from "@/components/settings/ApolloIntegrationSection";
+import CalendarIntegrationSection from "@/components/settings/CalendarIntegrationSection";
 
 // Apollo.io Logo Component
 const ApolloLogo = () => (
@@ -46,9 +47,10 @@ export default function IntegrationsPage() {
   const [expandedSections, setExpandedSections] = useState({
     email: true,
     apollo: false,
+    calendar: false,
   });
 
-  const toggleSection = (section: "email" | "apollo") => {
+  const toggleSection = (section: "email" | "apollo" | "calendar") => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
@@ -86,6 +88,23 @@ export default function IntegrationsPage() {
           delay={0.1}
         >
           <EmailIntegrationSection workspaceId={workspaceId} />
+        </IntegrationCard>
+
+        {/* Calendar Integration Card */}
+        <IntegrationCard
+          title="Google Calendar"
+          description="Sync your calendar to track meetings, schedule events, and prepare for calls"
+          icon={
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+              <CalendarDaysIcon className="w-7 h-7 text-white" />
+            </div>
+          }
+          status="not-connected"
+          isExpanded={expandedSections.calendar}
+          onToggle={() => toggleSection("calendar")}
+          delay={0.15}
+        >
+          <CalendarIntegrationSection workspaceId={workspaceId} />
         </IntegrationCard>
 
         {/* Apollo.io Integration Card */}

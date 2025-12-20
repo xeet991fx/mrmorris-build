@@ -2,6 +2,7 @@ import express, { Response } from "express";
 import { google } from "googleapis";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import EmailIntegration from "../models/EmailIntegration";
+import CalendarIntegration from "../models/CalendarIntegration";
 import Project from "../models/Project";
 import Contact from "../models/Contact";
 import Activity from "../models/Activity";
@@ -9,11 +10,15 @@ import Opportunity from "../models/Opportunity";
 
 const router = express.Router();
 
-// Gmail OAuth configuration
+// Gmail OAuth configuration - includes BOTH email AND calendar scopes
 const GMAIL_SCOPES = [
+    // Email scopes
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/userinfo.email",
+    // Calendar scopes - integrated with Gmail OAuth
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/calendar.events",
 ];
 
 const getOAuth2Client = () => {
@@ -164,6 +169,36 @@ router.get("/callback/gmail", async (req, res) => {
         }
 
         await integration.save();
+
+        // ALSO create/update Calendar integration with same tokens
+        let calendarIntegration = await CalendarIntegration.findOne({
+            userId: stateData.userId,
+            workspaceId: stateData.workspaceId,
+            email: userInfo.email,
+            provider: "google",
+        }).select("+accessToken +refreshToken");
+
+        if (calendarIntegration) {
+            // Update existing
+            calendarIntegration.setTokens(tokens.access_token, tokens.refresh_token);
+            calendarIntegration.expiresAt = expiresAt;
+            calendarIntegration.isActive = true;
+            calendarIntegration.syncError = undefined;
+        } else {
+            // Create new
+            calendarIntegration = new CalendarIntegration({
+                userId: stateData.userId,
+                workspaceId: stateData.workspaceId,
+                provider: "google",
+                email: userInfo.email,
+                expiresAt,
+                isActive: true,
+            });
+            calendarIntegration.setTokens(tokens.access_token, tokens.refresh_token);
+        }
+
+        await calendarIntegration.save();
+        console.log("✅ Gmail + Calendar integration saved for:", userInfo.email);
 
         // Redirect to success
         res.redirect(

@@ -11,6 +11,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { sendAgentMessage } from "@/lib/api/agent";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
     id: string;
@@ -21,12 +23,17 @@ interface Message {
 }
 
 const QUICK_ACTIONS = [
+    // Original agents
     { label: "Create a contact", prompt: "Create a contact named John Doe with email john@example.com" },
     { label: "Show my deals", prompt: "Show me all my deals" },
     { label: "Create a task", prompt: "Create a task to follow up tomorrow" },
-    { label: "Pipeline stats", prompt: "Show my pipeline stats" },
-    { label: "Hot leads", prompt: "Show my hot leads" },
-    { label: "Create workflow", prompt: "Create a welcome email workflow" },
+    // New AI agents
+    { label: "🧹 Pipeline health", prompt: "Check my pipeline health" },
+    { label: "📋 Meeting prep", prompt: "Prepare for my next meeting" },
+    { label: "📊 Revenue forecast", prompt: "Show this month's forecast" },
+    { label: "🎯 Battlecard", prompt: "Show battlecard for competitors" },
+    { label: "📥 Find duplicates", prompt: "Find duplicate contacts" },
+    { label: "📅 Schedule meeting", prompt: "Find available times for a meeting" },
 ];
 
 export function AIChatPanel() {
@@ -159,7 +166,7 @@ export function AIChatPanel() {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-semibold text-white">AI Assistant</h3>
-                                    <p className="text-xs text-neutral-400">Test all 12 CRM agents</p>
+                                    <p className="text-xs text-neutral-400">Test all 20 CRM agents</p>
                                 </div>
                             </div>
                             <button
@@ -242,8 +249,14 @@ export function AIChatPanel() {
                                                     <div className="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "150ms" }} />
                                                     <div className="w-2 h-2 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "300ms" }} />
                                                 </div>
-                                            ) : (
+                                            ) : message.role === "user" ? (
                                                 <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                                            ) : (
+                                                <div className="text-sm prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-p:mb-2 prose-headings:mb-2 prose-headings:mt-3 prose-ul:my-2 prose-li:my-0 prose-strong:text-white prose-hr:my-3 prose-hr:border-neutral-600">
+                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                        {message.content}
+                                                    </ReactMarkdown>
+                                                </div>
                                             )}
                                         </div>
                                     </motion.div>
@@ -287,7 +300,9 @@ export function AIChatPanel() {
                                 </button>
                             </div>
                             <p className="text-[10px] text-neutral-500 text-center mt-2">
-                                Agents: Contact • Deal • Task • Workflow • Email • Campaign • Pipeline • Ticket • Sequence • Lead Score • Reports • Company
+                                Original: Contact • Deal • Task • Workflow • Email • Campaign • Pipeline • Reports
+                                <br />
+                                <span className="text-violet-400">New AI: Briefing • Transcription • Scheduling • Hygiene • Forecast • Proposal • Competitor • Data Entry</span>
                             </p>
                         </div>
                     </motion.div>

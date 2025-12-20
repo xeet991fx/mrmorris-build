@@ -39,3 +39,35 @@ export { leadScoreAgentNode } from "./leadScoreAgent";
 
 // Reports and analytics
 export { reportsAgentNode } from "./reportsAgent";
+
+// ============================================
+// NEW AI AGENTS - Sales Automation Suite
+// ============================================
+
+// Pipeline hygiene - stale deals, stage suggestions
+export { hygieneAgentNode } from "./hygieneAgent";
+
+// Meeting preparation - briefings, talking points
+export { briefingAgentNode } from "./briefingAgent";
+
+// Revenue forecasting - predictions, trends, risks
+export { forecastAgentNode } from "./forecastAgent";
+
+// Call transcription - summaries, BANT extraction
+export { transcriptionAgentNode } from "./transcriptionAgent";
+
+// Proposal generation - documents, pricing
+export { proposalAgentNode } from "./proposalAgent";
+
+// Competitive intelligence - battlecards, mentions
+export { competitorAgentNode } from "./competitorAgent";
+
+// Data entry automation - deduplication, parsing
+export { dataEntryAgentNode } from "./dataEntryAgent";
+
+// Scheduling coordination - calendar, meetings
+export { schedulingAgentNode } from "./schedulingAgent";
+
+// General questions and web search
+export { generalAgentNode } from "./generalAgent";
+

@@ -28,6 +28,16 @@ import {
     sequenceAgentNode,
     leadScoreAgentNode,
     reportsAgentNode,
+    // New AI Agents
+    hygieneAgentNode,
+    briefingAgentNode,
+    forecastAgentNode,
+    transcriptionAgentNode,
+    proposalAgentNode,
+    competitorAgentNode,
+    dataEntryAgentNode,
+    schedulingAgentNode,
+    generalAgentNode,
 } from "./workers";
 
 // ⚡ FAST model for routing and verification
@@ -48,7 +58,17 @@ const flashModel = new ChatVertexAI({
 // Agent routing - ORDER MATTERS (more specific first)
 // Priority keywords checked first to avoid false matches
 const PRIORITY_ROUTES: Array<[string[], string]> = [
-    // Action-based (highest priority)
+    // NEW AI AGENTS (highest priority)
+    [["briefing", "meeting prep", "prepare for call", "before call", "pre-call", "prepare for meeting"], "briefing"],
+    [["transcribe", "call summary", "meeting notes", "call recording", "summarize call", "bant", "action items from call"], "transcription"],
+    [["schedule", "calendar", "book meeting", "find time", "availability", "reschedule"], "scheduling"],
+    [["stale deals", "pipeline health", "stuck deals", "hygiene", "suggest stage"], "hygiene"],
+    [["forecast", "prediction", "revenue projection", "trends", "at risk deals", "executive summary"], "forecast"],
+    [["proposal", "quote", "sow", "pricing document", "generate proposal"], "proposal"],
+    [["competitor", "battlecard", "win loss", "vs competitor", "competitive"], "competitor"],
+    [["duplicate", "merge", "clean data", "data quality", "parse email", "email signature", "dedupe"], "dataentry"],
+
+    // Action-based (existing)
     [["create task", "remind me", "todo", "follow up tomorrow", "call tomorrow"], "task"],
     [["hot lead", "lead score", "scoring"], "leadscore"],
     [["pipeline stats", "stage", "funnel"], "pipeline"],
@@ -100,21 +120,68 @@ async function supervisorNode(state: AgentStateType): Promise<Partial<AgentState
     if (!nextAgent) {
         // Use Flash AI for complex routing
         const response = await flashModel.invoke([
-            new SystemMessage(`Route to one of: contact, email, deal, workflow, task, company, campaign, pipeline, ticket, sequence, leadscore, reports. Reply with ONLY ONE word - the agent name.`),
+            new SystemMessage(`You are a CRM assistant router. Route to the appropriate agent based on user INTENT.
+
+IMPORTANT: Distinguish between CRM ACTIONS vs GENERAL QUESTIONS.
+
+CRM ACTIONS (user wants to DO something in the CRM):
+- contact: CREATE, SEARCH, UPDATE, or DELETE contacts/leads/customers
+- email: DRAFT or SEND emails, create templates
+- deal: CREATE, UPDATE deals/opportunities, move stages
+- workflow: CREATE or MANAGE automations
+- task: CREATE tasks, set reminders, follow-ups
+- company: CREATE, SEARCH companies/accounts
+- campaign: SEND email campaigns
+- pipeline: MANAGE pipeline stages, move deals
+- ticket: CREATE or MANAGE support tickets
+- sequence: CREATE email sequences
+- leadscore: GET lead scores, show hot leads
+- reports: SHOW reports, dashboards, analytics
+- briefing: PREPARE for a meeting
+- transcription: SUMMARIZE call recordings
+- scheduling: BOOK meetings, check calendar
+- hygiene: CHECK stale deals, pipeline health
+- forecast: GET revenue predictions
+- proposal: GENERATE proposals, quotes
+- competitor: GET battlecards, competitive info
+- dataentry: FIND duplicates, clean data
+
+GENERAL QUESTIONS (use "general" for these):
+- Explanations: "what is...", "explain...", "importance of...", "how does...work"
+- General knowledge, education, concepts
+- Advice, tips, best practices (not CRM actions)
+- Gaming, entertainment, coding help, trivia
+- Weather, news, current events
+- Anything that is NOT a CRM action request
+
+Reply with ONLY ONE word - the agent name.`),
             new HumanMessage(userRequest),
         ]);
 
         const responseText = (response.content as string).toLowerCase().trim();
-        const allAgents = ["task", "contact", "email", "deal", "workflow", "company", "campaign", "pipeline", "ticket", "sequence", "leadscore", "reports"];
-        for (const agentName of allAgents) {
-            if (responseText.includes(agentName)) {
-                nextAgent = agentName;
-                break;
+
+        // Check if request is off-topic - route to general agent
+        if (responseText === "none" || responseText.includes("none")) {
+            nextAgent = "general";
+        } else {
+            // Include all agents (original + new)
+            const allAgents = [
+                "task", "contact", "email", "deal", "workflow", "company", "campaign",
+                "pipeline", "ticket", "sequence", "leadscore", "reports",
+                // New agents
+                "briefing", "transcription", "scheduling", "hygiene", "forecast",
+                "proposal", "competitor", "dataentry", "general"
+            ];
+            for (const agentName of allAgents) {
+                if (responseText.includes(agentName)) {
+                    nextAgent = agentName;
+                    break;
+                }
             }
         }
     }
 
-    nextAgent = nextAgent || "contact"; // Default
+    nextAgent = nextAgent || "contact"; // Default fallback
     console.log(`⚡ Routed to: ${nextAgent} (${Date.now() - start}ms)`);
 
     return { nextAgent };
@@ -167,8 +234,18 @@ function routeToAgent(state: AgentStateType): string {
         sequence: "sequence_agent",
         leadscore: "leadscore_agent",
         reports: "reports_agent",
+        // New AI Agents
+        briefing: "briefing_agent",
+        transcription: "transcription_agent",
+        scheduling: "scheduling_agent",
+        hygiene: "hygiene_agent",
+        forecast: "forecast_agent",
+        proposal: "proposal_agent",
+        competitor: "competitor_agent",
+        dataentry: "dataentry_agent",
+        general: "general_agent",
     };
-    return agentMap[state.nextAgent] || "contact_agent";
+    return agentMap[state.nextAgent] || "general_agent";
 }
 
 /**
@@ -176,7 +253,7 @@ function routeToAgent(state: AgentStateType): string {
  */
 export function buildAgentGraph() {
     const graph = new StateGraph(AgentState)
-        // Nodes
+        // Nodes - Original agents
         .addNode("supervisor", supervisorNode)
         .addNode("contact_agent", contactAgentNode)
         .addNode("email_agent", emailAgentNode)
@@ -190,6 +267,16 @@ export function buildAgentGraph() {
         .addNode("sequence_agent", sequenceAgentNode)
         .addNode("leadscore_agent", leadScoreAgentNode)
         .addNode("reports_agent", reportsAgentNode)
+        // New AI Agents
+        .addNode("briefing_agent", briefingAgentNode)
+        .addNode("transcription_agent", transcriptionAgentNode)
+        .addNode("scheduling_agent", schedulingAgentNode)
+        .addNode("hygiene_agent", hygieneAgentNode)
+        .addNode("forecast_agent", forecastAgentNode)
+        .addNode("proposal_agent", proposalAgentNode)
+        .addNode("competitor_agent", competitorAgentNode)
+        .addNode("dataentry_agent", dataEntryAgentNode)
+        .addNode("general_agent", generalAgentNode)
         .addNode("verifier", verifierNode)
         // Entry
         .setEntryPoint("supervisor")
@@ -207,8 +294,18 @@ export function buildAgentGraph() {
             sequence_agent: "sequence_agent",
             leadscore_agent: "leadscore_agent",
             reports_agent: "reports_agent",
+            // New AI Agents
+            briefing_agent: "briefing_agent",
+            transcription_agent: "transcription_agent",
+            scheduling_agent: "scheduling_agent",
+            hygiene_agent: "hygiene_agent",
+            forecast_agent: "forecast_agent",
+            proposal_agent: "proposal_agent",
+            competitor_agent: "competitor_agent",
+            dataentry_agent: "dataentry_agent",
+            general_agent: "general_agent",
         })
-        // All workers go to verifier
+        // All workers go to verifier - Original
         .addEdge("contact_agent", "verifier")
         .addEdge("email_agent", "verifier")
         .addEdge("deal_agent", "verifier")
@@ -221,6 +318,16 @@ export function buildAgentGraph() {
         .addEdge("sequence_agent", "verifier")
         .addEdge("leadscore_agent", "verifier")
         .addEdge("reports_agent", "verifier")
+        // New AI Agents to verifier
+        .addEdge("briefing_agent", "verifier")
+        .addEdge("transcription_agent", "verifier")
+        .addEdge("scheduling_agent", "verifier")
+        .addEdge("hygiene_agent", "verifier")
+        .addEdge("forecast_agent", "verifier")
+        .addEdge("proposal_agent", "verifier")
+        .addEdge("competitor_agent", "verifier")
+        .addEdge("dataentry_agent", "verifier")
+        .addEdge("general_agent", "verifier")
         // Verifier to END
         .addEdge("verifier", END);
 
