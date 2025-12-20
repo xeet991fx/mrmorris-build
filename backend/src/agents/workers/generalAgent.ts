@@ -9,28 +9,41 @@ import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
 
-const generalModel = new ChatVertexAI({
-    model: "gemini-2.5-pro",
-    temperature: 0.7,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
+// Lazy-loaded models (initialized when first used, after credentials are set)
+let _generalModel: ChatVertexAI | null = null;
+let _flashModel: ChatVertexAI | null = null;
 
-// Fast model for quick decisions
-const flashModel = new ChatVertexAI({
-    model: "gemini-2.5-flash",
-    temperature: 0,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-});
+const getGeneralModel = () => {
+    if (!_generalModel) {
+        _generalModel = new ChatVertexAI({
+            model: "gemini-2.5-pro",
+            temperature: 0.7,
+            authOptions: {
+                keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
+            },
+            safetySettings: [
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            ],
+        });
+    }
+    return _generalModel;
+};
+
+const getFlashModel = () => {
+    if (!_flashModel) {
+        _flashModel = new ChatVertexAI({
+            model: "gemini-2.5-flash",
+            temperature: 0,
+            authOptions: {
+                keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
+            },
+        });
+    }
+    return _flashModel;
+};
 
 /**
  * Use AI to determine if a query needs web search
@@ -38,7 +51,7 @@ const flashModel = new ChatVertexAI({
  */
 async function needsWebSearch(query: string): Promise<boolean> {
     try {
-        const response = await flashModel.invoke([
+        const response = await getFlashModel().invoke([
             new SystemMessage(`Analyze this user query and decide if it needs a WEB SEARCH to answer properly.
 
 Reply with ONLY "yes" or "no".
@@ -161,7 +174,7 @@ User Question: "${userRequest}"
 
 Provide a helpful, friendly response.`;
 
-        const response = await generalModel.invoke([
+        const response = await getGeneralModel().invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

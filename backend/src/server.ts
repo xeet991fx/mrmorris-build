@@ -35,7 +35,50 @@ import agentRoutes from "./routes/agent";
 import calendarIntegrationRoutes from "./routes/calendarIntegration";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 
+import fs from "fs";
+
 dotenv.config();
+
+// ============================================
+// GOOGLE CREDENTIALS SETUP
+// Supports: Local file (vertex-key.json) OR Base64 env var (for Railway/production)
+// ============================================
+const setupGoogleCredentials = () => {
+  const localKeyPath = path.join(process.cwd(), "vertex-key.json");
+  const tempKeyPath = process.platform === 'win32'
+    ? path.join(process.env.TEMP || 'C:\\temp', 'vertex-key.json')
+    : '/tmp/vertex-key.json';
+
+  // Option 1: Base64 encoded credentials from env (production/Railway)
+  if (process.env.GOOGLE_CREDENTIALS_BASE64) {
+    try {
+      const credentials = Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64').toString('utf-8');
+      fs.writeFileSync(tempKeyPath, credentials);
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = tempKeyPath;
+      console.log("✅ Google credentials loaded from GOOGLE_CREDENTIALS_BASE64");
+      return;
+    } catch (error) {
+      console.error("❌ Failed to decode GOOGLE_CREDENTIALS_BASE64:", error);
+    }
+  }
+
+  // Option 2: Local file (development)
+  if (fs.existsSync(localKeyPath)) {
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = localKeyPath;
+    console.log("✅ Google credentials loaded from local vertex-key.json");
+    return;
+  }
+
+  // Option 3: Already set via env
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log("✅ Google credentials already configured via GOOGLE_APPLICATION_CREDENTIALS");
+    return;
+  }
+
+  console.warn("⚠️ No Google credentials found. Vertex AI features may not work.");
+};
+
+setupGoogleCredentials();
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;

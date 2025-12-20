@@ -40,20 +40,26 @@ import {
     generalAgentNode,
 } from "./workers";
 
-// ⚡ FAST model for routing and verification
-const flashModel = new ChatVertexAI({
-    model: "gemini-2.5-flash",
-    temperature: 0,
-    authOptions: {
-        keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
-    },
-    safetySettings: [
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-    ],
-});
+// ⚡ FAST model for routing and verification (lazy initialization)
+let _flashModel: ChatVertexAI | null = null;
+const getFlashModel = () => {
+    if (!_flashModel) {
+        _flashModel = new ChatVertexAI({
+            model: "gemini-2.5-flash",
+            temperature: 0,
+            authOptions: {
+                keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
+            },
+            safetySettings: [
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            ],
+        });
+    }
+    return _flashModel;
+};
 
 // Agent routing - ORDER MATTERS (more specific first)
 // Priority keywords checked first to avoid false matches
@@ -119,7 +125,7 @@ async function supervisorNode(state: AgentStateType): Promise<Partial<AgentState
 
     if (!nextAgent) {
         // Use Flash AI for complex routing
-        const response = await flashModel.invoke([
+        const response = await getFlashModel().invoke([
             new SystemMessage(`You are a CRM assistant router. Route to the appropriate agent based on user INTENT.
 
 IMPORTANT: Distinguish between CRM ACTIONS vs GENERAL QUESTIONS.
