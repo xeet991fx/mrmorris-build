@@ -1,6 +1,7 @@
 import express, { Response } from "express";
 import rateLimit from "express-rate-limit";
 import Project from "../models/Project";
+import TeamMember from "../models/TeamMember";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import {
   createProjectSchema,
@@ -65,7 +66,7 @@ router.post(
 
 /**
  * @route   GET /api/projects
- * @desc    List all user's projects
+ * @desc    List all user's projects (owned + shared)
  * @access  Private
  */
 router.get(
@@ -74,16 +75,47 @@ router.get(
   projectLimiter,
   async (req: AuthRequest, res: Response) => {
     try {
-      // Find all projects belonging to the authenticated user
-      const projects = await Project.find({ userId: req.user?._id })
-        .sort({ createdAt: -1 }) // Sort by newest first
-        .lean(); // Use lean for better performance (returns plain JS objects)
+      const userId = req.user?._id;
+
+      // Find all projects owned by the user
+      const ownedProjects = await Project.find({ userId })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Find all workspaces where user is an active team member
+      const sharedMemberships = await TeamMember.find({
+        userId,
+        status: "active",
+      }).populate("workspaceId");
+
+      // Extract shared workspaces (filter out any null refs)
+      const sharedProjects = sharedMemberships
+        .map((m) => m.workspaceId)
+        .filter((w): w is any => w !== null && w !== undefined)
+        .map((w) => ({
+          ...w.toObject(),
+          isShared: true,
+          memberRole: sharedMemberships.find(
+            (m) => (m.workspaceId as any)?._id?.toString() === w._id.toString()
+          )?.role,
+        }));
+
+      // Combine owned (with isOwner flag) and shared projects
+      const allProjects = [
+        ...ownedProjects.map((p) => ({ ...p, isOwner: true })),
+        ...sharedProjects,
+      ];
+
+      // Sort all by createdAt
+      allProjects.sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
 
       res.status(200).json({
         success: true,
         data: {
-          projects,
-          count: projects.length,
+          projects: allProjects,
+          count: allProjects.length,
         },
       });
     } catch (error) {

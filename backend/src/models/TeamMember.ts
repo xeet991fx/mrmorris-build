@@ -72,6 +72,7 @@ export interface ITeamMember extends Document {
     status: "pending" | "active" | "removed";
     inviteToken?: string;
     inviteEmail?: string; // For pending invites
+    inviteExpiresAt?: Date; // 7-day expiry for invites
     permissions?: string[]; // Custom permissions override
     createdAt: Date;
     updatedAt: Date;
@@ -126,6 +127,9 @@ const teamMemberSchema = new Schema<ITeamMember>(
             type: String,
             lowercase: true,
             trim: true,
+        },
+        inviteExpiresAt: {
+            type: Date,
         },
         permissions: [{
             type: String,
