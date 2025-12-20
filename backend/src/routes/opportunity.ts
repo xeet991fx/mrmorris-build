@@ -66,6 +66,7 @@ router.post(
         contactId: validatedData.contactId || undefined,
         companyId: validatedData.companyId || undefined,
         assignedTo: validatedData.assignedTo || undefined,
+        associatedContacts: validatedData.associatedContacts?.filter(Boolean) || undefined,
         expectedCloseDate: validatedData.expectedCloseDate || undefined,
         description: validatedData.description || undefined,
         source: validatedData.source || undefined,
@@ -119,6 +120,7 @@ router.post(
         .populate("assignedTo", "name email")
         .populate("contactId", "firstName lastName email")
         .populate("companyId", "name industry")
+        .populate("associatedContacts", "firstName lastName email")
         .lean();
 
       // Convert Map to plain object
@@ -266,7 +268,8 @@ router.get(
           .limit(limit)
           .populate("assignedTo", "name email")
           .populate("contactId", "firstName lastName email")
-          .populate("companyId", "name industry"),
+          .populate("companyId", "name industry")
+          .populate("associatedContacts", "firstName lastName email"),
         Opportunity.countDocuments(filter),
       ]);
 
@@ -360,7 +363,8 @@ router.get(
         .sort({ createdAt: -1 })
         .populate("assignedTo", "name email")
         .populate("contactId", "firstName lastName email")
-        .populate("companyId", "name industry");
+        .populate("companyId", "name industry")
+        .populate("associatedContacts", "firstName lastName email");
 
       // Convert Map to plain object
       const opportunities = opportunityDocs.map((doc) => {
@@ -443,7 +447,8 @@ router.get(
       })
         .populate("assignedTo", "name email")
         .populate("contactId", "firstName lastName email")
-        .populate("companyId", "name industry");
+        .populate("companyId", "name industry")
+        .populate("associatedContacts", "firstName lastName email");
 
       if (!opportunityDoc) {
         return res.status(404).json({
@@ -512,6 +517,7 @@ router.patch(
         contactId: validatedData.contactId || undefined,
         companyId: validatedData.companyId || undefined,
         assignedTo: validatedData.assignedTo || undefined,
+        associatedContacts: validatedData.associatedContacts?.filter(Boolean) || undefined,
         expectedCloseDate: validatedData.expectedCloseDate || undefined,
         description: validatedData.description || undefined,
         source: validatedData.source || undefined,
@@ -559,7 +565,8 @@ router.patch(
       )
         .populate("assignedTo", "name email")
         .populate("contactId", "firstName lastName email")
-        .populate("companyId", "name industry");
+        .populate("companyId", "name industry")
+        .populate("associatedContacts", "firstName lastName email");
 
       if (!opportunityDoc) {
         return res.status(404).json({
@@ -722,6 +729,7 @@ router.patch(
         .populate("assignedTo", "name email")
         .populate("contactId", "firstName lastName email")
         .populate("companyId", "name industry")
+        .populate("associatedContacts", "firstName lastName email")
         .lean();
 
       // Convert Map to plain object

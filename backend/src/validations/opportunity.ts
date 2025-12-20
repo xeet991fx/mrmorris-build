@@ -47,7 +47,8 @@ export const createOpportunitySchema = z.object({
     .trim()
     .optional()
     .or(z.literal("")),
-  assignedTo: z.string().optional().or(z.literal("")),
+  assignedTo: z.string().min(1, "Deal Owner is required"),
+  associatedContacts: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
   customFields: z.record(z.any()).optional(),

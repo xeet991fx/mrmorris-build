@@ -25,6 +25,7 @@ export interface IOpportunity extends Document {
   // Relationships
   contactId?: Types.ObjectId;
   companyId?: Types.ObjectId;
+  associatedContacts?: Types.ObjectId[];
 
   // Details
   description?: string;
@@ -161,6 +162,10 @@ const opportunitySchema = new Schema<IOpportunity>(
       ref: "Company",
       index: true,
     },
+    associatedContacts: [{
+      type: Schema.Types.ObjectId,
+      ref: "Contact",
+    }],
 
     // Details
     description: {

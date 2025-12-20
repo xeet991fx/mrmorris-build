@@ -45,6 +45,7 @@ export default function AddOpportunityModal({
       status: "open",
       lostReason: "",
       assignedTo: "",
+      associatedContacts: [],
       tags: [],
       priority: undefined,
     },
@@ -150,7 +151,7 @@ export default function AddOpportunityModal({
                   {/* Form */}
                   <form onSubmit={handleSubmit(onSubmit)}>
                     <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
-                      <OpportunityForm form={form as any} />
+                      <OpportunityForm form={form as any} workspaceId={workspaceId} />
                     </div>
 
                     {/* Footer */}
