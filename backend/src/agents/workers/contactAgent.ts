@@ -12,6 +12,7 @@ import Contact from "../../models/Contact";
 import { eventPublisher } from "../../events";
 import { parseToolCall } from "../utils/parseToolCall";
 import { createSafeRegex } from "../utils/escapeRegex";
+import { triggerWorkflow } from "../../middleware/workflowTrigger";
 
 /**
  * Execute contact tools
@@ -53,6 +54,9 @@ async function executeContactTool(
                 lastName: contact.lastName,
                 email: contact.email,
             }, { workspaceId, userId, source: "system" });
+
+            // Trigger workflow directly (bypasses Redis queue which may be rate-limited)
+            triggerWorkflow("contact:created", contact, workspaceId);
 
             return {
                 success: true,

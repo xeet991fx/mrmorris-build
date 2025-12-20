@@ -8,7 +8,7 @@ import { Router, Response } from "express";
 import { AuthRequest, authenticate } from "../middleware/auth";
 import { agentChatLimiter, agentStatusLimiter } from "../middleware/rateLimiter";
 import Project from "../models/Project";
-import { invokeAgent } from "../agents";
+import { invokeAgentV2 } from "../agents";
 
 const router = Router();
 
@@ -82,8 +82,9 @@ router.post(
             // Create session ID from workspace + user for conversation memory
             const sessionId = `${workspaceId}-${userId}`;
 
-            // Invoke the agent system with session
-            const result = await invokeAgent(message, workspaceId, userId, sessionId);
+            // Invoke the agent system V2 with multi-agent coordination
+            // 60 second timeout for complex multi-agent tasks
+            const result = await invokeAgentV2(message, workspaceId, userId, sessionId, 60000);
 
             // Return structured response
             res.json({
@@ -157,6 +158,7 @@ router.get(
                 data: {
                     status: "active",
                     model: "gemini-2.5-pro (Vertex AI)",
+                    multiAgentCoordination: true,
                     availableAgents: [
                         { name: "contact", description: "Contacts: create, search, update" },
                         { name: "email", description: "Emails: draft, templates" },
@@ -170,13 +172,31 @@ router.get(
                         { name: "sequence", description: "Sequences: create, add steps, enroll" },
                         { name: "leadscore", description: "Lead scoring: hot leads, scores" },
                         { name: "reports", description: "Reports: sales, activity, dashboard" },
+                        { name: "briefing", description: "Meeting prep: generate briefings, talking points" },
+                        { name: "hygiene", description: "Pipeline health: stale deals, suggestions" },
+                        { name: "forecast", description: "Revenue forecasting: predictions, trends" },
+                        { name: "competitor", description: "Competitive intelligence: battlecards" },
+                        { name: "dataentry", description: "Data quality: duplicates, cleanup" },
+                        { name: "general", description: "General knowledge: research, web search" },
                     ],
                     examples: [
+                        // Simple tasks
                         "Create a contact named John Smith",
                         "Create a task to follow up tomorrow",
                         "Show my hot leads",
-                        "Create a welcome workflow",
-                        "Show my dashboard",
+
+                        // Complex multi-agent tasks
+                        "Prepare for my meeting with Acme Corp tomorrow",
+                        "Analyze the health of my Acme Corp deal",
+                        "Create a nurture campaign for enterprise leads",
+                        "Find and update information for John Smith",
+                    ],
+                    features: [
+                        "Multi-agent coordination (2-4 agents working together)",
+                        "Parallel and sequential execution modes",
+                        "Intelligent task complexity analysis",
+                        "Conversation memory (last 10 messages)",
+                        "Smart result aggregation",
                     ],
                 },
             });

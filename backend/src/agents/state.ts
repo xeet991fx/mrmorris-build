@@ -1,7 +1,7 @@
 /**
  * Agent State Definition
- * 
- * Enhanced state with conversation memory and context management.
+ *
+ * Enhanced state with conversation memory, context management, and multi-agent coordination.
  */
 
 import { Annotation } from "@langchain/langgraph";
@@ -93,7 +93,7 @@ export function getSessionStats(): { activeSessions: number; totalSessions: numb
 }
 
 /**
- * Enhanced Agent State with conversation memory
+ * Enhanced Agent State with conversation memory and multi-agent coordination
  */
 export const AgentState = Annotation.Root({
     // Current messages in this turn
@@ -169,6 +169,22 @@ export const AgentState = Annotation.Root({
         reducer: (_, next) => next,
         default: () => false,
     }),
+
+    // Multi-agent coordination fields
+    isComplexTask: Annotation<boolean>({
+        reducer: (_, next) => next,
+        default: () => false,
+    }),
+
+    coordinationMode: Annotation<'single' | 'parallel' | 'sequential'>({
+        reducer: (_, next) => next,
+        default: () => 'single',
+    }),
+
+    executionPlan: Annotation<any>({
+        reducer: (_, next) => next,
+        default: () => null,
+    }),
 });
 
 export type AgentStateType = typeof AgentState.State;
@@ -202,5 +218,8 @@ export function createInitialState(
         userQuestion: "",
         error: "",
         verified: false,
+        isComplexTask: false,
+        coordinationMode: 'single',
+        executionPlan: null,
     };
 }

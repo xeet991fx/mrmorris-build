@@ -8,6 +8,7 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import Contact from "../../models/Contact";
 import { eventPublisher } from "../../events";
+import { triggerWorkflow } from "../../middleware/workflowTrigger";
 
 /**
  * Create a new contact in the CRM
@@ -60,6 +61,9 @@ export const createContactTool = tool(
                 userId,
                 source: "system",
             });
+
+            // Trigger workflow directly (bypasses Redis queue which may be rate-limited)
+            triggerWorkflow("contact:created", contact, workspaceId);
 
             return JSON.stringify({
                 success: true,

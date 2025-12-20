@@ -56,15 +56,19 @@ export const defaultQueueOptions: QueueOptions = {
   },
 };
 
-// Worker options
+// Worker options - Optimized for Upstash to reduce Redis requests
 export const defaultWorkerOptions: WorkerOptions = {
   connection: defaultQueueOptions.connection,
-  concurrency: parseInt(process.env.QUEUE_CONCURRENCY || '5'),
+  concurrency: parseInt(process.env.QUEUE_CONCURRENCY || '3'),
   limiter: {
-    max: parseInt(process.env.QUEUE_MAX_JOBS_PER_SECOND || '10'),
+    max: parseInt(process.env.QUEUE_MAX_JOBS_PER_SECOND || '5'),
     duration: 1000, // per second
   },
   autorun: true,
+  // IMPORTANT: Increase polling interval to reduce Upstash requests
+  drainDelay: 30000, // 30 seconds between polls when queue is empty (default is 5s)
+  stalledInterval: 60000, // Check for stalled jobs every 60s (default is 30s)
+  lockDuration: 60000, // 60 second lock duration
 };
 
 // Event priority levels

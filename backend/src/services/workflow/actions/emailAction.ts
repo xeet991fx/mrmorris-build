@@ -2,9 +2,10 @@
  * Email Action Executor
  * 
  * Sends automated emails to contacts as part of workflow automation.
- * Supports sending via:
- * 1. Connected Gmail account (if available) - emails appear from user's Gmail
- * 2. SMTP fallback - uses system email configuration
+ * Supports:
+ * 1. AI-generated content (using Gemini)
+ * 2. Connected Gmail account (if available) - emails appear from user's Gmail
+ * 3. SMTP fallback - uses system email configuration
  */
 
 import { google } from "googleapis";
@@ -14,6 +15,7 @@ import emailService from "../../email";
 import { replacePlaceholders } from "../utils";
 import { ActionContext, ActionResult, BaseActionExecutor } from "./types";
 import { generateTrackingId, getTrackingPixelUrl } from "../../../routes/emailTracking";
+import { getProModel } from "../../../agents/modelFactory";
 
 // Gmail OAuth client factory
 const getOAuth2Client = () => {
@@ -26,7 +28,18 @@ const getOAuth2Client = () => {
 export class EmailActionExecutor extends BaseActionExecutor {
     async execute(context: ActionContext): Promise<ActionResult> {
         const { step, entity, enrollment } = context;
-        const { emailSubject, emailBody, useCustomEmail, recipientEmail, sendFromAccountId } = step.config;
+        const {
+            emailSubject,
+            emailBody,
+            useCustomEmail,
+            recipientEmail,
+            sendFromAccountId,
+            // AI Generation options
+            useAIGeneration,
+            emailPurpose,
+            emailTone,
+            companyName
+        } = step.config;
 
         // Determine the recipient email address
         let toEmail: string;
@@ -44,9 +57,36 @@ export class EmailActionExecutor extends BaseActionExecutor {
             return this.skipped("No email address available");
         }
 
-        // Replace placeholders in subject and body
-        const subject = replacePlaceholders(emailSubject || "Automated Message", entity);
-        let body = replacePlaceholders(emailBody || "", entity);
+        let subject: string;
+        let body: string;
+
+        // DEBUG: Log what we're working with
+        console.log(`📧 Email Action Debug:`, {
+            emailBody: emailBody?.substring(0, 100),
+            emailBodyLength: emailBody?.length || 0,
+            useAIGeneration,
+        });
+
+        // Detect if template is too basic/generic and should be upgraded by AI
+        const isBasicTemplate = this.isBasicTemplate(emailBody || "");
+        console.log(`📧 isBasicTemplate: ${isBasicTemplate}`);
+        const shouldUseAI = useAIGeneration || isBasicTemplate;
+
+        // Use AI to generate email content if enabled OR if template is basic
+        if (shouldUseAI) {
+            if (isBasicTemplate && !useAIGeneration) {
+                console.log(`🤖 Detected basic template, auto-upgrading with AI for: ${entity.firstName} ${entity.lastName}`);
+            } else {
+                console.log(`🤖 Generating AI email for: ${entity.firstName} ${entity.lastName}`);
+            }
+            const aiContent = await this.generateAIEmail(entity, emailPurpose, emailTone, companyName);
+            subject = aiContent.subject;
+            body = aiContent.body;
+        } else {
+            // Use static templates with placeholder replacement
+            subject = replacePlaceholders(emailSubject || "Automated Message", entity);
+            body = replacePlaceholders(emailBody || "", entity);
+        }
 
         // Add email tracking pixel and wrap links
         const trackingId = generateTrackingId(
@@ -239,6 +279,102 @@ export class EmailActionExecutor extends BaseActionExecutor {
                 return `<a ${beforeHref}href="${trackingUrl}"${afterHref}>`;
             }
         );
+    }
+
+    /**
+     * Generate AI-powered email content using Gemini
+     */
+    private async generateAIEmail(
+        entity: any,
+        purpose?: string,
+        tone?: string,
+        companyName?: string
+    ): Promise<{ subject: string; body: string }> {
+        const contactName = `${entity.firstName || ""} ${entity.lastName || ""}`.trim() || "there";
+        const company = entity.company || companyName || "our company";
+        const jobTitle = entity.jobTitle || "";
+        const emailPurpose = purpose || "welcome";
+        const emailTone = tone || "professional yet friendly";
+
+        const prompt = `You are an expert email copywriter. Write a ${emailTone} email for the following context:
+
+PURPOSE: ${emailPurpose}
+RECIPIENT NAME: ${contactName}
+RECIPIENT COMPANY: ${entity.company || "Unknown"}
+RECIPIENT JOB TITLE: ${jobTitle || "Unknown"}
+SENDER COMPANY: ${company}
+
+Requirements:
+1. Write a compelling subject line (max 60 chars)
+2. Write a personalized email body (150-250 words)
+3. Use HTML formatting for the body (paragraphs, line breaks)
+4. Include a clear call-to-action if appropriate
+5. Be warm, professional, and NOT generic
+6. Reference their specific role/company if available
+7. Make it feel human, not templated
+
+Respond in this exact JSON format only, no other text:
+{"subject": "...", "body": "<p>...</p>"}`;
+
+        try {
+            const model = getProModel();
+            const response = await model.invoke(prompt);
+            const text = response.content as string;
+
+            // Parse JSON from response
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                return {
+                    subject: parsed.subject || `Welcome, ${contactName}!`,
+                    body: parsed.body || `<p>Hi ${contactName},</p><p>We're excited to have you!</p>`,
+                };
+            }
+        } catch (error: any) {
+            console.error("AI email generation failed:", error.message);
+        }
+
+        // Fallback if AI fails
+        return {
+            subject: `Welcome to ${company}, ${contactName}!`,
+            body: `<p>Hi ${contactName},</p>
+<p>We're thrilled to welcome you to ${company}! ${jobTitle ? `As a ${jobTitle}, ` : ""}we believe you'll find great value in what we offer.</p>
+<p>Our team is here to help you succeed. Don't hesitate to reach out if you have any questions.</p>
+<p>Best regards,<br/>The ${company} Team</p>`,
+        };
+    }
+
+    /**
+     * Detect if an email template is too basic/generic and should be upgraded by AI
+     */
+    private isBasicTemplate(body: string): boolean {
+        // Empty or very short templates
+        if (!body || body.length < 100) return true;
+
+        // Count placeholders - if mostly placeholders, it's basic
+        const placeholderCount = (body.match(/\{\{[^}]+\}\}/g) || []).length;
+        const wordCount = body.split(/\s+/).length;
+        if (placeholderCount > 0 && wordCount < 30) return true;
+
+        // Common generic phrases that indicate a basic template
+        const genericPhrases = [
+            "welcome! we're so glad",
+            "we're glad to have you",
+            "welcome to our",
+            "thank you for joining",
+            "hi {{contact",
+            "hello {{contact",
+            "dear {{contact",
+        ];
+
+        const lowerBody = body.toLowerCase();
+        for (const phrase of genericPhrases) {
+            if (lowerBody.includes(phrase) && wordCount < 50) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

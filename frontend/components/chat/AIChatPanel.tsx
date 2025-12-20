@@ -14,6 +14,13 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+// Import Zustand stores for auto-refresh after AI actions
+import { useContactStore } from "@/store/useContactStore";
+import { useCompanyStore } from "@/store/useCompanyStore";
+import { usePipelineStore } from "@/store/usePipelineStore";
+import { useTaskStore } from "@/store/useTaskStore";
+import { useWorkflowStore } from "@/store/useWorkflowStore";
+
 interface Message {
     id: string;
     role: "user" | "assistant";
@@ -96,6 +103,35 @@ export function AIChatPanel() {
                 };
                 return [...updated, assistantMessage];
             });
+
+            // Auto-refresh stores based on toolResults
+            if (response.data?.toolResults) {
+                const toolNames = Object.keys(response.data.toolResults);
+
+                for (const toolName of toolNames) {
+                    // Contact actions
+                    if (toolName.includes('contact') || toolName.includes('Contact')) {
+                        useContactStore.getState().fetchContacts(workspaceId);
+                    }
+                    // Company actions
+                    if (toolName.includes('company') || toolName.includes('Company')) {
+                        useCompanyStore.getState().fetchCompanies(workspaceId);
+                    }
+                    // Deal/Pipeline actions
+                    if (toolName.includes('deal') || toolName.includes('Deal') ||
+                        toolName.includes('opportunity') || toolName.includes('pipeline')) {
+                        usePipelineStore.getState().fetchOpportunities(workspaceId);
+                    }
+                    // Task actions
+                    if (toolName.includes('task') || toolName.includes('Task')) {
+                        useTaskStore.getState().fetchTasks(workspaceId);
+                    }
+                    // Workflow actions
+                    if (toolName.includes('workflow') || toolName.includes('Workflow')) {
+                        useWorkflowStore.getState().fetchWorkflows(workspaceId);
+                    }
+                }
+            }
         } catch (error: any) {
             setMessages(prev => {
                 const updated = prev.filter(m => !m.isLoading);

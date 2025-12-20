@@ -22,7 +22,10 @@ export class QueueManager {
       const queue = new Queue(queueName, defaultQueueOptions);
       this.queues.set(queueName, queue);
 
-      // Set up queue events monitoring
+      // NOTE: QueueEvents monitoring disabled to reduce Upstash Redis requests
+      // Worker event listeners provide sufficient logging for job completion/failure
+      // Uncomment below if you have unlimited Redis requests or use local Redis
+      /*
       const queueEvents = new QueueEvents(queueName, {
         connection: defaultQueueOptions.connection,
       });
@@ -39,6 +42,7 @@ export class QueueManager {
       });
 
       this.queueEvents.set(queueName, queueEvents);
+      */
     }
 
     return this.queues.get(queueName)!;
@@ -132,8 +136,32 @@ export class QueueManager {
       }
     });
 
-    worker.on('error', (err) => {
+    worker.on('error', async (err) => {
       console.error(`❌ Worker error in queue ${queueName}:`, err);
+
+      // Detect Upstash rate limit error and pause worker
+      const errMessage = err.message || '';
+      if (errMessage.includes('max requests limit exceeded') ||
+        errMessage.includes('ERR max requests')) {
+        console.warn(`⚠️ Upstash rate limit hit. Pausing worker for 5 minutes...`);
+
+        try {
+          // Pause the worker
+          await worker.pause();
+
+          // Resume after 5 minutes
+          setTimeout(async () => {
+            try {
+              await worker.resume();
+              console.log(`▶️ Worker resumed after rate limit cooldown: ${queueName}`);
+            } catch (resumeErr) {
+              console.error(`Failed to resume worker ${queueName}:`, resumeErr);
+            }
+          }, 5 * 60 * 1000); // 5 minutes
+        } catch (pauseErr) {
+          console.error(`Failed to pause worker ${queueName}:`, pauseErr);
+        }
+      }
     });
 
     this.workers.set(queueName, worker);

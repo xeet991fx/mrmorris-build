@@ -60,7 +60,7 @@ const PLACEHOLDER_VARIABLES = [
 
 function EmailActionFields({ step, onChange }: ActionConfigProps) {
     const params = useParams();
-    const workspaceId = params?.workspaceId as string;
+    const workspaceId = (params?.workspaceId || params?.id) as string; // Support both param names
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
     const [loadingTemplates, setLoadingTemplates] = useState(false);
     const [useTemplate, setUseTemplate] = useState(!!step.config.emailTemplateId);
@@ -86,7 +86,23 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
             );
             const data = await res.json();
             if (data.success) {
-                setTemplates(data.data || []);
+                let templateList = data.data || [];
+
+                // If no templates found, fetch/create defaults
+                if (templateList.length === 0) {
+                    const defaultsRes = await fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates/defaults`,
+                        {
+                            headers: { Authorization: `Bearer ${token}` },
+                        }
+                    );
+                    const defaultsData = await defaultsRes.json();
+                    if (defaultsData.success) {
+                        templateList = defaultsData.data || [];
+                    }
+                }
+
+                setTemplates(templateList);
             }
         } catch (error) {
             console.error("Failed to fetch templates:", error);

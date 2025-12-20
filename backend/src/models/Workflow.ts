@@ -73,6 +73,11 @@ export interface IWorkflowStep {
         useCustomEmail?: boolean;      // Send to custom email vs enrolled contact
         recipientEmail?: string;       // Custom email address (supports placeholders)
         sendFromAccountId?: string;    // Connected Gmail account to send from
+        // AI Email Generation
+        useAIGeneration?: boolean;     // Use AI to generate email content
+        emailPurpose?: string;         // e.g., "welcome", "follow-up", "thank you"
+        emailTone?: string;            // e.g., "professional", "friendly", "casual"
+        companyName?: string;          // Company name for branding
         fieldName?: string;
         fieldValue?: any;
         taskTitle?: string;
@@ -214,6 +219,11 @@ const workflowStepSchema = new Schema<IWorkflowStep>(
             useCustomEmail: Boolean,
             recipientEmail: String,
             sendFromAccountId: String,
+            // AI Email Generation
+            useAIGeneration: Boolean,
+            emailPurpose: String,
+            emailTone: String,
+            companyName: String,
             fieldName: String,
             fieldValue: Schema.Types.Mixed,
             taskTitle: String,
