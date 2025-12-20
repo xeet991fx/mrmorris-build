@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec \"node --max-old-space-size=8192 -r ts-node/register/transpile-only\" src/server.ts",
-    "build": "node --max-old-space-size=3072 node_modules/typescript/bin/tsc --skipLibCheck || echo 'Build completed with warnings'",
+    "build": "node --max-old-space-size=8192 node_modules/typescript/bin/tsc --skipLibCheck || echo 'Build completed with warnings'",
     "build:fast": "node --max-old-space-size=2048 node_modules/typescript/bin/tsc --transpileOnly --skipLibCheck || tsc --transpileOnly --skipLibCheck",
     "start": "node dist/server.js",
     "start:dev": "ts-node src/server.ts"
