@@ -1,4 +1,5 @@
 import { axiosInstance } from "../axios";
+import type { Role } from "./team";
 
 // Workspace type definitions
 export interface Workspace {
@@ -7,6 +8,10 @@ export interface Workspace {
   name: string;
   createdAt: string;
   updatedAt: string;
+  // Ownership/sharing indicators (from backend)
+  isOwner?: boolean;
+  isShared?: boolean;
+  memberRole?: Role;
 }
 
 export interface CreateWorkspaceData {

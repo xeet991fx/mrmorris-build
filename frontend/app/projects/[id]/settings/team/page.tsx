@@ -12,6 +12,7 @@ import {
     UserIcon,
     EyeIcon,
     XMarkIcon,
+    ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import {
@@ -22,6 +23,7 @@ import {
     inviteTeamMember,
     updateMemberRole,
     removeMember,
+    resendInvite,
 } from "@/lib/api/team";
 import { cn } from "@/lib/utils";
 
@@ -156,12 +158,14 @@ function TeamMemberCard({
     currentUserRole,
     onUpdateRole,
     onRemove,
+    onResend,
 }: {
     member: TeamMember | TeamOwner;
     isOwner: boolean;
     currentUserRole: Role | null;
     onUpdateRole: (memberId: string, role: "admin" | "member" | "viewer") => void;
     onRemove: (memberId: string) => void;
+    onResend: (memberId: string) => void;
 }) {
     const role = member.role;
     const badge = ROLE_BADGES[role];
@@ -169,13 +173,14 @@ function TeamMemberCard({
     const isTeamMember = "_id" in member && "status" in member;
     const user = isTeamMember ? (member as TeamMember).userId : member;
     const canManage = currentUserRole === "owner" || (currentUserRole === "admin" && role !== "admin" && role !== "owner");
+    const isPending = isTeamMember && (member as TeamMember).status === "pending";
 
     return (
         <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl">
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#9ACD32]/20 flex items-center justify-center">
                     <span className="text-[#9ACD32] font-semibold">
-                        {(user?.name || user?.email)?.charAt(0).toUpperCase()}
+                        {(user?.name || user?.email || (member as TeamMember).inviteEmail)?.charAt(0).toUpperCase()}
                     </span>
                 </div>
                 <div>
@@ -183,13 +188,24 @@ function TeamMemberCard({
                     <p className="text-sm text-muted-foreground">{user?.email || (member as TeamMember).inviteEmail}</p>
                 </div>
             </div>
-            <div className="flex items-center gap-3">
-                {isTeamMember && (member as TeamMember).status === "pending" && (
-                    <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                        Pending
-                    </span>
+            <div className="flex items-center gap-2">
+                {isPending && (
+                    <>
+                        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                            Pending
+                        </span>
+                        {canManage && (
+                            <button
+                                onClick={() => onResend((member as TeamMember)._id)}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Resend invite"
+                            >
+                                <ArrowPathIcon className="w-4 h-4" />
+                            </button>
+                        )}
+                    </>
                 )}
-                {canManage && role !== "owner" && isTeamMember ? (
+                {canManage && role !== "owner" && isTeamMember && !isPending ? (
                     <select
                         value={role}
                         onChange={(e) => onUpdateRole((member as TeamMember)._id, e.target.value as any)}
@@ -199,7 +215,7 @@ function TeamMemberCard({
                         <option value="member">Member</option>
                         <option value="viewer">Viewer</option>
                     </select>
-                ) : (
+                ) : !isPending && (
                     <span className={cn("px-2 py-1 text-xs rounded-full flex items-center gap-1", badge.color)}>
                         <BadgeIcon className="w-3 h-3" />
                         {badge.label}
@@ -209,6 +225,7 @@ function TeamMemberCard({
                     <button
                         onClick={() => onRemove((member as TeamMember)._id)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        title="Remove member"
                     >
                         <TrashIcon className="w-4 h-4" />
                     </button>
@@ -295,6 +312,19 @@ export default function TeamSettingsPage() {
         }
     };
 
+    const handleResend = async (memberId: string) => {
+        try {
+            const response = await resendInvite(workspaceId, memberId);
+            if (response.success) {
+                toast.success(response.message || "Invite resent!");
+            } else {
+                toast.error(response.error || "Failed to resend invite");
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.error || "Failed to resend invite");
+        }
+    };
+
     const canInvite = currentUserRole === "owner" || currentUserRole === "admin";
 
     return (
@@ -340,6 +370,7 @@ export default function TeamSettingsPage() {
                                 currentUserRole={currentUserRole}
                                 onUpdateRole={handleUpdateRole}
                                 onRemove={handleRemove}
+                                onResend={handleResend}
                             />
                         )}
 
@@ -352,6 +383,7 @@ export default function TeamSettingsPage() {
                                 currentUserRole={currentUserRole}
                                 onUpdateRole={handleUpdateRole}
                                 onRemove={handleRemove}
+                                onResend={handleResend}
                             />
                         ))}
 

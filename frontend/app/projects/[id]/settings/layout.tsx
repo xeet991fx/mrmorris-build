@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   UserCircleIcon,
   Cog6ToothIcon,
+  UserGroupIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,12 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       href: `/projects/${workspaceId}/settings`,
       icon: UserCircleIcon,
       match: (path: string) => path === `/projects/${workspaceId}/settings`,
+    },
+    {
+      name: "Team",
+      href: `/projects/${workspaceId}/settings/team`,
+      icon: UserGroupIcon,
+      match: (path: string) => path.includes('/settings/team'),
     },
     {
       name: "Integrations",
