@@ -65,7 +65,8 @@
       "Bash(exit 0)",
       "Bash(node test-agent.js)",
       "Bash(node fix-types.js:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(del fix-parse-imports.js fix-regex-injection.js)"
     ],
     "deny": [],
     "ask": []

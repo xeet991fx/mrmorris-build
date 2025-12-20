@@ -10,6 +10,7 @@ import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
 import EmailTemplate from "../../models/EmailTemplate";
 import Contact from "../../models/Contact";
+import { createSafeRegex } from "../utils/escapeRegex";
 
 /**
  * Parse tool call from AI response
@@ -80,6 +81,112 @@ async function executeEmailTool(
             };
         }
 
+        case "update_template": {
+            const { templateName, name, subject, body, category } = args;
+
+            const searchRegex = createSafeRegex(templateName);
+            const updates: any = {};
+            if (name) updates.name = name;
+            if (subject) updates.subject = subject;
+            if (body) updates.body = body;
+            if (category) updates.category = category;
+
+            const template = await EmailTemplate.findOneAndUpdate(
+                { workspaceId, name: searchRegex, isActive: true },
+                { $set: updates },
+                { new: true }
+            );
+
+            if (!template) {
+                return { success: false, error: `Template "${templateName}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Template "${template.name}" updated successfully`,
+            };
+        }
+
+        case "delete_template": {
+            const { templateName } = args;
+
+            const searchRegex = createSafeRegex(templateName);
+            const template = await EmailTemplate.findOneAndUpdate(
+                { workspaceId, name: searchRegex, isActive: true },
+                { isActive: false },
+                { new: true }
+            );
+
+            if (!template) {
+                return { success: false, error: `Template "${templateName}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Template "${template.name}" deleted successfully 🗑️`,
+            };
+        }
+
+        case "purge_templates": {
+            // Hard delete all inactive templates
+            const result = await EmailTemplate.deleteMany({ workspaceId, isActive: false });
+
+            return {
+                success: true,
+                message: `Permanently deleted ${result.deletedCount} inactive template(s) 🧹`,
+                deletedCount: result.deletedCount,
+            };
+        }
+
+        case "send_email": {
+            const { to, subject, body, templateName } = args;
+
+            let emailSubject = subject;
+            let emailBody = body;
+
+            // If using a template, fetch it
+            if (templateName && (!subject || !body)) {
+                const searchRegex = createSafeRegex(templateName);
+                const template = await EmailTemplate.findOne({
+                    workspaceId,
+                    name: searchRegex,
+                    isActive: true,
+                }).lean();
+
+                if (template) {
+                    emailSubject = emailSubject || (template as any).subject;
+                    emailBody = emailBody || (template as any).body;
+                }
+            }
+
+            if (!to || !emailSubject || !emailBody) {
+                return { success: false, error: "Missing required fields: to, subject, or body" };
+            }
+
+            // Send via Resend
+            try {
+                const { Resend } = await import("resend");
+                const resend = new Resend(process.env.RESEND_API_KEY);
+
+                await resend.emails.send({
+                    from: process.env.RESEND_FROM_EMAIL || "noreply@resend.dev",
+                    to: to,
+                    subject: emailSubject,
+                    html: emailBody.replace(/\n/g, "<br>"),
+                });
+
+                return {
+                    success: true,
+                    message: `Email sent to ${to} successfully! 📧`,
+                };
+            } catch (error: any) {
+                return {
+                    success: false,
+                    error: `Failed to send email: ${error.message}`,
+                };
+            }
+        }
+
         case "list_templates": {
             const { category } = args;
 
@@ -105,7 +212,7 @@ async function executeEmailTool(
 
         case "get_contact_email": {
             const { contactName } = args;
-            const searchRegex = new RegExp(contactName, "i");
+            const searchRegex = createSafeRegex(contactName);
 
             const contact = await Contact.findOne({
                 workspaceId,
@@ -147,19 +254,24 @@ export async function emailAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        const systemPrompt = `You are a CRM Email Agent. Analyze the user's request and decide which tool to use.
+        const systemPrompt = `You are a CRM Email Agent. Manage emails and templates.
+
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
 
 Available tools:
 1. draft_email - Draft an email. Args: { to, subject, body, tone, purpose }
-2. create_template - Create an email template. Args: { name, subject, body, category }
-3. list_templates - List email templates. Args: { category? }
-4. get_contact_email - Get a contact's email. Args: { contactName }
+2. send_email - Send an email immediately. Args: { to, subject, body, templateName? }
+3. create_template - Create an email template. Args: { name, subject, body, category }
+4. update_template - Update a template. Args: { templateName, name?, subject?, body?, category? }
+5. delete_template - Delete a template. Args: { templateName }
+6. list_templates - List email templates. Args: { category? }
+7. get_contact_email - Get a contact's email. Args: { contactName }
 
-Instructions:
-- Extract relevant information from the user's request
-- Respond with a JSON object: {"tool": "...", "args": {...}}
+Examples:
+- "send email to john@test.com about meeting" → {"tool": "send_email", "args": {"to": "john@test.com", "subject": "Meeting", "body": "Hi,\\n\\nI wanted to discuss our upcoming meeting..."}}
+- "delete welcome template" → {"tool": "delete_template", "args": {"templateName": "welcome"}}
 
-Respond with ONLY the JSON object, no other text.`;
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -187,7 +299,8 @@ Respond with ONLY the JSON object, no other text.`;
             if (result.success) {
                 if (toolCall.tool === "draft_email") {
                     friendlyResponse = `Here's your email draft:\n\n**To:** ${result.draft.to || "[recipient]"}\n**Subject:** ${result.draft.subject}\n\n${result.draft.body}`;
-                } else if (toolCall.tool === "create_template") {
+                } else if (toolCall.tool === "send_email" || toolCall.tool === "create_template" ||
+                    toolCall.tool === "update_template" || toolCall.tool === "delete_template") {
                     friendlyResponse = result.message;
                 } else if (toolCall.tool === "list_templates") {
                     if (result.count === 0) {
@@ -197,6 +310,8 @@ Respond with ONLY the JSON object, no other text.`;
                     }
                 } else if (toolCall.tool === "get_contact_email") {
                     friendlyResponse = `${result.contact.name}'s email is ${result.contact.email}${result.contact.company ? ` (${result.contact.company})` : ""}`;
+                } else {
+                    friendlyResponse = result.message || "Done!";
                 }
             } else {
                 friendlyResponse = `Sorry, I couldn't complete that: ${result.error}`;
@@ -210,8 +325,8 @@ Respond with ONLY the JSON object, no other text.`;
         }
 
         return {
-            messages: [new AIMessage("I can help you draft emails, create templates, or find contact emails. What would you like to do?")],
-            finalResponse: "I can help you draft emails, create templates, or find contact emails. What would you like to do?",
+            messages: [new AIMessage("I can help with emails! Try:\n• 'Send email to john@test.com about our meeting'\n• 'Delete the welcome template'\n• 'Update the follow-up template subject'")],
+            finalResponse: "I can help with emails!",
         };
 
     } catch (error: any) {

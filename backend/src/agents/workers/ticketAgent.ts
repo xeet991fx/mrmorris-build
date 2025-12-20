@@ -118,6 +118,50 @@ async function executeTicketTool(
             };
         }
 
+        case "delete_ticket": {
+            const { ticketId } = args;
+
+            const ticket = await Ticket.findOneAndDelete(
+                { workspaceId, _id: { $regex: ticketId } }
+            );
+
+            if (!ticket) {
+                return { success: false, error: `Ticket not found` };
+            }
+
+            return {
+                success: true,
+                message: `Ticket #${ticket._id.toString().slice(-6)} deleted 🗑️`,
+            };
+        }
+
+        case "bulk_delete_tickets": {
+            const { status, priority, olderThanDays } = args;
+
+            const filter: any = { workspaceId };
+
+            if (status) filter.status = status;
+            if (priority) filter.priority = priority;
+            if (olderThanDays) {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+                filter.createdAt = { $lt: cutoffDate };
+            }
+
+            // Safety: require at least one filter
+            if (!status && !priority && !olderThanDays) {
+                return { success: false, error: "Please specify status, priority, or olderThanDays to bulk delete" };
+            }
+
+            const result = await Ticket.deleteMany(filter);
+
+            return {
+                success: true,
+                message: `Deleted ${result.deletedCount} ticket(s) 🗑️`,
+                deletedCount: result.deletedCount,
+            };
+        }
+
         default:
             return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -141,10 +185,12 @@ Tools:
 2. list_tickets - Args: { status?, priority? }
 3. update_ticket - Args: { ticketId, status?, priority? }
 4. close_ticket - Args: { ticketId }
+5. delete_ticket - Args: { ticketId }
+6. bulk_delete_tickets - Bulk delete. Args: { status?, priority?, olderThanDays? }
 
 Examples:
-- "open a ticket for login bug" → {"tool": "create_ticket", "args": {"subject": "Login bug", "description": "User reported login bug", "priority": "medium"}}
-- "show tickets" → {"tool": "list_tickets", "args": {}}
+- "delete all closed tickets" → {"tool": "bulk_delete_tickets", "args": {"status": "closed"}}
+- "delete tickets from 2023" → {"tool": "bulk_delete_tickets", "args": {"olderThanDays": 365}}
 
 Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
@@ -184,7 +230,7 @@ Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
         }
 
         return {
-            messages: [new AIMessage("I can help with tickets! Try:\n• 'Create an urgent ticket for login bug'\n• 'Show open tickets'\n• 'Close ticket #abc123'")],
+            messages: [new AIMessage("I can help with tickets! Try:\n• 'Delete ticket abc123'\n• 'Show open tickets'\n• 'Close ticket #xyz'")],
             finalResponse: "I can help with tickets!",
         };
 

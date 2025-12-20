@@ -7,27 +7,72 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseMessage, HumanMessage } from "@langchain/core/messages";
 
-// Session storage for conversation memory (in-memory for speed)
-const sessionStore = new Map<string, BaseMessage[]>();
+// Session storage with TTL (Time To Live) tracking
+interface SessionData {
+    messages: BaseMessage[];
+    lastAccessed: number;
+}
+
+const sessionStore = new Map<string, SessionData>();
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Clean up every 5 minutes
+
+/**
+ * Cleanup expired sessions (sessions not accessed in last 30 minutes)
+ */
+function cleanupExpiredSessions(): void {
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [sessionId, data] of sessionStore.entries()) {
+        if (now - data.lastAccessed > SESSION_TTL_MS) {
+            sessionStore.delete(sessionId);
+            cleanedCount++;
+        }
+    }
+
+    if (cleanedCount > 0) {
+        console.log(`🧹 Cleaned up ${cleanedCount} expired session(s). Active sessions: ${sessionStore.size}`);
+    }
+}
+
+// Start periodic cleanup
+setInterval(cleanupExpiredSessions, CLEANUP_INTERVAL_MS);
 
 /**
  * Get conversation history for a session
  */
 export function getConversationHistory(sessionId: string): BaseMessage[] {
-    return sessionStore.get(sessionId) || [];
+    const sessionData = sessionStore.get(sessionId);
+    if (sessionData) {
+        // Update last accessed time
+        sessionData.lastAccessed = Date.now();
+        return sessionData.messages;
+    }
+    return [];
 }
 
 /**
  * Add message to conversation history (keep last 10)
  */
 export function addToConversation(sessionId: string, message: BaseMessage): void {
-    const history = sessionStore.get(sessionId) || [];
-    history.push(message);
-    // Keep only last 10 messages
-    if (history.length > 10) {
-        history.shift();
+    let sessionData = sessionStore.get(sessionId);
+
+    if (!sessionData) {
+        sessionData = {
+            messages: [],
+            lastAccessed: Date.now(),
+        };
+        sessionStore.set(sessionId, sessionData);
     }
-    sessionStore.set(sessionId, history);
+
+    sessionData.messages.push(message);
+    sessionData.lastAccessed = Date.now();
+
+    // Keep only last 10 messages
+    if (sessionData.messages.length > 10) {
+        sessionData.messages.shift();
+    }
 }
 
 /**
@@ -35,6 +80,16 @@ export function addToConversation(sessionId: string, message: BaseMessage): void
  */
 export function clearConversation(sessionId: string): void {
     sessionStore.delete(sessionId);
+}
+
+/**
+ * Get session store stats (for monitoring)
+ */
+export function getSessionStats(): { activeSessions: number; totalSessions: number } {
+    return {
+        activeSessions: sessionStore.size,
+        totalSessions: sessionStore.size,
+    };
 }
 
 /**
@@ -49,7 +104,11 @@ export const AgentState = Annotation.Root({
 
     // Conversation history (last 10 messages)
     conversationHistory: Annotation<BaseMessage[]>({
-        reducer: (_, next) => next,
+        reducer: (prev, next) => {
+            // Accumulate messages and keep last 10
+            const combined = [...prev, ...next];
+            return combined.slice(-10);
+        },
         default: () => [],
     }),
 

@@ -10,6 +10,7 @@ import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
 import Company from "../../models/Company";
 import Contact from "../../models/Contact";
+import { createSafeRegex } from "../utils/escapeRegex";
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -53,11 +54,11 @@ async function executeCompanyTool(
 
             const filter: any = { workspaceId };
             if (query) {
-                const regex = new RegExp(query, "i");
+                const regex = createSafeRegex(query);
                 filter.$or = [{ name: regex }, { domain: regex }];
             }
             if (industry) {
-                filter.industry = new RegExp(industry, "i");
+                filter.industry = createSafeRegex(industry);
             }
 
             const companies = await Company.find(filter)
@@ -81,7 +82,7 @@ async function executeCompanyTool(
         case "get_company_contacts": {
             const { companyName } = args;
 
-            const regex = new RegExp(companyName, "i");
+            const regex = createSafeRegex(companyName);
             const company = await Company.findOne({ workspaceId, name: regex });
 
             if (!company) {
@@ -111,7 +112,7 @@ async function executeCompanyTool(
         case "update_company": {
             const { companyName, updates } = args;
 
-            const regex = new RegExp(companyName, "i");
+            const regex = createSafeRegex(companyName);
             const company = await Company.findOneAndUpdate(
                 { workspaceId, name: regex },
                 { $set: updates },
@@ -125,6 +126,69 @@ async function executeCompanyTool(
             return {
                 success: true,
                 message: `Company "${company.name}" updated`,
+            };
+        }
+
+        case "delete_company": {
+            const { companyName } = args;
+
+            const regex = createSafeRegex(companyName);
+
+            // Check for contacts at this company
+            const company = await Company.findOne({ workspaceId, name: regex });
+            if (!company) {
+                return { success: false, error: `Company "${companyName}" not found` };
+            }
+
+            const contactCount = await Contact.countDocuments({ workspaceId, companyId: company._id });
+            if (contactCount > 0) {
+                return { success: false, error: `Cannot delete company with ${contactCount} contacts. Remove contacts first.` };
+            }
+
+            await Company.findByIdAndDelete(company._id);
+
+            return {
+                success: true,
+                message: `Company "${company.name}" deleted 🗑️`,
+            };
+        }
+
+        case "bulk_delete_companies": {
+            const { industry, status, olderThanDays, withoutContacts } = args;
+
+            // Build filter
+            const filter: any = { workspaceId };
+            if (industry) filter.industry = createSafeRegex(industry);
+            if (status) filter.status = status;
+            if (olderThanDays) {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+                filter.createdAt = { $lt: cutoffDate };
+            }
+
+            // Safety: require at least one filter
+            if (!industry && !status && !olderThanDays && !withoutContacts) {
+                return { success: false, error: "Please specify industry, status, olderThanDays, or withoutContacts" };
+            }
+
+            // If withoutContacts, only delete companies with no contacts
+            let companiesToDelete;
+            if (withoutContacts) {
+                const companies = await Company.find(filter).select("_id").lean();
+                const companyIds = [];
+                for (const company of companies) {
+                    const contactCount = await Contact.countDocuments({ companyId: company._id });
+                    if (contactCount === 0) companyIds.push(company._id);
+                }
+                filter._id = { $in: companyIds };
+            }
+
+            const result = await Company.deleteMany(filter);
+
+            return {
+                success: true,
+                message: `Deleted ${result.deletedCount} company(s) 🗑️`,
+                deletedCount: result.deletedCount,
             };
         }
 
@@ -144,21 +208,21 @@ export async function companyAgentNode(
 
         const systemPrompt = `You are a CRM Company Agent. Manage company/account records.
 
-Available tools:
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
 
-1. create_company - Create a new company
-   Args: { name, domain?, industry?, size?, location? }
+Tools:
+1. create_company - Args: { name, domain?, industry?, size? }
+2. search_companies - Args: { query?, industry? }
+3. get_company_contacts - Args: { companyName }
+4. update_company - Args: { companyName, updates }
+5. delete_company - Args: { companyName }
+6. bulk_delete_companies - Bulk delete. Args: { industry?, status?, olderThanDays?, withoutContacts? }
 
-2. search_companies - Search companies
-   Args: { query?, industry? }
+Examples:
+- "delete all tech companies" → {"tool": "bulk_delete_companies", "args": {"industry": "tech"}}
+- "delete companies with no contacts" → {"tool": "bulk_delete_companies", "args": {"withoutContacts": true}}
 
-3. get_company_contacts - Get contacts at a company
-   Args: { companyName }
-
-4. update_company - Update company info
-   Args: { companyName, updates: { domain?, industry?, size?, location? } }
-
-Respond with JSON: {"tool": "...", "args": {...}}`;
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -202,7 +266,7 @@ Respond with JSON: {"tool": "...", "args": {...}}`;
         }
 
         return {
-            messages: [new AIMessage("I can help with companies! Try:\n• 'Create company Acme Corp in tech industry'\n• 'Show all tech companies'\n• 'Who works at Google?'")],
+            messages: [new AIMessage("I can help with companies! Try:\n• 'Delete Acme Corp'\n• 'Show all tech companies'\n• 'Who works at Google?'")],
             finalResponse: "I can help with companies!",
         };
 

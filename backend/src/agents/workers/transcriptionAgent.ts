@@ -47,7 +47,7 @@ async function executeTranscriptionTool(
             let opportunityId = null;
 
             if (contactName) {
-                const regex = new RegExp(contactName, "i");
+                const regex = createSafeRegex(contactName);
                 const contact = await Contact.findOne({
                     workspaceId,
                     $or: [{ firstName: regex }, { lastName: regex }],
@@ -56,7 +56,7 @@ async function executeTranscriptionTool(
             }
 
             if (opportunityName) {
-                const regex = new RegExp(opportunityName, "i");
+                const regex = createSafeRegex(opportunityName);
                 const opp = await Opportunity.findOne({ workspaceId, title: regex });
                 opportunityId = opp?._id;
             }
@@ -470,7 +470,7 @@ Examples:
         const responseText = response.content as string;
         console.log("🤖 Transcription AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "TranscriptionAgent");
 
         if (toolCall) {
             const result = await executeTranscriptionTool(

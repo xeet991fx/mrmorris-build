@@ -10,24 +10,8 @@ import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
 import Contact from "../../models/Contact";
 import { eventPublisher } from "../../events";
-
-/**
- * Parse the AI response to extract tool calls
- */
-function parseToolCall(response: string): { tool: string; args: any } | null {
-    try {
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.tool && parsed.args) {
-                return parsed;
-            }
-        }
-    } catch (e) {
-        // Not a tool call
-    }
-    return null;
-}
+import { parseToolCall } from "../utils/parseToolCall";
+import { createSafeRegex } from "../utils/escapeRegex";
 
 /**
  * Execute contact tools
@@ -79,7 +63,7 @@ async function executeContactTool(
 
         case "search_contacts": {
             const { query, limit = 10 } = args;
-            const searchRegex = new RegExp(query, "i");
+            const searchRegex = createSafeRegex(query);
 
             const contacts = await Contact.find({
                 workspaceId,
@@ -130,6 +114,98 @@ async function executeContactTool(
             };
         }
 
+        case "delete_contact": {
+            const { contactId } = args;
+
+            const contact = await Contact.findOneAndDelete({
+                _id: contactId,
+                workspaceId,
+            });
+
+            if (!contact) {
+                return { success: false, error: "Contact not found" };
+            }
+
+            await eventPublisher.publish("contact.deleted", {
+                contactId: contact._id.toString(),
+                firstName: contact.firstName,
+                lastName: contact.lastName,
+                email: contact.email,
+            }, { workspaceId, userId, source: "system" });
+
+            return {
+                success: true,
+                message: `Deleted contact: ${contact.firstName} ${contact.lastName}`,
+                deletedId: contact._id.toString(),
+            };
+        }
+
+        case "delete_contacts_bulk": {
+            const { criteria } = args;
+
+            // Build filter based on criteria
+            const filter: any = { workspaceId };
+
+            if (criteria.withoutEmail) {
+                filter.$or = [
+                    { email: "" },
+                    { email: { $exists: false } },
+                ];
+            }
+
+            if (criteria.withoutPhone) {
+                filter.$or = [
+                    { phone: "" },
+                    { phone: { $exists: false } },
+                ];
+            }
+
+            if (criteria.status) {
+                filter.status = criteria.status;
+            }
+
+            if (criteria.company) {
+                filter.company = createSafeRegex(criteria.company);
+            }
+
+            // First get the contacts to be deleted (for confirmation)
+            const contactsToDelete = await Contact.find(filter)
+                .select("firstName lastName email company")
+                .lean();
+
+            if (contactsToDelete.length === 0) {
+                return {
+                    success: true,
+                    message: "No contacts found matching the criteria",
+                    deletedCount: 0,
+                };
+            }
+
+            // Delete them
+            const result = await Contact.deleteMany(filter);
+
+            // Publish events for each deleted contact
+            for (const contact of contactsToDelete) {
+                await eventPublisher.publish("contact.deleted", {
+                    contactId: (contact as any)._id.toString(),
+                    firstName: (contact as any).firstName,
+                    lastName: (contact as any).lastName,
+                    email: (contact as any).email,
+                }, { workspaceId, userId, source: "system" });
+            }
+
+            return {
+                success: true,
+                message: `Deleted ${result.deletedCount} contact(s)`,
+                deletedCount: result.deletedCount,
+                deletedContacts: contactsToDelete.map((c: any) => ({
+                    name: `${c.firstName} ${c.lastName}`.trim(),
+                    email: c.email,
+                    company: c.company,
+                })),
+            };
+        }
+
         default:
             return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -153,11 +229,17 @@ Available tools:
 1. create_contact - Create a new contact. Args: { firstName, lastName, email, phone, company, jobTitle, notes }
 2. search_contacts - Search for contacts. Args: { query, limit }
 3. update_contact - Update a contact. Args: { contactId, updates }
+4. delete_contact - Delete a single contact. Args: { contactId }
+5. delete_contacts_bulk - Delete multiple contacts matching criteria. Args: { criteria: { withoutEmail?: boolean, withoutPhone?: boolean, status?: string, company?: string } }
 
 Instructions:
 - Extract the relevant information from the user's request
+- For bulk deletions (e.g., "delete all contacts without email"), use delete_contacts_bulk with appropriate criteria
 - Respond with a JSON object containing "tool" and "args"
-- Example: {"tool": "create_contact", "args": {"firstName": "John", "lastName": "Smith", "email": "john@example.com", "company": "Acme"}}
+- Examples:
+  * {"tool": "create_contact", "args": {"firstName": "John", "lastName": "Smith", "email": "john@example.com"}}
+  * {"tool": "delete_contacts_bulk", "args": {"criteria": {"withoutEmail": true}}}
+  * {"tool": "delete_contact", "args": {"contactId": "123abc"}}
 
 Respond with ONLY the JSON object, no other text.`;
 
@@ -169,7 +251,7 @@ Respond with ONLY the JSON object, no other text.`;
         const responseText = response.content as string;
         console.log("🤖 AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "ContactAgent");
 
         if (toolCall) {
             console.log(`🔧 Executing tool: ${toolCall.tool}`);
@@ -195,6 +277,14 @@ Respond with ONLY the JSON object, no other text.`;
                     }
                 } else if (toolCall.tool === "update_contact") {
                     friendlyResponse = result.message;
+                } else if (toolCall.tool === "delete_contact") {
+                    friendlyResponse = `✅ ${result.message}`;
+                } else if (toolCall.tool === "delete_contacts_bulk") {
+                    if (result.deletedCount === 0) {
+                        friendlyResponse = result.message;
+                    } else {
+                        friendlyResponse = `✅ Successfully deleted ${result.deletedCount} contact(s):\n${result.deletedContacts.map((c: any) => `• ${c.name} (${c.email || "no email"})`).join("\n")}`;
+                    }
                 }
             } else {
                 friendlyResponse = `Sorry, I couldn't complete that action: ${result.error}`;

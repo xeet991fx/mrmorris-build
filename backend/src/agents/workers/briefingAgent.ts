@@ -49,7 +49,7 @@ async function executeBriefingTool(
             if (args.contactId) {
                 contact = await Contact.findOne({ workspaceId, _id: args.contactId }).lean();
             } else if (args.contactName) {
-                const regex = new RegExp(args.contactName, "i");
+                const regex = createSafeRegex(args.contactName);
                 contact = await Contact.findOne({
                     workspaceId,
                     $or: [
@@ -62,7 +62,7 @@ async function executeBriefingTool(
 
             if (!contact && args.companyName) {
                 // Find company directly
-                const regex = new RegExp(args.companyName, "i");
+                const regex = createSafeRegex(args.companyName);
                 company = await Company.findOne({ workspaceId, name: regex }).lean();
             }
 
@@ -145,7 +145,7 @@ Return ONLY this format (no extra text):
             let contactId = args.contactId;
 
             if (!contactId && args.contactName) {
-                const regex = new RegExp(args.contactName, "i");
+                const regex = createSafeRegex(args.contactName);
                 const contact = await Contact.findOne({
                     workspaceId,
                     $or: [{ firstName: regex }, { lastName: regex }],
@@ -349,7 +349,7 @@ Examples:
         const responseText = response.content as string;
         console.log("🤖 Briefing AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "BriefingAgent");
 
         if (toolCall) {
             const result = await executeBriefingTool(

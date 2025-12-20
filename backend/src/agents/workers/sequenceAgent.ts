@@ -11,6 +11,7 @@ import { getProModel } from "../modelFactory";
 import Sequence from "../../models/Sequence";
 import Contact from "../../models/Contact";
 import { v4 as uuidv4 } from "uuid";
+import { createSafeRegex } from "../utils/escapeRegex";
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -87,7 +88,7 @@ async function executeSequenceTool(
         case "add_sequence_step": {
             const { sequenceName, subject, body, delayDays } = args;
 
-            const regex = new RegExp(sequenceName, "i");
+            const regex = createSafeRegex(sequenceName);
             const sequence = await Sequence.findOne({ workspaceId, name: regex });
 
             if (!sequence) {
@@ -115,14 +116,14 @@ async function executeSequenceTool(
         case "enroll_in_sequence": {
             const { sequenceName, contactName } = args;
 
-            const sequenceRegex = new RegExp(sequenceName, "i");
+            const sequenceRegex = createSafeRegex(sequenceName);
             const sequence = await Sequence.findOne({ workspaceId, name: sequenceRegex, status: "active" });
 
             if (!sequence) {
                 return { success: false, error: `Active sequence "${sequenceName}" not found` };
             }
 
-            const contactRegex = new RegExp(contactName, "i");
+            const contactRegex = createSafeRegex(contactName);
             const contact = await Contact.findOne({
                 workspaceId,
                 $or: [{ firstName: contactRegex }, { lastName: contactRegex }],
@@ -151,6 +152,91 @@ async function executeSequenceTool(
             };
         }
 
+        case "delete_sequence": {
+            const { sequenceName } = args;
+
+            const regex = createSafeRegex(sequenceName);
+            const sequence = await Sequence.findOneAndDelete({ workspaceId, name: regex });
+
+            if (!sequence) {
+                return { success: false, error: `Sequence "${sequenceName}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Sequence "${sequence.name}" deleted successfully 🗑️`,
+            };
+        }
+
+        case "update_sequence": {
+            const { sequenceName, name, status } = args;
+
+            const regex = createSafeRegex(sequenceName);
+            const updates: any = {};
+            if (name) updates.name = name;
+            if (status) updates.status = status;
+
+            const sequence = await Sequence.findOneAndUpdate(
+                { workspaceId, name: regex },
+                { $set: updates },
+                { new: true }
+            );
+
+            if (!sequence) {
+                return { success: false, error: `Sequence "${sequenceName}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Sequence "${sequence.name}" updated successfully ✏️`,
+            };
+        }
+
+        case "pause_sequence": {
+            const { sequenceName } = args;
+
+            const regex = createSafeRegex(sequenceName);
+            const sequence = await Sequence.findOneAndUpdate(
+                { workspaceId, name: regex },
+                { status: "paused" },
+                { new: true }
+            );
+
+            if (!sequence) {
+                return { success: false, error: `Sequence "${sequenceName}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Sequence "${sequence.name}" paused ⏸️`,
+            };
+        }
+
+        case "bulk_delete_sequences": {
+            const { status, olderThanDays } = args;
+
+            const filter: any = { workspaceId };
+            if (status) filter.status = status;
+            if (olderThanDays) {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+                filter.createdAt = { $lt: cutoffDate };
+            }
+
+            // Safety: require at least one filter
+            if (!status && !olderThanDays) {
+                return { success: false, error: "Please specify status or olderThanDays to bulk delete" };
+            }
+
+            const result = await Sequence.deleteMany(filter);
+
+            return {
+                success: true,
+                message: `Deleted ${result.deletedCount} sequence(s) 🗑️`,
+                deletedCount: result.deletedCount,
+            };
+        }
+
         default:
             return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -167,21 +253,23 @@ export async function sequenceAgentNode(
 
         const systemPrompt = `You are a CRM Sequence Agent. Manage multi-step email sequences.
 
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
+
 Available tools:
+1. create_sequence - Create sequence. Args: { name, steps? }
+2. update_sequence - Args: { sequenceName, name?, status? }
+3. delete_sequence - Args: { sequenceName }
+4. pause_sequence - Args: { sequenceName }
+5. list_sequences - Args: { status? }
+6. add_sequence_step - Args: { sequenceName, subject, body?, delayDays? }
+7. enroll_in_sequence - Args: { sequenceName, contactName }
+8. bulk_delete_sequences - Bulk delete. Args: { status?, olderThanDays? }
 
-1. create_sequence - Create email sequence with default steps
-   Args: { name, steps? (array of { subject, body, delayDays }) }
+Examples:
+- "delete all paused sequences" → {"tool": "bulk_delete_sequences", "args": {"status": "paused"}}
+- "delete sequences older than 60 days" → {"tool": "bulk_delete_sequences", "args": {"olderThanDays": 60}}
 
-2. list_sequences - List all sequences
-   Args: { status? (active/paused) }
-
-3. add_sequence_step - Add step to sequence
-   Args: { sequenceName, subject, body?, delayDays? }
-
-4. enroll_in_sequence - Enroll contact in sequence
-   Args: { sequenceName, contactName }
-
-Respond with JSON: {"tool": "...", "args": {...}}`;
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -219,8 +307,8 @@ Respond with JSON: {"tool": "...", "args": {...}}`;
         }
 
         return {
-            messages: [new AIMessage("I can help with email sequences! Try:\n• 'Create a cold outreach sequence'\n• 'Add a step to my nurture sequence'\n• 'Enroll John in the sales sequence'")],
-            finalResponse: "I can help with email sequences!",
+            messages: [new AIMessage("I can help with sequences! Try:\n• 'Delete the old sequence'\n• 'Pause the nurture sequence'\n• 'Show my sequences'")],
+            finalResponse: "I can help with sequences!",
         };
 
     } catch (error: any) {

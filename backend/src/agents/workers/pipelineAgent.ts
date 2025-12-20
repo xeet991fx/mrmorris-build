@@ -11,6 +11,7 @@ import { getProModel } from "../modelFactory";
 import Pipeline from "../../models/Pipeline";
 import Opportunity from "../../models/Opportunity";
 import { v4 as uuidv4 } from "uuid";
+import { createSafeRegex } from "../utils/escapeRegex";
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -77,7 +78,7 @@ async function executePipelineTool(
 
             let pipeline;
             if (pipelineName) {
-                const regex = new RegExp(pipelineName, "i");
+                const regex = createSafeRegex(pipelineName);
                 pipeline = await Pipeline.findOne({ workspaceId, name: regex });
             } else {
                 pipeline = await Pipeline.findOne({ workspaceId, isDefault: true });
@@ -124,7 +125,7 @@ async function executePipelineTool(
         case "add_stage": {
             const { pipelineName, stageName, position } = args;
 
-            const regex = new RegExp(pipelineName, "i");
+            const regex = createSafeRegex(pipelineName);
             const pipeline = await Pipeline.findOne({ workspaceId, name: regex });
 
             if (!pipeline) {
@@ -147,6 +148,137 @@ async function executePipelineTool(
             };
         }
 
+        case "delete_pipeline": {
+            const { pipelineName } = args;
+
+            const regex = createSafeRegex(pipelineName);
+
+            // Check if there are deals in this pipeline
+            const pipeline = await Pipeline.findOne({ workspaceId, name: regex });
+            if (!pipeline) {
+                return { success: false, error: `Pipeline "${pipelineName}" not found` };
+            }
+
+            const dealsCount = await Opportunity.countDocuments({ pipelineId: pipeline._id });
+            if (dealsCount > 0) {
+                return { success: false, error: `Cannot delete pipeline with ${dealsCount} active deals. Move or delete deals first.` };
+            }
+
+            await Pipeline.findByIdAndDelete(pipeline._id);
+
+            return {
+                success: true,
+                message: `Pipeline "${pipeline.name}" deleted successfully 🗑️`,
+            };
+        }
+
+        case "delete_stage": {
+            const { pipelineName, stageName } = args;
+
+            const regex = createSafeRegex(pipelineName);
+            const pipeline = await Pipeline.findOne({ workspaceId, name: regex });
+
+            if (!pipeline) {
+                return { success: false, error: `Pipeline "${pipelineName}" not found` };
+            }
+
+            const stageIndex = (pipeline.stages as any[]).findIndex(
+                (s: any) => s.name.toLowerCase().includes(stageName.toLowerCase())
+            );
+
+            if (stageIndex === -1) {
+                return { success: false, error: `Stage "${stageName}" not found in pipeline` };
+            }
+
+            const removedStage = (pipeline.stages as any[])[stageIndex];
+
+            // Check for deals in this stage
+            const dealsInStage = await Opportunity.countDocuments({
+                pipelineId: pipeline._id,
+                stageId: removedStage._id
+            });
+
+            if (dealsInStage > 0) {
+                return { success: false, error: `Cannot delete stage with ${dealsInStage} deals. Move deals first.` };
+            }
+
+            (pipeline.stages as any[]).splice(stageIndex, 1);
+            await pipeline.save();
+
+            return {
+                success: true,
+                message: `Stage "${removedStage.name}" deleted from pipeline 🗑️`,
+            };
+        }
+
+        case "rename_stage": {
+            const { pipelineName, stageName, newName } = args;
+
+            const regex = createSafeRegex(pipelineName);
+            const pipeline = await Pipeline.findOne({ workspaceId, name: regex });
+
+            if (!pipeline) {
+                return { success: false, error: `Pipeline "${pipelineName}" not found` };
+            }
+
+            const stage = (pipeline.stages as any[]).find(
+                (s: any) => s.name.toLowerCase().includes(stageName.toLowerCase())
+            );
+
+            if (!stage) {
+                return { success: false, error: `Stage "${stageName}" not found` };
+            }
+
+            const oldName = stage.name;
+            stage.name = newName;
+            await pipeline.save();
+
+            return {
+                success: true,
+                message: `Stage "${oldName}" renamed to "${newName}" ✏️`,
+            };
+        }
+
+        case "reorder_stages": {
+            const { pipelineName, stageOrder } = args;
+
+            const regex = createSafeRegex(pipelineName);
+            const pipeline = await Pipeline.findOne({ workspaceId, name: regex });
+
+            if (!pipeline) {
+                return { success: false, error: `Pipeline "${pipelineName}" not found` };
+            }
+
+            if (!Array.isArray(stageOrder)) {
+                return { success: false, error: "stageOrder must be an array of stage names" };
+            }
+
+            const stages = pipeline.stages as any[];
+            const newOrder: any[] = [];
+
+            for (const stageName of stageOrder) {
+                const stage = stages.find(
+                    (s: any) => s.name.toLowerCase() === stageName.toLowerCase()
+                );
+                if (stage) newOrder.push(stage);
+            }
+
+            // Add any stages not in the order to the end
+            for (const stage of stages) {
+                if (!newOrder.includes(stage)) newOrder.push(stage);
+            }
+
+            // Update positions
+            newOrder.forEach((s, i) => s.position = i);
+            pipeline.stages = newOrder;
+            await pipeline.save();
+
+            return {
+                success: true,
+                message: `Pipeline stages reordered: ${newOrder.map((s: any) => s.name).join(" → ")} ✅`,
+            };
+        }
+
         default:
             return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -161,23 +293,25 @@ export async function pipelineAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        const systemPrompt = `You are a CRM Pipeline Agent. Manage sales pipelines and analyze deal flow.
+        const systemPrompt = `You are a CRM Pipeline Agent. Manage sales pipelines and stages.
+
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
 
 Available tools:
+1. create_pipeline - Args: { name?, stages? }
+2. list_pipelines - Args: {}
+3. get_pipeline_stats - Args: { pipelineName? }
+4. add_stage - Args: { pipelineName, stageName, position? }
+5. delete_pipeline - Args: { pipelineName }
+6. delete_stage - Args: { pipelineName, stageName }
+7. rename_stage - Rename a stage. Args: { pipelineName, stageName, newName }
+8. reorder_stages - Reorder stages. Args: { pipelineName, stageOrder: ["stage1", "stage2", ...] }
 
-1. create_pipeline - Create a new pipeline
-   Args: { name?, stages? (array of stage names) }
+Examples:
+- "rename Proposal to Quote in Sales pipeline" → {"tool": "rename_stage", "args": {"pipelineName": "Sales", "stageName": "Proposal", "newName": "Quote"}}
+- "reorder Sales stages" → {"tool": "reorder_stages", "args": {"pipelineName": "Sales", "stageOrder": ["Lead", "Demo", "Proposal", "Won"]}}
 
-2. list_pipelines - List all pipelines
-   Args: {}
-
-3. get_pipeline_stats - Get pipeline analytics
-   Args: { pipelineName? }
-
-4. add_stage - Add a stage to pipeline
-   Args: { pipelineName, stageName, position? }
-
-Respond with JSON: {"tool": "...", "args": {...}}`;
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -220,7 +354,7 @@ Respond with JSON: {"tool": "...", "args": {...}}`;
         }
 
         return {
-            messages: [new AIMessage("I can help with pipelines! Try:\n• 'Show my pipeline stats'\n• 'Create a pipeline'\n• 'Add a Demo stage to my pipeline'")],
+            messages: [new AIMessage("I can help with pipelines! Try:\n• 'Delete the old pipeline'\n• 'Remove Proposal stage from Sales'\n• 'Show pipeline stats'")],
             finalResponse: "I can help with pipelines!",
         };
 

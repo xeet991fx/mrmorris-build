@@ -41,7 +41,7 @@ async function executeProposalTool(
                     .populate("contactId")
                     .populate("companyId");
             } else if (opportunityName) {
-                const regex = new RegExp(opportunityName, "i");
+                const regex = createSafeRegex(opportunityName);
                 opportunity = await Opportunity.findOne({ workspaceId, title: regex })
                     .populate("contactId")
                     .populate("companyId");
@@ -353,7 +353,7 @@ Examples:
         const responseText = response.content as string;
         console.log("🤖 Proposal AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "ProposalAgent");
 
         if (toolCall) {
             const result = await executeProposalTool(

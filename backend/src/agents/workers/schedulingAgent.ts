@@ -181,7 +181,7 @@ For example, if user says "tomorrow 10am" and they're in Asia/Kolkata (+05:30), 
             // Find contact if specified
             let contactId = null;
             if (contactName) {
-                const regex = new RegExp(contactName, "i");
+                const regex = createSafeRegex(contactName);
                 const contact = await Contact.findOne({
                     workspaceId,
                     $or: [{ firstName: regex }, { lastName: regex }],
@@ -352,7 +352,7 @@ IMPORTANT: Interpret in ${userTimezone}, not UTC. Return ISO 8601 with timezone 
             // Find contact
             let contact = null;
             if (contactName) {
-                const regex = new RegExp(contactName, "i");
+                const regex = createSafeRegex(contactName);
                 contact = await Contact.findOne({
                     workspaceId,
                     $or: [{ firstName: regex }, { lastName: regex }],
@@ -444,7 +444,7 @@ Examples:
         const responseText = response.content as string;
         console.log("🤖 Scheduling AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "SchedulingAgent");
 
         if (toolCall) {
             const result = await executeSchedulingTool(

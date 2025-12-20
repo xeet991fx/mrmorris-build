@@ -473,7 +473,7 @@ Examples:
         const responseText = response.content as string;
         console.log("🤖 Forecast AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "ForecastAgent");
 
         if (toolCall) {
             const result = await executeForecastTool(

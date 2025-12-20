@@ -109,142 +109,237 @@ Only include fields that are clearly present. Set confidence based on how comple
                     .select("firstName lastName email phone company")
                     .lean();
 
-                // Group by potential duplicates
+                // OPTIMIZATION: Hash-based duplicate detection (O(n) instead of O(n²))
+                const emailMap = new Map<string, any[]>();
+                const phoneMap = new Map<string, any[]>();
+                const nameCompanyMap = new Map<string, any[]>();
                 const checked = new Set<string>();
 
-                for (let i = 0; i < contacts.length; i++) {
-                    const contact1 = contacts[i] as any;
-                    if (checked.has(contact1._id.toString())) continue;
-
-                    const group = [contact1];
-
-                    for (let j = i + 1; j < contacts.length; j++) {
-                        const contact2 = contacts[j] as any;
-                        if (checked.has(contact2._id.toString())) continue;
-
-                        // Check for duplicates
-                        let isDuplicate = false;
-                        let reason = "";
-                        let similarity = 0;
-
-                        // Email match (highest confidence)
-                        if (contact1.email && contact2.email &&
-                            contact1.email.toLowerCase() === contact2.email.toLowerCase()) {
-                            isDuplicate = true;
-                            reason = "Same email";
-                            similarity = 100;
+                // Step 1: Group by exact matches (O(n))
+                contacts.forEach((contact: any) => {
+                    // Group by email
+                    if (contact.email) {
+                        const emailKey = contact.email.toLowerCase().trim();
+                        if (!emailMap.has(emailKey)) {
+                            emailMap.set(emailKey, []);
                         }
-                        // Phone match
-                        else if (contact1.phone && contact2.phone &&
-                            contact1.phone.replace(/\D/g, "") === contact2.phone.replace(/\D/g, "")) {
-                            isDuplicate = true;
-                            reason = "Same phone";
-                            similarity = 95;
-                        }
-                        // Name + Company match
-                        else if (contact1.firstName && contact2.firstName &&
-                            contact1.company && contact2.company) {
-                            const nameSim = stringSimilarity(
-                                `${contact1.firstName} ${contact1.lastName}`,
-                                `${contact2.firstName} ${contact2.lastName}`
-                            );
-                            const companySim = stringSimilarity(contact1.company, contact2.company);
+                        emailMap.get(emailKey)!.push(contact);
+                    }
 
-                            if (nameSim > 80 && companySim > 80) {
-                                isDuplicate = true;
-                                reason = "Similar name + company";
-                                similarity = Math.round((nameSim + companySim) / 2);
+                    // Group by phone (normalized)
+                    if (contact.phone) {
+                        const phoneKey = contact.phone.replace(/\D/g, "");
+                        if (phoneKey.length >= 10) { // Only valid phone numbers
+                            if (!phoneMap.has(phoneKey)) {
+                                phoneMap.set(phoneKey, []);
                             }
-                        }
-
-                        if (isDuplicate && similarity >= threshold) {
-                            group.push({ ...contact2, similarity, reason });
-                            checked.add(contact2._id.toString());
+                            phoneMap.get(phoneKey)!.push(contact);
                         }
                     }
 
+                    // Group by name+company (approximate key)
+                    if (contact.firstName && contact.company) {
+                        const nameKey = `${contact.firstName.toLowerCase().trim()}_${contact.company.toLowerCase().trim()}`;
+                        if (!nameCompanyMap.has(nameKey)) {
+                            nameCompanyMap.set(nameKey, []);
+                        }
+                        nameCompanyMap.get(nameKey)!.push(contact);
+                    }
+                });
+
+                // Step 2: Process email duplicates (100% similarity)
+                emailMap.forEach((group) => {
                     if (group.length > 1) {
-                        checked.add(contact1._id.toString());
+                        const primary = group[0];
+                        const duplicates = group.slice(1);
+
                         duplicateGroups.push({
                             primary: {
-                                id: contact1._id.toString(),
-                                name: `${contact1.firstName} ${contact1.lastName}`,
-                                email: contact1.email,
-                                company: contact1.company,
+                                id: primary._id.toString(),
+                                name: `${primary.firstName} ${primary.lastName}`,
+                                email: primary.email,
+                                company: primary.company,
                             },
-                            duplicates: group.slice(1).map((c: any) => ({
+                            duplicates: duplicates.map((c: any) => ({
                                 id: c._id.toString(),
                                 name: `${c.firstName} ${c.lastName}`,
                                 email: c.email,
                                 company: c.company,
-                                similarity: c.similarity,
-                                reason: c.reason,
+                                similarity: 100,
+                                reason: "Same email",
                             })),
                         });
+
+                        // Mark all as checked
+                        group.forEach((c: any) => checked.add(c._id.toString()));
                     }
-                }
+                });
+
+                // Step 3: Process phone duplicates (95% similarity)
+                phoneMap.forEach((group) => {
+                    if (group.length > 1) {
+                        // Filter out already checked (from email matches)
+                        const unchecked = group.filter((c: any) => !checked.has(c._id.toString()));
+                        if (unchecked.length > 1) {
+                            const primary = unchecked[0];
+                            const duplicates = unchecked.slice(1);
+
+                            duplicateGroups.push({
+                                primary: {
+                                    id: primary._id.toString(),
+                                    name: `${primary.firstName} ${primary.lastName}`,
+                                    email: primary.email,
+                                    company: primary.company,
+                                },
+                                duplicates: duplicates.map((c: any) => ({
+                                    id: c._id.toString(),
+                                    name: `${c.firstName} ${c.lastName}`,
+                                    email: c.email,
+                                    company: c.company,
+                                    similarity: 95,
+                                    reason: "Same phone",
+                                })),
+                            });
+
+                            unchecked.forEach((c: any) => checked.add(c._id.toString()));
+                        }
+                    }
+                });
+
+                // Step 4: Process name+company duplicates (similarity-based)
+                nameCompanyMap.forEach((group) => {
+                    if (group.length > 1) {
+                        const unchecked = group.filter((c: any) => !checked.has(c._id.toString()));
+                        if (unchecked.length > 1) {
+                            const primary = unchecked[0];
+                            const duplicates = unchecked.slice(1).filter((c2: any) => {
+                                const nameSim = stringSimilarity(
+                                    `${primary.firstName} ${primary.lastName}`,
+                                    `${c2.firstName} ${c2.lastName}`
+                                );
+                                const companySim = stringSimilarity(primary.company, c2.company);
+                                return nameSim > 80 && companySim > 80 && ((nameSim + companySim) / 2) >= threshold;
+                            });
+
+                            if (duplicates.length > 0) {
+                                duplicateGroups.push({
+                                    primary: {
+                                        id: primary._id.toString(),
+                                        name: `${primary.firstName} ${primary.lastName}`,
+                                        email: primary.email,
+                                        company: primary.company,
+                                    },
+                                    duplicates: duplicates.map((c: any) => {
+                                        const nameSim = stringSimilarity(
+                                            `${primary.firstName} ${primary.lastName}`,
+                                            `${c.firstName} ${c.lastName}`
+                                        );
+                                        const companySim = stringSimilarity(primary.company, c.company);
+                                        const avgSim = Math.round((nameSim + companySim) / 2);
+
+                                        return {
+                                            id: c._id.toString(),
+                                            name: `${c.firstName} ${c.lastName}`,
+                                            email: c.email,
+                                            company: c.company,
+                                            similarity: avgSim,
+                                            reason: "Similar name + company",
+                                        };
+                                    }),
+                                });
+
+                                [primary, ...duplicates].forEach((c: any) => checked.add(c._id.toString()));
+                            }
+                        }
+                    }
+                });
             } else if (type === "companies") {
                 const companies = await Company.find({ workspaceId })
                     .select("name website domain")
                     .lean();
 
+                // OPTIMIZATION: Hash-based duplicate detection for companies
+                const domainMap = new Map<string, any[]>();
+                const nameMap = new Map<string, any[]>();
                 const checked = new Set<string>();
 
-                for (let i = 0; i < companies.length; i++) {
-                    const company1 = companies[i] as any;
-                    if (checked.has(company1._id.toString())) continue;
-
-                    const group = [company1];
-
-                    for (let j = i + 1; j < companies.length; j++) {
-                        const company2 = companies[j] as any;
-                        if (checked.has(company2._id.toString())) continue;
-
-                        let isDuplicate = false;
-                        let reason = "";
-                        let similarity = 0;
-
-                        // Domain match
-                        if (company1.domain && company2.domain &&
-                            company1.domain.toLowerCase() === company2.domain.toLowerCase()) {
-                            isDuplicate = true;
-                            reason = "Same domain";
-                            similarity = 100;
+                // Step 1: Group by exact domain match
+                companies.forEach((company: any) => {
+                    if (company.domain) {
+                        const domainKey = company.domain.toLowerCase().trim();
+                        if (!domainMap.has(domainKey)) {
+                            domainMap.set(domainKey, []);
                         }
-                        // Name similarity
-                        else {
-                            const nameSim = stringSimilarity(company1.name, company2.name);
-                            if (nameSim > 85) {
-                                isDuplicate = true;
-                                reason = "Similar name";
-                                similarity = nameSim;
-                            }
-                        }
-
-                        if (isDuplicate && similarity >= threshold) {
-                            group.push({ ...company2, similarity, reason });
-                            checked.add(company2._id.toString());
-                        }
+                        domainMap.get(domainKey)!.push(company);
                     }
 
+                    // Group by normalized name (for similarity matching)
+                    if (company.name) {
+                        const nameKey = company.name.toLowerCase().trim().substring(0, 10); // First 10 chars
+                        if (!nameMap.has(nameKey)) {
+                            nameMap.set(nameKey, []);
+                        }
+                        nameMap.get(nameKey)!.push(company);
+                    }
+                });
+
+                // Step 2: Process domain duplicates (100% similarity)
+                domainMap.forEach((group) => {
                     if (group.length > 1) {
-                        checked.add(company1._id.toString());
+                        const primary = group[0];
+                        const duplicates = group.slice(1);
+
                         duplicateGroups.push({
                             primary: {
-                                id: company1._id.toString(),
-                                name: company1.name,
-                                website: company1.website,
+                                id: primary._id.toString(),
+                                name: primary.name,
+                                website: primary.website,
                             },
-                            duplicates: group.slice(1).map((c: any) => ({
+                            duplicates: duplicates.map((c: any) => ({
                                 id: c._id.toString(),
                                 name: c.name,
                                 website: c.website,
-                                similarity: c.similarity,
-                                reason: c.reason,
+                                similarity: 100,
+                                reason: "Same domain",
                             })),
                         });
+
+                        group.forEach((c: any) => checked.add(c._id.toString()));
                     }
-                }
+                });
+
+                // Step 3: Process name similarity duplicates
+                nameMap.forEach((group) => {
+                    if (group.length > 1) {
+                        const unchecked = group.filter((c: any) => !checked.has(c._id.toString()));
+                        if (unchecked.length > 1) {
+                            const primary = unchecked[0];
+                            const duplicates = unchecked.slice(1).filter((c2: any) => {
+                                const nameSim = stringSimilarity(primary.name, c2.name);
+                                return nameSim > 85 && nameSim >= threshold;
+                            });
+
+                            if (duplicates.length > 0) {
+                                duplicateGroups.push({
+                                    primary: {
+                                        id: primary._id.toString(),
+                                        name: primary.name,
+                                        website: primary.website,
+                                    },
+                                    duplicates: duplicates.map((c: any) => ({
+                                        id: c._id.toString(),
+                                        name: c.name,
+                                        website: c.website,
+                                        similarity: stringSimilarity(primary.name, c.name),
+                                        reason: "Similar name",
+                                    })),
+                                });
+
+                                [primary, ...duplicates].forEach((c: any) => checked.add(c._id.toString()));
+                            }
+                        }
+                    }
+                });
             }
 
             return {
@@ -530,7 +625,7 @@ Examples:
         const responseText = response.content as string;
         console.log("🤖 Data Entry AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "DataEntryAgent");
 
         if (toolCall) {
             const result = await executeDataEntryTool(

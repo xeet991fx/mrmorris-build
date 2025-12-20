@@ -84,57 +84,111 @@ async function executeHygieneTool(
                 .limit(args.opportunityId ? 1 : 10)
                 .lean();
 
-            const suggestions = [];
-
-            for (const deal of deals) {
-                // Get recent activities
-                const activities = await Activity.find({ opportunityId: (deal as any)._id })
-                    .sort({ createdAt: -1 })
-                    .limit(5)
-                    .lean();
-
-                // Get pipeline stages for context
-                const pipeline = await Pipeline.findById((deal as any).pipelineId).lean();
-                const stages = (pipeline as any)?.stages || [];
-
-                // Use AI to analyze - SHORT format
-                const analysisPrompt = `Analyze deal stage in MAX 20 words per field:
-
-Deal: ${(deal as any).title} | Value: $${(deal as any).value} | Stage: ${stages.find((s: any) => s._id.toString() === (deal as any).stageId?.toString())?.name || "Unknown"}
-Days Inactive: ${daysSince((deal as any).lastActivityAt)} | Temperature: ${(deal as any).dealTemperature || "Unknown"}
-
-Return ONLY JSON: {"RECOMMENDATION": "advance|stay|regress|at_risk|close_lost", "REASON": "brief reason", "SUGGESTED_ACTION": "one action", "CONFIDENCE": 0-100}`;
-
-                try {
-                    const analysis = await getProModel().invoke([new HumanMessage(analysisPrompt)]);
-                    const content = analysis.content as string;
-                    const parsed = JSON.parse(content.match(/\{[\s\S]*\}/)?.[0] || "{}");
-
-                    suggestions.push({
-                        dealId: (deal as any)._id.toString(),
-                        dealTitle: (deal as any).title,
-                        value: (deal as any).value,
-                        currentStage: stages.find((s: any) => s._id.toString() === (deal as any).stageId?.toString())?.name,
-                        recommendation: parsed.RECOMMENDATION || parsed.recommendation,
-                        reason: parsed.REASON || parsed.reason,
-                        suggestedAction: parsed.SUGGESTED_ACTION || parsed.suggested_action,
-                        confidence: parsed.CONFIDENCE || parsed.confidence,
-                    });
-                } catch (e) {
-                    suggestions.push({
-                        dealId: (deal as any)._id.toString(),
-                        dealTitle: (deal as any).title,
-                        recommendation: "review_needed",
-                        reason: "Could not analyze automatically",
-                    });
-                }
+            if (deals.length === 0) {
+                return { success: true, count: 0, suggestions: [] };
             }
 
-            return {
-                success: true,
-                count: suggestions.length,
-                suggestions,
-            };
+            // OPTIMIZATION: Batch all database queries (fixes N+1 problem)
+            const dealIds = deals.map((d: any) => d._id);
+            const pipelineIds = [...new Set(deals.map((d: any) => d.pipelineId).filter(Boolean))];
+
+            // Get all activities for all deals in ONE query
+            const allActivities = await Activity.find({
+                opportunityId: { $in: dealIds }
+            })
+                .sort({ createdAt: -1 })
+                .lean();
+
+            // Get all pipelines in ONE query
+            const pipelines = await Pipeline.find({
+                _id: { $in: pipelineIds }
+            }).lean();
+
+            // Create lookup maps for O(1) access
+            const activitiesByDeal = new Map<string, any[]>();
+            allActivities.forEach((activity: any) => {
+                const dealId = activity.opportunityId.toString();
+                if (!activitiesByDeal.has(dealId)) {
+                    activitiesByDeal.set(dealId, []);
+                }
+                activitiesByDeal.get(dealId)!.push(activity);
+            });
+
+            const pipelineMap = new Map(
+                pipelines.map((p: any) => [p._id.toString(), p])
+            );
+
+            // OPTIMIZATION: Batch AI analysis (fixes AI calls in loop problem)
+            // Build context for all deals
+            const dealsContext = deals.map((deal: any, index: number) => {
+                const pipeline = pipelineMap.get(deal.pipelineId?.toString());
+                const stages = pipeline?.stages || [];
+                const currentStage = stages.find((s: any) => s._id.toString() === deal.stageId?.toString());
+
+                return `
+Deal #${index + 1}:
+- ID: ${deal._id}
+- Title: ${deal.title}
+- Value: $${deal.value}
+- Stage: ${currentStage?.name || "Unknown"}
+- Days Inactive: ${daysSince(deal.lastActivityAt)}
+- Temperature: ${deal.dealTemperature || "Unknown"}
+`.trim();
+            }).join('\n\n');
+
+            const batchAnalysisPrompt = `Analyze these ${deals.length} deals and provide stage change recommendations.
+
+${dealsContext}
+
+Return a JSON array with one object per deal (in same order). Each object: {"dealIndex": 0, "RECOMMENDATION": "advance|stay|regress|at_risk|close_lost", "REASON": "brief 15-word reason", "SUGGESTED_ACTION": "one action", "CONFIDENCE": 0-100}
+
+Return ONLY the JSON array, no other text.`;
+
+            try {
+                const analysis = await getProModel().invoke([new HumanMessage(batchAnalysisPrompt)]);
+                const content = analysis.content as string;
+                const jsonMatch = content.match(/\[[\s\S]*\]/);
+                const parsedArray = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+
+                const suggestions = deals.map((deal: any, index: number) => {
+                    const aiAnalysis = parsedArray.find((a: any) => a.dealIndex === index) || {};
+                    const pipeline = pipelineMap.get(deal.pipelineId?.toString());
+                    const stages = pipeline?.stages || [];
+                    const currentStage = stages.find((s: any) => s._id.toString() === deal.stageId?.toString());
+
+                    return {
+                        dealId: deal._id.toString(),
+                        dealTitle: deal.title,
+                        value: deal.value,
+                        currentStage: currentStage?.name,
+                        recommendation: aiAnalysis.RECOMMENDATION || aiAnalysis.recommendation || "stay",
+                        reason: aiAnalysis.REASON || aiAnalysis.reason || "No analysis available",
+                        suggestedAction: aiAnalysis.SUGGESTED_ACTION || aiAnalysis.suggested_action || "Review deal",
+                        confidence: aiAnalysis.CONFIDENCE || aiAnalysis.confidence || 50,
+                    };
+                });
+
+                return {
+                    success: true,
+                    count: suggestions.length,
+                    suggestions,
+                };
+            } catch (e: any) {
+                console.error("Batch AI analysis error:", e);
+                // Fallback: Return basic suggestions
+                const suggestions = deals.map((deal: any) => ({
+                    dealId: deal._id.toString(),
+                    dealTitle: deal.title,
+                    recommendation: "review_needed",
+                    reason: "Could not analyze automatically",
+                }));
+
+                return {
+                    success: true,
+                    count: suggestions.length,
+                    suggestions,
+                };
+            }
         }
 
         case "get_pipeline_health": {
@@ -329,7 +383,7 @@ Examples:
         const responseText = response.content as string;
         console.log("🤖 Hygiene AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "HygieneAgent");
 
         if (toolCall) {
             const result = await executeHygieneTool(

@@ -12,20 +12,8 @@ import Workflow from "../../models/Workflow";
 import WorkflowEnrollment from "../../models/WorkflowEnrollment";
 import Contact from "../../models/Contact";
 import { v4 as uuidv4 } from "uuid";
-
-/**
- * Parse tool call from AI response
- */
-function parseToolCall(response: string): { tool: string; args: any } | null {
-    try {
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.tool && parsed.args) return parsed;
-        }
-    } catch (e) { }
-    return null;
-}
+import { createSafeRegex } from "../utils/escapeRegex";
+import { parseToolCall } from "../utils/parseToolCall";
 
 /**
  * Execute workflow tools
@@ -157,7 +145,7 @@ async function executeWorkflowTool(
         case "add_email_step": {
             const { workflowName, subject, body, delayDays } = args;
 
-            const workflowRegex = new RegExp(workflowName, "i");
+            const workflowRegex = createSafeRegex(workflowName);
             const workflow = await Workflow.findOne({ workspaceId, name: workflowRegex });
 
             if (!workflow) {
@@ -207,7 +195,7 @@ async function executeWorkflowTool(
         case "activate_workflow": {
             const { workflowName } = args;
 
-            const workflowRegex = new RegExp(workflowName, "i");
+            const workflowRegex = createSafeRegex(workflowName);
             const workflow = await Workflow.findOneAndUpdate(
                 { workspaceId, name: workflowRegex },
                 { status: "active", lastActivatedAt: new Date() },
@@ -250,7 +238,7 @@ async function executeWorkflowTool(
         case "enroll_contact": {
             const { contactName, workflowName } = args;
 
-            const searchRegex = new RegExp(contactName, "i");
+            const searchRegex = createSafeRegex(contactName);
             const contact = await Contact.findOne({
                 workspaceId,
                 $or: [{ firstName: searchRegex }, { lastName: searchRegex }, { email: searchRegex }],
@@ -260,7 +248,7 @@ async function executeWorkflowTool(
                 return { success: false, error: `Contact "${contactName}" not found` };
             }
 
-            const workflowRegex = new RegExp(workflowName, "i");
+            const workflowRegex = createSafeRegex(workflowName);
             const workflow = await Workflow.findOne({ workspaceId, name: workflowRegex, status: "active" });
 
             if (!workflow) {
@@ -295,7 +283,7 @@ async function executeWorkflowTool(
         case "update_delay": {
             const { workflowName, stepName, newDelay, newUnit } = args;
 
-            const workflowRegex = new RegExp(workflowName, "i");
+            const workflowRegex = createSafeRegex(workflowName);
             const workflow = await Workflow.findOne({ workspaceId, name: workflowRegex });
 
             if (!workflow) {
@@ -303,7 +291,7 @@ async function executeWorkflowTool(
             }
 
             // Find delay step by name or just the first delay step
-            const stepRegex = stepName ? new RegExp(stepName, "i") : null;
+            const stepRegex = stepName ? createSafeRegex(stepName) : null;
             const delayStep = workflow.steps.find((s: any) =>
                 s.type === "delay" && (!stepRegex || stepRegex.test(s.name))
             );
@@ -328,7 +316,7 @@ async function executeWorkflowTool(
         case "pause_workflow": {
             const { workflowName } = args;
 
-            const workflowRegex = new RegExp(workflowName, "i");
+            const workflowRegex = createSafeRegex(workflowName);
             const workflow = await Workflow.findOneAndUpdate(
                 { workspaceId, name: workflowRegex },
                 { status: "paused" },
@@ -348,7 +336,7 @@ async function executeWorkflowTool(
         case "delete_workflow": {
             const { workflowName } = args;
 
-            const workflowRegex = new RegExp(workflowName, "i");
+            const workflowRegex = createSafeRegex(workflowName);
             const workflow = await Workflow.findOneAndDelete({ workspaceId, name: workflowRegex });
 
             if (!workflow) {
@@ -367,7 +355,7 @@ async function executeWorkflowTool(
         case "get_workflow_details": {
             const { workflowName } = args;
 
-            const workflowRegex = new RegExp(workflowName, "i");
+            const workflowRegex = createSafeRegex(workflowName);
             const workflow = await Workflow.findOne({ workspaceId, name: workflowRegex });
 
             if (!workflow) {
@@ -397,6 +385,39 @@ async function executeWorkflowTool(
             };
         }
 
+        case "bulk_delete_workflows": {
+            const { status, olderThanDays } = args;
+
+            const filter: any = { workspaceId };
+            if (status) filter.status = status;
+            if (olderThanDays) {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+                filter.createdAt = { $lt: cutoffDate };
+            }
+
+            // Safety: require at least one filter
+            if (!status && !olderThanDays) {
+                return { success: false, error: "Please specify status or olderThanDays to bulk delete" };
+            }
+
+            // Get workflow IDs to delete enrollments
+            const workflows = await Workflow.find(filter).select("_id").lean();
+            const workflowIds = workflows.map((w: any) => w._id);
+
+            // Delete enrollments first
+            await WorkflowEnrollment.deleteMany({ workflowId: { $in: workflowIds } });
+
+            // Delete workflows
+            const result = await Workflow.deleteMany(filter);
+
+            return {
+                success: true,
+                message: `Deleted ${result.deletedCount} workflow(s) and their enrollments 🗑️`,
+                deletedCount: result.deletedCount,
+            };
+        }
+
         default:
             return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -416,48 +437,26 @@ export async function workflowAgentNode(
 
         const systemPrompt = `You are a CRM Workflow Automation Agent. Create, edit, and manage automated workflows.
 
-Available tools:
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
 
-1. create_welcome_workflow - Create a complete welcome email workflow for new contacts
-   Args: { name, emailSubject?, emailBody?, delayDays? }
-   
-2. create_follow_up_workflow - Create a follow-up task workflow for new deals
-   Args: { name, taskTitle?, delayDays? }
+Tools:
+1. create_welcome_workflow - Args: { name, emailSubject?, delayDays? }
+2. create_follow_up_workflow - Args: { name, taskTitle?, delayDays? }
+3. add_email_step - Args: { workflowName, subject, body, delayDays? }
+4. update_delay - Args: { workflowName, newDelay, newUnit }
+5. activate_workflow - Args: { workflowName }
+6. pause_workflow - Args: { workflowName }
+7. delete_workflow - Args: { workflowName }
+8. list_workflows - Args: { status? }
+9. enroll_contact - Args: { contactName, workflowName }
+10. get_workflow_details - Args: { workflowName }
+11. bulk_delete_workflows - Bulk delete. Args: { status?, olderThanDays? }
 
-3. add_email_step - Add an email step to existing workflow
-   Args: { workflowName, subject, body, delayDays? }
+Examples:
+- "delete all paused workflows" → {"tool": "bulk_delete_workflows", "args": {"status": "paused"}}
+- "delete workflows older than 90 days" → {"tool": "bulk_delete_workflows", "args": {"olderThanDays": 90}}
 
-4. update_delay - Update the delay time in a workflow
-   Args: { workflowName, stepName?, newDelay, newUnit (minutes/hours/days) }
-   Example: "change the delay to 2 minutes" -> {"tool": "update_delay", "args": {"workflowName": "Welcome", "newDelay": 2, "newUnit": "minutes"}}
-
-5. activate_workflow - Activate a draft workflow
-   Args: { workflowName }
-
-6. pause_workflow - Pause an active workflow
-   Args: { workflowName }
-
-7. delete_workflow - Delete a workflow completely
-   Args: { workflowName }
-
-8. list_workflows - List all workflows
-   Args: { status? }
-
-9. enroll_contact - Enroll a contact in a workflow
-   Args: { contactName, workflowName }
-
-10. get_workflow_details - Get details of a specific workflow
-    Args: { workflowName }
-
-Instructions:
-- For "edit workflow" or "change delay", use update_delay
-- For "wait 2 minutes" or "change wait time", use update_delay with newUnit=minutes
-- For "pause" or "stop workflow", use pause_workflow
-- For "delete" or "remove workflow", use delete_workflow
-- For "show workflow" or "workflow details", use get_workflow_details
-- Respond with JSON: {"tool": "...", "args": {...}}
-
-Respond with ONLY the JSON object.`;
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -467,7 +466,7 @@ Respond with ONLY the JSON object.`;
         const responseText = response.content as string;
         console.log("🤖 Workflow AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "WorkflowAgent");
 
         if (toolCall) {
             console.log(`🔧 Executing workflow tool: ${toolCall.tool}`);

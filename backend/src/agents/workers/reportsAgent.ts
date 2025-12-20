@@ -195,7 +195,7 @@ Respond with JSON: {"tool": "...", "args": {...}}`;
         const responseText = response.content as string;
         console.log("🤖 Reports AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "ReportsAgent");
 
         if (toolCall) {
             const result = await executeReportsTool(

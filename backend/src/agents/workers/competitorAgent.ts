@@ -98,7 +98,7 @@ async function executeCompetitorTool(
             if (args.competitorId) {
                 competitor = await Competitor.findById(args.competitorId);
             } else if (args.competitorName) {
-                const regex = new RegExp(args.competitorName, "i");
+                const regex = createSafeRegex(args.competitorName);
                 competitor = await Competitor.findOne({ workspaceId, name: regex });
             }
 
@@ -224,7 +224,7 @@ Return JSON:
             if (autoTrack && parsed.competitorsDetected?.length > 0) {
                 for (const name of parsed.competitorsDetected) {
                     await Competitor.findOneAndUpdate(
-                        { workspaceId, name: new RegExp(name, "i") },
+                        { workspaceId, name: createSafeRegex(name) },
                         { lastMentionAt: new Date() }
                     );
                 }
@@ -248,7 +248,7 @@ Return JSON:
             } else if (competitorName) {
                 const competitor = await Competitor.findOne({
                     workspaceId,
-                    name: new RegExp(competitorName, "i")
+                    name: createSafeRegex(competitorName)
                 });
                 if (competitor) {
                     filter.competitorIds = competitor._id;
@@ -264,7 +264,7 @@ Return JSON:
                 const lostToCompetitor = await Opportunity.countDocuments({
                     workspaceId,
                     status: "lost",
-                    lostReason: new RegExp(competitor.name, "i"),
+                    lostReason: createSafeRegex(competitor.name),
                 });
 
                 // Get deals where we won but competitor was mentioned
@@ -303,7 +303,7 @@ Return JSON:
             if (competitorName) {
                 const competitor = await Competitor.findOne({
                     workspaceId,
-                    name: new RegExp(competitorName, "i")
+                    name: createSafeRegex(competitorName)
                 });
                 if (competitor) {
                     competitorContext = `
@@ -349,7 +349,7 @@ Also provide:
             } else if (competitorName) {
                 competitor = await Competitor.findOne({
                     workspaceId,
-                    name: new RegExp(competitorName, "i")
+                    name: createSafeRegex(competitorName)
                 });
             }
 
@@ -437,7 +437,7 @@ Examples:
         const responseText = response.content as string;
         console.log("🤖 Competitor AI Response:", responseText);
 
-        const toolCall = parseToolCall(responseText);
+        const toolCall = parseToolCall(responseText, "CompetitorAgent");
 
         if (toolCall) {
             const result = await executeCompetitorTool(

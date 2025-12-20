@@ -11,6 +11,7 @@ import { getProModel } from "../modelFactory";
 import Campaign from "../../models/Campaign";
 import CampaignEnrollment from "../../models/CampaignEnrollment";
 import Contact from "../../models/Contact";
+import { createSafeRegex } from "../utils/escapeRegex";
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -49,6 +50,90 @@ async function executeCampaignTool(
             };
         }
 
+        case "update_campaign": {
+            const { campaignName, name, subject, body } = args;
+
+            const regex = createSafeRegex(campaignName);
+            const updates: any = {};
+            if (name) updates.name = name;
+            if (subject) updates.subject = subject;
+            if (body) updates.body = body;
+
+            const campaign = await Campaign.findOneAndUpdate(
+                { workspaceId, name: regex },
+                { $set: updates },
+                { new: true }
+            );
+
+            if (!campaign) {
+                return { success: false, error: `Campaign "${campaignName}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Campaign "${campaign.name}" updated successfully ✏️`,
+            };
+        }
+
+        case "delete_campaign": {
+            const { campaignName } = args;
+
+            const regex = createSafeRegex(campaignName);
+            const campaign = await Campaign.findOneAndDelete({ workspaceId, name: regex });
+
+            if (!campaign) {
+                return { success: false, error: `Campaign "${campaignName}" not found` };
+            }
+
+            // Also delete all enrollments
+            await CampaignEnrollment.deleteMany({ campaignId: campaign._id });
+
+            return {
+                success: true,
+                message: `Campaign "${campaign.name}" and all enrollments deleted 🗑️`,
+            };
+        }
+
+        case "pause_campaign": {
+            const { campaignName } = args;
+
+            const regex = createSafeRegex(campaignName);
+            const campaign = await Campaign.findOneAndUpdate(
+                { workspaceId, name: regex },
+                { status: "paused" },
+                { new: true }
+            );
+
+            if (!campaign) {
+                return { success: false, error: `Campaign "${campaignName}" not found` };
+            }
+
+            return {
+                success: true,
+                message: `Campaign "${campaign.name}" paused ⏸️`,
+            };
+        }
+
+        case "resume_campaign": {
+            const { campaignName } = args;
+
+            const regex = createSafeRegex(campaignName);
+            const campaign = await Campaign.findOneAndUpdate(
+                { workspaceId, name: regex, status: "paused" },
+                { status: "sending" },
+                { new: true }
+            );
+
+            if (!campaign) {
+                return { success: false, error: `Campaign "${campaignName}" not found or not paused` };
+            }
+
+            return {
+                success: true,
+                message: `Campaign "${campaign.name}" resumed ▶️`,
+            };
+        }
+
         case "list_campaigns": {
             const { status } = args;
 
@@ -75,7 +160,7 @@ async function executeCampaignTool(
         case "get_campaign_stats": {
             const { campaignName } = args;
 
-            const regex = new RegExp(campaignName, "i");
+            const regex = createSafeRegex(campaignName);
             const campaign = await Campaign.findOne({ workspaceId, name: regex }).lean();
 
             if (!campaign) {
@@ -103,7 +188,7 @@ async function executeCampaignTool(
         case "enroll_contacts": {
             const { campaignName, contactQuery } = args;
 
-            const campaignRegex = new RegExp(campaignName, "i");
+            const campaignRegex = createSafeRegex(campaignName);
             const campaign = await Campaign.findOne({ workspaceId, name: campaignRegex });
 
             if (!campaign) {
@@ -113,7 +198,7 @@ async function executeCampaignTool(
             // Find contacts
             const contactFilter: any = { workspaceId };
             if (contactQuery) {
-                const regex = new RegExp(contactQuery, "i");
+                const regex = createSafeRegex(contactQuery);
                 contactFilter.$or = [
                     { firstName: regex },
                     { lastName: regex },
@@ -149,7 +234,7 @@ async function executeCampaignTool(
         case "send_campaign": {
             const { campaignName } = args;
 
-            const regex = new RegExp(campaignName, "i");
+            const regex = createSafeRegex(campaignName);
             const campaign = await Campaign.findOneAndUpdate(
                 { workspaceId, name: regex },
                 { status: "sending", sentAt: new Date() },
@@ -163,6 +248,39 @@ async function executeCampaignTool(
             return {
                 success: true,
                 message: `Campaign "${campaign.name}" is now sending! 🚀`,
+            };
+        }
+
+        case "bulk_delete_campaigns": {
+            const { status, olderThanDays } = args;
+
+            const filter: any = { workspaceId };
+            if (status) filter.status = status;
+            if (olderThanDays) {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+                filter.createdAt = { $lt: cutoffDate };
+            }
+
+            // Safety: require at least one filter
+            if (!status && !olderThanDays) {
+                return { success: false, error: "Please specify status or olderThanDays to bulk delete" };
+            }
+
+            // Get campaign IDs to delete enrollments
+            const campaigns = await Campaign.find(filter).select("_id").lean();
+            const campaignIds = campaigns.map((c: any) => c._id);
+
+            // Delete enrollments first
+            await CampaignEnrollment.deleteMany({ campaignId: { $in: campaignIds } });
+
+            // Delete campaigns
+            const result = await Campaign.deleteMany(filter);
+
+            return {
+                success: true,
+                message: `Deleted ${result.deletedCount} campaign(s) and their enrollments 🗑️`,
+                deletedCount: result.deletedCount,
             };
         }
 
@@ -182,24 +300,25 @@ export async function campaignAgentNode(
 
         const systemPrompt = `You are a CRM Campaign Agent. Manage email campaigns.
 
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
+
 Available tools:
+1. create_campaign - Args: { name, subject?, body? }
+2. update_campaign - Args: { campaignName, name?, subject?, body? }
+3. delete_campaign - Args: { campaignName }
+4. pause_campaign - Args: { campaignName }
+5. resume_campaign - Args: { campaignName }
+6. list_campaigns - Args: { status? }
+7. get_campaign_stats - Args: { campaignName }
+8. enroll_contacts - Args: { campaignName, contactQuery? }
+9. send_campaign - Args: { campaignName }
+10. bulk_delete_campaigns - Bulk delete. Args: { status?, olderThanDays? }
 
-1. create_campaign - Create email campaign
-   Args: { name, subject?, body? }
+Examples:
+- "delete all sent campaigns" → {"tool": "bulk_delete_campaigns", "args": {"status": "sent"}}
+- "delete campaigns older than 90 days" → {"tool": "bulk_delete_campaigns", "args": {"olderThanDays": 90}}
 
-2. list_campaigns - List campaigns
-   Args: { status? (draft/sending/sent/paused) }
-
-3. get_campaign_stats - Get campaign performance
-   Args: { campaignName }
-
-4. enroll_contacts - Add contacts to campaign
-   Args: { campaignName, contactQuery? (search term) }
-
-5. send_campaign - Launch a campaign
-   Args: { campaignName }
-
-Respond with JSON: {"tool": "...", "args": {...}}`;
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -239,7 +358,7 @@ Respond with JSON: {"tool": "...", "args": {...}}`;
         }
 
         return {
-            messages: [new AIMessage("I can help with campaigns! Try:\n• 'Create a campaign called Summer Sale'\n• 'Show my campaigns'\n• 'Get stats for Black Friday campaign'")],
+            messages: [new AIMessage("I can help with campaigns! Try:\n• 'Delete the old campaign'\n• 'Pause the newsletter'\n• 'Show my campaigns'")],
             finalResponse: "I can help with campaigns!",
         };
 

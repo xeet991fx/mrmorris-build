@@ -10,6 +10,7 @@ import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
 import LeadScore from "../../models/LeadScore";
 import Contact from "../../models/Contact";
+import { createSafeRegex } from "../utils/escapeRegex";
 
 function parseToolCall(response: string): { tool: string; args: any } | null {
     try {
@@ -59,7 +60,7 @@ async function executeLeadScoreTool(
         case "get_contact_score": {
             const { contactName } = args;
 
-            const regex = new RegExp(contactName, "i");
+            const regex = createSafeRegex(contactName);
             const contact = await Contact.findOne({
                 workspaceId,
                 $or: [{ firstName: regex }, { lastName: regex }],
@@ -93,7 +94,7 @@ async function executeLeadScoreTool(
         case "add_score_points": {
             const { contactName, points, reason } = args;
 
-            const regex = new RegExp(contactName, "i");
+            const regex = createSafeRegex(contactName);
             const contact = await Contact.findOne({
                 workspaceId,
                 $or: [{ firstName: regex }, { lastName: regex }],
@@ -154,6 +155,52 @@ async function executeLeadScoreTool(
             };
         }
 
+        case "reset_score": {
+            const { contactName } = args;
+
+            const regex = createSafeRegex(contactName);
+            const contact = await Contact.findOne({
+                workspaceId,
+                $or: [{ firstName: regex }, { lastName: regex }],
+            });
+
+            if (!contact) {
+                return { success: false, error: `Contact "${contactName}" not found` };
+            }
+
+            const result = await LeadScore.findOneAndDelete({ contactId: contact._id });
+
+            if (!result) {
+                return { success: false, error: `No lead score found for ${contactName}` };
+            }
+
+            return {
+                success: true,
+                message: `Lead score for ${contact.firstName} ${contact.lastName} reset to 0 🔄`,
+            };
+        }
+
+        case "bulk_reset_scores": {
+            const { grade, belowScore } = args;
+
+            const filter: any = { workspaceId };
+            if (grade) filter.grade = grade;
+            if (belowScore) filter.currentScore = { $lt: belowScore };
+
+            // Safety: require at least one filter
+            if (!grade && !belowScore) {
+                return { success: false, error: "Please specify grade or belowScore to bulk reset" };
+            }
+
+            const result = await LeadScore.deleteMany(filter);
+
+            return {
+                success: true,
+                message: `Reset ${result.deletedCount} lead score(s) 🔄`,
+                deletedCount: result.deletedCount,
+            };
+        }
+
         default:
             return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -170,21 +217,21 @@ export async function leadScoreAgentNode(
 
         const systemPrompt = `You are a CRM Lead Score Agent. Manage lead scoring and qualification.
 
-Available tools:
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
 
-1. get_hot_leads - Get high-scoring leads
-   Args: { minScore? (default 50), limit? (default 10) }
+Tools:
+1. get_hot_leads - Args: { minScore?, limit? }
+2. get_contact_score - Args: { contactName }
+3. add_score_points - Args: { contactName, points?, reason? }
+4. get_lead_distribution - Args: {}
+5. reset_score - Args: { contactName }
+6. bulk_reset_scores - Bulk reset. Args: { grade?, belowScore? }
 
-2. get_contact_score - Get a contact's lead score
-   Args: { contactName }
+Examples:
+- "reset all D grade scores" → {"tool": "bulk_reset_scores", "args": {"grade": "D"}}
+- "reset scores below 20" → {"tool": "bulk_reset_scores", "args": {"belowScore": 20}}
 
-3. add_score_points - Add points to a contact's score
-   Args: { contactName, points?, reason? }
-
-4. get_lead_distribution - Get score distribution (A/B/C/D grades)
-   Args: {}
-
-Respond with JSON: {"tool": "...", "args": {...}}`;
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -226,7 +273,7 @@ Respond with JSON: {"tool": "...", "args": {...}}`;
         }
 
         return {
-            messages: [new AIMessage("I can help with lead scoring! Try:\n• 'Show my hot leads'\n• 'What's John's lead score?'\n• 'Add 20 points to Sarah for demo request'")],
+            messages: [new AIMessage("I can help with lead scoring! Try:\n• 'Reset John's score'\n• 'Show my hot leads'\n• 'What's Sarah's lead score?'")],
             finalResponse: "I can help with lead scoring!",
         };
 

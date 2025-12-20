@@ -12,6 +12,7 @@ import Opportunity from "../../models/Opportunity";
 import Pipeline from "../../models/Pipeline";
 import Contact from "../../models/Contact";
 import { eventPublisher } from "../../events";
+import { createSafeRegex } from "../utils/escapeRegex";
 
 /**
  * Parse tool call from AI response
@@ -52,7 +53,7 @@ async function executeDealTool(
             // Find contact if specified
             let contactId = null;
             if (contactName) {
-                const searchRegex = new RegExp(contactName, "i");
+                const searchRegex = createSafeRegex(contactName);
                 const contact = await Contact.findOne({
                     workspaceId,
                     $or: [{ firstName: searchRegex }, { lastName: searchRegex }],
@@ -94,7 +95,7 @@ async function executeDealTool(
             const filter: any = { workspaceId };
             if (status) filter.status = status;
             if (query) {
-                const searchRegex = new RegExp(query, "i");
+                const searchRegex = createSafeRegex(query);
                 filter.title = searchRegex;
             }
 
@@ -195,6 +196,59 @@ async function executeDealTool(
             };
         }
 
+        case "delete_deal": {
+            const { dealId, dealName } = args;
+
+            let deal;
+            if (dealId) {
+                deal = await Opportunity.findOneAndDelete({ _id: dealId, workspaceId });
+            } else if (dealName) {
+                const searchRegex = createSafeRegex(dealName);
+                deal = await Opportunity.findOneAndDelete({ workspaceId, title: searchRegex });
+            }
+
+            if (!deal) {
+                return { success: false, error: `Deal not found` };
+            }
+
+            await eventPublisher.publish("deal.deleted", {
+                dealId: deal._id.toString(),
+                title: deal.title,
+            }, { workspaceId, userId, source: "system" });
+
+            return {
+                success: true,
+                message: `Deal "${deal.title}" deleted successfully 🗑️`,
+            };
+        }
+
+        case "bulk_delete_deals": {
+            const { status, olderThanDays, stage } = args;
+
+            const filter: any = { workspaceId };
+
+            if (status) filter.status = status;
+            if (stage) filter.stage = createSafeRegex(stage);
+            if (olderThanDays) {
+                const cutoffDate = new Date();
+                cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+                filter.createdAt = { $lt: cutoffDate };
+            }
+
+            // Safety: require at least one filter
+            if (!status && !stage && !olderThanDays) {
+                return { success: false, error: "Please specify status, stage, or olderThanDays to bulk delete" };
+            }
+
+            const result = await Opportunity.deleteMany(filter);
+
+            return {
+                success: true,
+                message: `Deleted ${result.deletedCount} deal(s) 🗑️`,
+                deletedCount: result.deletedCount,
+            };
+        }
+
         default:
             return { success: false, error: `Unknown tool: ${toolName}` };
     }
@@ -212,20 +266,24 @@ export async function dealAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        const systemPrompt = `You are a CRM Deal Agent. Analyze the user's request and decide which tool to use.
+        const systemPrompt = `You are a CRM Deal Agent. Manage sales deals and pipeline.
+
+IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
 
 Available tools:
-1. create_deal - Create a new deal. Args: { title, value, contactName?, stage?, notes? }
-2. search_deals - Search deals. Args: { query?, status? }
-3. update_deal - Update a deal. Args: { dealId, updates }
-4. move_deal_stage - Move deal to new stage. Args: { dealId, newStage }
-5. get_deal_summary - Get pipeline summary. Args: {}
+1. create_deal - Args: { title, value, contactName?, stage? }
+2. search_deals - Args: { query?, status? }
+3. update_deal - Args: { dealId, updates }
+4. move_deal_stage - Args: { dealId, newStage }
+5. get_deal_summary - Args: {}
+6. delete_deal - Args: { dealId?, dealName? }
+7. bulk_delete_deals - Bulk delete. Args: { status?, stage?, olderThanDays? }
 
-Instructions:
-- Extract relevant information from the user's request
-- Respond with a JSON object: {"tool": "...", "args": {...}}
+Examples:
+- "delete all lost deals" → {"tool": "bulk_delete_deals", "args": {"status": "lost"}}
+- "delete deals older than 90 days" → {"tool": "bulk_delete_deals", "args": {"olderThanDays": 90}}
 
-Respond with ONLY the JSON object, no other text.`;
+Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -251,7 +309,7 @@ Respond with ONLY the JSON object, no other text.`;
 
             let friendlyResponse = "";
             if (result.success) {
-                if (toolCall.tool === "create_deal") {
+                if (toolCall.tool === "create_deal" || toolCall.tool === "delete_deal") {
                     friendlyResponse = result.message;
                 } else if (toolCall.tool === "search_deals") {
                     if (result.count === 0) {
@@ -263,6 +321,8 @@ Respond with ONLY the JSON object, no other text.`;
                     friendlyResponse = result.message;
                 } else if (toolCall.tool === "get_deal_summary") {
                     friendlyResponse = `📊 Pipeline Summary:\n• Open Deals: ${result.summary.openDeals}\n• Total Value: $${result.summary.totalPipelineValue.toLocaleString()}`;
+                } else {
+                    friendlyResponse = result.message || "Done!";
                 }
             } else {
                 friendlyResponse = `Sorry, I couldn't complete that: ${result.error}`;
@@ -276,8 +336,8 @@ Respond with ONLY the JSON object, no other text.`;
         }
 
         return {
-            messages: [new AIMessage("I can help you create deals, search deals, move stages, or get pipeline summaries. What would you like to do?")],
-            finalResponse: "I can help you create deals, search deals, move stages, or get pipeline summaries. What would you like to do?",
+            messages: [new AIMessage("I can help with deals! Try:\n• 'Create a $10k deal with Acme'\n• 'Delete the old proposal deal'\n• 'Show my open deals'")],
+            finalResponse: "I can help with deals!",
         };
 
     } catch (error: any) {

@@ -6,6 +6,7 @@
 
 import { Router, Response } from "express";
 import { AuthRequest, authenticate } from "../middleware/auth";
+import { agentChatLimiter, agentStatusLimiter } from "../middleware/rateLimiter";
 import Project from "../models/Project";
 import { invokeAgent } from "../agents";
 
@@ -49,6 +50,7 @@ async function validateWorkspaceAccess(
 router.post(
     "/:workspaceId/agent/chat",
     authenticate,
+    agentChatLimiter,
     async (req: AuthRequest, res: Response) => {
         try {
             const { workspaceId } = req.params;
@@ -96,9 +98,37 @@ router.post(
 
         } catch (error: any) {
             console.error("Agent chat error:", error);
-            res.status(500).json({
+
+            // Determine appropriate status code and error details
+            let statusCode = 500;
+            let errorMessage = "Agent processing failed";
+            let errorCode = "AGENT_ERROR";
+            let details: any = {};
+
+            if (error.message?.includes('timeout')) {
+                statusCode = 504;
+                errorCode = "TIMEOUT";
+                errorMessage = "Request timeout - the agent took too long to respond";
+                details.suggestion = "Try a simpler request or break it into smaller tasks";
+            } else if (error.message?.includes('rate limit')) {
+                statusCode = 429;
+                errorCode = "RATE_LIMIT";
+                errorMessage = "Too many requests - please slow down";
+            } else if (error.message?.includes('authentication')) {
+                statusCode = 401;
+                errorCode = "AUTH_ERROR";
+                errorMessage = "Authentication failed";
+            } else {
+                errorMessage = error.message || "Agent processing failed";
+                details.errorType = error.name || "Error";
+            }
+
+            res.status(statusCode).json({
                 success: false,
-                error: error.message || "Agent processing failed",
+                error: errorMessage,
+                code: errorCode,
+                details,
+                timestamp: new Date().toISOString(),
             });
         }
     }
@@ -112,6 +142,7 @@ router.post(
 router.get(
     "/:workspaceId/agent/status",
     authenticate,
+    agentStatusLimiter,
     async (req: AuthRequest, res: Response) => {
         try {
             const { workspaceId } = req.params;
