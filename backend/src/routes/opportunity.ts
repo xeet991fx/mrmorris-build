@@ -153,6 +153,34 @@ router.post(
         }
       ).catch(err => console.error('Event publish error:', err));
 
+      // Log deal creation to company if linked
+      if (opportunityDoc.companyId) {
+        try {
+          await Activity.create({
+            workspaceId,
+            userId: req.user?._id,
+            entityType: 'company',
+            entityId: opportunityDoc.companyId,
+            opportunityId: opportunityDoc._id,
+            type: 'note',
+            title: `New deal "${(opportunityDoc as any).title || 'Untitled'}" created`,
+            description: opportunityDoc.value
+              ? `Deal worth $${opportunityDoc.value.toLocaleString()} was added`
+              : 'New deal was added',
+            isAutoLogged: true,
+            automated: true,
+            metadata: {
+              dealId: (opportunityDoc._id as any).toString(),
+              dealTitle: (opportunityDoc as any).title,
+              dealValue: opportunityDoc.value,
+              stageName: stage.name,
+            },
+          });
+        } catch (activityError) {
+          console.error("Failed to log deal creation activity:", activityError);
+        }
+      }
+
       res.status(201).json({
         success: true,
         message: "Opportunity created successfully!",
@@ -719,6 +747,30 @@ router.patch(
           aiConfidence: 100,
         });
         await stageChangeActivity.save();
+
+        // Also log to company if deal has a companyId
+        if (opportunity.companyId) {
+          const companyStageActivity = new Activity({
+            workspaceId,
+            userId: req.user?._id,
+            entityType: 'company',
+            entityId: opportunity.companyId,
+            opportunityId: id,
+            type: "stage_change",
+            title: `Deal "${(opportunity as any).title || 'Untitled'}" moved to "${stage.name}"`,
+            description: `Deal stage changed from "${previousStageName}" to "${stage.name}"`,
+            metadata: {
+              dealId: id,
+              dealTitle: (opportunity as any).title,
+              fromStage: previousStageName,
+              toStage: stage.name,
+              dealValue: opportunity.value,
+            },
+            isAutoLogged: true,
+            automated: true,
+          });
+          await companyStageActivity.save();
+        }
       } catch (activityError) {
         console.error("Failed to log stage change activity:", activityError);
         // Don't fail the request if activity logging fails

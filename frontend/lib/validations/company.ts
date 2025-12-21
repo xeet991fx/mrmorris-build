@@ -21,18 +21,18 @@ export const createCompanySchema = z.object({
     .or(z.literal(""))
     .or(z.string().length(0)),
   phone: z.string().trim().optional().or(z.literal("")),
+  domain: z.string().trim().optional().or(z.literal("")),
   companySize: z
     .enum(["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"])
     .optional(),
-  annualRevenue: z
-    .number()
-    .min(0, "Annual revenue cannot be negative")
-    .optional(),
-  employeeCount: z
-    .number()
-    .int("Employee count must be an integer")
-    .min(0, "Employee count cannot be negative")
-    .optional(),
+  annualRevenue: z.preprocess(
+    (val) => (val === "" || val === undefined || Number.isNaN(val) ? undefined : Number(val)),
+    z.number().min(0, "Annual revenue cannot be negative").optional()
+  ),
+  employeeCount: z.preprocess(
+    (val) => (val === "" || val === undefined || Number.isNaN(val) ? undefined : Number(val)),
+    z.number().int("Employee count must be an integer").min(0, "Employee count cannot be negative").optional()
+  ),
   linkedinUrl: z
     .string()
     .url("Please enter a valid URL")
@@ -65,6 +65,7 @@ export const createCompanySchema = z.object({
   notes: z.string().optional().or(z.literal("")),
   tags: z.array(z.string()).optional(),
   assignedTo: z.string().optional().or(z.literal("")),
+  associatedContacts: z.array(z.string()).optional(),
 });
 
 // Update company schema - all fields optional

@@ -1,9 +1,12 @@
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Menu } from "@headlessui/react";
 import { EllipsisVerticalIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { Company } from "@/lib/api/company";
 import { useCompanyStore, CompanyColumn, BuiltInColumn } from "@/store/useCompanyStore";
-import EditableCell from "../contacts/EditableCell";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+import EditableCompanyCell from "./EditableCompanyCell";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -28,13 +31,39 @@ export default function CompanyTableRow({
   animate,
   transition,
 }: CompanyTableRowProps) {
+  const router = useRouter();
   const {
     selectedCompanies,
     toggleCompanySelection,
     customColumns,
+    editingCell,
   } = useCompanyStore();
+  const { currentWorkspace } = useWorkspaceStore();
 
   const isSelected = selectedCompanies.includes(company._id);
+
+  // Handle row click to navigate to company details
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Don't navigate if a cell is being edited
+    if (editingCell) {
+      return;
+    }
+
+    // Don't navigate if clicking on checkbox or actions
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('input[type="checkbox"]') ||
+      target.closest('[data-actions]') ||
+      target.closest('button') ||
+      target.closest('[role="menu"]') ||
+      target.closest('a')
+    ) {
+      return;
+    }
+    if (currentWorkspace?._id) {
+      router.push(`/projects/${currentWorkspace._id}/companies/${company._id}`);
+    }
+  };
 
   // Helper to check if column is built-in
   const isBuiltInColumn = (column: CompanyColumn): column is BuiltInColumn => {
@@ -170,8 +199,9 @@ export default function CompanyTableRow({
       initial={initial}
       animate={animate}
       transition={transition}
+      onClick={handleRowClick}
       className={cn(
-        "border-b border-border hover:bg-muted/30 transition-colors",
+        "border-b border-border hover:bg-muted/30 transition-colors cursor-pointer",
         isSelected && "bg-muted/20"
       )}
     >
@@ -191,15 +221,16 @@ export default function CompanyTableRow({
           key={column}
           className="px-4 py-1 h-8 text-sm text-foreground border-r border-border"
         >
-          {/* Note: EditableCell would need to be adapted for companies or we pass company prop */}
-          <div className="overflow-hidden text-ellipsis">
-            {getCellContent(column)}
-          </div>
+          <EditableCompanyCell
+            company={company}
+            column={column}
+            value={getCellContent(column)}
+          />
         </td>
       ))}
 
       {/* Actions */}
-      <td className="px-4 py-1 h-8">
+      <td className="px-4 py-1 h-8" data-actions>
         <div className="flex items-center gap-1">
           {/* Edit Button - Always visible */}
           <button
@@ -252,3 +283,4 @@ export default function CompanyTableRow({
     </motion.tr>
   );
 }
+

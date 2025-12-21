@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useForm } from "react-hook-form";
@@ -7,6 +7,8 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { createCompanySchema, CreateCompanyInput } from "@/lib/validations/company";
 import { useCompanyStore } from "@/store/useCompanyStore";
+import { useContactStore } from "@/store/useContactStore";
+import { updateContact, getContacts, Contact } from "@/lib/api/contact";
 import CompanyForm from "./CompanyForm";
 
 interface AddCompanyModalProps {
@@ -21,6 +23,8 @@ export default function AddCompanyModal({
   workspaceId,
 }: AddCompanyModalProps) {
   const { createCompany, isLoading } = useCompanyStore();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
 
   const form = useForm<CreateCompanyInput>({
     resolver: zodResolver(createCompanySchema),
@@ -29,6 +33,7 @@ export default function AddCompanyModal({
       industry: "",
       website: "",
       phone: "",
+      domain: "",
       companySize: undefined,
       annualRevenue: undefined,
       employeeCount: undefined,
@@ -46,14 +51,64 @@ export default function AddCompanyModal({
       source: "",
       notes: "",
       tags: [],
+      associatedContacts: [],
     },
   });
 
   const { handleSubmit, reset } = form;
 
+  // Fetch contacts when modal opens
+  useEffect(() => {
+    const fetchContacts = async () => {
+      if (!isOpen || !workspaceId) return;
+
+      setIsLoadingContacts(true);
+      try {
+        const response = await getContacts(workspaceId, { limit: 1000 });
+        if (response.success && response.data) {
+          // Only show contacts without a company or with no companyId
+          const availableContacts = response.data.contacts.filter(
+            (c) => !c.companyId
+          );
+          setContacts(availableContacts);
+        }
+      } catch (error) {
+        console.error("Failed to fetch contacts:", error);
+      } finally {
+        setIsLoadingContacts(false);
+      }
+    };
+
+    fetchContacts();
+  }, [isOpen, workspaceId]);
+
   const onSubmit = async (data: CreateCompanyInput) => {
     try {
-      await createCompany(workspaceId, data);
+      // Extract associated contacts before creating
+      const associatedContactIds = data.associatedContacts || [];
+
+      // Remove associatedContacts from data as backend doesn't handle it
+      const { associatedContacts, ...companyData } = data;
+
+      // Create company
+      const company = await createCompany(workspaceId, companyData);
+
+      // Link contacts to the company if any were selected
+      if (associatedContactIds.length > 0 && company?._id) {
+        await Promise.all(
+          associatedContactIds.map(async (contactId) => {
+            try {
+              await updateContact(workspaceId, contactId, {
+                companyId: company._id,
+                company: company.name,
+              });
+            } catch (error) {
+              console.error(`Failed to link contact ${contactId}:`, error);
+            }
+          })
+        );
+      }
+
       toast.success("Company created successfully!");
       reset();
       onClose();
@@ -119,7 +174,11 @@ export default function AddCompanyModal({
 
                   {/* Form */}
                   <form onSubmit={handleSubmit(onSubmit)}>
-                    <CompanyForm form={form} />
+                    <CompanyForm
+                      form={form}
+                      contacts={contacts}
+                      isLoadingContacts={isLoadingContacts}
+                    />
 
                     {/* Actions */}
                     <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-border">

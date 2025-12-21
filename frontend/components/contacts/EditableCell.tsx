@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { useParams } from "next/navigation";
+import { PencilIcon } from "@heroicons/react/24/outline";
 import { Contact } from "@/lib/api/contact";
 import { useContactStore, ContactColumn } from "@/store/useContactStore";
 import { updateLeadScore } from "@/lib/api/leadScore";
@@ -26,6 +27,7 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
   const { editingCell, setEditingCell, updateContactField, customColumns } = useContactStore();
   const [localValue, setLocalValue] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
 
   const isEditing =
@@ -48,7 +50,8 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
     }
   }, [isEditing]);
 
-  const handleClick = () => {
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent row click navigation
     if (isReadOnly) return;
 
     // Get the current value for editing
@@ -130,12 +133,14 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
     } finally {
       setIsSaving(false);
       setEditingCell(null);
+      setIsHovered(false);
     }
   };
 
   const handleCancel = () => {
     setEditingCell(null);
     setLocalValue("");
+    setIsHovered(false);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -188,15 +193,17 @@ export default function EditableCell({ contact, column, value }: EditableCellPro
 
   if (!isEditing) {
     return (
-      <div
-        onClick={handleClick}
-        className={cn(
-          "min-h-[32px] flex items-center",
-          !isReadOnly && "cursor-pointer hover:bg-muted/30 rounded px-2 -mx-2 transition-colors"
+      <div className="min-h-[32px] flex items-center justify-between gap-1 group">
+        <span className="truncate">{value}</span>
+        {!isReadOnly && (
+          <button
+            onClick={handleEditClick}
+            className="flex-shrink-0 p-1 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors opacity-0 group-hover:opacity-100"
+            title="Edit"
+          >
+            <PencilIcon className="w-3.5 h-3.5" />
+          </button>
         )}
-        title={isReadOnly ? undefined : "Click to edit"}
-      >
-        {value}
       </div>
     );
   }

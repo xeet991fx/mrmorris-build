@@ -11,6 +11,7 @@ import {
 } from "../validations/company";
 import { fileParserService } from "../services/FileParserService";
 import { aiDataExtractor } from "../services/AIDataExtractor";
+import ActivityService from "../services/activityService";
 
 const router = express.Router();
 
@@ -66,6 +67,17 @@ router.post(
       const company: any = companyDoc.toObject();
       if (company.customFields && company.customFields instanceof Map) {
         company.customFields = Object.fromEntries(company.customFields);
+      }
+
+      // Auto-log company created activity
+      try {
+        await ActivityService.logCompanyCreated(
+          { workspaceId, userId: req.user?._id },
+          companyDoc._id as any,
+          company.name
+        );
+      } catch (activityError) {
+        console.error("Failed to log company created activity:", activityError);
       }
 
       res.status(201).json({
@@ -313,19 +325,26 @@ router.patch(
       // Validate input
       const validatedData = updateCompanySchema.parse(req.body);
 
+      // Get existing company for activity logging
+      const existingCompany = await Company.findOne({ _id: id, workspaceId });
+      if (!existingCompany) {
+        return res.status(404).json({
+          success: false,
+          error: "Company not found.",
+        });
+      }
+
+      const oldStatus = existingCompany.status;
+
       // Handle custom fields separately to merge them properly
       let updateData: any = { ...validatedData };
       if (validatedData.customFields) {
-        // Get existing company to merge custom fields
-        const existingCompany = await Company.findOne({ _id: id, workspaceId });
-        if (existingCompany) {
-          // Merge custom fields
-          const mergedCustomFields = new Map(existingCompany.customFields || new Map());
-          Object.entries(validatedData.customFields).forEach(([key, value]) => {
-            mergedCustomFields.set(key, value);
-          });
-          updateData.customFields = mergedCustomFields;
-        }
+        // Merge custom fields
+        const mergedCustomFields = new Map(existingCompany.customFields || new Map());
+        Object.entries(validatedData.customFields).forEach(([key, value]) => {
+          mergedCustomFields.set(key, value);
+        });
+        updateData.customFields = mergedCustomFields;
       }
 
       // Update company
@@ -346,6 +365,21 @@ router.patch(
       const company: any = companyDoc.toObject();
       if (company.customFields && company.customFields instanceof Map) {
         company.customFields = Object.fromEntries(company.customFields);
+      }
+
+      // Auto-log status change activity
+      if (validatedData.status && validatedData.status !== oldStatus) {
+        try {
+          await ActivityService.logCompanyStatusChanged(
+            { workspaceId, userId: req.user?._id },
+            id,
+            company.name,
+            oldStatus,
+            validatedData.status
+          );
+        } catch (activityError) {
+          console.error("Failed to log status change activity:", activityError);
+        }
       }
 
       res.status(200).json({

@@ -376,19 +376,27 @@ router.patch(
       // Validate input
       const validatedData = updateContactSchema.parse(req.body);
 
+      // Get existing contact to check for companyId change
+      const existingContact = await Contact.findOne({ _id: id, workspaceId });
+      if (!existingContact) {
+        return res.status(404).json({
+          success: false,
+          error: "Contact not found.",
+        });
+      }
+
+      const oldCompanyId = existingContact.companyId?.toString();
+      const newCompanyId = validatedData.companyId;
+
       // Handle custom fields separately to merge them properly
       let updateData: any = { ...validatedData };
       if (validatedData.customFields) {
-        // Get existing contact to merge custom fields
-        const existingContact = await Contact.findOne({ _id: id, workspaceId });
-        if (existingContact) {
-          // Merge custom fields
-          const mergedCustomFields = new Map(existingContact.customFields || new Map());
-          Object.entries(validatedData.customFields).forEach(([key, value]) => {
-            mergedCustomFields.set(key, value);
-          });
-          updateData.customFields = mergedCustomFields;
-        }
+        // Merge custom fields
+        const mergedCustomFields = new Map(existingContact.customFields || new Map());
+        Object.entries(validatedData.customFields).forEach(([key, value]) => {
+          mergedCustomFields.set(key, value);
+        });
+        updateData.customFields = mergedCustomFields;
       }
 
       // Update contact
@@ -409,6 +417,36 @@ router.patch(
       const contact: any = contactDoc.toObject();
       if (contact.customFields && contact.customFields instanceof Map) {
         contact.customFields = Object.fromEntries(contact.customFields);
+      }
+
+      // Log company linking activity if companyId changed
+      if (newCompanyId && newCompanyId !== oldCompanyId) {
+        try {
+          const Activity = require('../models/Activity').default;
+          const Company = require('../models/Company').default;
+          const company = await Company.findById(newCompanyId);
+
+          if (company) {
+            await Activity.create({
+              workspaceId,
+              userId: req.user?._id,
+              entityType: 'company',
+              entityId: newCompanyId,
+              type: 'note',
+              title: `Contact "${contactDoc.firstName} ${contactDoc.lastName}" linked`,
+              description: `${contactDoc.firstName} ${contactDoc.lastName} was linked to ${company.name}`,
+              isAutoLogged: true,
+              automated: true,
+              metadata: {
+                contactId: id,
+                contactName: `${contactDoc.firstName} ${contactDoc.lastName}`,
+                companyName: company.name,
+              },
+            });
+          }
+        } catch (activityError) {
+          console.error("Failed to log contact linking activity:", activityError);
+        }
       }
 
       res.status(200).json({

@@ -11,7 +11,7 @@ import CompaniesTableHeader from "@/components/companies/CompaniesTableHeader";
 import CompaniesTable from "@/components/companies/CompaniesTable";
 import AddCompanyModal from "@/components/companies/AddCompanyModal";
 import EditCompanyModal from "@/components/companies/EditCompanyModal";
-import ColumnManager from "@/components/contacts/ColumnManager";
+import CompanyColumnManager from "@/components/companies/CompanyColumnManager";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ImportModal from "@/components/import/ImportModal";
 
@@ -169,7 +169,7 @@ export default function CompaniesPage() {
         />
       )}
 
-      <ColumnManager
+      <CompanyColumnManager
         isOpen={isColumnManagerOpen}
         onClose={() => setIsColumnManagerOpen(false)}
       />

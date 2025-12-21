@@ -41,6 +41,7 @@ export default function ContactTableRow({
     selectedContacts,
     toggleContactSelection,
     customColumns,
+    editingCell,
   } = useContactStore();
   const { currentWorkspace } = useWorkspaceStore();
 
@@ -51,6 +52,11 @@ export default function ContactTableRow({
 
   // Handle row click to navigate to contact details
   const handleRowClick = (e: React.MouseEvent) => {
+    // Don't navigate if a cell is being edited
+    if (editingCell) {
+      return;
+    }
+
     // Don't navigate if clicking on checkbox or actions
     const target = e.target as HTMLElement;
     if (
