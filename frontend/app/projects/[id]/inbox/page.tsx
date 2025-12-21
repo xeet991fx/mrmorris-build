@@ -24,6 +24,7 @@ import {
     syncInbox,
 } from "@/lib/api/inbox";
 import { getCampaigns } from "@/lib/api/campaign";
+import { EmailInsightsPanel } from "@/components/inbox/EmailInsightsPanel";
 
 // Local type for inbox messages with extended properties
 interface LocalInboxMessage {
@@ -427,7 +428,14 @@ export default function InboxPage() {
                             </div>
 
                             {/* Detail Body */}
-                            <div className="flex-1 overflow-y-auto p-6">
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                {/* AI Email Insights */}
+                                <EmailInsightsPanel
+                                    workspaceId={workspaceId}
+                                    emailId={selectedMessage._id}
+                                />
+
+                                {/* Reply Content */}
                                 <div className="bg-muted/20 rounded-xl p-5 border border-border/30">
                                     <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wide">Reply from {getContactName(selectedMessage)}</p>
                                     <div className="whitespace-pre-wrap text-foreground leading-relaxed">

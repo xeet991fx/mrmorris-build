@@ -35,6 +35,7 @@ import { getEmailAccounts } from "@/lib/api/emailAccount";
 import { axiosInstance } from "@/lib/axios";
 import { TemplateGallery } from "@/components/shared/TemplateGallery";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { CampaignInsightsPanel } from "@/components/campaigns/CampaignInsightsPanel";
 
 export default function CampaignsPage() {
     const params = useParams();
@@ -621,6 +622,15 @@ export default function CampaignsPage() {
                                 <span>
                                     Created {new Date(campaign.createdAt).toLocaleDateString()}
                                 </span>
+                            </div>
+
+                            {/* AI Campaign Insights */}
+                            <div className="mt-4">
+                                <CampaignInsightsPanel
+                                    workspaceId={workspaceId}
+                                    campaignId={campaign._id}
+                                    campaignStatus={campaign.status as any}
+                                />
                             </div>
                         </motion.div>
                     ))}

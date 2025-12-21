@@ -20,6 +20,7 @@ import { instantiateTemplate, WorkflowTemplate } from "@/lib/workflow/templates"
 import { cn } from "@/lib/utils";
 import TemplateSelector from "@/components/workflows/TemplateSelector";
 import { TemplateGallery } from "@/components/shared/TemplateGallery";
+import { AutomationSuggestionsCard } from "@/components/workflows/AutomationSuggestionsCard";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 // Status badge component
@@ -360,6 +361,11 @@ export default function WorkflowsPage() {
                         </select>
                     </div>
                 </div>
+            </div>
+
+            {/* AI Automation Suggestions */}
+            <div className="max-w-7xl mx-auto px-6 mb-6">
+                <AutomationSuggestionsCard workspaceId={workspaceId} />
             </div>
 
             {/* Content */}
