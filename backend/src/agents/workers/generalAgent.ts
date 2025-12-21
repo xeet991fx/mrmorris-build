@@ -46,30 +46,50 @@ const getFlashModel = () => {
 };
 
 /**
- * Use AI to determine if a query needs web search
+ * Use fast pattern matching to determine if a query needs web search
  * Returns true if real-time/factual info is needed
  */
 async function needsWebSearch(query: string): Promise<boolean> {
+    const lower = query.toLowerCase();
+
+    // Fast pattern matching - queries that DON'T need web search
+    const noSearchPatterns = [
+        /what (can|do) you (do|help|offer)/i,
+        /who (are|is) you/i,
+        /how (does|do|can) (this|it|you)/i,
+        /^(hi|hey|hello|thanks|thank you)/i,
+        /explain|define|describe|tell me about/i,
+        /how to (write|code|program)/i,
+        /capabilities|features|functions/i,
+    ];
+
+    const obviouslyNoSearch = noSearchPatterns.some(pattern => pattern.test(query));
+    if (obviouslyNoSearch) {
+        console.log(`🤔 Web search needed? No (pattern match)`);
+        return false;
+    }
+
+    // Fast pattern matching - queries that DO need web search
+    const searchPatterns = [
+        /\b(news|latest|recent|current|today|now|price|stock|weather)\b/i,
+        /who is (the )?(ceo|president|founder)/i,
+        /\b(2024|2025|2026)\b/, // Recent year mentions
+        /what (happened|is happening)/i,
+    ];
+
+    const obviouslyNeedsSearch = searchPatterns.some(pattern => pattern.test(query));
+    if (obviouslyNeedsSearch) {
+        console.log(`🤔 Web search needed? Yes (pattern match)`);
+        return true;
+    }
+
+    // Fallback: Use AI for ambiguous cases (fast Flash model)
     try {
         const response = await getFlashModel().invoke([
-            new SystemMessage(`Analyze this user query and decide if it needs a WEB SEARCH to answer properly.
+            new SystemMessage(`Does this query need web search? Reply ONLY "yes" or "no".
 
-Reply with ONLY "yes" or "no".
-
-NEEDS WEB SEARCH (yes):
-- Current events, news, recent happenings
-- Real-time data (stock prices, weather, sports scores)
-- Specific facts that might have changed (who is the CEO of X, current prices)
-- Looking up specific products, codes, or items (game codes, product codes)
-- Recent technology updates or releases
-
-DOES NOT NEED WEB SEARCH (no):
-- Questions about the AI assistant itself ("what can you do", "who are you")
-- General knowledge that doesn't change (history, science concepts, math)
-- Greetings and conversational messages ("hello", "thanks", "help")
-- Creative requests (write a poem, tell a joke)
-- Simple explanations or definitions
-- Programming/coding help (how to write code)
+YES: Current events, real-time data, recent facts
+NO: General knowledge, AI capabilities, greetings, coding help
 
 Query: "${query}"`),
             new HumanMessage(query),
@@ -158,7 +178,7 @@ export async function generalAgentNode(
             console.log("✅ Web search returned", searchResult.results.length, "results");
         }
 
-        const systemPrompt = `You are a helpful AI assistant integrated into a CRM platform (MrMorris). 
+        const systemPrompt = `You are a helpful AI assistant integrated into a CRM platform (MrMorris).
 While your primary focus is CRM tasks (contacts, deals, emails, workflows), you can also help with general questions.
 
 ${context ? `Use the following web search results to answer the user's question:${context}` : ""}
@@ -174,7 +194,15 @@ User Question: "${userRequest}"
 
 Provide a helpful, friendly response.`;
 
-        const response = await getGeneralModel().invoke([
+        // Use Flash for simple queries, Pro for complex ones with web search
+        const useFlashModel = !searchResult.success && userRequest.split(' ').length <= 15;
+        const model = useFlashModel ? getFlashModel() : getGeneralModel();
+
+        if (useFlashModel) {
+            console.log("⚡ Using Flash model for fast response");
+        }
+
+        const response = await model.invoke([
             new SystemMessage(systemPrompt),
             new HumanMessage(userRequest),
         ]);

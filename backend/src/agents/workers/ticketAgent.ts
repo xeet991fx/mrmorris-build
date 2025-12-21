@@ -8,20 +8,9 @@
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
+import { parseToolCall } from "../utils/parseToolCall";
 import Ticket from "../../models/Ticket";
 import Contact from "../../models/Contact";
-
-function parseToolCall(response: string): { tool: string; args: any } | null {
-    try {
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.tool && parsed.args) return parsed;
-        }
-    } catch (e) { }
-    return null;
-}
-
 async function executeTicketTool(
     toolName: string,
     args: any,

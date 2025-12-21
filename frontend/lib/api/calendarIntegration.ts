@@ -32,6 +32,8 @@ export interface CalendarEvent {
     contactId?: { firstName: string; lastName: string; email: string };
     status: string;
     meetingLink?: string;
+    externalId?: string;
+    provider?: "google" | "outlook" | "internal";
     createdAt: string;
 }
 
@@ -114,5 +116,38 @@ export const createCalendarEvent = async (data: {
  */
 export const deleteCalendarEvent = async (eventId: string) => {
     const response = await axiosInstance.delete(`/calendar/events/${eventId}`);
+    return response.data;
+};
+
+/**
+ * Update a calendar event
+ */
+export const updateCalendarEvent = async (
+    eventId: string,
+    data: {
+        title?: string;
+        description?: string;
+        location?: string;
+        startTime?: string;
+        endTime?: string;
+    }
+) => {
+    const response = await axiosInstance.patch(`/calendar/events/${eventId}`, data);
+    return response.data;
+};
+
+/**
+ * Sync a local event to Google Calendar
+ */
+export const syncEventToGoogle = async (eventId: string) => {
+    const response = await axiosInstance.post(`/calendar/events/${eventId}/sync-to-google`);
+    return response.data;
+};
+
+/**
+ * Remove event from Google Calendar (unsync)
+ */
+export const unsyncEventFromGoogle = async (eventId: string) => {
+    const response = await axiosInstance.post(`/calendar/events/${eventId}/unsync-from-google`);
     return response.data;
 };

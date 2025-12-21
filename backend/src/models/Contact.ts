@@ -7,7 +7,7 @@ export interface IContact extends Document {
 
   // Basic Information
   firstName: string;
-  lastName: string;
+  lastName?: string;  // Optional - many contacts don't have last names
   email?: string;
   phone?: string;
   company?: string;
@@ -123,9 +123,9 @@ const contactSchema = new Schema<IContact>(
     },
     lastName: {
       type: String,
-      required: [true, "Last name is required"],
       trim: true,
       maxlength: [50, "Last name must be less than 50 characters"],
+      default: "",
     },
     email: {
       type: String,

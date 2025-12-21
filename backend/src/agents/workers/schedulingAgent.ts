@@ -8,21 +8,11 @@
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
+import { parseToolCall } from "../utils/parseToolCall";
+import { createSafeRegex } from "../utils/escapeRegex";
 import CalendarEvent from "../../models/CalendarEvent";
 import Contact from "../../models/Contact";
 import Task from "../../models/Task";
-
-function parseToolCall(response: string): { tool: string; args: any } | null {
-    try {
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.tool && parsed.args !== undefined) return parsed;
-        }
-    } catch (e) { }
-    return null;
-}
-
 function addDays(date: Date, days: number): Date {
     const result = new Date(date);
     result.setDate(result.getDate() + days);
@@ -31,7 +21,8 @@ function addDays(date: Date, days: number): Date {
 
 function addHours(date: Date, hours: number): Date {
     const result = new Date(date);
-    result.setHours(result.getHours() + hours);
+    // Use setTime to properly handle fractional hours (e.g., 0.5 for 30 minutes)
+    result.setTime(result.getTime() + hours * 60 * 60 * 1000);
     return result;
 }
 

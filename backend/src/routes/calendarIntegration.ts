@@ -538,4 +538,166 @@ router.delete("/events/:eventId", authenticate, async (req: AuthRequest, res: Re
     }
 });
 
+/**
+ * PATCH /api/calendar/events/:eventId
+ * Update a calendar event
+ */
+router.patch("/events/:eventId", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { eventId } = req.params;
+        const { title, description, location, startTime, endTime } = req.body;
+
+        const updates: any = {};
+        if (title !== undefined) updates.title = title;
+        if (description !== undefined) updates.description = description;
+        if (location !== undefined) updates.location = location;
+        if (startTime !== undefined) updates.startTime = new Date(startTime);
+        if (endTime !== undefined) updates.endTime = new Date(endTime);
+
+        const event = await CalendarEvent.findByIdAndUpdate(
+            eventId,
+            { $set: updates },
+            { new: true }
+        );
+
+        if (!event) {
+            return res.status(404).json({
+                success: false,
+                error: "Event not found",
+            });
+        }
+
+        res.json({
+            success: true,
+            data: { event },
+        });
+    } catch (error: any) {
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to update event",
+        });
+    }
+});
+
+/**
+ * POST /api/calendar/events/:eventId/sync-to-google
+ * Sync a local event to Google Calendar
+ */
+router.post("/events/:eventId/sync-to-google", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { eventId } = req.params;
+
+        const event = await CalendarEvent.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ success: false, error: "Event not found" });
+        }
+
+        // Already synced?
+        if (event.externalId && event.provider === "google") {
+            return res.json({ success: true, message: "Already synced", data: { event } });
+        }
+
+        // Get Google integration
+        const integration = await CalendarIntegration.findOne({
+            workspaceId: event.workspaceId,
+            userId: req.user?._id,
+            provider: "google",
+            isActive: true,
+        }).select("+accessToken +refreshToken");
+
+        if (!integration) {
+            return res.status(400).json({ success: false, error: "No Google Calendar connected" });
+        }
+
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({
+            access_token: integration.getAccessToken(),
+            refresh_token: integration.getRefreshToken(),
+        });
+
+        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+        // Create event in Google Calendar
+        const googleEvent = await calendar.events.insert({
+            calendarId: "primary",
+            requestBody: {
+                summary: event.title,
+                description: event.description,
+                location: event.location,
+                start: { dateTime: event.startTime.toISOString() },
+                end: { dateTime: event.endTime.toISOString() },
+            },
+        });
+
+        // Update local event with Google ID
+        event.externalId = googleEvent.data.id;
+        event.provider = "google";
+        await event.save();
+
+        res.json({ success: true, data: { event } });
+    } catch (error: any) {
+        console.error("Sync to Google error:", error);
+        res.status(500).json({ success: false, error: error.message || "Failed to sync" });
+    }
+});
+
+/**
+ * POST /api/calendar/events/:eventId/unsync-from-google
+ * Remove event from Google Calendar (unsync)
+ */
+router.post("/events/:eventId/unsync-from-google", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { eventId } = req.params;
+
+        const event = await CalendarEvent.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ success: false, error: "Event not found" });
+        }
+
+        // Not synced?
+        if (!event.externalId || event.provider !== "google") {
+            return res.json({ success: true, message: "Not synced", data: { event } });
+        }
+
+        // Get Google integration
+        const integration = await CalendarIntegration.findOne({
+            workspaceId: event.workspaceId,
+            userId: req.user?._id,
+            provider: "google",
+            isActive: true,
+        }).select("+accessToken +refreshToken");
+
+        if (integration) {
+            try {
+                const oauth2Client = getOAuth2Client();
+                oauth2Client.setCredentials({
+                    access_token: integration.getAccessToken(),
+                    refresh_token: integration.getRefreshToken(),
+                });
+
+                const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+                // Delete from Google Calendar
+                await calendar.events.delete({
+                    calendarId: "primary",
+                    eventId: event.externalId,
+                });
+            } catch (e) {
+                console.error("Failed to delete from Google:", e);
+                // Continue anyway - remove local sync status
+            }
+        }
+
+        // Remove sync status from local event
+        event.externalId = undefined;
+        event.provider = "internal";
+        await event.save();
+
+        res.json({ success: true, data: { event } });
+    } catch (error: any) {
+        console.error("Unsync from Google error:", error);
+        res.status(500).json({ success: false, error: error.message || "Failed to unsync" });
+    }
+});
+
 export default router;

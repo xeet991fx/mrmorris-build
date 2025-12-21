@@ -8,12 +8,15 @@ import {
   TrashIcon,
   ExclamationCircleIcon,
   CheckCircleIcon,
+  UserGroupIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import {
   getGmailConnectUrl,
   getEmailIntegrations,
   disconnectEmailIntegration,
   syncEmails,
+  syncContacts,
   EmailIntegration,
 } from "@/lib/api/emailIntegration";
 import toast from "react-hot-toast";
@@ -29,6 +32,8 @@ export default function EmailIntegrationSection({
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState<string | null>(null);
+  const [syncingContacts, setSyncingContacts] = useState<string | null>(null);
+  const [autoExtract, setAutoExtract] = useState(false);
 
   useEffect(() => {
     loadIntegrations();
@@ -79,8 +84,34 @@ export default function EmailIntegrationSection({
     try {
       const result = await syncEmails(integrationId);
       if (result.success) {
+        const {
+          activitiesCreated,
+          companiesCreated,
+          companiesUpdated,
+          contactsCreated,
+          contactsUpdated,
+          signaturesParsed
+        } = result.data;
+        const stats: string[] = [`Activities: ${activitiesCreated || 0}`];
+
+        if (companiesCreated || companiesUpdated) {
+          const companyStat = [];
+          if (companiesCreated) companyStat.push(`${companiesCreated} created`);
+          if (companiesUpdated) companyStat.push(`${companiesUpdated} updated`);
+          stats.push(`Companies: ${companyStat.join(', ')}`);
+        }
+
+        if (contactsCreated || contactsUpdated) {
+          stats.push(`Contacts: ${contactsCreated || 0} created, ${contactsUpdated || 0} updated`);
+        }
+
+        if (signaturesParsed) {
+          stats.push(`Signatures: ${signaturesParsed} parsed`);
+        }
+
         toast.success(
-          `Synced ${result.data.activitiesCreated} emails as activities`
+          `Email sync complete! ${stats.join(' | ')}`,
+          { duration: 6000 }
         );
         loadIntegrations();
       } else {
@@ -90,6 +121,34 @@ export default function EmailIntegrationSection({
       toast.error("Sync failed");
     } finally {
       setSyncing(null);
+    }
+  };
+
+  const handleSyncContacts = async (integrationId: string) => {
+    setSyncingContacts(integrationId);
+    try {
+      const result = await syncContacts(integrationId, autoExtract);
+      if (result.success) {
+        const { created, updated, skipped } = result.data;
+        toast.success(
+          `Contacts synced! Created: ${created}, Updated: ${updated}, Skipped: ${skipped}`
+        );
+        loadIntegrations();
+      } else {
+        // Show specific message for permission errors
+        if (result.error?.includes("Insufficient permissions") || result.error?.includes("insufficient authentication")) {
+          toast.error(
+            "Please reconnect Gmail to grant contact permissions",
+            { duration: 5000 }
+          );
+        } else {
+          toast.error(result.error || "Contact sync failed");
+        }
+      }
+    } catch (error) {
+      toast.error("Contact sync failed");
+    } finally {
+      setSyncingContacts(null);
     }
   };
 
@@ -110,6 +169,28 @@ export default function EmailIntegrationSection({
 
   return (
     <div className="space-y-6">
+      {/* New Feature Banner */}
+      {integrations.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-start gap-3 p-3 rounded-lg border border-blue-500/20 bg-blue-500/5"
+        >
+          <InformationCircleIcon className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs font-medium text-blue-400 mb-1">
+              New: Automatic Contact Extraction
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Contacts are now automatically extracted from your emails! When you sync emails,
+              we'll create contacts for everyone you email with (name, email, company from domain).
+              <br />
+              <strong>Bonus:</strong> Use "Sync Contacts" to import your saved Gmail contacts too!
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Connect Email Account Section */}
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-3">
@@ -186,9 +267,27 @@ export default function EmailIntegrationSection({
 
       {/* Connected Accounts Section */}
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-3">
-          Connected Accounts
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-foreground">
+            Connected Accounts
+          </h3>
+
+          {/* Auto-extract toggle */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoExtract}
+              onChange={(e) => setAutoExtract(e.target.checked)}
+              className="w-4 h-4 rounded border-border bg-background text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0"
+            />
+            <span className="text-xs text-muted-foreground">
+              Auto-extract from emails
+            </span>
+            <span className="text-[10px] text-muted-foreground/60 px-1.5 py-0.5 bg-muted rounded">
+              Beta
+            </span>
+          </label>
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12 rounded-lg border border-border bg-background">
@@ -274,7 +373,7 @@ export default function EmailIntegrationSection({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleSync(integration._id)}
-                      disabled={syncing === integration._id}
+                      disabled={syncing === integration._id || syncingContacts === integration._id}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
                       <ArrowPathIcon
@@ -282,7 +381,20 @@ export default function EmailIntegrationSection({
                           syncing === integration._id ? "animate-spin" : ""
                         }`}
                       />
-                      {syncing === integration._id ? "Syncing..." : "Sync Now"}
+                      {syncing === integration._id ? "Syncing..." : "Sync Emails"}
+                    </button>
+                    <button
+                      onClick={() => handleSyncContacts(integration._id)}
+                      disabled={syncingContacts === integration._id || syncing === integration._id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+                      title="Sync contacts from Gmail"
+                    >
+                      <UserGroupIcon
+                        className={`w-3.5 h-3.5 ${
+                          syncingContacts === integration._id ? "animate-spin" : ""
+                        }`}
+                      />
+                      {syncingContacts === integration._id ? "Syncing..." : "Sync Contacts"}
                     </button>
                     <button
                       onClick={() => handleDisconnect(integration._id)}

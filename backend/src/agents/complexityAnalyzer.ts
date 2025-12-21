@@ -182,20 +182,30 @@ export async function analyzeTaskComplexity(message: string): Promise<Complexity
 
     // Fast path: Check for obvious complexity patterns
     const isLikelyComplex = quickComplexityCheck(message);
+    const lower = message.toLowerCase();
 
     if (!isLikelyComplex) {
-        // Quick check says it's simple - confirm with AI
         console.log(`✓ Quick check: SIMPLE task (${Date.now() - start}ms)`);
 
-        // For very simple requests, skip AI analysis
-        const lower = message.toLowerCase();
-        if (lower.split(' ').length <= 5) {
+        // Skip AI for obvious simple queries (questions, greetings, info requests)
+        const simplePatterns = [
+            /^(hi|hey|hello|what|who|why|when|where|how|can you|do you|are you|tell me|show me|explain)/i,
+            /\?$/, // Ends with question mark
+            /what (can|do) you (do|help)/i,
+            /who (are|is) you/i,
+            /how (does|do|can) (this|it|you)/i,
+        ];
+
+        const isObviouslySimple = simplePatterns.some(pattern => pattern.test(message))
+            || lower.split(' ').length <= 10;
+
+        if (isObviouslySimple) {
             return {
                 isComplex: false,
                 requiresMultipleAgents: false,
                 suggestedAgents: [],
                 coordinationMode: 'single',
-                reasoning: 'Short, simple request',
+                reasoning: 'Simple query or question',
                 confidence: 95,
             };
         }

@@ -29,6 +29,27 @@ const getFlashModel = () => {
     return _flashModel;
 };
 
+// Model optimized for JSON output (lower temperature for consistency)
+let _jsonModel: ChatVertexAI | null = null;
+const getJsonModel = () => {
+    if (!_jsonModel) {
+        _jsonModel = new ChatVertexAI({
+            model: "gemini-2.5-flash",
+            temperature: 0, // Zero temperature for deterministic JSON output
+            authOptions: {
+                keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || "./vertex-key.json",
+            },
+            safetySettings: [
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+            ],
+        });
+    }
+    return _jsonModel;
+};
+
 export interface AgentTask {
     agent: string;
     instruction: string;
@@ -223,8 +244,10 @@ function detectPlanType(message: string): string | null {
 async function aiExecutionPlan(
     message: string,
     suggestedAgents: string[],
-    coordinationMode: 'parallel' | 'sequential'
+    coordinationMode: 'parallel' | 'sequential',
+    retryCount: number = 0
 ): Promise<ExecutionPlan> {
+    const MAX_RETRIES = 2;
     const prompt = `Create an execution plan for a multi-agent CRM task.
 
 USER REQUEST: "${message}"
@@ -263,57 +286,111 @@ Available agents and their capabilities:
 - dataentry: Clean data, find duplicates, parse information
 - general: Web search and general questions
 
-Respond with ONLY a JSON object:
+OUTPUT FORMAT - Respond with ONLY valid JSON (no markdown, no comments, no extra text):
 {
-  "mode": "parallel" | "sequential",
+  "mode": "${coordinationMode}",
   "tasks": [
     {
       "agent": "agent_name",
       "instruction": "specific instruction for this agent",
-      "priority": 1-5,
-      "dependsOn": ["agent1", "agent2"]
+      "priority": 1,
+      "dependsOn": []
     }
   ],
-  "aggregationStrategy": "merge" | "summarize" | "prioritize",
-  "estimatedAgentCount": 2-4
+  "aggregationStrategy": "merge",
+  "estimatedAgentCount": 2
 }
 
-IMPORTANT:
+CRITICAL RULES:
+- Output ONLY the JSON object, nothing else
+- Use double quotes for all strings
+- No trailing commas
+- dependsOn must be an array (use [] if empty)
 - Limit to 2-4 agents maximum
-- Clear, specific instructions
-- Realistic dependencies
-- Priority 1 = run first, higher numbers = run later`;
+- Priority 1 = run first, higher numbers = run later
+- mode must be exactly "${coordinationMode}"
+- aggregationStrategy must be one of: "merge", "summarize", "prioritize"`;
 
     try {
-        const response = await getFlashModel().invoke([
-            new SystemMessage("You are an execution planning system. Respond only with JSON."),
+        const response = await getJsonModel().invoke([
+            new SystemMessage("You are an execution planning system. Generate a valid JSON execution plan."),
             new HumanMessage(prompt),
         ]);
 
         const responseText = response.content as string;
-        const jsonMatch = responseText.match(/\{[\s\S]*?\}/);
 
-        if (jsonMatch) {
-            const plan = JSON.parse(jsonMatch[0]);
-            return {
-                mode: plan.mode || coordinationMode,
-                tasks: plan.tasks || [],
-                aggregationStrategy: plan.aggregationStrategy || 'merge',
-                estimatedAgentCount: plan.estimatedAgentCount || plan.tasks?.length || 2,
-            };
+        // Try multiple extraction methods
+        let jsonText: string | null = null;
+
+        // Method 1: Look for code block with json
+        const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (codeBlockMatch) {
+            jsonText = codeBlockMatch[1].trim();
+        }
+
+        // Method 2: Extract complete JSON object (greedy match for nested objects)
+        if (!jsonText) {
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                jsonText = jsonMatch[0];
+            }
+        }
+
+        // Method 3: Use entire response if it starts with {
+        if (!jsonText && responseText.trim().startsWith('{')) {
+            jsonText = responseText.trim();
+        }
+
+        if (jsonText) {
+            // Clean up common JSON issues
+            jsonText = jsonText
+                .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+                .replace(/([{,]\s*)(\w+):/g, '$1"$2":'); // Quote unquoted keys only
+
+            try {
+                const plan = JSON.parse(jsonText);
+
+                // Validate the plan structure
+                if (!plan.tasks || !Array.isArray(plan.tasks)) {
+                    console.error("Invalid plan structure: tasks is not an array");
+                    throw new Error("Invalid plan structure");
+                }
+
+                return {
+                    mode: plan.mode || coordinationMode,
+                    tasks: plan.tasks || [],
+                    aggregationStrategy: plan.aggregationStrategy || 'merge',
+                    estimatedAgentCount: plan.estimatedAgentCount || plan.tasks?.length || 2,
+                };
+            } catch (parseError) {
+                console.error("JSON parse error:", parseError);
+                console.error("Attempted to parse:", jsonText.substring(0, 500));
+                throw parseError;
+            }
+        } else {
+            console.error("No JSON found in response:", responseText.substring(0, 500));
         }
     } catch (error) {
-        console.error("AI execution planning error:", error);
+        console.error(`AI execution planning error (attempt ${retryCount + 1}/${MAX_RETRIES + 1}):`, error);
+
+        // Retry with exponential backoff
+        if (retryCount < MAX_RETRIES) {
+            const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+            console.log(`Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return aiExecutionPlan(message, suggestedAgents, coordinationMode, retryCount + 1);
+        }
     }
 
-    // Fallback: Create simple parallel plan
+    // Fallback: Create simple plan with suggested agents
+    console.log(`⚠️ Falling back to simple plan with ${suggestedAgents.length} agents`);
     return {
         mode: coordinationMode,
         tasks: suggestedAgents.slice(0, 4).map((agent, index) => ({
             agent,
             instruction: 'Process user request',
             priority: index + 1,
-            dependsOn: [],
+            dependsOn: coordinationMode === 'sequential' && index > 0 ? [suggestedAgents[index - 1]] : [],
         })),
         aggregationStrategy: 'merge',
         estimatedAgentCount: Math.min(suggestedAgents.length, 4),

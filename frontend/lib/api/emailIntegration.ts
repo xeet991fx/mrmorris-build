@@ -86,3 +86,40 @@ export async function syncEmails(integrationId: string) {
         };
     }
 }
+
+/**
+ * Sync contacts from Gmail for an integration
+ */
+export async function syncContacts(integrationId: string, autoExtractFromEmails: boolean = false) {
+    try {
+        const response = await axiosInstance.post(
+            `/email/${integrationId}/sync-contacts`,
+            { autoExtractFromEmails }
+        );
+        return response.data;
+    } catch (error: any) {
+        console.error('Sync contacts error:', error);
+        return {
+            success: false,
+            error: error.response?.data?.error || error.message,
+        };
+    }
+}
+
+/**
+ * Trigger contact sync for all active integrations
+ */
+export async function syncAllContacts() {
+    try {
+        const response = await axiosInstance.post(
+            `/email/sync-all-contacts`
+        );
+        return response.data;
+    } catch (error: any) {
+        console.error('Sync all contacts error:', error);
+        return {
+            success: false,
+            error: error.response?.data?.error || error.message,
+        };
+    }
+}

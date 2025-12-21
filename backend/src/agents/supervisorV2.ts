@@ -286,6 +286,22 @@ async function verifierNode(state: AgentStateType): Promise<Partial<AgentStateTy
         return { verified: true };
     }
 
+    // Skip AI verification for simple, successful-looking responses
+    const isSimpleQuery = userMessage.split(' ').length <= 10;
+    const hasGoodLength = agentResponse.length >= 50 && agentResponse.length <= 2000;
+    const hasNoErrors = !state.error && !agentResponse.toLowerCase().includes('error');
+
+    if (isSimpleQuery && hasGoodLength && hasNoErrors) {
+        console.log("✓ Verified (simple query with good response, skipped AI check)");
+
+        // Add AI response to conversation history
+        if (state.sessionId && state.finalResponse) {
+            addToConversation(state.sessionId, new AIMessage(state.finalResponse));
+        }
+
+        return { verified: true };
+    }
+
     try {
         // Use Flash model for quick quality check
         const verificationPrompt = `You are a quality checker for AI agent responses.

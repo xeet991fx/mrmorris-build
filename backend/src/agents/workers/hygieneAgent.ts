@@ -8,22 +8,11 @@
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
+import { parseToolCall } from "../utils/parseToolCall";
 import Opportunity from "../../models/Opportunity";
 import Activity from "../../models/Activity";
 import Task from "../../models/Task";
 import Pipeline from "../../models/Pipeline";
-
-function parseToolCall(response: string): { tool: string; args: any } | null {
-    try {
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.tool && parsed.args !== undefined) return parsed;
-        }
-    } catch (e) { }
-    return null;
-}
-
 function daysSince(date: Date | undefined): number {
     if (!date) return 999;
     return Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));

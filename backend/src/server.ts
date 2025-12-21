@@ -34,6 +34,7 @@ import reportsRoutes from "./routes/reports";
 import agentRoutes from "./routes/agent";
 import calendarIntegrationRoutes from "./routes/calendarIntegration";
 import { workflowScheduler } from "./services/WorkflowScheduler";
+import { startContactSyncScheduler } from "./services/contactSyncService";
 
 import fs from "fs";
 
@@ -201,6 +202,10 @@ const startServer = async () => {
       // Start workflow scheduler (runs every minute)
       workflowScheduler.start();
       console.log(`⚡ Workflow scheduler: Running`);
+
+      // Start contact sync scheduler (runs daily at 2 AM)
+      startContactSyncScheduler();
+      console.log(`⚡ Contact sync scheduler: Running`);
 
       // Initialize event consumers (NEW)
       (async () => {

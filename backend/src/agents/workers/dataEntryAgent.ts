@@ -9,20 +9,9 @@
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
+import { parseToolCall } from "../utils/parseToolCall";
 import Contact from "../../models/Contact";
 import Company from "../../models/Company";
-
-function parseToolCall(response: string): { tool: string; args: any } | null {
-    try {
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.tool && parsed.args !== undefined) return parsed;
-        }
-    } catch (e) { }
-    return null;
-}
-
 // Calculate similarity between two strings
 function stringSimilarity(s1: string, s2: string): number {
     if (!s1 || !s2) return 0;

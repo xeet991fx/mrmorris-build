@@ -9,22 +9,12 @@
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
+import { parseToolCall } from "../utils/parseToolCall";
+import { createSafeRegex } from "../utils/escapeRegex";
 import Proposal from "../../models/Proposal";
 import Opportunity from "../../models/Opportunity";
 import Contact from "../../models/Contact";
 import Company from "../../models/Company";
-
-function parseToolCall(response: string): { tool: string; args: any } | null {
-    try {
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.tool && parsed.args !== undefined) return parsed;
-        }
-    } catch (e) { }
-    return null;
-}
-
 async function executeProposalTool(
     toolName: string,
     args: any,

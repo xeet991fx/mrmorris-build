@@ -8,22 +8,11 @@
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentStateType } from "../state";
 import { getProModel } from "../modelFactory";
+import { parseToolCall } from "../utils/parseToolCall";
 import Campaign from "../../models/Campaign";
 import CampaignEnrollment from "../../models/CampaignEnrollment";
 import Contact from "../../models/Contact";
 import { createSafeRegex } from "../utils/escapeRegex";
-
-function parseToolCall(response: string): { tool: string; args: any } | null {
-    try {
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.tool && parsed.args) return parsed;
-        }
-    } catch (e) { }
-    return null;
-}
-
 async function executeCampaignTool(
     toolName: string,
     args: any,
