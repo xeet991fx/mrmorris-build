@@ -60,7 +60,9 @@ export interface CreateContactData {
   customFields?: Record<string, any>;
 }
 
-export interface UpdateContactData extends Partial<CreateContactData> { }
+export interface UpdateContactData extends Partial<CreateContactData> {
+  companyId?: string;
+}
 
 export interface ContactResponse {
   success: boolean;

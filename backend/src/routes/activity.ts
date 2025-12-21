@@ -401,4 +401,112 @@ router.get(
   }
 );
 
+// =====================================================
+// COMPANY ACTIVITIES
+// =====================================================
+
+/**
+ * GET /api/workspaces/:workspaceId/companies/:companyId/activities
+ * Get all activities for a company (direct + from linked contacts + from deals)
+ */
+router.get(
+  '/workspaces/:workspaceId/companies/:companyId/activities',
+  authenticate,
+  async (req: AuthRequest, res) => {
+    try {
+      const { workspaceId, companyId } = req.params;
+      const { type, limit = '50', offset = '0' } = req.query;
+
+      // Build query for company activities
+      const query: any = {
+        workspaceId,
+        entityType: 'company',
+        entityId: companyId,
+      };
+
+      if (type) {
+        query.type = type;
+      }
+
+      // Get activities
+      const activities = await Activity.find(query)
+        .populate('userId', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit as string))
+        .skip(parseInt(offset as string));
+
+      const total = await Activity.countDocuments(query);
+
+      res.json({
+        success: true,
+        data: {
+          activities,
+          total,
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string),
+        },
+      });
+    } catch (error: any) {
+      console.error('Get company activities error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch activities',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/companies/:companyId/activities
+ * Create a new activity for a company
+ */
+router.post(
+  '/workspaces/:workspaceId/companies/:companyId/activities',
+  authenticate,
+  async (req: AuthRequest, res) => {
+    try {
+      const { workspaceId, companyId } = req.params;
+      const userId = req.user?._id;
+
+      // Validate request body
+      const validatedData = createActivitySchema.parse(req.body);
+
+      // Create activity with entity linking
+      const activity = new Activity({
+        workspaceId,
+        userId,
+        entityType: 'company',
+        entityId: companyId,
+        ...validatedData,
+      });
+
+      await activity.save();
+
+      // Populate user info
+      await activity.populate('userId', 'name email');
+
+      res.status(201).json({
+        success: true,
+        data: { activity },
+      });
+    } catch (error: any) {
+      console.error('Create company activity error:', error);
+
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: 'Validation failed',
+          details: error.errors,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to create activity',
+      });
+    }
+  }
+);
+
 export default router;
+

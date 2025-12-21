@@ -49,6 +49,7 @@ export const createContactSchema = z.object({
     .optional(),
   assignedTo: z.string().optional(), // User ID
   notes: z.string().optional().or(z.literal("")),
+  companyId: z.string().optional().or(z.literal("")), // Company ID reference
   customFields: z.record(z.any()).optional(), // Dynamic custom fields
 });
 
