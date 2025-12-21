@@ -682,6 +682,16 @@ router.post("/:integrationId/sync-contacts", authenticate, async (req: AuthReque
         let skippedCount = 0;
         const errors: string[] = [];
 
+        // Get existing contacts for deduplication (declared here for use in multiple sections)
+        const existingContacts = await Contact.find({
+            workspaceId: integration.workspaceId,
+        });
+        const emailToContactMap = new Map(
+            existingContacts
+                .filter(c => c.email)
+                .map(c => [c.email!.toLowerCase(), c])
+        );
+
         // Get People API client
         const people = google.people({ version: "v1", auth: oauth2Client });
 
@@ -694,17 +704,6 @@ router.post("/:integrationId/sync-contacts", authenticate, async (req: AuthReque
             });
 
             const connections = connectionsResponse.data.connections || [];
-            console.log(`📥 Fetched ${connections.length} contacts from Gmail`);
-
-            // Get existing contacts for deduplication
-            const existingContacts = await Contact.find({
-                workspaceId: integration.workspaceId,
-            });
-            const emailToContactMap = new Map(
-                existingContacts
-                    .filter(c => c.email)
-                    .map(c => [c.email!.toLowerCase(), c])
-            );
 
             console.log(`📊 Existing contacts in CRM: ${existingContacts.length} (${emailToContactMap.size} with emails)`);
 
