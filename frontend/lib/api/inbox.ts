@@ -47,7 +47,9 @@ export interface InboxMessagesResponse {
 }
 
 export interface InboxFilters {
+    source?: 'campaign' | 'workflow' | 'direct' | 'all';
     campaign?: string;
+    workflow?: string;
     sentiment?: "positive" | "neutral" | "negative";
     assignedTo?: string;
     isRead?: boolean;
@@ -65,6 +67,27 @@ export const getInboxMessages = async (
 ): Promise<InboxMessagesResponse> => {
     const response = await axiosInstance.get(`/inbox`, {
         params: { workspaceId, ...filters },
+    });
+    return response.data;
+};
+
+/**
+ * Get inbox stats by source
+ */
+export const getInboxStats = async (
+    workspaceId: string
+): Promise<{
+    success: boolean;
+    data: {
+        all: number;
+        campaigns: number;
+        workflows: number;
+        direct: number;
+        unread: number;
+    };
+}> => {
+    const response = await axiosInstance.get(`/inbox/stats`, {
+        params: { workspaceId },
     });
     return response.data;
 };

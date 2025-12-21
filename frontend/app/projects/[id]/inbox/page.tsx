@@ -18,12 +18,14 @@ import {
 import toast from "react-hot-toast";
 import {
     getInboxMessages,
+    getInboxStats,
     markMessageAsRead,
     generateAIDraft,
     sendReply,
     syncInbox,
 } from "@/lib/api/inbox";
 import { getCampaigns } from "@/lib/api/campaign";
+import { getWorkflows } from "@/lib/api/workflow";
 import { EmailInsightsPanel } from "@/components/inbox/EmailInsightsPanel";
 
 // Local type for inbox messages with extended properties
@@ -72,11 +74,15 @@ export default function InboxPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedMessage, setSelectedMessage] = useState<LocalInboxMessage | null>(null);
     const [filters, setFilters] = useState({
+        source: "all" as 'all' | 'campaign' | 'workflow' | 'direct',
         campaign: "",
+        workflow: "",
         sentiment: "",
         search: "",
     });
+    const [stats, setStats] = useState({ all: 0, campaigns: 0, workflows: 0, direct: 0, unread: 0 });
     const [campaigns, setCampaigns] = useState<Array<{ _id: string; name: string }>>([]);
+    const [workflows, setWorkflows] = useState<Array<{ _id: string; name: string }>>([]);
     const [aiDraft, setAiDraft] = useState<string>("");
     const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
     const [isSendingReply, setIsSendingReply] = useState(false);
@@ -86,7 +92,9 @@ export default function InboxPage() {
         try {
             setError(null);
             const response = await getInboxMessages(workspaceId, {
-                campaign: filters.campaign || undefined,
+                source: filters.source !== 'all' ? filters.source : undefined,
+                campaign: filters.source === 'campaign' && filters.campaign ? filters.campaign : undefined,
+                workflow: filters.source === 'workflow' && filters.workflow ? filters.workflow : undefined,
                 sentiment: filters.sentiment as any || undefined,
                 search: filters.search || undefined,
             });
@@ -105,7 +113,18 @@ export default function InboxPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [workspaceId, filters.campaign, filters.sentiment, filters.search]);
+    }, [workspaceId, filters.source, filters.campaign, filters.workflow, filters.sentiment, filters.search]);
+
+    const fetchStats = useCallback(async () => {
+        try {
+            const response = await getInboxStats(workspaceId);
+            if (response.success) {
+                setStats(response.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch stats:', err);
+        }
+    }, [workspaceId]);
 
     const fetchCampaignsData = useCallback(async () => {
         try {
@@ -119,10 +138,24 @@ export default function InboxPage() {
         }
     }, [workspaceId]);
 
+    const fetchWorkflowsData = useCallback(async () => {
+        try {
+            const response = await getWorkflows(workspaceId);
+            if (response.success) {
+                const workflowList = response.data?.workflows || [];
+                setWorkflows(workflowList.map((w: any) => ({ _id: w._id, name: w.name })));
+            }
+        } catch (err) {
+            console.error("Failed to fetch workflows:", err);
+        }
+    }, [workspaceId]);
+
     useEffect(() => {
         fetchMessages();
         fetchCampaignsData();
-    }, [fetchMessages, fetchCampaignsData]);
+        fetchWorkflowsData();
+        fetchStats();
+    }, [fetchMessages, fetchCampaignsData, fetchWorkflowsData, fetchStats]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -234,7 +267,7 @@ export default function InboxPage() {
                         <div>
                             <h1 className="text-2xl font-bold text-foreground">Inbox</h1>
                             <p className="text-sm text-muted-foreground">
-                                {messages.length} {messages.length === 1 ? 'reply' : 'replies'} from campaigns
+                                {messages.length} messages • {stats.unread} unread
                             </p>
                         </div>
                     </div>
@@ -280,22 +313,11 @@ export default function InboxPage() {
                             type="text"
                             value={filters.search}
                             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                            placeholder="Search replies..."
+                            placeholder="Search messages..."
                             className="w-full pl-12 pr-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 focus:border-[#9ACD32] transition-all"
                         />
                     </div>
                 </form>
-
-                <select
-                    value={filters.campaign}
-                    onChange={(e) => setFilters({ ...filters, campaign: e.target.value })}
-                    className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
-                >
-                    <option value="">All Campaigns</option>
-                    {campaigns.map((campaign) => (
-                        <option key={campaign._id} value={campaign._id}>{campaign.name}</option>
-                    ))}
-                </select>
 
                 <select
                     value={filters.sentiment}
@@ -309,6 +331,56 @@ export default function InboxPage() {
                     <option value="out_of_office">🏖️ Out of Office</option>
                     <option value="unsubscribe">🚫 Unsubscribe</option>
                 </select>
+            </div>
+
+            {/* Source Type Dropdown */}
+            <div className="flex items-center gap-4 mb-4 flex-shrink-0">
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Source Type</label>
+                    <select
+                        value={filters.source}
+                        onChange={(e) => setFilters({ ...filters, source: e.target.value as any, campaign: '', workflow: '' })}
+                        className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer min-w-[160px]"
+                    >
+                        <option value="all">📬 All Sources ({stats.all})</option>
+                        <option value="campaign">📧 Campaigns ({stats.campaigns})</option>
+                        <option value="workflow">⚡ Workflows ({stats.workflows})</option>
+                        <option value="direct">✉️ Direct ({stats.direct})</option>
+                    </select>
+                </div>
+
+                {/* Specific Item Dropdown */}
+                {filters.source === 'campaign' && (
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">Select Campaign</label>
+                        <select
+                            value={filters.campaign}
+                            onChange={(e) => setFilters({ ...filters, campaign: e.target.value })}
+                            className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer min-w-[200px]"
+                        >
+                            <option value="">All Campaigns</option>
+                            {campaigns.map((campaign) => (
+                                <option key={campaign._id} value={campaign._id}>{campaign.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {filters.source === 'workflow' && (
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">Select Workflow</label>
+                        <select
+                            value={filters.workflow}
+                            onChange={(e) => setFilters({ ...filters, workflow: e.target.value })}
+                            className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer min-w-[200px]"
+                        >
+                            <option value="">All Workflows</option>
+                            {workflows.map((workflow) => (
+                                <option key={workflow._id} value={workflow._id}>{workflow.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {/* Messages List & Detail View */}

@@ -17,12 +17,15 @@ import { Types } from "mongoose";
 
 class InboxService {
     /**
-     * Get all inbox messages (replies) for a workspace
+     * Get all inbox messages for a workspace
+     * Now supports multiple sources: campaigns, workflows, direct
      */
     async getInboxMessages(
         workspaceId: Types.ObjectId,
         filters?: {
+            source?: 'campaign' | 'workflow' | 'direct' | 'all';
             campaign?: string;
+            workflow?: string;
             sentiment?: string;
             assignedTo?: string;
             isRead?: boolean;
@@ -38,22 +41,44 @@ class InboxService {
     }> {
         const query: any = {
             workspaceId,
-            replied: true, // Only show messages that have replies
-            campaignId: { $ne: null }, // Exclude orphaned messages from deleted campaigns
         };
+
+        // Source filter
+        if (filters?.source && filters.source !== 'all') {
+            query.source = filters.source;
+        }
+
+        // For campaigns, we typically want replied messages
+        // For workflows and direct, show all sent emails
+        if (filters?.source === 'campaign' || !filters?.source) {
+            // Default behavior: only show replied campaign messages
+            if (!filters?.source) {
+                query.$or = [
+                    { source: 'campaign', replied: true },
+                    { source: { $in: ['workflow', 'direct'] } }
+                ];
+            }
+        }
 
         if (filters?.campaign) {
             query.campaignId = new Types.ObjectId(filters.campaign);
+        }
+
+        if (filters?.workflow) {
+            query.workflowId = new Types.ObjectId(filters.workflow);
         }
 
         if (filters?.sentiment) {
             query.replySentiment = filters.sentiment;
         }
 
-        // TODO: Add assignedTo filter when we implement assignment
+        if (filters?.isRead !== undefined) {
+            query.isRead = filters.isRead;
+        }
 
         if (filters?.search) {
             query.$or = [
+                { subject: { $regex: filters.search, $options: "i" } },
                 { replySubject: { $regex: filters.search, $options: "i" } },
                 { replyBody: { $regex: filters.search, $options: "i" } },
             ];
@@ -64,8 +89,9 @@ class InboxService {
 
         const messages = await EmailMessage.find(query)
             .populate("campaignId", "name")
-            .populate("contactId", "name email company")
-            .sort({ repliedAt: -1 })
+            .populate("workflowId", "name")
+            .populate("contactId", "firstName lastName email company")
+            .sort({ sentAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit)
             .lean();
@@ -76,6 +102,35 @@ class InboxService {
             page,
             totalPages,
         };
+    }
+
+    /**
+     * Get inbox stats by source
+     */
+    async getStats(workspaceId: Types.ObjectId): Promise<{
+        all: number;
+        campaigns: number;
+        workflows: number;
+        direct: number;
+        unread: number;
+    }> {
+        const baseQuery = { workspaceId };
+
+        const [all, campaigns, workflows, direct, unread] = await Promise.all([
+            EmailMessage.countDocuments({
+                ...baseQuery,
+                $or: [
+                    { source: 'campaign', replied: true },
+                    { source: { $in: ['workflow', 'direct'] } }
+                ]
+            }),
+            EmailMessage.countDocuments({ ...baseQuery, source: 'campaign', replied: true }),
+            EmailMessage.countDocuments({ ...baseQuery, source: 'workflow' }),
+            EmailMessage.countDocuments({ ...baseQuery, source: 'direct' }),
+            EmailMessage.countDocuments({ ...baseQuery, isRead: false }),
+        ]);
+
+        return { all, campaigns, workflows, direct, unread };
     }
 
     /**

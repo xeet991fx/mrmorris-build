@@ -5,21 +5,32 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 // ============================================
 
 export type MessageSentiment = 'positive' | 'neutral' | 'negative' | 'out_of_office' | 'unsubscribe';
+export type EmailSource = 'campaign' | 'workflow' | 'direct';
 
 export interface IEmailMessage extends Document {
-    campaignId: Types.ObjectId;
-    enrollmentId: Types.ObjectId;
+    // Source identification
+    source: EmailSource;
+
+    // Campaign fields (optional - only for campaign emails)
+    campaignId?: Types.ObjectId;
+    enrollmentId?: Types.ObjectId;
+
+    // Workflow fields (optional - only for workflow emails)
+    workflowId?: Types.ObjectId;
+    workflowEnrollmentId?: Types.ObjectId;
+
+    // Common required fields
     contactId: Types.ObjectId;
     workspaceId: Types.ObjectId;
 
     // Email details
-    fromAccountId: Types.ObjectId;
+    fromAccountId?: Types.ObjectId;
     fromEmail: string;
     toEmail: string;
 
     subject: string;
     bodyHtml: string;
-    bodyText: string;
+    bodyText?: string;
 
     // Threading
     messageId: string; // Email Message-ID header
@@ -45,7 +56,10 @@ export interface IEmailMessage extends Document {
     replySentiment?: MessageSentiment;
 
     // Metadata
-    stepId?: string; // Which campaign step this was sent from
+    stepId?: string; // Which campaign/workflow step this was sent from
+
+    // Read status (for inbox display)
+    isRead?: boolean;
 }
 
 // ============================================
@@ -54,18 +68,39 @@ export interface IEmailMessage extends Document {
 
 const emailMessageSchema = new Schema<IEmailMessage>(
     {
+        // Source identification
+        source: {
+            type: String,
+            enum: ['campaign', 'workflow', 'direct'],
+            default: 'campaign',
+            index: true,
+        },
+
+        // Campaign fields (optional)
         campaignId: {
             type: Schema.Types.ObjectId,
             ref: "Campaign",
-            required: true,
             index: true,
         },
         enrollmentId: {
             type: Schema.Types.ObjectId,
             ref: "CampaignEnrollment",
-            required: true,
             index: true,
         },
+
+        // Workflow fields (optional)
+        workflowId: {
+            type: Schema.Types.ObjectId,
+            ref: "Workflow",
+            index: true,
+        },
+        workflowEnrollmentId: {
+            type: Schema.Types.ObjectId,
+            ref: "WorkflowEnrollment",
+            index: true,
+        },
+
+        // Common required fields
         contactId: {
             type: Schema.Types.ObjectId,
             ref: "Contact",
@@ -83,7 +118,6 @@ const emailMessageSchema = new Schema<IEmailMessage>(
         fromAccountId: {
             type: Schema.Types.ObjectId,
             ref: "EmailAccount",
-            required: true,
         },
         fromEmail: {
             type: String,
@@ -153,6 +187,12 @@ const emailMessageSchema = new Schema<IEmailMessage>(
 
         // Metadata
         stepId: String,
+
+        // Read status for inbox
+        isRead: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,
@@ -163,9 +203,11 @@ const emailMessageSchema = new Schema<IEmailMessage>(
 // INDEXES
 // ============================================
 
+emailMessageSchema.index({ workspaceId: 1, source: 1, sentAt: -1 });
 emailMessageSchema.index({ workspaceId: 1, replied: 1, sentAt: -1 });
 emailMessageSchema.index({ threadId: 1 });
 emailMessageSchema.index({ campaignId: 1, sentAt: -1 });
+emailMessageSchema.index({ workflowId: 1, sentAt: -1 });
 
 // ============================================
 // EXPORT

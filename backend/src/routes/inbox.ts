@@ -15,11 +15,11 @@ router.use(authenticate);
 
 /**
  * GET /api/inbox
- * Get all inbox messages (replies)
+ * Get all inbox messages (campaigns, workflows, direct)
  */
 router.get("/", async (req: any, res) => {
     try {
-        const { workspaceId, campaign, sentiment, assignedTo, isRead, search, page = 1, limit = 50 } = req.query;
+        const { workspaceId, source, campaign, workflow, sentiment, assignedTo, isRead, search, page = 1, limit = 50 } = req.query;
 
         if (!workspaceId) {
             return res.status(400).json({
@@ -28,12 +28,14 @@ router.get("/", async (req: any, res) => {
             });
         }
 
-        console.log(`📥 Fetching inbox for workspace: ${workspaceId}`);
+        console.log(`📥 Fetching inbox for workspace: ${workspaceId}, source: ${source || 'all'}`);
 
         const result = await InboxService.getInboxMessages(
             workspaceId,
             {
+                source: source as any,
                 campaign,
+                workflow,
                 sentiment,
                 assignedTo,
                 isRead: isRead ? isRead === "true" : undefined,
@@ -51,6 +53,36 @@ router.get("/", async (req: any, res) => {
         });
     } catch (error: any) {
         console.error("Get inbox error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
+/**
+ * GET /api/inbox/stats
+ * Get inbox statistics by source
+ */
+router.get("/stats", async (req: any, res) => {
+    try {
+        const { workspaceId } = req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                message: "workspaceId is required",
+            });
+        }
+
+        const stats = await InboxService.getStats(workspaceId);
+
+        res.json({
+            success: true,
+            data: stats,
+        });
+    } catch (error: any) {
+        console.error("Get inbox stats error:", error);
         res.status(500).json({
             success: false,
             message: error.message,

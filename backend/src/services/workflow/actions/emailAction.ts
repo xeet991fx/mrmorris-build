@@ -9,8 +9,11 @@
  */
 
 import { google } from "googleapis";
+import { Types } from "mongoose";
 import Activity from "../../../models/Activity";
 import EmailIntegration from "../../../models/EmailIntegration";
+import EmailMessage from "../../../models/EmailMessage";
+import Contact from "../../../models/Contact";
 import emailService from "../../email";
 import { replacePlaceholders } from "../utils";
 import { ActionContext, ActionResult, BaseActionExecutor } from "./types";
@@ -152,6 +155,41 @@ export class EmailActionExecutor extends BaseActionExecutor {
         }
 
         const sentFrom = gmailIntegration?.email || process.env.EMAIL_USER || "system";
+
+        // Save email to EmailMessage for inbox display
+        try {
+            // Find contact by email if entity doesn't have _id
+            let contactId = entity._id;
+            if (!contactId) {
+                const contact = await Contact.findOne({
+                    workspaceId: enrollment.workspaceId,
+                    email: toEmail
+                });
+                contactId = contact?._id;
+            }
+
+            if (contactId) {
+                await EmailMessage.create({
+                    source: 'workflow',
+                    workflowId: enrollment.workflowId,
+                    workflowEnrollmentId: enrollment._id,
+                    contactId: new Types.ObjectId(contactId.toString()),
+                    workspaceId: new Types.ObjectId(enrollment.workspaceId.toString()),
+                    fromEmail: sentFrom,
+                    toEmail: toEmail,
+                    subject: subject,
+                    bodyHtml: body,
+                    bodyText: body.replace(/<[^>]*>/g, ''),
+                    messageId: result.messageId || `workflow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    sentAt: new Date(),
+                    stepId: step.id,
+                    isRead: false,
+                });
+                console.log(`📧 Workflow email saved to inbox`);
+            }
+        } catch (saveError: any) {
+            console.error(`⚠️ Failed to save workflow email to inbox:`, saveError.message);
+        }
 
         // Clear console log for email sent
         console.log(`\n========================================`);
