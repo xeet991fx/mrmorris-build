@@ -14,6 +14,8 @@ import EditCompanyModal from "@/components/companies/EditCompanyModal";
 import CompanyColumnManager from "@/components/companies/CompanyColumnManager";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ImportModal from "@/components/import/ImportModal";
+import { useInsightTracking } from "@/hooks/useInsightTracking";
+import { CompanyIntelligencePanel } from "@/components/companies/CompanyIntelligencePanel";
 
 export default function CompaniesPage() {
   const params = useParams();
@@ -28,6 +30,12 @@ export default function CompaniesPage() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
+
+  const { track } = useInsightTracking({
+    workspaceId,
+    page: 'companies',
+    enabled: !!workspaceId,
+  });
 
   // Fetch companies and custom columns on mount
   useEffect(() => {
@@ -107,6 +115,13 @@ export default function CompaniesPage() {
             />
           </motion.div>
         ) : null}
+
+        {/* AI Account Intelligence */}
+        {companies.length > 0 && (
+          <div className="px-6 py-4">
+            <CompanyIntelligencePanel workspaceId={workspaceId} companies={companies} />
+          </div>
+        )}
 
         {/* Main Content - Scrollable Table */}
         <div className="flex-1 overflow-x-auto overflow-y-auto">

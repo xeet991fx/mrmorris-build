@@ -27,12 +27,16 @@ import {
 import { getCampaigns } from "@/lib/api/campaign";
 import { getWorkflows } from "@/lib/api/workflow";
 import { EmailInsightsPanel } from "@/components/inbox/EmailInsightsPanel";
+import { useInsightTracking } from "@/hooks/useInsightTracking";
 
 // Local type for inbox messages with extended properties
 interface LocalInboxMessage {
     _id: string;
     workspaceId: string;
     campaignId?: { _id: string; name: string } | string;
+    workflowId?: { _id: string; name: string } | string;
+    sequenceId?: { _id: string; name: string } | string;
+    source?: 'campaign' | 'workflow' | 'sequence' | 'direct';
     contactId?: { _id: string; name: string; email: string; company?: string } | string;
     fromEmail: string;
     toEmail?: string;
@@ -48,7 +52,7 @@ interface LocalInboxMessage {
     receivedAt: string;
     createdAt: string;
     updatedAt: string;
-    // Extended fields for campaign replies
+    // Extended fields for replies
     replySubject?: string;
     replyBody?: string;
     replySentiment?: "positive" | "negative" | "neutral" | "out_of_office" | "unsubscribe";
@@ -68,6 +72,13 @@ interface LocalInboxMessage {
 export default function InboxPage() {
     const params = useParams();
     const workspaceId = params.id as string;
+
+    // Track actions for AI insights
+    const { track } = useInsightTracking({
+        workspaceId,
+        page: 'inbox',
+        enabled: !!workspaceId,
+    });
 
     const [messages, setMessages] = useState<LocalInboxMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -190,16 +201,16 @@ export default function InboxPage() {
 
     const getSentimentBadge = (sentiment?: string) => {
         const badges: Record<string, { bg: string; text: string; label: string; icon: string }> = {
-            positive: { bg: "bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30", text: "text-green-400", label: "Positive", icon: "😊" },
-            negative: { bg: "bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-500/30", text: "text-red-400", label: "Negative", icon: "😞" },
-            neutral: { bg: "bg-gradient-to-r from-gray-500/20 to-slate-500/20 border border-gray-500/30", text: "text-gray-400", label: "Neutral", icon: "😐" },
-            out_of_office: { bg: "bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30", text: "text-yellow-400", label: "Away", icon: "🏖️" },
-            unsubscribe: { bg: "bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-500/30", text: "text-red-400", label: "Unsubscribe", icon: "🚫" },
+            positive: { bg: "bg-green-500/15 border border-green-500/30", text: "text-green-400", label: "Positive", icon: "😊" },
+            negative: { bg: "bg-red-500/15 border border-red-500/30", text: "text-red-400", label: "Negative", icon: "😞" },
+            neutral: { bg: "bg-gray-500/15 border border-gray-500/30", text: "text-gray-400", label: "Neutral", icon: "😐" },
+            out_of_office: { bg: "bg-yellow-500/15 border border-yellow-500/30", text: "text-yellow-400", label: "Away", icon: "🏖️" },
+            unsubscribe: { bg: "bg-red-500/15 border border-red-500/30", text: "text-red-400", label: "Unsub", icon: "🚫" },
         };
         const badge = badges[sentiment || "neutral"] || badges.neutral;
         return (
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${badge.bg} ${badge.text}`}>
-                <span>{badge.icon}</span>
+            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
+                <span className="text-[10px]">{badge.icon}</span>
                 {badge.label}
             </span>
         );
@@ -235,10 +246,34 @@ export default function InboxPage() {
         return message.contactId.company || message.toEmail || "";
     };
 
-    const getCampaignName = (message: LocalInboxMessage): string => {
-        if (!message.campaignId) return "Unknown Campaign";
-        if (typeof message.campaignId === "string") return "Campaign";
-        return message.campaignId.name || "Unknown Campaign";
+    const getSourceInfo = (message: LocalInboxMessage): { type: string; name: string; icon: string; color: string } => {
+        // Check for campaign
+        if (message.campaignId) {
+            const name = typeof message.campaignId === 'string' ? 'Campaign' : (message.campaignId.name || 'Campaign');
+            return { type: 'Campaign', name, icon: '📧', color: 'text-blue-400 bg-blue-500/10' };
+        }
+        // Check for workflow
+        if (message.workflowId) {
+            const name = typeof message.workflowId === 'string' ? 'Workflow' : (message.workflowId.name || 'Workflow');
+            return { type: 'Workflow', name, icon: '⚡', color: 'text-purple-400 bg-purple-500/10' };
+        }
+        // Check for sequence
+        if (message.sequenceId) {
+            const name = typeof message.sequenceId === 'string' ? 'Sequence' : (message.sequenceId.name || 'Sequence');
+            return { type: 'Sequence', name, icon: '📋', color: 'text-orange-400 bg-orange-500/10' };
+        }
+        // Check source field
+        if (message.source === 'workflow') {
+            return { type: 'Workflow', name: 'Workflow', icon: '⚡', color: 'text-purple-400 bg-purple-500/10' };
+        }
+        if (message.source === 'sequence') {
+            return { type: 'Sequence', name: 'Sequence', icon: '📋', color: 'text-orange-400 bg-orange-500/10' };
+        }
+        if (message.source === 'campaign') {
+            return { type: 'Campaign', name: 'Campaign', icon: '📧', color: 'text-blue-400 bg-blue-500/10' };
+        }
+        // Default to direct email
+        return { type: 'Direct', name: 'Direct Email', icon: '✉️', color: 'text-gray-400 bg-gray-500/10' };
     };
 
     const getContactEmail = (message: LocalInboxMessage): string => {
@@ -256,23 +291,20 @@ export default function InboxPage() {
     }
 
     return (
-        <div className="h-[calc(100vh-2rem)] flex flex-col p-6 bg-gradient-to-br from-card/95 via-card/95 to-[#9ACD32]/5">
-            {/* Header with gradient accent */}
-            <div className="flex items-center justify-between mb-6 flex-shrink-0">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9ACD32] to-[#9ACD32]/60 flex items-center justify-center shadow-lg shadow-[#9ACD32]/20">
-                            <EnvelopeOpenIcon className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">Inbox</h1>
-                            <p className="text-sm text-muted-foreground">
-                                {messages.length} messages • {stats.unread} unread
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3">
+        <div className="min-h-screen bg-card/95 flex flex-col">
+            {/* Header - matches contacts/workflows style */}
+            <div className="h-12 px-6 border-b border-border flex items-center justify-between flex-shrink-0">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-3"
+                >
+                    <h1 className="text-lg font-semibold text-foreground">Inbox</h1>
+                    <p className="text-xs text-muted-foreground">
+                        {messages.length} messages • {stats.unread} unread
+                    </p>
+                </motion.div>
+                <div className="flex items-center gap-2">
                     <button
                         onClick={async () => {
                             setIsSyncing(true);
@@ -289,14 +321,14 @@ export default function InboxPage() {
                             }
                         }}
                         disabled={isSyncing}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#9ACD32] text-background rounded-xl hover:bg-[#8AB82E] hover:shadow-lg hover:shadow-[#9ACD32]/30 transition-all duration-300 disabled:opacity-50 font-medium"
+                        className="flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-all disabled:opacity-50 font-medium text-sm"
                     >
                         <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                         {isSyncing ? 'Syncing...' : 'Sync Gmail'}
                     </button>
                     <button
                         onClick={() => fetchMessages()}
-                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-xl hover:bg-muted/50 transition-all"
+                        className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-muted/50 transition-all text-sm"
                     >
                         <ArrowPathIcon className="w-4 h-4" />
                         Refresh
@@ -304,17 +336,17 @@ export default function InboxPage() {
                 </div>
             </div>
 
-            {/* Filters - Glassmorphism style */}
-            <div className="flex items-center gap-4 mb-6 flex-shrink-0 p-4 bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl">
-                <form onSubmit={handleSearch} className="flex-1 max-w-md">
-                    <div className="relative group">
-                        <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            {/* Filters */}
+            <div className="px-6 py-3 border-b border-border flex items-center gap-4 flex-shrink-0">
+                <form onSubmit={handleSearch} className="flex-1 max-w-sm">
+                    <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <input
                             type="text"
                             value={filters.search}
                             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                             placeholder="Search messages..."
-                            className="w-full pl-12 pr-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 focus:border-[#9ACD32] transition-all"
+                            className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 focus:border-[#9ACD32] transition-all"
                         />
                     </div>
                 </form>
@@ -322,7 +354,7 @@ export default function InboxPage() {
                 <select
                     value={filters.sentiment}
                     onChange={(e) => setFilters({ ...filters, sentiment: e.target.value })}
-                    className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
+                    className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
                 >
                     <option value="">All Sentiments</option>
                     <option value="positive">😊 Positive</option>
@@ -331,77 +363,66 @@ export default function InboxPage() {
                     <option value="out_of_office">🏖️ Out of Office</option>
                     <option value="unsubscribe">🚫 Unsubscribe</option>
                 </select>
-            </div>
 
-            {/* Source Type Dropdown */}
-            <div className="flex items-center gap-4 mb-4 flex-shrink-0">
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted-foreground">Source Type</label>
+                <div className="flex items-center gap-3">
                     <select
                         value={filters.source}
                         onChange={(e) => setFilters({ ...filters, source: e.target.value as any, campaign: '', workflow: '' })}
-                        className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer min-w-[160px]"
+                        className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
                     >
                         <option value="all">📬 All Sources ({stats.all})</option>
                         <option value="campaign">📧 Campaigns ({stats.campaigns})</option>
                         <option value="workflow">⚡ Workflows ({stats.workflows})</option>
                         <option value="direct">✉️ Direct ({stats.direct})</option>
                     </select>
-                </div>
 
-                {/* Specific Item Dropdown */}
-                {filters.source === 'campaign' && (
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs text-muted-foreground">Select Campaign</label>
+                    {filters.source === 'campaign' && (
                         <select
                             value={filters.campaign}
                             onChange={(e) => setFilters({ ...filters, campaign: e.target.value })}
-                            className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer min-w-[200px]"
+                            className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
                         >
                             <option value="">All Campaigns</option>
                             {campaigns.map((campaign) => (
                                 <option key={campaign._id} value={campaign._id}>{campaign.name}</option>
                             ))}
                         </select>
-                    </div>
-                )}
+                    )}
 
-                {filters.source === 'workflow' && (
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs text-muted-foreground">Select Workflow</label>
+                    {filters.source === 'workflow' && (
                         <select
                             value={filters.workflow}
                             onChange={(e) => setFilters({ ...filters, workflow: e.target.value })}
-                            className="px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer min-w-[200px]"
+                            className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
                         >
                             <option value="">All Workflows</option>
                             {workflows.map((workflow) => (
                                 <option key={workflow._id} value={workflow._id}>{workflow.name}</option>
                             ))}
                         </select>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* Messages List & Detail View */}
-            <div className="flex-1 flex gap-6 min-h-0">
+            <div className="flex-1 flex gap-4 p-6 min-h-0">
                 {/* Messages List */}
-                <div className="w-2/5 premium-card overflow-hidden flex flex-col">
-                    <div className="px-5 py-4 border-b border-border/50 bg-muted/30">
-                        <h2 className="font-semibold text-foreground flex items-center gap-2">
-                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <div className="w-2/5 bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+                    <div className="px-4 py-3 border-b border-border bg-muted/30">
+                        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                             Conversations
                         </h2>
                     </div>
                     {messages.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center p-8">
+                        <div className="flex-1 flex items-center justify-center p-6">
                             <div className="text-center">
-                                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                                    <EnvelopeOpenIcon className="w-10 h-10 text-muted-foreground" />
+                                <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-muted flex items-center justify-center">
+                                    <EnvelopeOpenIcon className="w-7 h-7 text-muted-foreground" />
                                 </div>
-                                <h3 className="text-lg font-semibold text-foreground mb-2">No replies yet</h3>
-                                <p className="text-muted-foreground text-sm max-w-[200px] mx-auto">
-                                    When contacts reply to your campaigns, they will appear here
+                                <h3 className="text-sm font-semibold text-foreground mb-1">No messages yet</h3>
+                                <p className="text-xs text-muted-foreground max-w-[180px] mx-auto">
+                                    When contacts reply to your emails, they will appear here
                                 </p>
                             </div>
                         </div>
@@ -416,43 +437,50 @@ export default function InboxPage() {
                                 return (
                                     <motion.button
                                         key={message._id}
-                                        initial={{ opacity: 0, x: -20 }}
+                                        initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.03 }}
+                                        transition={{ delay: index * 0.02 }}
                                         onClick={() => {
                                             setSelectedMessage(message);
                                             handleMarkAsRead(message._id);
                                             setAiDraft("");
+                                            track('view', 'email', message._id);
                                         }}
-                                        className={`w-full p-4 text-left transition-all duration-200 border-b border-border/30 ${isSelected
-                                            ? "bg-[#9ACD32]/10 border-l-4 border-l-[#9ACD32]"
+                                        className={`w-full px-3 py-2.5 text-left transition-all border-b border-border/30 ${isSelected
+                                            ? "bg-[#9ACD32]/10 border-l-2 border-l-[#9ACD32]"
                                             : "hover:bg-muted/40"
                                             }`}
                                     >
-                                        <div className="flex items-start gap-3">
-                                            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center text-white font-semibold text-sm shadow-lg flex-shrink-0`}>
+                                        <div className="flex items-start gap-2.5">
+                                            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClass} flex items-center justify-center text-white font-medium text-xs flex-shrink-0`}>
                                                 {initials || '?'}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <p className="font-semibold text-foreground text-sm truncate pr-2">
+                                                <div className="flex items-center justify-between mb-0.5">
+                                                    <p className="font-medium text-foreground text-xs truncate pr-2">
                                                         {getContactName(message)}
                                                     </p>
-                                                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                                                         {formatDate(message.repliedAt)}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-foreground/80 font-medium mb-1 truncate">
+                                                <p className="text-xs text-foreground/80 font-medium mb-0.5 truncate">
                                                     {message.replySubject || message.subject}
                                                 </p>
-                                                <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
-                                                    {message.replyBody?.substring(0, 80)}...
+                                                <p className="text-[10px] text-muted-foreground line-clamp-1 mb-1.5">
+                                                    {message.replyBody?.substring(0, 60)}...
                                                 </p>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
                                                     {getSentimentBadge(message.replySentiment)}
-                                                    <span className="text-xs text-muted-foreground truncate">
-                                                        {getCampaignName(message)}
-                                                    </span>
+                                                    {(() => {
+                                                        const sourceInfo = getSourceInfo(message);
+                                                        return (
+                                                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${sourceInfo.color}`}>
+                                                                <span>{sourceInfo.icon}</span>
+                                                                <span className="truncate max-w-[80px]">{sourceInfo.name}</span>
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
@@ -464,35 +492,40 @@ export default function InboxPage() {
                 </div>
 
                 {/* Message Detail */}
-                <div className="w-3/5 premium-card overflow-hidden flex flex-col">
+                <div className="w-3/5 bg-card border border-border rounded-xl overflow-hidden flex flex-col">
                     {selectedMessage ? (
                         <>
                             {/* Detail Header */}
-                            <div className="p-6 border-b border-border/50 bg-gradient-to-r from-muted/30 to-transparent">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#9ACD32] to-[#9ACD32]/60 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-[#9ACD32]/20">
+                            <div className="p-4 border-b border-border bg-muted/20">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#9ACD32] to-[#9ACD32]/60 flex items-center justify-center text-white font-semibold text-sm">
                                             {getContactName(selectedMessage).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-lg text-foreground">
+                                            <p className="font-semibold text-sm text-foreground">
                                                 {getContactName(selectedMessage)}
                                             </p>
-                                            <p className="text-sm text-muted-foreground">
+                                            <p className="text-xs text-muted-foreground">
                                                 {getContactEmail(selectedMessage)}
                                             </p>
                                         </div>
                                     </div>
                                     {getSentimentBadge(selectedMessage.replySentiment)}
                                 </div>
-                                <div className="bg-background/50 rounded-xl p-4 border border-border/30">
-                                    <h3 className="text-lg font-semibold text-foreground mb-1">
+                                <div className="bg-background/50 rounded-lg p-3 border border-border/30">
+                                    <h3 className="text-sm font-semibold text-foreground mb-1">
                                         {selectedMessage.replySubject || selectedMessage.subject}
                                     </h3>
-                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#9ACD32]/10 text-[#9ACD32] text-xs rounded-md font-medium">
-                                            📧 {getCampaignName(selectedMessage)}
-                                        </span>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                                        {(() => {
+                                            const sourceInfo = getSourceInfo(selectedMessage);
+                                            return (
+                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${sourceInfo.color}`}>
+                                                    {sourceInfo.icon} {sourceInfo.name}
+                                                </span>
+                                            );
+                                        })()}
                                         <span>•</span>
                                         <span>{formatDate(selectedMessage.repliedAt)}</span>
                                     </p>

@@ -16,6 +16,8 @@ import {
     getReportsEmail,
 } from "@/lib/api/reports";
 import { cn } from "@/lib/utils";
+import { useInsightTracking } from "@/hooks/useInsightTracking";
+import { ReportInsightsPanel } from "@/components/reports/ReportInsightsPanel";
 
 // ============================================
 // STAT CARD
@@ -89,6 +91,12 @@ export default function ReportsPage() {
     const [pipeline, setPipeline] = useState<any>(null);
     const [email, setEmail] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    const { track } = useInsightTracking({
+        workspaceId,
+        page: 'reports',
+        enabled: !!workspaceId,
+    });
 
     useEffect(() => {
         const fetchData = async () => {
@@ -225,6 +233,9 @@ export default function ReportsPage() {
                         </div>
                     </div>
                 )}
+
+                {/* AI Analytics Intelligence */}
+                <ReportInsightsPanel workspaceId={workspaceId} />
             </div>
         </div>
     );

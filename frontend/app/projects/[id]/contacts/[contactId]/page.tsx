@@ -27,6 +27,7 @@ import ContactFilesTab from "@/components/contacts/details/ContactFilesTab";
 import { cn } from "@/lib/utils";
 import { apolloApi } from "@/lib/apollo-api";
 import toast from "react-hot-toast";
+import { useInsightTracking } from "@/hooks/useInsightTracking";
 
 type TabType = "activity" | "emails" | "insights" | "notes" | "files";
 
@@ -53,12 +54,21 @@ export default function ContactDetailsPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isEnriching, setIsEnriching] = useState(false);
 
+    // Track actions for AI insights
+    const { track } = useInsightTracking({
+        workspaceId,
+        page: 'contact_detail',
+        enabled: !!workspaceId && !!contactId,
+    });
+
     // Fetch contact on mount
     useEffect(() => {
         if (workspaceId && contactId) {
             fetchContact(workspaceId, contactId);
+            // Track contact view for AI insights
+            track('view', 'contact', contactId);
         }
-    }, [workspaceId, contactId, fetchContact]);
+    }, [workspaceId, contactId, fetchContact, track]);
 
     const handleBack = () => {
         router.push(`/projects/${workspaceId}/contacts`);

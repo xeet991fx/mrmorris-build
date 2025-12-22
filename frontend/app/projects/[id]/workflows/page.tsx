@@ -22,6 +22,8 @@ import TemplateSelector from "@/components/workflows/TemplateSelector";
 import { TemplateGallery } from "@/components/shared/TemplateGallery";
 import { AutomationSuggestionsCard } from "@/components/workflows/AutomationSuggestionsCard";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useInsightTracking } from "@/hooks/useInsightTracking";
+import { WorkflowIntelligencePanel } from "@/components/workflows/WorkflowIntelligencePanel";
 
 // Status badge component
 function StatusBadge({ status }: { status: WorkflowStatus }) {
@@ -201,6 +203,12 @@ export default function WorkflowsPage() {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
 
+    const { track } = useInsightTracking({
+        workspaceId,
+        page: 'workflows',
+        enabled: !!workspaceId,
+    });
+
     useEffect(() => {
         if (workspaceId) {
             fetchWorkflows(workspaceId);
@@ -367,6 +375,13 @@ export default function WorkflowsPage() {
             <div className="max-w-7xl mx-auto px-6 mb-6">
                 <AutomationSuggestionsCard workspaceId={workspaceId} />
             </div>
+
+            {/* AI Workflow Intelligence */}
+            {workflows.length > 0 && (
+                <div className="max-w-7xl mx-auto px-6 mb-6">
+                    <WorkflowIntelligencePanel workspaceId={workspaceId} workflows={workflows} />
+                </div>
+            )}
 
             {/* Content */}
             <div className="max-w-7xl mx-auto px-6 pb-8">

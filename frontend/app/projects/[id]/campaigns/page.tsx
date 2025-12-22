@@ -36,11 +36,19 @@ import { axiosInstance } from "@/lib/axios";
 import { TemplateGallery } from "@/components/shared/TemplateGallery";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { CampaignInsightsPanel } from "@/components/campaigns/CampaignInsightsPanel";
+import { useInsightTracking } from "@/hooks/useInsightTracking";
 
 export default function CampaignsPage() {
     const params = useParams();
     const router = useRouter();
     const workspaceId = params.id as string;
+
+    // Track actions for AI insights
+    const { track } = useInsightTracking({
+        workspaceId,
+        page: 'campaigns',
+        enabled: !!workspaceId,
+    });
 
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [isLoading, setIsLoading] = useState(true);

@@ -17,6 +17,8 @@ import { CheckCircleIcon as CheckCircleSolidIcon } from "@heroicons/react/24/sol
 import { useTaskStore } from "@/store/useTaskStore";
 import { Task, CreateTaskData, UpdateTaskData } from "@/lib/api/task";
 import { cn } from "@/lib/utils";
+import { useInsightTracking } from "@/hooks/useInsightTracking";
+import { TaskIntelligencePanel } from "@/components/tasks/TaskIntelligencePanel";
 
 // ============================================
 // TASK MODAL COMPONENT
@@ -274,6 +276,13 @@ export default function TasksPage() {
     const params = useParams();
     const workspaceId = params.id as string;
 
+    // Track actions for AI insights
+    const { track } = useInsightTracking({
+        workspaceId,
+        page: 'tasks',
+        enabled: !!workspaceId,
+    });
+
     const {
         tasks,
         isLoading,
@@ -373,6 +382,18 @@ export default function TasksPage() {
                     </div>
                 </div>
             )}
+
+            {/* AI Task Intelligence */}
+            <div className="max-w-7xl mx-auto px-6 py-4">
+                <TaskIntelligencePanel
+                    workspaceId={workspaceId}
+                    tasks={tasks}
+                    onTaskAction={(taskId, action) => {
+                        track(action, 'task', taskId);
+                        // Handle action execution
+                    }}
+                />
+            </div>
 
             {/* Filters */}
             <div className="max-w-7xl mx-auto px-6 py-2">

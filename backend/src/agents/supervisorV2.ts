@@ -66,7 +66,10 @@ const getFlashModel = () => {
 
 // Agent routing - ORDER MATTERS (more specific first)
 const PRIORITY_ROUTES: Array<[string[], string]> = [
-    // NEW AI AGENTS (highest priority)
+    // WORKFLOW CREATION (highest priority - must come before other agents with keyword overlap)
+    [["create workflow", "create a workflow", "workflow called", "new workflow"], "workflow"],
+
+    // NEW AI AGENTS (high priority)
     [["briefing", "meeting prep", "prepare for call", "before call", "pre-call", "prepare for meeting"], "briefing"],
     [["transcribe", "call summary", "meeting notes", "call recording", "summarize call", "bant", "action items from call"], "transcription"],
     [["schedule", "calendar", "book meeting", "find time", "availability", "reschedule"], "scheduling"],
