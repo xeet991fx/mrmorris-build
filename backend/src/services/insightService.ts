@@ -384,6 +384,207 @@ class InsightService {
     }
 
     /**
+     * Generate generic insights for new context types
+     * Provides mock data for frontend testing while real AI integration is developed
+     */
+    async generateGenericInsights(
+        workspaceId: string,
+        userId: string,
+        contextType: string,
+        contextId: string,
+        insightType: string
+    ): Promise<InsightGenerationResult> {
+        try {
+            // Generate context-appropriate mock insights
+            const mockData = this.getMockDataForContext(contextType, insightType);
+
+            const insight = await AgentInsight.create({
+                workspaceId: new Types.ObjectId(workspaceId),
+                userId: new Types.ObjectId(userId),
+                contextType: contextType,
+                contextId: contextId !== 'workspace' && contextId !== 'today'
+                    ? new Types.ObjectId(contextId)
+                    : undefined,
+                agentType: `${contextType}_intelligence`,
+                insights: {
+                    type: insightType,
+                    title: mockData.title,
+                    description: mockData.description,
+                    data: mockData.data,
+                },
+                suggestedActions: mockData.actions || [],
+                confidence: mockData.confidence || 0.75,
+                priority: mockData.priority || 'medium',
+                displayType: 'inline_panel',
+                status: 'pending',
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            });
+
+            return { success: true, insights: [insight] };
+        } catch (error: any) {
+            console.error(`Error generating ${contextType} insights:`, error);
+            return { success: false, insights: [], error: error.message };
+        }
+    }
+
+    /**
+     * Get mock data for different context types
+     */
+    private getMockDataForContext(contextType: string, insightType: string): any {
+        const mockDataMap: Record<string, any> = {
+            'sequence_performance': {
+                title: 'Sequence Performance Analysis',
+                description: 'AI analysis of your email sequence performance',
+                data: {
+                    openRate: 42,
+                    replyRate: 8,
+                    dropOffStep: 3,
+                    bestPerformingSubject: 'Quick question about your goals',
+                    averageTimeToReply: '4.2 hrs',
+                },
+                actions: [
+                    { id: 'optimize_1', type: 'optimize', label: 'Optimize Step 3', priority: 1 },
+                    { id: 'ab_test', type: 'ab_test', label: 'A/B Test Subject Lines', priority: 2 },
+                ],
+                confidence: 0.82,
+                priority: 'medium',
+            },
+            'ticket_analysis': {
+                title: 'Ticket Intelligence Analysis',
+                description: 'AI-powered ticket categorization and prioritization',
+                data: {
+                    category: 'Technical Support',
+                    confidence: 87,
+                    priority: 'high',
+                    reason: 'VIP customer with urgent issue',
+                    assignee: 'Sarah (Support Lead)',
+                    estimatedResolution: '2 hours',
+                },
+                actions: [
+                    { id: 'assign', type: 'assign', label: 'Auto-assign to Sarah', priority: 1 },
+                    { id: 'template', type: 'template', label: 'Use resolution template', priority: 2 },
+                ],
+                confidence: 0.87,
+                priority: 'high',
+            },
+            'meeting_intelligence': {
+                title: 'Meeting Intelligence',
+                description: 'Pre-meeting briefing and agenda suggestions',
+                data: {
+                    participants: [],
+                    suggestedAgenda: ['Review Q4 goals', 'Discuss blockers', 'Next steps'],
+                    talkingPoints: ['Recent product updates', 'Competitor analysis'],
+                    preparationTips: 'Review last meeting notes and deal status',
+                },
+                confidence: 0.78,
+                priority: 'medium',
+            },
+            'score_explanation': {
+                title: 'Lead Score Analysis',
+                description: 'Breakdown of lead score factors',
+                data: {
+                    score: 85,
+                    breakdown: [
+                        { factor: 'Email engagement', impact: 20, description: 'Opened 5/8 emails' },
+                        { factor: 'Company size', impact: 15, description: 'Enterprise (500+ employees)' },
+                        { factor: 'Website visits', impact: 12, description: 'Visited pricing page 3x' },
+                    ],
+                },
+                confidence: 0.74,
+                priority: 'medium',
+            },
+            'template_performance': {
+                title: 'Template Performance',
+                description: 'Email template effectiveness analysis',
+                data: {
+                    openRate: 42,
+                    replyRate: 8,
+                    clickRate: 15,
+                    usageCount: 234,
+                },
+                confidence: 0.80,
+                priority: 'low',
+            },
+            'data_health': {
+                title: 'CRM Data Health',
+                description: 'Data quality assessment and recommendations',
+                data: {
+                    overallScore: 76,
+                    completeness: 82,
+                    accuracy: 91,
+                    duplicateRate: 4,
+                    issues: [
+                        { type: 'Missing phone numbers', count: 234, severity: 'medium' },
+                        { type: 'Duplicate contacts', count: 67, severity: 'high' },
+                    ],
+                },
+                confidence: 0.85,
+                priority: 'medium',
+            },
+            'email_performance': {
+                title: 'Email Analytics Overview',
+                description: 'Workspace email performance metrics',
+                data: {
+                    deliverabilityRate: 94,
+                    openRate: 38,
+                    clickRate: 12,
+                    bounceRate: 2.1,
+                    spamRate: 0.3,
+                    bestSendTime: 'Tue 10am',
+                    avgTimeToOpen: '4.2 hrs',
+                },
+                confidence: 0.88,
+                priority: 'low',
+            },
+            'account_health': {
+                title: 'Email Account Health',
+                description: 'Account reputation and deliverability status',
+                data: {
+                    healthScore: 92,
+                    reputation: 'excellent',
+                    warmingProgress: 78,
+                    dailyLimit: 200,
+                    sentToday: 145,
+                    inboxPlacement: 94,
+                    spamScore: 0.3,
+                    blocklisted: false,
+                },
+                confidence: 0.90,
+                priority: 'low',
+            },
+            'daily_summary': {
+                title: 'Daily Briefing',
+                description: 'Your personalized daily CRM summary',
+                data: {
+                    greeting: 'Good morning!',
+                    summary: 'You have 3 meetings today, 5 emails awaiting response, and 2 deals that need attention.',
+                    priorities: [
+                        { title: 'Q4 Review Meeting', type: 'meeting', urgency: 'high', time: '2:00 PM' },
+                        { title: 'Follow up with Acme Corp', type: 'follow_up', urgency: 'high' },
+                    ],
+                    metrics: [
+                        { label: 'Pipeline Value', value: '$2.4M', change: 12 },
+                        { label: 'Open Deals', value: 18, change: 3 },
+                    ],
+                    alerts: [
+                        { type: 'warning', message: '2 deals have been inactive for 7+ days' },
+                    ],
+                },
+                confidence: 0.75,
+                priority: 'high',
+            },
+        };
+
+        return mockDataMap[insightType] || {
+            title: `${contextType} Analysis`,
+            description: `AI-powered analysis for ${contextType}`,
+            data: {},
+            confidence: 0.70,
+            priority: 'medium',
+        };
+    }
+
+    /**
      * Get pending insights for a user
      */
     async getInsights(
@@ -405,8 +606,15 @@ class InsightService {
         if (contextType) {
             query.contextType = contextType;
         }
-        if (contextId) {
-            query.contextId = new Types.ObjectId(contextId);
+
+        // Only convert contextId to ObjectId if it's a valid 24-character hex string
+        // Special values like 'today', 'workspace' are stored as-is or undefined
+        if (contextId && contextId !== 'today' && contextId !== 'workspace') {
+            // Check if it's a valid ObjectId format
+            if (/^[0-9a-fA-F]{24}$/.test(contextId)) {
+                query.contextId = new Types.ObjectId(contextId);
+            }
+            // If not a valid ObjectId, don't add to query (will match any contextId)
         }
 
         return AgentInsight.find(query)

@@ -17,8 +17,8 @@ export default function WorkspacePage() {
     // Load workspace data
     fetchWorkspace(workspaceId).catch(console.error);
 
-    // Redirect to contacts page as default
-    router.replace(`/projects/${workspaceId}/contacts`);
+    // Redirect to dashboard as default landing page
+    router.replace(`/projects/${workspaceId}/dashboard`);
   }, [workspaceId, fetchWorkspace, router]);
 
   return (

@@ -11,6 +11,14 @@ import {
     ClockIcon,
     UserIcon,
     ChatBubbleLeftRightIcon,
+    ExclamationTriangleIcon,
+    CheckCircleIcon,
+    ArrowPathIcon,
+    SparklesIcon,
+    XMarkIcon,
+    PlayIcon,
+    PauseIcon,
+    TrashIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 import {
@@ -25,9 +33,11 @@ import {
 } from "@/lib/api/ticket";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { TicketIntelligencePanel } from "@/components/tickets/TicketIntelligencePanel";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 // ============================================
-// CONSTANTS
+// STATUS BADGE
 // ============================================
 
 const STATUS_COLORS: Record<TicketStatus, string> = {
@@ -44,6 +54,14 @@ const PRIORITY_COLORS: Record<TicketPriority, string> = {
     high: "text-orange-500",
     urgent: "text-red-500",
 };
+
+function StatusBadge({ status }: { status: TicketStatus }) {
+    return (
+        <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium capitalize", STATUS_COLORS[status])}>
+            {status.replace(/_/g, " ")}
+        </span>
+    );
+}
 
 // ============================================
 // CREATE MODAL
@@ -195,41 +213,139 @@ function CreateTicketModal({
 }
 
 // ============================================
-// TICKET ROW
+// TICKET CARD (Matching Workflow Card Style)
 // ============================================
 
-function TicketRow({ ticket, onClick }: { ticket: Ticket; onClick: () => void }) {
+function TicketCard({
+    ticket,
+    onView,
+    onResolve,
+    onReopen,
+    onDelete,
+}: {
+    ticket: Ticket;
+    onView: () => void;
+    onResolve: () => void;
+    onReopen: () => void;
+    onDelete: () => void;
+}) {
+    const priorityIcon: Record<TicketPriority, string> = {
+        low: "🟢",
+        medium: "🔵",
+        high: "🟠",
+        urgent: "🔴",
+    };
+
     return (
-        <div
-            onClick={onClick}
-            className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-primary/50 cursor-pointer transition-all"
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 hover:shadow-lg transition-all cursor-pointer"
+            onClick={onView}
         >
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-mono text-muted-foreground">{ticket.ticketNumber}</span>
-                    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium capitalize", STATUS_COLORS[ticket.status])}>
-                        {ticket.status.replace("_", " ")}
-                    </span>
+            {/* Header */}
+            <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
+                        <TicketIcon className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                            {ticket.subject}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                            {ticket.ticketNumber} • {ticket.category}
+                        </p>
+                    </div>
                 </div>
-                <h3 className="font-medium text-foreground truncate">{ticket.subject}</h3>
-                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                        <UserIcon className="w-3 h-3" />
-                        {ticket.requesterName || ticket.requesterEmail}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <ClockIcon className="w-3 h-3" />
-                        {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}
-                    </span>
-                    {ticket.comments.length > 0 && (
-                        <span className="flex items-center gap-1">
-                            <ChatBubbleLeftRightIcon className="w-3 h-3" />
-                            {ticket.comments.length}
-                        </span>
-                    )}
-                </div>
+                <StatusBadge status={ticket.status} />
             </div>
-            <div className={cn("w-2 h-2 rounded-full", PRIORITY_COLORS[ticket.priority].replace("text-", "bg-"))} title={ticket.priority} />
+
+            {/* Description */}
+            {ticket.description && (
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    {ticket.description}
+                </p>
+            )}
+
+            {/* Stats */}
+            <div className="flex items-center gap-4 mb-4 text-sm">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <UserIcon className="w-4 h-4" />
+                    <span className="truncate max-w-[100px]">{ticket.requesterName || ticket.requesterEmail}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <ClockIcon className="w-4 h-4" />
+                    <span>{formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}</span>
+                </div>
+                {ticket.comments.length > 0 && (
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                        <span>{ticket.comments.length}</span>
+                    </div>
+                )}
+            </div>
+
+            {/* Priority info */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1.5 mb-4">
+                <span>{priorityIcon[ticket.priority]}</span>
+                <span>Priority: {ticket.priority}</span>
+            </div>
+
+            {/* Actions */}
+            <div
+                className="flex items-center gap-2 pt-3 border-t border-border"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {ticket.status === "resolved" || ticket.status === "closed" ? (
+                    <button
+                        onClick={onReopen}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                    >
+                        <PlayIcon className="w-4 h-4" />
+                        Reopen
+                    </button>
+                ) : (
+                    <button
+                        onClick={onResolve}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                    >
+                        <CheckCircleIcon className="w-4 h-4" />
+                        Resolve
+                    </button>
+                )}
+                <button
+                    onClick={onDelete}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-auto"
+                >
+                    <TrashIcon className="w-4 h-4" />
+                </button>
+            </div>
+        </motion.div>
+    );
+}
+
+// ============================================
+// EMPTY STATE
+// ============================================
+
+function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
+    return (
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-600/20 flex items-center justify-center mb-6">
+                <TicketIcon className="w-10 h-10 text-blue-500" />
+            </div>
+            <h3 className="text-xl font-semibold text-foreground mb-2">No tickets yet</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-6">
+                Create support tickets to track customer requests, issues, and feature suggestions.
+            </p>
+            <button
+                onClick={onCreateNew}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+            >
+                <PlusIcon className="w-5 h-5" />
+                Create Your First Ticket
+            </button>
         </div>
     );
 }
@@ -250,6 +366,8 @@ export default function TicketsPage() {
     const [priorityFilter, setPriorityFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [stats, setStats] = useState<any>(null);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
 
     const fetchTickets = async () => {
         setIsLoading(true);
@@ -276,6 +394,53 @@ export default function TicketsPage() {
         if (workspaceId) fetchTickets();
     }, [workspaceId, statusFilter, priorityFilter]);
 
+    const handleResolve = async (ticketId: string) => {
+        try {
+            await updateTicket(workspaceId, ticketId, { status: "resolved" });
+            toast.success("Ticket resolved!");
+            fetchTickets();
+        } catch (error) {
+            toast.error("Failed to resolve ticket");
+        }
+    };
+
+    const handleReopen = async (ticketId: string) => {
+        try {
+            await updateTicket(workspaceId, ticketId, { status: "open" });
+            toast.success("Ticket reopened!");
+            fetchTickets();
+        } catch (error) {
+            toast.error("Failed to reopen ticket");
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!ticketToDelete) return;
+        try {
+            await deleteTicket(workspaceId, ticketToDelete);
+            toast.success("Ticket deleted!");
+            fetchTickets();
+            setTicketToDelete(null);
+        } catch (error) {
+            toast.error("Failed to delete ticket");
+        }
+    };
+
+    const openDeleteConfirm = (ticketId: string) => {
+        setTicketToDelete(ticketId);
+        setDeleteConfirmOpen(true);
+    };
+
+    // Filter tickets
+    const filteredTickets = tickets.filter((t) => {
+        const matchesSearch =
+            searchQuery === "" ||
+            t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.ticketNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesSearch;
+    });
+
     return (
         <div className="min-h-screen bg-card/95">
             <CreateTicketModal
@@ -286,49 +451,30 @@ export default function TicketsPage() {
             />
 
             {/* Header */}
-            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10 bg-card">
-                <div className="flex items-center gap-3">
-                    <TicketIcon className="w-5 h-5 text-muted-foreground" />
+            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-3"
+                >
                     <h1 className="text-lg font-semibold text-foreground">Tickets</h1>
-                </div>
+                    <p className="text-xs text-muted-foreground">
+                        Manage customer support requests
+                    </p>
+                </motion.div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E]"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
                 >
                     <PlusIcon className="w-5 h-5" />
                     New Ticket
                 </button>
             </div>
 
-            {/* Stats */}
-            {stats && (
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="bg-card border border-border rounded-xl p-4">
-                            <p className="text-2xl font-bold text-blue-500">{stats.byStatus?.open || 0}</p>
-                            <p className="text-sm text-muted-foreground">Open</p>
-                        </div>
-                        <div className="bg-card border border-border rounded-xl p-4">
-                            <p className="text-2xl font-bold text-yellow-500">{stats.byStatus?.in_progress || 0}</p>
-                            <p className="text-sm text-muted-foreground">In Progress</p>
-                        </div>
-                        <div className="bg-card border border-border rounded-xl p-4">
-                            <p className="text-2xl font-bold text-green-500">{stats.byStatus?.resolved || 0}</p>
-                            <p className="text-sm text-muted-foreground">Resolved</p>
-                        </div>
-                        <div className="bg-card border border-border rounded-xl p-4">
-                            <p className="text-2xl font-bold text-foreground">
-                                {stats.avgResponseTimeMinutes ? `${Math.round(stats.avgResponseTimeMinutes)}m` : "-"}
-                            </p>
-                            <p className="text-sm text-muted-foreground">Avg Response</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Filters */}
-            <div className="max-w-7xl mx-auto px-6 py-2">
+            <div className="max-w-7xl mx-auto px-6 py-4">
                 <div className="flex items-center gap-4">
+                    {/* Search */}
                     <div className="relative flex-1 max-w-md">
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <input
@@ -337,15 +483,17 @@ export default function TicketsPage() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && fetchTickets()}
-                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground"
+                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                         />
                     </div>
+
+                    {/* Filters */}
                     <div className="flex items-center gap-2">
                         <FunnelIcon className="w-4 h-4 text-muted-foreground" />
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground"
+                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                         >
                             <option value="all">All Status</option>
                             <option value="open">Open</option>
@@ -357,7 +505,7 @@ export default function TicketsPage() {
                         <select
                             value={priorityFilter}
                             onChange={(e) => setPriorityFilter(e.target.value)}
-                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground"
+                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
                         >
                             <option value="all">All Priority</option>
                             <option value="urgent">Urgent</option>
@@ -369,39 +517,112 @@ export default function TicketsPage() {
                 </div>
             </div>
 
-            {/* Ticket List */}
-            <div className="max-w-7xl mx-auto px-6 py-4">
+            {/* Stats Overview */}
+            {stats && (
+                <div className="max-w-7xl mx-auto px-6 mb-6">
+                    <div className="bg-card border border-border rounded-xl p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <ExclamationTriangleIcon className="w-5 h-5 text-blue-500" />
+                            <h2 className="text-base font-semibold text-foreground">Ticket Overview</h2>
+                        </div>
+                        <div className="grid grid-cols-4 gap-6">
+                            <div>
+                                <p className="text-3xl font-bold text-blue-500">{stats.byStatus?.open || 0}</p>
+                                <p className="text-sm text-muted-foreground">Open</p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold text-yellow-500">{stats.byStatus?.in_progress || 0}</p>
+                                <p className="text-sm text-muted-foreground">In Progress</p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold text-green-500">{stats.byStatus?.resolved || 0}</p>
+                                <p className="text-sm text-muted-foreground">Resolved</p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold text-foreground">
+                                    {stats.avgResponseTimeMinutes ? `${Math.round(stats.avgResponseTimeMinutes)}m` : "-"}
+                                </p>
+                                <p className="text-sm text-muted-foreground">Avg Response</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Ticket Intelligence */}
+            {tickets.length > 0 && (
+                <div className="max-w-7xl mx-auto px-6 mb-6">
+                    <div className="bg-card border border-border rounded-xl p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <SparklesIcon className="w-5 h-5 text-violet-500" />
+                                <h2 className="text-base font-semibold text-foreground">Ticket Intelligence</h2>
+                            </div>
+                            <button
+                                onClick={fetchTickets}
+                                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <ArrowPathIcon className="w-4 h-4" />
+                                Refresh
+                            </button>
+                        </div>
+                        <TicketIntelligencePanel
+                            workspaceId={workspaceId}
+                            tickets={tickets}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Content */}
+            <div className="max-w-7xl mx-auto px-6 pb-8">
                 {isLoading ? (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-20 rounded-xl bg-card border border-border animate-pulse" />
+                            <div
+                                key={i}
+                                className="h-56 rounded-xl bg-card border border-border animate-pulse"
+                            />
                         ))}
                     </div>
-                ) : tickets.length === 0 ? (
-                    <div className="text-center py-16">
-                        <TicketIcon className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">No tickets yet</h3>
-                        <p className="text-muted-foreground mb-4">Create your first support ticket</p>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium"
-                        >
-                            <PlusIcon className="w-5 h-5" />
-                            Create Ticket
-                        </button>
-                    </div>
+                ) : filteredTickets.length === 0 ? (
+                    tickets.length === 0 ? (
+                        <EmptyState onCreateNew={() => setShowCreateModal(true)} />
+                    ) : (
+                        <div className="text-center py-12">
+                            <p className="text-muted-foreground">No tickets match your search.</p>
+                        </div>
+                    )
                 ) : (
-                    <div className="space-y-3">
-                        {tickets.map((ticket) => (
-                            <TicketRow
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredTickets.map((ticket) => (
+                            <TicketCard
                                 key={ticket._id}
                                 ticket={ticket}
-                                onClick={() => router.push(`/projects/${workspaceId}/tickets/${ticket._id}`)}
+                                onView={() => router.push(`/projects/${workspaceId}/tickets/${ticket._id}`)}
+                                onResolve={() => handleResolve(ticket._id)}
+                                onReopen={() => handleReopen(ticket._id)}
+                                onDelete={() => openDeleteConfirm(ticket._id)}
                             />
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={deleteConfirmOpen}
+                onClose={() => {
+                    setDeleteConfirmOpen(false);
+                    setTicketToDelete(null);
+                }}
+                onConfirm={handleDelete}
+                title="Delete Ticket"
+                message="Are you sure you want to delete this ticket? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
     );
 }

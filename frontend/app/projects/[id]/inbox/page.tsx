@@ -655,15 +655,48 @@ export default function InboxPage() {
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center p-8">
-                            <div className="text-center">
-                                <div className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                                    <EnvelopeOpenIcon className="w-12 h-12 text-primary/60" />
+                        <div className="flex-1 flex flex-col items-center justify-center p-8">
+                            <div className="text-center max-w-md">
+                                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                                    <EnvelopeOpenIcon className="w-10 h-10 text-primary/60" />
                                 </div>
-                                <h3 className="text-xl font-semibold text-foreground mb-2">Select a conversation</h3>
-                                <p className="text-muted-foreground text-sm max-w-[250px] mx-auto">
+                                <h3 className="text-xl font-bold text-foreground mb-2">Select a conversation</h3>
+                                <p className="text-muted-foreground text-sm mb-8">
                                     Choose a message from the list to view details and reply
                                 </p>
+
+                                {/* Quick Stats */}
+                                <div className="grid grid-cols-3 gap-3 mb-6">
+                                    <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+                                        <p className="text-2xl font-bold text-foreground">{stats.all}</p>
+                                        <p className="text-xs text-muted-foreground">Total</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+                                        <p className="text-2xl font-bold text-primary">{stats.unread}</p>
+                                        <p className="text-xs text-muted-foreground">Unread</p>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+                                        <p className="text-2xl font-bold text-foreground">{stats.campaigns}</p>
+                                        <p className="text-xs text-muted-foreground">Campaigns</p>
+                                    </div>
+                                </div>
+
+                                {/* Tips */}
+                                <div className="text-left space-y-2">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Tips</p>
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                        <CheckCircleIcon className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                                        <span>Click any message to view full details and AI insights</span>
+                                    </div>
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                        <CheckCircleIcon className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                                        <span>Use "Generate AI Draft" for smart reply suggestions</span>
+                                    </div>
+                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                        <CheckCircleIcon className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                                        <span>Filter by sentiment to prioritize urgent replies</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

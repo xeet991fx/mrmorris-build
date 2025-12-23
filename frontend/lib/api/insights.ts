@@ -9,7 +9,7 @@ import { axiosInstance } from "../axios";
 // Types
 export interface Insight {
     _id: string;
-    contextType: 'contact' | 'deal' | 'campaign' | 'email' | 'workflow' | 'pipeline';
+    contextType: 'contact' | 'deal' | 'campaign' | 'email' | 'workflow' | 'pipeline' | 'sequence' | 'ticket' | 'meeting' | 'lead_score' | 'email_template' | 'data_quality' | 'email_analytics' | 'email_account' | 'daily_briefing';
     contextId?: string;
     agentType: string;
     insights: {

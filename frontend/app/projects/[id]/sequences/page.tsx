@@ -14,6 +14,7 @@ import {
     UserPlusIcon,
     ClockIcon,
 } from "@heroicons/react/24/outline";
+import { SequenceIntelligencePanel } from "@/components/sequences/SequenceIntelligencePanel";
 
 // ============================================
 // TYPES
@@ -561,6 +562,7 @@ export default function SequencesPage() {
     const [statusFilter, setStatusFilter] = useState<Sequence["status"] | "all">("all");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSequence, setEditingSequence] = useState<Sequence | null>(null);
+    const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null);
 
     useEffect(() => {
         if (workspaceId) {
@@ -761,17 +763,36 @@ export default function SequencesPage() {
                         </div>
                     )
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredSequences.map((sequence) => (
-                            <SequenceCard
-                                key={sequence._id}
-                                sequence={sequence}
-                                onEdit={() => handleEdit(sequence)}
-                                onActivate={() => handleActivate(sequence)}
-                                onPause={() => handlePause(sequence)}
-                                onDelete={() => handleDelete(sequence)}
-                            />
-                        ))}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        {/* Sequences Grid */}
+                        <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filteredSequences.map((sequence) => (
+                                <div
+                                    key={sequence._id}
+                                    onClick={() => setSelectedSequence(sequence)}
+                                    className={`cursor-pointer rounded-lg transition-all ${selectedSequence?._id === sequence._id ? 'ring-2 ring-primary' : ''}`}
+                                >
+                                    <SequenceCard
+                                        sequence={sequence}
+                                        onEdit={() => handleEdit(sequence)}
+                                        onActivate={() => handleActivate(sequence)}
+                                        onPause={() => handlePause(sequence)}
+                                        onDelete={() => handleDelete(sequence)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* AI Intelligence Panel */}
+                        <div className="lg:col-span-1">
+                            <div className="sticky top-20 bg-card border border-border rounded-xl p-4">
+                                <SequenceIntelligencePanel
+                                    workspaceId={workspaceId}
+                                    sequenceId={selectedSequence?._id}
+                                    sequences={sequences}
+                                />
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

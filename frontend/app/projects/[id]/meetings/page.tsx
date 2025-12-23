@@ -28,6 +28,7 @@ import {
 } from "@/lib/api/calendarIntegration";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { MeetingIntelligencePanel } from "@/components/meetings/MeetingIntelligencePanel";
 
 export default function MeetingsPage() {
     const params = useParams();
@@ -40,6 +41,7 @@ export default function MeetingsPage() {
     const [creating, setCreating] = useState(false);
     const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
     const [saving, setSaving] = useState(false);
+    const [selectedMeeting, setSelectedMeeting] = useState<CalendarEvent | null>(null);
 
     // New meeting form
     const [newMeeting, setNewMeeting] = useState({
@@ -277,87 +279,119 @@ export default function MeetingsPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="space-y-8 max-w-4xl">
-                        {Object.entries(groupedEvents).map(([date, dayEvents]) => (
-                            <div key={date}>
-                                <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-                                    {date}
-                                </h2>
-                                <div className="space-y-2">
-                                    {dayEvents.map((event) => (
-                                        <motion.div
-                                            key={event._id}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className="group flex items-center gap-4 p-4 bg-card border border-border rounded-lg hover:border-neutral-700 transition-all"
-                                        >
-                                            {/* Time */}
-                                            <div className="w-20 text-center flex-shrink-0">
-                                                <div className="text-sm font-semibold text-foreground">
-                                                    {formatTime(event.startTime)}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Meetings List */}
+                        <div className="lg:col-span-2 space-y-8">
+                            {Object.entries(groupedEvents).map(([date, dayEvents]) => (
+                                <div key={date}>
+                                    <h2 className="text-sm font-semibold text-muted-foreground mb-3">
+                                        {date}
+                                    </h2>
+                                    <div className="space-y-2">
+                                        {dayEvents.map((event) => (
+                                            <motion.div
+                                                key={event._id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                onClick={() => setSelectedMeeting(event)}
+                                                className={`group flex items-center gap-4 p-4 bg-card border rounded-lg hover:border-neutral-700 transition-all cursor-pointer ${selectedMeeting?._id === event._id
+                                                    ? "border-primary bg-primary/5"
+                                                    : "border-border"
+                                                    }`}
+                                            >
+                                                {/* Time */}
+                                                <div className="w-20 text-center flex-shrink-0">
+                                                    <div className="text-sm font-semibold text-foreground">
+                                                        {formatTime(event.startTime)}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {formatDuration(event.startTime, event.endTime)}
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {formatDuration(event.startTime, event.endTime)}
+
+                                                {/* Divider */}
+                                                <div className="w-px h-10 bg-primary/50" />
+
+                                                {/* Details */}
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="text-sm font-semibold text-foreground truncate">
+                                                        {event.title}
+                                                    </h3>
+                                                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                                                        {event.location && (
+                                                            <span className="flex items-center gap-1">
+                                                                <MapPinIcon className="w-3 h-3" />
+                                                                {event.location}
+                                                            </span>
+                                                        )}
+                                                        {event.meetingLink && (
+                                                            <a
+                                                                href={event.meetingLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center gap-1 text-primary hover:underline"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <VideoCameraIcon className="w-3 h-3" />
+                                                                Join Meeting
+                                                            </a>
+                                                        )}
+                                                        {event.contactId && (
+                                                            <span className="flex items-center gap-1">
+                                                                <UserGroupIcon className="w-3 h-3" />
+                                                                {event.contactId.firstName} {event.contactId.lastName}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Divider */}
-                                            <div className="w-px h-10 bg-primary/50" />
-
-                                            {/* Details */}
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-sm font-semibold text-foreground truncate">
-                                                    {event.title}
-                                                </h3>
-                                                <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                                                    {event.location && (
-                                                        <span className="flex items-center gap-1">
-                                                            <MapPinIcon className="w-3 h-3" />
-                                                            {event.location}
-                                                        </span>
-                                                    )}
-                                                    {event.meetingLink && (
-                                                        <a
-                                                            href={event.meetingLink}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center gap-1 text-primary hover:underline"
-                                                        >
-                                                            <VideoCameraIcon className="w-3 h-3" />
-                                                            Join Meeting
-                                                        </a>
-                                                    )}
-                                                    {event.contactId && (
-                                                        <span className="flex items-center gap-1">
-                                                            <UserGroupIcon className="w-3 h-3" />
-                                                            {event.contactId.firstName} {event.contactId.lastName}
-                                                        </span>
-                                                    )}
+                                                {/* Actions - Always visible */}
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEditMeeting(event);
+                                                        }}
+                                                        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                                        title="Edit meeting"
+                                                    >
+                                                        <PencilIcon className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteMeeting(event._id);
+                                                        }}
+                                                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                                        title="Delete meeting"
+                                                    >
+                                                        <TrashIcon className="w-4 h-4" />
+                                                    </button>
                                                 </div>
-                                            </div>
-
-                                            {/* Actions - Always visible */}
-                                            <div className="flex items-center gap-1">
-                                                <button
-                                                    onClick={() => handleEditMeeting(event)}
-                                                    className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                                                    title="Edit meeting"
-                                                >
-                                                    <PencilIcon className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteMeeting(event._id)}
-                                                    className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                                                    title="Delete meeting"
-                                                >
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </motion.div>
-                                    ))}
+                                            </motion.div>
+                                        ))}
+                                    </div>
                                 </div>
+                            ))}
+                        </div>
+
+                        {/* AI Intelligence Panel */}
+                        <div className="lg:col-span-1">
+                            <div className="sticky top-8 bg-card border border-border rounded-xl p-4">
+                                <MeetingIntelligencePanel
+                                    workspaceId={workspaceId}
+                                    meeting={selectedMeeting ? {
+                                        ...selectedMeeting,
+                                        date: selectedMeeting.startTime,
+                                        contactId: (selectedMeeting.contactId as any)?._id || selectedMeeting.contactId
+                                    } : undefined}
+                                    onActionTaken={(action) => {
+                                        toast.success(`Action created: ${action}`);
+                                        loadData();
+                                    }}
+                                />
                             </div>
-                        ))}
+                        </div>
                     </div>
                 )}
             </div>
