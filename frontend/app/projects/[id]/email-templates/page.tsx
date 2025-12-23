@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
     PlusIcon,
@@ -14,6 +14,7 @@ import {
     SparklesIcon,
 } from "@heroicons/react/24/outline";
 import AITemplateGeneratorModal from "@/components/templates/AITemplateGeneratorModal";
+import CreateTemplateModal from "@/components/templates/CreateTemplateModal";
 
 // ============================================
 // TYPES
@@ -109,12 +110,16 @@ function TemplateCard({
                     <p className="text-sm text-foreground line-clamp-1">{template.subject}</p>
                 </div>
 
-                {/* Description */}
-                {template.description && (
+                {/* Description or Body Preview */}
+                {template.description ? (
                     <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                         {template.description}
                     </p>
-                )}
+                ) : template.body ? (
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {template.body.replace(/<[^>]*>/g, '').substring(0, 100)}...
+                    </p>
+                ) : null}
 
                 {/* Stats */}
                 <div className="flex items-center gap-4 mb-4 text-sm">
@@ -128,11 +133,11 @@ function TemplateCard({
                 <div className="flex items-center gap-2 pt-3 border-t border-border">
                     <button
                         onClick={onEdit}
-                        disabled={template.isDefault}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-primary hover:bg-primary/10 transition-colors"
+                        title="Open in Email Builder"
                     >
                         <PencilIcon className="w-4 h-4" />
-                        Edit
+                        {template.isDefault ? "View" : "Edit in Builder"}
                     </button>
                     <button
                         onClick={onDuplicate}
@@ -367,6 +372,7 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
 
 export default function EmailTemplatesPage() {
     const params = useParams();
+    const router = useRouter();
     const workspaceId = params.id as string;
 
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -376,6 +382,7 @@ export default function EmailTemplatesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     // Fetch templates
     useEffect(() => {
@@ -407,13 +414,12 @@ export default function EmailTemplatesPage() {
     };
 
     const handleCreate = () => {
-        setEditingTemplate(null);
-        setIsModalOpen(true);
+        setIsCreateModalOpen(true);
     };
 
     const handleEdit = (template: EmailTemplate) => {
-        setEditingTemplate(template);
-        setIsModalOpen(true);
+        // Navigate to email builder
+        router.push(`/projects/${workspaceId}/email-templates/${template._id}/builder`);
     };
 
     const handleSave = async (data: any) => {
@@ -491,6 +497,13 @@ export default function EmailTemplatesPage() {
                 template={editingTemplate}
                 onClose={() => setIsModalOpen(false)}
                 onSave={handleSave}
+            />
+
+            {/* Create Template Modal */}
+            <CreateTemplateModal
+                isOpen={isCreateModalOpen}
+                workspaceId={workspaceId}
+                onClose={() => setIsCreateModalOpen(false)}
             />
 
             {/* AI Generator Modal */}

@@ -12,7 +12,15 @@ export interface IEmailTemplate extends Document {
     createdBy: Types.ObjectId;
     name: string;
     subject: string;
-    body: string;                    // HTML content
+    body: string;                    // Legacy HTML content (for backward compatibility)
+
+    // NEW: Email Builder Fields
+    builderJson?: any;               // Unlayer design JSON for editing
+    htmlContent?: string;            // Compiled HTML for email sending
+    thumbnailUrl?: string;           // Preview image URL
+    isPredesigned: boolean;          // Template library flag
+    version: number;                 // Version tracking
+
     category: string;                // "welcome", "follow-up", "nurture", "promotion", "custom"
     description?: string;
     isDefault: boolean;              // System templates vs user templates
@@ -51,8 +59,32 @@ const emailTemplateSchema = new Schema<IEmailTemplate>(
         },
         body: {
             type: String,
-            required: [true, "Email body is required"],
+            required: false, // Made optional for builder-created templates
         },
+
+        // NEW: Email Builder Fields
+        builderJson: {
+            type: Schema.Types.Mixed,
+            required: false,
+        },
+        htmlContent: {
+            type: String,
+            required: false,
+        },
+        thumbnailUrl: {
+            type: String,
+            required: false,
+        },
+        isPredesigned: {
+            type: Boolean,
+            default: false,
+            index: true,
+        },
+        version: {
+            type: Number,
+            default: 1,
+        },
+
         category: {
             type: String,
             enum: ["welcome", "follow-up", "nurture", "promotion", "announcement", "custom"],
@@ -91,6 +123,7 @@ const emailTemplateSchema = new Schema<IEmailTemplate>(
 // Index for efficient queries
 emailTemplateSchema.index({ workspaceId: 1, category: 1 });
 emailTemplateSchema.index({ workspaceId: 1, name: 1 });
+emailTemplateSchema.index({ workspaceId: 1, isPredesigned: 1 });
 
 // Static method to extract variables from content
 emailTemplateSchema.statics.extractVariables = function (content: string): string[] {
@@ -105,9 +138,15 @@ emailTemplateSchema.statics.extractVariables = function (content: string): strin
     return variables;
 };
 
+// Virtual getter for backward compatibility
+emailTemplateSchema.virtual('bodyContent').get(function() {
+    return this.htmlContent || this.body;
+});
+
 // Pre-save hook to extract variables automatically
 emailTemplateSchema.pre("save", function (next) {
-    const content = `${this.subject} ${this.body}`;
+    // Extract variables from subject, body, and htmlContent
+    const content = `${this.subject} ${this.body || ''} ${this.htmlContent || ''}`;
     const regex = /\{\{(\w+)\}\}/g;
     const variables: string[] = [];
     let match;
