@@ -13,6 +13,7 @@ import {
 import { usePipelineStore } from "@/store/usePipelineStore";
 import { Opportunity } from "@/lib/api/opportunity";
 import OpportunityForm from "./OpportunityForm";
+import { DealInsightsPanel } from "./DealInsightsPanel";
 
 interface EditOpportunityModalProps {
   isOpen: boolean;
@@ -137,7 +138,7 @@ export default function EditOpportunityModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-lg bg-card border border-border text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-5xl transform overflow-hidden rounded-lg bg-card border border-border text-left align-middle shadow-xl transition-all">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -146,7 +147,7 @@ export default function EditOpportunityModal({
                   {/* Header */}
                   <div className="flex items-center justify-between px-6 py-4 border-b border-border">
                     <Dialog.Title className="text-lg font-semibold text-foreground">
-                      Edit Opportunity
+                      Edit Opportunity: {opportunity.title}
                     </Dialog.Title>
                     <button
                       type="button"
@@ -157,30 +158,44 @@ export default function EditOpportunityModal({
                     </button>
                   </div>
 
-                  {/* Form */}
-                  <form onSubmit={handleSubmit(onSubmit)}>
-                    <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
-                      <OpportunityForm form={form as any} isEdit workspaceId={workspaceId} />
+                  {/* Content - Two columns */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3">
+                    {/* Form Column */}
+                    <div className="lg:col-span-2 border-r border-border">
+                      <form onSubmit={handleSubmit(onSubmit)}>
+                        <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
+                          <OpportunityForm form={form as any} isEdit workspaceId={workspaceId} />
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/30">
+                          <button
+                            type="button"
+                            onClick={handleClose}
+                            className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="px-4 py-2 text-sm font-medium bg-[#9ACD32] hover:bg-[#8BC225] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
+                          >
+                            {isLoading ? "Saving..." : "Save Changes"}
+                          </button>
+                        </div>
+                      </form>
                     </div>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/30">
-                      <button
-                        type="button"
-                        onClick={handleClose}
-                        className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="px-4 py-2 text-sm font-medium bg-[#9ACD32] hover:bg-[#8BC225] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
-                      >
-                        {isLoading ? "Saving..." : "Save Changes"}
-                      </button>
+                    {/* AI Insights Column */}
+                    <div className="lg:col-span-1 p-4 max-h-[80vh] overflow-y-auto">
+                      <DealInsightsPanel
+                        workspaceId={workspaceId}
+                        dealId={opportunity._id}
+                        dealName={opportunity.title}
+                      />
                     </div>
-                  </form>
+                  </div>
                 </motion.div>
               </Dialog.Panel>
             </Transition.Child>
@@ -190,3 +205,4 @@ export default function EditOpportunityModal({
     </Transition>
   );
 }
+

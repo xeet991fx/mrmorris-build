@@ -102,6 +102,88 @@ router.post(
                         userId
                     );
                     break;
+                // New context types for AI panels
+                case 'sequence':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'sequence',
+                        contextId,
+                        'sequence_performance'
+                    );
+                    break;
+                case 'ticket':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'ticket',
+                        contextId,
+                        'ticket_analysis'
+                    );
+                    break;
+                case 'meeting':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'meeting',
+                        contextId,
+                        'meeting_intelligence'
+                    );
+                    break;
+                case 'lead_score':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'lead_score',
+                        contextId,
+                        'score_explanation'
+                    );
+                    break;
+                case 'email_template':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'email_template',
+                        contextId,
+                        'template_performance'
+                    );
+                    break;
+                case 'data_quality':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'data_quality',
+                        'workspace',
+                        'data_health'
+                    );
+                    break;
+                case 'email_analytics':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'email_analytics',
+                        'workspace',
+                        'email_performance'
+                    );
+                    break;
+                case 'email_account':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'email_account',
+                        contextId,
+                        'account_health'
+                    );
+                    break;
+                case 'daily_briefing':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'daily_briefing',
+                        'today',
+                        'daily_summary'
+                    );
+                    break;
                 default:
                     return res.status(400).json({
                         success: false,

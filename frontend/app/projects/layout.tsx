@@ -160,11 +160,11 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             <div className={cn(isExpanded ? "space-y-0.5" : "space-y-1")}>
               {/* Dashboard */}
               <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}`}
+                href={`/projects/${currentWorkspaceFromUrl._id}/dashboard`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
                   isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname === `/projects/${currentWorkspaceFromUrl._id}`
+                  pathname.includes('/dashboard')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                 )}
@@ -567,7 +567,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CommandPalette />
-      <OnboardingWizard />
+      {/* OnboardingWizard removed - was showing placeholder-like popup */}
       <AIChatPanel />
       <Toaster position="top-right" />
       <div className="min-h-screen bg-card">

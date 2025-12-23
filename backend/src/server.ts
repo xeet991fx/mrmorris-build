@@ -34,6 +34,7 @@ import reportsRoutes from "./routes/reports";
 import agentRoutes from "./routes/agent";
 import insightsRoutes from "./routes/insights";
 import calendarIntegrationRoutes from "./routes/calendarIntegration";
+import dashboardRoutes from "./routes/dashboard";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 import { startContactSyncScheduler } from "./services/contactSyncService";
 
@@ -177,6 +178,7 @@ app.use("/api/workspaces", ticketRoutes);
 app.use("/api/workspaces", reportsRoutes);
 app.use("/api/workspaces", agentRoutes);
 app.use("/api/workspaces", insightsRoutes);
+app.use("/api/workspaces", dashboardRoutes);
 app.use("/api/calendar", calendarIntegrationRoutes);
 
 // 404 handler
