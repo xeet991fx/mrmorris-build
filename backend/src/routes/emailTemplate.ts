@@ -1,10 +1,53 @@
 import express, { Response } from "express";
+import multer from "multer";
+import sharp from "sharp";
+import path from "path";
+import fs from "fs";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import EmailTemplate from "../models/EmailTemplate";
 import Project from "../models/Project";
 import { templateGeneratorService, GenerateTemplateOptions } from "../services/TemplateGeneratorService";
+import emailService from "../services/email";
 
 const router = express.Router();
+
+// ============================================
+// MULTER CONFIGURATION
+// ============================================
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const { workspaceId } = req.params;
+        const uploadDir = path.join(__dirname, "../../uploads/email-images", workspaceId);
+
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: {
+        fileSize: parseInt(process.env.MAX_IMAGE_SIZE || "5242880"), // 5MB default
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = (process.env.ALLOWED_IMAGE_TYPES || "image/jpeg,image/png,image/gif").split(",");
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error("Invalid file type. Only JPEG, PNG, and GIF are allowed."));
+        }
+    },
+});
 
 
 /**
@@ -216,10 +259,10 @@ router.post("/:workspaceId/email-templates", authenticate, async (req: AuthReque
 
         if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
 
-        if (!name || !subject || !body) {
+        if (!name || !subject) {
             return res.status(400).json({
                 success: false,
-                error: "Name, subject, and body are required",
+                error: "Name and subject are required",
             });
         }
 
@@ -287,10 +330,21 @@ router.put("/:workspaceId/email-templates/:id", authenticate, async (req: AuthRe
         // Update fields
         if (name) template.name = name;
         if (subject) template.subject = subject;
-        if (body) template.body = body;
+        if (body !== undefined) template.body = body;
         if (category) template.category = category;
         if (description !== undefined) template.description = description;
         if (thumbnailColor) template.thumbnailColor = thumbnailColor;
+
+        // NEW: Email Builder fields
+        const { builderJson, htmlContent, thumbnailUrl } = req.body;
+        if (builderJson !== undefined) template.builderJson = builderJson;
+        if (htmlContent !== undefined) template.htmlContent = htmlContent;
+        if (thumbnailUrl !== undefined) template.thumbnailUrl = thumbnailUrl;
+
+        // Increment version if builder content changed
+        if (builderJson !== undefined || htmlContent !== undefined) {
+            template.version = (template.version || 1) + 1;
+        }
 
         await template.save();
 
@@ -391,6 +445,8 @@ router.post("/:workspaceId/email-templates/:id/duplicate", authenticate, async (
             name: `${original.name} (Copy)`,
             subject: original.subject,
             body: original.body,
+            builderJson: original.builderJson, // NEW: Copy builder JSON
+            htmlContent: original.htmlContent, // NEW: Copy HTML content
             category: original.category,
             description: original.description,
             thumbnailColor: original.thumbnailColor,
@@ -518,6 +574,193 @@ router.post("/:workspaceId/email-templates/generate", authenticate, async (req: 
         res.status(500).json({
             success: false,
             error: error.message || "Failed to generate template with AI",
+        });
+    }
+});
+
+// ============================================
+// EMAIL BUILDER ROUTES
+// ============================================
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/upload-image
+ * Upload image for email builder
+ */
+router.post(
+    "/:workspaceId/email-templates/upload-image",
+    authenticate,
+    upload.single("file"),
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any)?.toString();
+
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    error: "No file uploaded",
+                });
+            }
+
+            // Optimize image with sharp
+            const optimizedPath = req.file.path.replace(path.extname(req.file.path), "-optimized" + path.extname(req.file.path));
+
+            await sharp(req.file.path)
+                .resize(1200, null, { withoutEnlargement: true }) // Max width 1200px
+                .jpeg({ quality: 85 })
+                .png({ compressionLevel: 9 })
+                .toFile(optimizedPath);
+
+            // Delete original file
+            fs.unlinkSync(req.file.path);
+
+            // Return public URL
+            const publicUrl = `/uploads/email-images/${workspaceId}/${path.basename(optimizedPath)}`;
+
+            res.json({
+                success: true,
+                data: {
+                    url: `${req.protocol}://${req.get("host")}${publicUrl}`,
+                },
+            });
+        } catch (error: any) {
+            console.error("Image upload error:", error);
+            res.status(500).json({
+                success: false,
+                error: error.message || "Failed to upload image",
+            });
+        }
+    }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/:id/send-test
+ * Send test email
+ */
+router.post("/:workspaceId/email-templates/:id/send-test", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, id } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+        const { email, html, subject, sampleData } = req.body;
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        if (!email || !html) {
+            return res.status(400).json({
+                success: false,
+                error: "Email address and HTML content are required",
+            });
+        }
+
+        // Replace variables with sample data
+        let processedHtml = html;
+        if (sampleData) {
+            for (const [key, value] of Object.entries(sampleData)) {
+                const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+                processedHtml = processedHtml.replace(regex, String(value));
+            }
+        }
+
+        // Send test email using existing email service
+        await emailService.sendWorkflowEmail(
+            email,
+            subject || "Test Email",
+            processedHtml,
+            sampleData || {}
+        );
+
+        res.json({
+            success: true,
+            message: `Test email sent to ${email}`,
+        });
+    } catch (error: any) {
+        console.error("Send test email error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to send test email",
+        });
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/:id/validate
+ * Validate email template (check links and images)
+ */
+router.post("/:workspaceId/email-templates/:id/validate", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, id } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+        const { html } = req.body;
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        if (!html) {
+            return res.status(400).json({
+                success: false,
+                error: "HTML content is required",
+            });
+        }
+
+        const errors: any[] = [];
+
+        // 1. Extract and validate all links
+        const linkRegex = /<a[^>]+href=["']([^"']+)["']/g;
+        let linkMatch;
+        while ((linkMatch = linkRegex.exec(html)) !== null) {
+            const link = linkMatch[1];
+
+            if (!link || link === "#" || link === "") {
+                errors.push({
+                    type: "broken-link",
+                    message: `Empty or placeholder link found: ${link}`,
+                    severity: "warning",
+                });
+            } else {
+                // Check if URL is valid
+                try {
+                    new URL(link);
+                } catch (e) {
+                    // Check if it's a relative URL or mailto
+                    if (!link.startsWith("/") && !link.startsWith("mailto:") && !link.startsWith("tel:")) {
+                        errors.push({
+                            type: "invalid-link",
+                            message: `Invalid URL: ${link}`,
+                            severity: "error",
+                        });
+                    }
+                }
+            }
+        }
+
+        // 2. Extract and validate all images
+        const imgRegex = /<img[^>]+src=["']([^"']+)["']/g;
+        let imgMatch;
+        while ((imgMatch = imgRegex.exec(html)) !== null) {
+            const src = imgMatch[1];
+
+            if (!src || src === "") {
+                errors.push({
+                    type: "missing-image",
+                    message: "Image tag with empty src attribute",
+                    severity: "error",
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            data: {
+                errors,
+                isValid: errors.length === 0,
+            },
+        });
+    } catch (error: any) {
+        console.error("Validate template error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to validate template",
         });
     }
 });
