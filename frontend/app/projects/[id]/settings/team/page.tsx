@@ -170,22 +170,33 @@ function TeamMemberCard({
     const role = member.role;
     const badge = ROLE_BADGES[role];
     const BadgeIcon = badge.icon;
-    const isTeamMember = "_id" in member && "status" in member;
-    const user = isTeamMember ? (member as TeamMember).userId : member;
+    // Owner doesn't have userId property - they ARE the user directly
+    const isTeamMember = role !== "owner" && "_id" in member;
+    // Get user info - for owner, it's the member itself; for team members, it's the populated userId
+    const userInfo = isTeamMember
+        ? (member as TeamMember).userId
+        : (member as TeamOwner);
     const canManage = currentUserRole === "owner" || (currentUserRole === "admin" && role !== "admin" && role !== "owner");
     const isPending = isTeamMember && (member as TeamMember).status === "pending";
+
+    // Get display values
+    const displayName = userInfo?.name || (role === "owner" ? userInfo?.email : null);
+    const displayEmail = userInfo?.email || (member as TeamMember).inviteEmail;
+    const avatarLetter = (displayName || displayEmail)?.charAt(0).toUpperCase();
 
     return (
         <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl">
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#9ACD32]/20 flex items-center justify-center">
                     <span className="text-[#9ACD32] font-semibold">
-                        {(user?.name || user?.email || (member as TeamMember).inviteEmail)?.charAt(0).toUpperCase()}
+                        {avatarLetter}
                     </span>
                 </div>
                 <div>
-                    <p className="font-medium text-foreground">{user?.name || "Pending"}</p>
-                    <p className="text-sm text-muted-foreground">{user?.email || (member as TeamMember).inviteEmail}</p>
+                    <p className="font-medium text-foreground">
+                        {displayName || "Pending"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{displayEmail}</p>
                 </div>
             </div>
             <div className="flex items-center gap-2">
