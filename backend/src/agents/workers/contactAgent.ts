@@ -227,25 +227,97 @@ export async function contactAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        const systemPrompt = `You are a CRM Contact Agent. Analyze the user's request and decide which tool to use.
+        // PHASE 1: AUTONOMOUS CONTEXT GATHERING
+        console.log("🧠 Gathering contact context from CRM...");
 
-Available tools:
-1. create_contact - Create a new contact. Args: { firstName, lastName, email, phone, company, jobTitle, notes }
-2. search_contacts - Search for contacts. Args: { query, limit }
-3. update_contact - Update a contact. Args: { contactId, updates }
-4. delete_contact - Delete a single contact. Args: { contactId }
-5. delete_contacts_bulk - Delete multiple contacts matching criteria. Args: { criteria: { withoutEmail?: boolean, withoutPhone?: boolean, status?: string, company?: string } }
+        const existingContacts = await Contact.find({ workspaceId: state.workspaceId })
+            .select("firstName lastName email company jobTitle createdAt")
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean();
 
-Instructions:
-- Extract the relevant information from the user's request
-- For bulk deletions (e.g., "delete all contacts without email"), use delete_contacts_bulk with appropriate criteria
-- Respond with a JSON object containing "tool" and "args"
-- Examples:
-  * {"tool": "create_contact", "args": {"firstName": "John", "lastName": "Smith", "email": "john@example.com"}}
-  * {"tool": "delete_contacts_bulk", "args": {"criteria": {"withoutEmail": true}}}
-  * {"tool": "delete_contact", "args": {"contactId": "123abc"}}
+        const getTimeAgo = (date: any): string => {
+            if (!date) return "unknown";
+            const diffMs = new Date().getTime() - new Date(date).getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return `${Math.floor(diffDays / 7)}w ago`;
+        };
 
-Respond with ONLY the JSON object, no other text.`;
+        const contactContext = existingContacts.length > 0
+            ? `EXISTING CONTACTS (sorted NEWEST first):\n${existingContacts.map((c: any, i: number) => {
+                const timeAgo = getTimeAgo(c.createdAt);
+                const isNewest = i === 0 ? " 🆕 LATEST" : "";
+                return `${i + 1}. ${c.firstName} ${c.lastName} (${c.email}) at ${c.company || "No company"} - Added ${timeAgo}${isNewest}`;
+              }).join('\n')}\n\nTotal contacts: ${existingContacts.length}+ (showing newest 10)`
+            : "No contacts found. This will be the first contact.";
+
+        const companyStats = existingContacts.reduce((acc: any, c: any) => {
+            if (c.company) acc[c.company] = (acc[c.company] || 0) + 1;
+            return acc;
+        }, {});
+        const topCompanies = Object.entries(companyStats).sort((a: any, b: any) => b[1] - a[1]).slice(0, 3);
+        const companyContext = topCompanies.length > 0
+            ? `\nTop companies: ${topCompanies.map(([name, count]) => `${name} (${count})`).join(", ")}`
+            : "";
+
+        console.log("✓ Context gathered");
+
+        // PHASE 2: INTELLIGENT SYSTEM PROMPT
+        const systemPrompt = `You are an ELITE CRM Contact Manager powered by Gemini 2.5 Pro.
+
+🎯 AUTONOMOUS MODE: You analyze REAL CRM data and make INTELLIGENT decisions.
+
+📊 CURRENT CRM CONTEXT:
+${contactContext}${companyContext}
+
+USER REQUEST: "${userRequest}"
+
+🧠 YOUR AUTONOMOUS PROCESS:
+
+STEP 1: INTENT ANALYSIS
+- CREATE new contact?
+- SEARCH/FIND contacts?
+- UPDATE existing contact?
+- DELETE contact(s)?
+
+STEP 2: CONTEXTUAL INTELLIGENCE
+- Check EXISTING CONTACTS above for duplicates/patterns
+- If creating: Does contact/company already exist?
+- If deleting latest: #1 is the newest (marked 🆕)
+- Use company patterns for better data
+
+STEP 3: SMART DEFAULTS
+- Auto-group contacts by company
+- Suggest job titles based on patterns
+- Avoid duplicates
+
+🔧 AVAILABLE TOOLS:
+
+1. create_contact - { firstName, lastName, email?, phone?, company?, jobTitle?, notes? }
+2. search_contacts - { query, limit? }
+3. update_contact - { contactId, updates }
+4. delete_contact - { contactId }
+5. delete_contacts_bulk - { criteria: { withoutEmail?, withoutPhone?, status?, company? } }
+
+💡 EXAMPLES OF INTELLIGENCE:
+
+❌ BAD: Just create "John Smith" with no context
+✅ GOOD: "Creating John Smith... I see you already have 2 contacts at Acme Corp. Adding John to that company group."
+
+📝 RESPONSE FORMAT:
+
+ANALYSIS:
+[Your thinking: What is user asking? CREATE/SEARCH/UPDATE/DELETE? Any duplicates? Which company group?]
+
+JSON:
+{"tool": "tool_name", "args": {...}}
+
+Be contextually intelligent, not robotic!`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -253,7 +325,15 @@ Respond with ONLY the JSON object, no other text.`;
         ]);
 
         const responseText = response.content as string;
-        console.log("🤖 AI Response:", responseText);
+        console.log("🤖 Contact AI Response (first 300 chars):", responseText.substring(0, 300));
+
+        // PHASE 3: EXTRACT REASONING
+        const analysisMatch = responseText.match(/ANALYSIS:(.*?)(?=JSON:|$)/s);
+        const aiAnalysis = analysisMatch ? analysisMatch[1].trim() : "";
+
+        if (aiAnalysis) {
+            console.log("🧠 AI Analysis:", aiAnalysis.substring(0, 150));
+        }
 
         const toolCall = parseToolCall(responseText, "ContactAgent");
 
@@ -269,18 +349,20 @@ Respond with ONLY the JSON object, no other text.`;
 
             console.log("✅ Tool result:", result);
 
+            // PHASE 4: CONTEXTUAL RESPONSE
             let friendlyResponse = "";
+
             if (result.success) {
                 if (toolCall.tool === "create_contact") {
-                    friendlyResponse = `I've created the contact "${toolCall.args.firstName} ${toolCall.args.lastName || ""}"${toolCall.args.company ? ` from ${toolCall.args.company}` : ""}. ${result.message}`;
+                    friendlyResponse = `✅ Created contact: **${toolCall.args.firstName} ${toolCall.args.lastName || ""}**${toolCall.args.company ? ` at ${toolCall.args.company}` : ""}\n${result.message}`;
                 } else if (toolCall.tool === "search_contacts") {
                     if (result.count === 0) {
-                        friendlyResponse = `I couldn't find any contacts matching "${toolCall.args.query}".`;
+                        friendlyResponse = `No contacts found matching "${toolCall.args.query}".`;
                     } else {
-                        friendlyResponse = `I found ${result.count} contact(s):\n${result.contacts.map((c: any) => `• ${c.name} (${c.email || "no email"}) - ${c.company || "no company"}`).join("\n")}`;
+                        friendlyResponse = `Found **${result.count} contact(s)**:\n${result.contacts.map((c: any) => `• **${c.name}** (${c.email || "no email"}) - ${c.company || "no company"}`).join("\n")}`;
                     }
                 } else if (toolCall.tool === "update_contact") {
-                    friendlyResponse = result.message;
+                    friendlyResponse = `✅ ${result.message}`;
                 } else if (toolCall.tool === "delete_contact") {
                     friendlyResponse = `✅ ${result.message}`;
                 } else if (toolCall.tool === "delete_contacts_bulk") {
@@ -296,14 +378,17 @@ Respond with ONLY the JSON object, no other text.`;
 
             return {
                 messages: [new AIMessage(friendlyResponse)],
-                toolResults: { [toolCall.tool]: result },
+                toolResults: {
+                    [toolCall.tool]: result,
+                    aiAnalysis: aiAnalysis || null
+                },
                 finalResponse: friendlyResponse,
             };
         }
 
         return {
-            messages: [new AIMessage("I'm not sure what you'd like me to do. Try asking me to create a contact, search for contacts, or update a contact.")],
-            finalResponse: "I'm not sure what you'd like me to do. Try asking me to create a contact, search for contacts, or update a contact.",
+            messages: [new AIMessage("I can help you manage contacts! Try:\n• 'Create a contact for John Smith at Acme Corp'\n• 'Find contacts at Microsoft'\n• 'Delete the latest contact'")],
+            finalResponse: "I can help you manage contacts! Try:\n• 'Create a contact for John Smith at Acme Corp'\n• 'Find contacts at Microsoft'\n• 'Delete the latest contact'",
         };
 
     } catch (error: any) {

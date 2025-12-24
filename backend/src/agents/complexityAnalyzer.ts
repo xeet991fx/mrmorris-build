@@ -92,43 +92,73 @@ function quickComplexityCheck(message: string): boolean {
  * AI-based complexity analysis (fallback for ambiguous cases)
  */
 async function aiComplexityAnalysis(message: string): Promise<ComplexityAnalysis> {
-    const prompt = `Analyze this CRM task request and determine if it requires MULTIPLE agents working together.
+    const prompt = `You are an INTELLIGENT Task Complexity Analyzer powered by Gemini 2.5 Pro.
 
-USER REQUEST: "${message}"
+ANALYZE THIS REQUEST: "${message}"
 
-SINGLE-AGENT TASKS (simple, focused):
-- Create a contact
-- Send an email
-- Update a deal
-- Search for contacts
-- Get a report
-- One specific action
+🧠 THINK CRITICALLY:
+- What is the user's TRUE intent and end goal?
+- How many different types of data/actions are needed?
+- Can this be handled by ONE specialized agent, or does it need MULTIPLE agents collaborating?
+- What's the optimal coordination strategy?
 
-MULTI-AGENT TASKS (complex, multi-dimensional):
-1. MEETING PREPARATION: Requires contact + deal + briefing + company agents
-   Example: "Prepare for my call with Acme Corp tomorrow"
+📊 COMPLEXITY LEVELS:
 
-2. CAMPAIGN CREATION: Requires general (research) + company + campaign + email agents
-   Example: "Create a nurture campaign for enterprise leads"
+🟢 SIMPLE (Single Agent):
+- One clear, focused action
+- Examples:
+  ✓ "Create a contact named John Smith"
+  ✓ "Show me all active deals"
+  ✓ "Send an email to Sarah"
+  ✓ "What deals are in the negotiation stage?"
+  ✓ "Create a task to follow up tomorrow"
 
-3. DEAL ANALYSIS: Requires deal + hygiene + forecast + competitor agents
-   Example: "Analyze the health of the Acme Corp deal and forecast"
+🟡 MODERATE (2 Agents, Parallel):
+- Need data from 2 different sources
+- Examples:
+  ✓ "Find John Smith and show his recent deals"
+  ✓ "Search for Acme Corp and list contacts who work there"
+  ✓ "Get pipeline stats and forecast revenue"
 
-4. DATA ENRICHMENT: Requires general (web search) + contact + company + dataentry agents
-   Example: "Find and update information for John Smith"
+🔴 COMPLEX (3-4 Agents, Coordinated):
+These require MULTIPLE specialized agents working together:
 
-IMPORTANT:
-- If the task has ONE clear action → SINGLE agent
-- If the task requires gathering data from MULTIPLE sources → PARALLEL agents
-- If the task has SEQUENTIAL steps (do A, then B, then C) → SEQUENTIAL agents
+1. **MEETING PREP** (briefing + contact + deal + company)
+   "Prepare me for tomorrow's call with Acme Corp"
+   "What should I know before meeting John Smith?"
 
-Respond with ONLY a JSON object:
+2. **CAMPAIGN DESIGN** (general + company + workflow + email)
+   "Create a nurture campaign for enterprise leads"
+   "Build an onboarding workflow for new customers"
+
+3. **DEAL INTELLIGENCE** (deal + hygiene + forecast + competitor)
+   "Analyze the Acme deal health and give me a forecast"
+   "Review all stale deals and suggest actions"
+
+4. **DATA ENRICHMENT** (general + contact + company + dataentry)
+   "Research and update info for all contacts at Acme Corp"
+   "Find duplicates and clean my contact database"
+
+5. **COMPREHENSIVE RESEARCH** (general + company + competitor + proposal)
+   "Research Acme Corp and create a proposal"
+   "Find info about {{competitor}} and create a battlecard"
+
+🎯 COORDINATION MODES:
+- **single**: One agent handles everything (90% of tasks)
+- **parallel**: Multiple agents work simultaneously, results merged (research, data gathering)
+- **sequential**: Agents run in order, each builds on previous (data enrichment, campaign setup)
+
+⚡ BE SMART ABOUT SINGLE-AGENT ROUTING:
+Even if a request SOUNDS complex, if ONE agent can handle it, use single mode!
+Example: "Create a 10-step workflow" → SINGLE agent (workflow agent can do this!)
+
+OUTPUT FORMAT - ONLY JSON:
 {
   "isComplex": true/false,
   "requiresMultipleAgents": true/false,
-  "suggestedAgents": ["agent1", "agent2", ...],
+  "suggestedAgents": ["agent1", "agent2"],
   "coordinationMode": "single" | "parallel" | "sequential",
-  "reasoning": "brief explanation",
+  "reasoning": "clear explanation of why this decision was made",
   "confidence": 0-100
 }
 

@@ -253,24 +253,94 @@ export async function dealAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        const systemPrompt = `You are a CRM Deal Agent. Manage sales deals and pipeline.
+        // PHASE 1: AUTONOMOUS CONTEXT GATHERING
+        console.log("🧠 Gathering deal pipeline context...");
 
-IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
+        const [existingDeals, Deal] = await Promise.all([
+            (await import("../../models/Deal")).default.find({ workspaceId: state.workspaceId })
+                .select("title value stage status contactId createdAt")
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .lean(),
+            (await import("../../models/Deal")).default
+        ]);
 
-Available tools:
-1. create_deal - Args: { title, value, contactName?, stage? }
-2. search_deals - Args: { query?, status? }
-3. update_deal - Args: { dealId, updates }
-4. move_deal_stage - Args: { dealId, newStage }
-5. get_deal_summary - Args: {}
-6. delete_deal - Args: { dealId?, dealName? }
-7. bulk_delete_deals - Bulk delete. Args: { status?, stage?, olderThanDays? }
+        const getTimeAgo = (date: any): string => {
+            if (!date) return "unknown";
+            const diffMs = new Date().getTime() - new Date(date).getTime();
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return `${Math.floor(diffDays / 7)}w ago`;
+        };
 
-Examples:
-- "delete all lost deals" → {"tool": "bulk_delete_deals", "args": {"status": "lost"}}
-- "delete deals older than 90 days" → {"tool": "bulk_delete_deals", "args": {"olderThanDays": 90}}
+        const dealContext = existingDeals.length > 0
+            ? `EXISTING DEALS (sorted NEWEST first):\n${existingDeals.map((d: any, i: number) => {
+                const timeAgo = getTimeAgo(d.createdAt);
+                const isNewest = i === 0 ? " 🆕 LATEST" : "";
+                return `${i + 1}. "${d.title}" - $${d.value} (${d.stage || "unknown stage"}) - Created ${timeAgo}${isNewest}`;
+              }).join('\n')}`
+            : "No deals found. This will be the first deal.";
 
-Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
+        const totalValue = existingDeals.reduce((sum: number, d: any) => sum + (d.value || 0), 0);
+        const avgValue = existingDeals.length > 0 ? Math.round(totalValue / existingDeals.length) : 0;
+        const pipelineStats = `\nPipeline Stats: ${existingDeals.length} deals, Total value: $${totalValue.toLocaleString()}, Avg: $${avgValue.toLocaleString()}`;
+
+        console.log("✓ Pipeline context gathered");
+
+        // PHASE 2: INTELLIGENT SYSTEM PROMPT
+        const systemPrompt = `You are an ELITE Sales Pipeline Manager powered by Gemini 2.5 Pro.
+
+🎯 AUTONOMOUS MODE: You analyze REAL pipeline data and make INTELLIGENT decisions.
+
+📊 CURRENT PIPELINE CONTEXT:
+${dealContext}${pipelineStats}
+
+USER REQUEST: "${userRequest}"
+
+🧠 YOUR AUTONOMOUS PROCESS:
+
+STEP 1: INTENT ANALYSIS
+- CREATE new deal?
+- SEARCH/FIND deals?
+- UPDATE/MOVE deal stage?
+- DELETE deal(s)?
+- GET pipeline summary?
+
+STEP 2: CONTEXTUAL INTELLIGENCE
+- Check EXISTING DEALS for patterns
+- If creating: Compare value to average ($${avgValue})
+- If deleting latest: #1 is newest (marked 🆕)
+- Identify stale/at-risk deals
+
+STEP 3: SMART INSIGHTS
+- Flag high-value deals (>avg)
+- Suggest stages based on context
+- Avoid duplicates
+
+🔧 AVAILABLE TOOLS:
+
+1. create_deal - { title, value, contactName?, stage? }
+2. search_deals - { query?, status? }
+3. update_deal - { dealId, updates }
+4. move_deal_stage - { dealId, newStage }
+5. get_deal_summary - {}
+6. delete_deal - { dealId?, dealName? }
+7. bulk_delete_deals - { status?, stage?, olderThanDays? }
+
+💡 EXAMPLES OF INTELLIGENCE:
+
+❌ BAD: "Created deal for $50,000"
+✅ GOOD: "Created $50K deal - This is above your average deal size ($${avgValue.toLocaleString()}), marking as high-value opportunity 🎯"
+
+📝 RESPONSE FORMAT:
+
+ANALYSIS:
+[Your thinking: What is user asking? Any value insights? Which deal if deleting?]
+
+JSON:
+{"tool": "tool_name", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -278,7 +348,12 @@ Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
         ]);
 
         const responseText = response.content as string;
-        console.log("🤖 Deal AI Response:", responseText);
+        console.log("🤖 Deal AI Response (first 300 chars):", responseText.substring(0, 300));
+
+        // PHASE 3: EXTRACT REASONING
+        const analysisMatch = responseText.match(/ANALYSIS:(.*?)(?=JSON:|$)/s);
+        const aiAnalysis = analysisMatch ? analysisMatch[1].trim() : "";
+        if (aiAnalysis) console.log("🧠 AI Analysis:", aiAnalysis.substring(0, 150));
 
         const toolCall = parseToolCall(responseText);
 
@@ -294,20 +369,25 @@ Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
             console.log("✅ Deal tool result:", result);
 
+            // PHASE 4: CONTEXTUAL RESPONSE
             let friendlyResponse = "";
             if (result.success) {
-                if (toolCall.tool === "create_deal" || toolCall.tool === "delete_deal") {
-                    friendlyResponse = result.message;
+                if (toolCall.tool === "create_deal") {
+                    const value = toolCall.args.value || 0;
+                    const highValue = value > avgValue ? " 🎯 (High-value!)" : "";
+                    friendlyResponse = `✅ ${result.message}${highValue}`;
+                } else if (toolCall.tool === "delete_deal") {
+                    friendlyResponse = `✅ ${result.message}`;
                 } else if (toolCall.tool === "search_deals") {
                     if (result.count === 0) {
-                        friendlyResponse = "No deals found.";
+                        friendlyResponse = "No deals found matching your criteria.";
                     } else {
-                        friendlyResponse = `Found ${result.count} deal(s):\n${result.deals.map((d: any) => `• ${d.title} - $${d.value} (${d.status})${d.contact ? ` with ${d.contact}` : ""}`).join("\n")}`;
+                        friendlyResponse = `Found **${result.count} deal(s)**:\n${result.deals.map((d: any) => `• **${d.title}** - $${d.value.toLocaleString()} (${d.status})${d.contact ? ` with ${d.contact}` : ""}`).join("\n")}`;
                     }
                 } else if (toolCall.tool === "update_deal" || toolCall.tool === "move_deal_stage") {
-                    friendlyResponse = result.message;
+                    friendlyResponse = `✅ ${result.message}`;
                 } else if (toolCall.tool === "get_deal_summary") {
-                    friendlyResponse = `📊 Pipeline Summary:\n• Open Deals: ${result.summary.openDeals}\n• Total Value: $${result.summary.totalPipelineValue.toLocaleString()}`;
+                    friendlyResponse = `📊 **Pipeline Summary**\n• Open Deals: ${result.summary.openDeals}\n• Total Value: $${result.summary.totalPipelineValue.toLocaleString()}\n• Average: $${avgValue.toLocaleString()}`;
                 } else {
                     friendlyResponse = result.message || "Done!";
                 }
@@ -317,14 +397,14 @@ Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
             return {
                 messages: [new AIMessage(friendlyResponse)],
-                toolResults: { [toolCall.tool]: result },
+                toolResults: { [toolCall.tool]: result, aiAnalysis: aiAnalysis || null },
                 finalResponse: friendlyResponse,
             };
         }
 
         return {
-            messages: [new AIMessage("I can help with deals! Try:\n• 'Create a $10k deal with Acme'\n• 'Delete the old proposal deal'\n• 'Show my open deals'")],
-            finalResponse: "I can help with deals!",
+            messages: [new AIMessage("I can help manage your sales pipeline! Try:\n• 'Create a $50k deal with Acme Corp'\n• 'Show my high-value deals'\n• 'Delete the latest deal'\n• 'Get pipeline summary'")],
+            finalResponse: "I can help manage your sales pipeline!",
         };
 
     } catch (error: any) {

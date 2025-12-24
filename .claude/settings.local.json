@@ -67,7 +67,8 @@
       "Bash(node fix-types.js:*)",
       "Bash(node:*)",
       "Bash(del fix-parse-imports.js fix-regex-injection.js)",
-      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsc:*)"
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsc:*)",
+      "Bash(set NODE_OPTIONS=--max-old-space-size=8192)"
     ],
     "deny": [],
     "ask": []

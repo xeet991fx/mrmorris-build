@@ -13,6 +13,8 @@ import {
     FunnelIcon,
     QuestionMarkCircleIcon,
     DocumentDuplicateIcon,
+    SparklesIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { Workflow, WorkflowStatus, STATUS_COLORS } from "@/lib/workflow/types";
@@ -23,7 +25,6 @@ import { TemplateGallery } from "@/components/shared/TemplateGallery";
 import { AutomationSuggestionsCard } from "@/components/workflows/AutomationSuggestionsCard";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
-import { WorkflowIntelligencePanel } from "@/components/workflows/WorkflowIntelligencePanel";
 
 // Status badge component
 function StatusBadge({ status }: { status: WorkflowStatus }) {
@@ -200,6 +201,7 @@ export default function WorkflowsPage() {
     const [statusFilter, setStatusFilter] = useState<WorkflowStatus | "all">("all");
     const [isCreating, setIsCreating] = useState(false);
     const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+    const [showAISidebar, setShowAISidebar] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
 
@@ -299,7 +301,7 @@ export default function WorkflowsPage() {
             />
 
             {/* Header */}
-            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10">
+            <div className="px-6 py-3 border-b border-border flex items-center justify-between sticky top-0 z-20 bg-background/95 backdrop-blur-sm">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -317,6 +319,13 @@ export default function WorkflowsPage() {
                     >
                         <QuestionMarkCircleIcon className="w-5 h-5" />
                         Help & Guide
+                    </button>
+                    <button
+                        onClick={() => setShowAISidebar(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500 text-purple-500 font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all"
+                    >
+                        <SparklesIcon className="w-5 h-5" />
+                        AI Suggestions
                     </button>
                     <button
                         onClick={handleCreateNew}
@@ -371,19 +380,7 @@ export default function WorkflowsPage() {
                 </div>
             </div>
 
-            {/* AI Automation Suggestions */}
-            <div className="max-w-7xl mx-auto px-6 mb-6">
-                <AutomationSuggestionsCard workspaceId={workspaceId} />
-            </div>
-
-            {/* AI Workflow Intelligence */}
-            {workflows.length > 0 && (
-                <div className="max-w-7xl mx-auto px-6 mb-6">
-                    <WorkflowIntelligencePanel workspaceId={workspaceId} workflows={workflows} />
-                </div>
-            )}
-
-            {/* Content */}
+            {/* Content - Workflow Cards */}
             <div className="max-w-7xl mx-auto px-6 pb-8">
                 {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -457,6 +454,41 @@ export default function WorkflowsPage() {
                 cancelText="Cancel"
                 variant="danger"
             />
+
+            {/* AI Suggestions Sidebar */}
+            {showAISidebar && (
+                <>
+                    {/* Overlay */}
+                    <div
+                        className="fixed inset-0 bg-black/50 z-40"
+                        onClick={() => setShowAISidebar(false)}
+                    />
+                    {/* Sidebar Panel */}
+                    <motion.div
+                        initial={{ x: "100%" }}
+                        animate={{ x: 0 }}
+                        exit={{ x: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        className="fixed right-0 top-0 h-full w-96 bg-card border-l border-border shadow-xl z-50 overflow-y-auto"
+                    >
+                        <div className="p-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <SparklesIcon className="w-5 h-5 text-purple-500" />
+                                    <h2 className="text-lg font-semibold text-foreground">AI Suggestions</h2>
+                                </div>
+                                <button
+                                    onClick={() => setShowAISidebar(false)}
+                                    className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                                >
+                                    <XMarkIcon className="w-5 h-5 text-muted-foreground" />
+                                </button>
+                            </div>
+                            <AutomationSuggestionsCard workspaceId={workspaceId} />
+                        </div>
+                    </motion.div>
+                </>
+            )}
         </div>
     );
 }

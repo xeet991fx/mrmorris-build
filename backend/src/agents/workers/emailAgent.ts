@@ -241,24 +241,73 @@ export async function emailAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        const systemPrompt = `You are a CRM Email Agent. Manage emails and templates.
+        // PHASE 1: AUTONOMOUS CONTEXT GATHERING
+        const [EmailTemplate, Contact] = await Promise.all([
+            (await import("../../models/EmailTemplate")).default,
+            (await import("../../models/Contact")).default
+        ]);
 
-IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
+        const [templates, sampleContacts] = await Promise.all([
+            EmailTemplate.find({ workspaceId: state.workspaceId })
+                .select("name subject category createdAt")
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .lean(),
+            Contact.find({ workspaceId: state.workspaceId })
+                .select("firstName lastName email company")
+                .limit(3)
+                .lean()
+        ]);
 
-Available tools:
-1. draft_email - Draft an email. Args: { to, subject, body, tone, purpose }
-2. send_email - Send an email immediately. Args: { to, subject, body, templateName? }
-3. create_template - Create an email template. Args: { name, subject, body, category }
-4. update_template - Update a template. Args: { templateName, name?, subject?, body?, category? }
-5. delete_template - Delete a template. Args: { templateName }
-6. list_templates - List email templates. Args: { category? }
-7. get_contact_email - Get a contact's email. Args: { contactName }
+        const templateContext = templates.length > 0
+            ? `EMAIL TEMPLATES (NEWEST first):\n${templates.map((t: any, i: number) => {
+                const isNewest = i === 0 ? " 🆕 LATEST" : "";
+                return `${i + 1}. "${t.name}" (${t.category || "general"}) - "${t.subject}"${isNewest}`;
+              }).join('\n')}`
+            : "No templates. This will be the first template.";
 
-Examples:
-- "send email to john@test.com about meeting" → {"tool": "send_email", "args": {"to": "john@test.com", "subject": "Meeting", "body": "Hi,\\n\\nI wanted to discuss our upcoming meeting..."}}
-- "delete welcome template" → {"tool": "delete_template", "args": {"templateName": "welcome"}}
+        const contactContext = sampleContacts.length > 0
+            ? `SAMPLE CONTACTS (for personalization):\n${sampleContacts.map((c: any) =>
+                `• ${c.firstName} ${c.lastName} (${c.email}) at ${c.company || "Unknown"}`
+              ).join('\n')}`
+            : "No contacts yet.";
 
-Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
+        const systemPrompt = `You are an ELITE Email Communication Specialist powered by Gemini 2.5 Pro.
+
+🎯 AUTONOMOUS MODE: Create intelligent, personalized emails using real data.
+
+📊 CURRENT EMAIL CONTEXT:
+${templateContext}
+
+${contactContext}
+
+USER REQUEST: "${userRequest}"
+
+🧠 AUTONOMOUS PROCESS:
+
+STEP 1: INTENT - DRAFT/SEND/CREATE_TEMPLATE/UPDATE/DELETE/LIST?
+STEP 2: PERSONALIZATION
+- Use contact data: {{firstName}}, {{lastName}}, {{company}}
+- Professional tone unless specified otherwise
+- Clear subject lines
+- If deleting latest template: #1 is newest (🆕)
+
+STEP 3: SMART EMAIL WRITING
+❌ BAD: "Hi, We wanted to reach out..."
+✅ GOOD: "Hi {{firstName}}, Based on {{company}}'s recent..."
+
+🔧 TOOLS:
+1. draft_email - { to, subject, body, tone?, purpose? }
+2. send_email - { to, subject, body, templateName? }
+3. create_template - { name, subject, body, category }
+4. update_template - { templateName, name?, subject?, body?, category? }
+5. delete_template - { templateName }
+6. list_templates - { category? }
+7. get_contact_email - { contactName }
+
+📝 FORMAT:
+ANALYSIS: [Your thinking - personalization strategy, tone, purpose]
+JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -266,7 +315,10 @@ Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
         ]);
 
         const responseText = response.content as string;
-        console.log("🤖 Email AI Response:", responseText);
+
+        // PHASE 3: EXTRACT REASONING
+        const analysisMatch = responseText.match(/ANALYSIS:(.*?)(?=JSON:|$)/s);
+        const aiAnalysis = analysisMatch ? analysisMatch[1].trim() : "";
 
         const toolCall = parseToolCall(responseText);
 
@@ -306,14 +358,14 @@ Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
             return {
                 messages: [new AIMessage(friendlyResponse)],
-                toolResults: { [toolCall.tool]: result },
+                toolResults: { [toolCall.tool]: result, aiAnalysis: aiAnalysis || null },
                 finalResponse: friendlyResponse,
             };
         }
 
         return {
-            messages: [new AIMessage("I can help with emails! Try:\n• 'Send email to john@test.com about our meeting'\n• 'Delete the welcome template'\n• 'Update the follow-up template subject'")],
-            finalResponse: "I can help with emails!",
+            messages: [new AIMessage("I can help with email communication! Try:\n• 'Draft an email to John Smith about our proposal'\n• 'Create a follow-up email template'\n• 'Delete the latest template'\n• 'List all email templates'")],
+            finalResponse: "I can help with email communication!",
         };
 
     } catch (error: any) {

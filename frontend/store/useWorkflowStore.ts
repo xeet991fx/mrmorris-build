@@ -97,7 +97,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     fetchWorkflows: async (workspaceId: string) => {
         set({ isLoading: true, error: null });
         try {
-            const { workflows } = await workflowApi.fetchWorkflows(workspaceId);
+            // Request higher limit to show all workflows, backend sorts by createdAt descending (newest first)
+            const { workflows } = await workflowApi.fetchWorkflows(workspaceId, { limit: 100 });
             set({ workflows, isLoading: false });
         } catch (error: any) {
             console.error('Failed to fetch workflows:', error);

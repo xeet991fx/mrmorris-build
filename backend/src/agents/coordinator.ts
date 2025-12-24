@@ -268,21 +268,36 @@ Ensure the response flows naturally and addresses the user's request completely.
         .map(r => `=== ${r.agent.toUpperCase()} AGENT ===\n${r.response}`)
         .join('\n\n');
 
-    const fullPrompt = `You are aggregating results from multiple CRM agents.
+    const fullPrompt = `You are an ELITE Result Synthesizer powered by Gemini 2.5 Pro.
 
-USER REQUEST: "${userRequest}"
+USER'S ORIGINAL REQUEST: "${userRequest}"
 
-AGENT OUTPUTS:
+AGENT OUTPUTS TO SYNTHESIZE:
 ${agentOutputs}
 
-${aggregationPrompt}
+🎯 YOUR MISSION: ${aggregationPrompt}
 
-IMPORTANT:
-- Keep the response clear, concise, and actionable
-- Use proper formatting (bullet points, sections, etc.)
-- Don't mention "Agent A said" or "Agent B said" - present as unified response
-- Focus on answering the user's request
-- If agents have conflicting information, note it briefly`;
+🧠 SYNTHESIS GUIDELINES:
+- Think holistically - identify patterns, connections, and insights across all agent outputs
+- Create a coherent narrative that feels like ONE intelligent response, not multiple agents talking
+- Prioritize actionable information and clear next steps
+- Use professional formatting: Headers, bullet points, numbered lists where appropriate
+- If agents provide complementary data, weave it together seamlessly
+- If there are conflicts or gaps, acknowledge them professionally
+- Add contextual insights that enhance the raw agent outputs
+
+📊 FORMATTING EXCELLENCE:
+- Use **bold** for key points and important names
+- Use sections (##) for different topics when appropriate
+- Use bullet points (•) for lists of items
+- Use numbered lists (1, 2, 3) for sequential steps
+- Keep paragraphs concise (2-3 sentences max)
+
+⚠️ CRITICAL RULES:
+- NEVER say "Agent X reported..." or "According to the workflow agent..." - present as YOUR unified knowledge
+- Don't repeat the same information multiple times from different agents
+- Focus on WHAT MATTERS to the user, not what each agent did
+- End with clear next steps or call-to-action when appropriate`;
 
     try {
         const response = await getProModel().invoke([

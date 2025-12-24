@@ -17,7 +17,10 @@ export const metadata: Metadata = {
   keywords: ["AI marketing", "marketing automation", "marketing copilot", "autonomous marketing", "marketing agencies", "AI agents", "campaign optimization"],
   authors: [{ name: "Clianta" }],
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/Clianta-logo-removebg-preview.png', type: 'image/png' },
+    ],
+    apple: '/Clianta-logo-removebg-preview.png',
   },
   openGraph: {
     title: "Clianta - Autonomous Marketing Copilot for Agencies",

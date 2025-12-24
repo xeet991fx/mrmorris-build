@@ -248,68 +248,84 @@ async function aiExecutionPlan(
     retryCount: number = 0
 ): Promise<ExecutionPlan> {
     const MAX_RETRIES = 2;
-    const prompt = `Create an execution plan for a multi-agent CRM task.
+    const prompt = `You are an ELITE Multi-Agent Orchestration System powered by Gemini 2.5 Pro.
 
 USER REQUEST: "${message}"
 SUGGESTED AGENTS: ${suggestedAgents.join(', ')}
 COORDINATION MODE: ${coordinationMode}
 
-Create a plan that:
-1. Assigns clear instructions to each agent
-2. Sets priorities (1 = highest, run first)
-3. Defines dependencies (which agents need others to complete first)
-4. Chooses aggregation strategy:
-   - "merge": Combine all agent outputs equally
-   - "summarize": Generate a summary from all outputs
-   - "prioritize": Use primary agent output, supplement with others
+🎯 YOUR MISSION:
+Create a sophisticated, intelligent execution plan that maximizes the capabilities of each agent.
 
-Available agents and their capabilities:
-- contact: Create, search, update, delete contacts
-- email: Draft emails, create templates
-- deal: Manage deals and opportunities
-- workflow: Create and manage automations
-- task: Create tasks and reminders
-- company: Manage company accounts
-- campaign: Send email campaigns
-- pipeline: Manage pipeline stages
-- ticket: Handle support tickets
-- sequence: Create email sequences
-- leadscore: Calculate lead scores
-- reports: Generate reports and analytics
-- briefing: Prepare meeting briefings
-- transcription: Summarize call recordings
-- scheduling: Book meetings and manage calendar
-- hygiene: Analyze pipeline health and stale deals
-- forecast: Generate revenue forecasts
-- proposal: Create proposals and quotes
-- competitor: Generate battlecards and competitive intelligence
-- dataentry: Clean data, find duplicates, parse information
-- general: Web search and general questions
+🧠 THINK STRATEGICALLY:
+- What's the user's ultimate goal? Break it down into logical sub-tasks
+- Which agents have complementary strengths? How can they work together?
+- What information does each agent need from others?
+- How should results be combined for maximum impact?
 
-OUTPUT FORMAT - Respond with ONLY valid JSON (no markdown, no comments, no extra text):
+📋 AGENT CAPABILITIES (Use their full power!):
+
+CORE CRM AGENTS:
+- contact: Create/search/update/delete contacts, find contact patterns, enrich contact data
+- email: Draft compelling emails, create templates with personalization, design email strategies
+- deal: Manage deals, analyze deal health, forecast close probability, suggest next actions
+- workflow: Create sophisticated multi-step automations (can create ANY number of steps!)
+- task: Create tasks with smart scheduling, set reminders, generate action plans
+- company: Manage accounts, research companies, analyze account health
+
+INTELLIGENCE AGENTS (These are POWERFUL):
+- briefing: Generate comprehensive meeting prep (aggregates contact, deal, company data)
+- transcription: Summarize call recordings, extract action items and BANT info
+- scheduling: Find optimal meeting times, handle calendar conflicts
+- hygiene: Deep pipeline analysis, identify stale deals, suggest stage changes
+- forecast: Revenue predictions, trend analysis, risk assessment
+- proposal: Generate detailed proposals with pricing and SOW
+- competitor: Battlecards, competitive positioning, win/loss analysis
+- leadscore: Score leads, identify hot prospects
+- reports: Generate analytics, dashboards, summary reports
+
+SUPPORT AGENTS:
+- campaign: Multi-channel campaigns, email blasts
+- pipeline: Manage stages, funnel analysis
+- ticket: Support ticket management
+- sequence: Multi-touch email sequences
+- dataentry: Dedupe, clean data, parse email signatures
+- general: Web research, answer questions, provide insights
+
+💡 INSTRUCTION QUALITY MATTERS:
+Give each agent SPECIFIC, ACTIONABLE instructions. Not "get contact info" but:
+✅ "Find contact John Smith, retrieve interaction history, identify decision-making role, and assess engagement level"
+✅ "Search web for {{companyName}} recent news, funding rounds, executive changes, and competitive positioning"
+✅ "Analyze deal pipeline for deals stuck >30 days, identify blockers, suggest next actions with specific tasks"
+
+🎛️ AGGREGATION STRATEGIES:
+- "merge": Equal weight to all agents - good for research/data gathering
+- "summarize": Create executive summary - best for briefings/reports
+- "prioritize": Primary agent leads, others supplement - good when one agent is main actor
+
+OUTPUT FORMAT - ONLY valid JSON:
 {
   "mode": "${coordinationMode}",
   "tasks": [
     {
       "agent": "agent_name",
-      "instruction": "specific instruction for this agent",
+      "instruction": "detailed, specific instruction that leverages agent's full capabilities",
       "priority": 1,
       "dependsOn": []
     }
   ],
-  "aggregationStrategy": "merge",
-  "estimatedAgentCount": 2
+  "aggregationStrategy": "merge" | "summarize" | "prioritize",
+  "estimatedAgentCount": 2-4
 }
 
-CRITICAL RULES:
-- Output ONLY the JSON object, nothing else
+RULES:
+- ONLY output JSON, nothing else
 - Use double quotes for all strings
 - No trailing commas
-- dependsOn must be an array (use [] if empty)
-- Limit to 2-4 agents maximum
-- Priority 1 = run first, higher numbers = run later
-- mode must be exactly "${coordinationMode}"
-- aggregationStrategy must be one of: "merge", "summarize", "prioritize"`;
+- dependsOn must be an array ([] if empty)
+- 2-4 agents maximum
+- Priority 1 = highest (run first)
+- Instructions must be detailed and actionable`;
 
     try {
         const response = await getJsonModel().invoke([

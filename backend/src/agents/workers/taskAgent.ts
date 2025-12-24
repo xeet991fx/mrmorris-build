@@ -214,23 +214,59 @@ export async function taskAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        const systemPrompt = `You are a CRM Task Agent. Create and manage tasks.
+        // PHASE 1: AUTONOMOUS CONTEXT GATHERING
+        const Task = (await import("../../models/Task")).default;
+        const existingTasks = await Task.find({ workspaceId: state.workspaceId })
+            .select("title dueDate priority status createdAt")
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean();
 
-IMPORTANT: Always respond with a JSON tool call. NEVER ask for more information - use sensible defaults.
+        const now = new Date();
+        const overdueCount = existingTasks.filter((t: any) => t.dueDate && new Date(t.dueDate) < now && t.status !== "completed").length;
+        const priorityBreakdown = existingTasks.reduce((acc: any, t: any) => {
+            acc[t.priority || "medium"] = (acc[t.priority || "medium"] || 0) + 1;
+            return acc;
+        }, {});
 
-Tools:
-1. create_task - Args: { title, dueDate? (days), priority? }
-2. list_tasks - Args: { filter? (overdue/today/upcoming) }
-3. complete_task - Args: { taskTitle }
-4. update_task - Args: { taskTitle, title?, dueDate?, priority? }
-5. delete_task - Args: { taskTitle }
-6. bulk_delete_tasks - Bulk delete. Args: { status?, priority?, olderThanDays? }
+        const taskContext = existingTasks.length > 0
+            ? `EXISTING TASKS (NEWEST first):\n${existingTasks.map((t: any, i: number) => {
+                const isNewest = i === 0 ? " 🆕 LATEST" : "";
+                const isOverdue = t.dueDate && new Date(t.dueDate) < now && t.status !== "completed" ? " ⚠️ OVERDUE" : "";
+                return `${i + 1}. "${t.title}" (${t.priority || "medium"} priority)${isOverdue}${isNewest}`;
+              }).join('\n')}\n\n⚠️ ${overdueCount} overdue task(s)`
+            : "No tasks. This will be the first task.";
 
-Examples:
-- "delete all completed tasks" → {"tool": "bulk_delete_tasks", "args": {"status": "completed"}}
-- "delete low priority tasks older than 30 days" → {"tool": "bulk_delete_tasks", "args": {"priority": "low", "olderThanDays": 30}}
+        const systemPrompt = `You are an ELITE Task Manager powered by Gemini 2.5 Pro.
 
-Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
+🎯 AUTONOMOUS MODE: Analyze real task data and make smart decisions.
+
+📊 CURRENT TASKS:
+${taskContext}
+Priority: High=${priorityBreakdown.high || 0}, Medium=${priorityBreakdown.medium || 0}, Low=${priorityBreakdown.low || 0}
+
+USER REQUEST: "${userRequest}"
+
+🧠 AUTONOMOUS PROCESS:
+
+STEP 1: INTENT - CREATE/LIST/COMPLETE/UPDATE/DELETE?
+STEP 2: SMART DEFAULTS
+- "urgent", "asap", "now" → high priority
+- "tomorrow" → dueDate: 1, "next week" → dueDate: 7
+- If deleting latest: #1 is newest (🆕)
+${overdueCount > 0 ? `- ⚠️ Alert: ${overdueCount} overdue tasks need attention!` : ""}
+
+🔧 TOOLS:
+1. create_task - { title, dueDate? (days), priority? (high/medium/low) }
+2. list_tasks - { filter? (overdue/today/upcoming) }
+3. complete_task - { taskTitle }
+4. update_task - { taskTitle, title?, dueDate?, priority? }
+5. delete_task - { taskTitle }
+6. bulk_delete_tasks - { status?, priority?, olderThanDays? }
+
+📝 FORMAT:
+ANALYSIS: [Your thinking]
+JSON: {"tool": "...", "args": {...}}`;
 
         const response = await getProModel().invoke([
             new SystemMessage(systemPrompt),
@@ -238,7 +274,10 @@ Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
         ]);
 
         const responseText = response.content as string;
-        console.log("🤖 Task AI Response:", responseText);
+
+        // PHASE 3: EXTRACT REASONING
+        const analysisMatch = responseText.match(/ANALYSIS:(.*?)(?=JSON:|$)/s);
+        const aiAnalysis = analysisMatch ? analysisMatch[1].trim() : "";
 
         const toolCall = parseToolCall(responseText);
 
@@ -266,7 +305,7 @@ Respond with ONLY JSON: {"tool": "...", "args": {...}}`;
 
             return {
                 messages: [new AIMessage(friendlyResponse)],
-                toolResults: { [toolCall.tool]: result },
+                toolResults: { [toolCall.tool]: result, aiAnalysis: aiAnalysis || null },
                 finalResponse: friendlyResponse,
             };
         }
