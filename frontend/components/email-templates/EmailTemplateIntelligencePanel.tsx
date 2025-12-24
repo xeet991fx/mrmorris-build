@@ -196,7 +196,7 @@ export const EmailTemplateIntelligencePanel: React.FC<EmailTemplateIntelligenceP
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">Personalization</span>
-                                <span className="text-yellow-500">Missing {{ firstName }}</span>
+                                <span className="text-yellow-500">Missing {"{{ firstName }}"}</span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">Spam trigger words</span>
