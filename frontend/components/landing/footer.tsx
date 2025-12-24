@@ -9,7 +9,7 @@ export function Footer() {
           <div className="md:col-span-1">
             <Link href="/" className="flex items-center">
               <span className="font-heading text-2xl font-bold bg-gradient-to-r from-[#9ACD32] via-[#8AB82E] to-[#7BA628] bg-clip-text text-transparent">
-                MrMorris
+                Clianta
               </span>
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
@@ -102,7 +102,7 @@ export function Footer() {
         <div className="mt-12 border-t border-border/40 pt-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} MrMorris. All rights reserved.
+              © {new Date().getFullYear()} Clianta. All rights reserved.
             </p>
             <div className="flex gap-6">
               <Link

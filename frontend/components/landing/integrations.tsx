@@ -49,7 +49,7 @@ export function Integrations() {
             </span>
           </h2>
           <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-            MrMorris connects seamlessly with all your marketing tools, CRM, analytics platforms,
+            Clianta connects seamlessly with all your marketing tools, CRM, analytics platforms,
             and ad networks to provide a unified autonomous marketing experience.
           </p>
         </motion.div>

@@ -178,7 +178,7 @@ export async function generalAgentNode(
             console.log("✅ Web search returned", searchResult.results.length, "results");
         }
 
-        const systemPrompt = `You are a helpful AI assistant integrated into a CRM platform (MrMorris).
+        const systemPrompt = `You are a helpful AI assistant integrated into a CRM platform (Clianta).
 While your primary focus is CRM tasks (contacts, deals, emails, workflows), you can also help with general questions.
 
 ${context ? `Use the following web search results to answer the user's question:${context}` : ""}

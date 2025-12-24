@@ -32,13 +32,13 @@ function DashboardContent() {
           <div className="flex items-center gap-3">
             <Image
               src="/Clianta-logo.jpg"
-              alt="MrMorris Logo"
+              alt="Clianta Logo"
               width={36}
               height={36}
               className="object-contain"
             />
             <h1 className="text-base font-semibold text-foreground">
-              MrMorris
+              Clianta
             </h1>
           </div>
 
@@ -69,7 +69,7 @@ function DashboardContent() {
               Welcome back, {user?.name}!
             </h2>
             <p className="text-sm text-muted-foreground">
-              You&apos;re successfully logged in to your MrMorris dashboard.
+              You&apos;re successfully logged in to your Clianta dashboard.
             </p>
           </div>
 
@@ -150,7 +150,7 @@ function DashboardContent() {
                 </h3>
                 <p className="text-sm text-foreground mb-4">
                   Your account is fully configured and ready to use. Start
-                  exploring MrMorris&apos;s autonomous marketing features.
+                  exploring Clianta&apos;s autonomous marketing features.
                 </p>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-foreground">

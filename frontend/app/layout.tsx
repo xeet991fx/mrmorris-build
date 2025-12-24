@@ -12,21 +12,21 @@ const hankenGrotesk = Hanken_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: "MrMorris - Autonomous Marketing Copilot for Agencies",
+  title: "Clianta - Autonomous Marketing Copilot for Agencies",
   description: "Your AI Marketing Team That Never Sleeps. Multi-agent autonomous marketing system that manages campaigns, optimizes performance, and drives results 24/7.",
   keywords: ["AI marketing", "marketing automation", "marketing copilot", "autonomous marketing", "marketing agencies", "AI agents", "campaign optimization"],
-  authors: [{ name: "MrMorris" }],
+  authors: [{ name: "Clianta" }],
   icons: {
     icon: '/favicon.ico',
   },
   openGraph: {
-    title: "MrMorris - Autonomous Marketing Copilot for Agencies",
+    title: "Clianta - Autonomous Marketing Copilot for Agencies",
     description: "Your AI Marketing Team That Never Sleeps. Multi-agent autonomous marketing system for agencies.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "MrMorris - Autonomous Marketing Copilot",
+    title: "Clianta - Autonomous Marketing Copilot",
     description: "Your AI Marketing Team That Never Sleeps",
   },
 }

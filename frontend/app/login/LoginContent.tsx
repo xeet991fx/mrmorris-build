@@ -141,7 +141,7 @@ export default function LoginContent() {
                                 Welcome Back
                             </h1>
                             <p className="text-muted-foreground">
-                                Sign in to continue to MrMorris
+                                Sign in to continue to Clianta
                             </p>
                         </motion.div>
                     </div>

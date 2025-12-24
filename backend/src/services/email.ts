@@ -70,7 +70,7 @@ class EmailService {
       if (this.useResend && this.resend) {
         // Use Resend for production/Railway
         const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
-        const fromName = process.env.EMAIL_FROM_NAME || "MrMorris";
+        const fromName = process.env.EMAIL_FROM_NAME || "Clianta";
 
         const { data, error } = await this.resend.emails.send({
           from: `${fromName} <${fromEmail}>`,
@@ -86,7 +86,7 @@ class EmailService {
       } else if (this.transporter) {
         // Use Nodemailer for local development
         const info = await this.transporter.sendMail({
-          from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${process.env.EMAIL_USER}>`,
+          from: `"${process.env.EMAIL_FROM_NAME || "Clianta"}" <${process.env.EMAIL_USER}>`,
           to: options.to,
           subject: options.subject,
           html: options.html,
@@ -120,7 +120,7 @@ class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: "Verify Your Email - MrMorris",
+      subject: "Verify Your Email - Clianta",
       html,
     });
   }
@@ -139,7 +139,7 @@ class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: "Reset Your Password - MrMorris",
+      subject: "Reset Your Password - Clianta",
       html,
     });
   }
@@ -158,7 +158,7 @@ class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: `${inviterName} invited you to join ${workspaceName} - MrMorris`,
+      subject: `${inviterName} invited you to join ${workspaceName} - Clianta`,
       html,
     });
   }
@@ -171,7 +171,7 @@ class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: "Welcome to MrMorris!",
+      subject: "Welcome to Clianta!",
       html,
     });
   }
@@ -226,7 +226,7 @@ class EmailService {
       if (this.useResend && this.resend) {
         // Use Resend for production/Railway
         const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
-        const fromName = process.env.EMAIL_FROM_NAME || "MrMorris";
+        const fromName = process.env.EMAIL_FROM_NAME || "Clianta";
 
         const { data, error } = await this.resend.emails.send({
           from: `${fromName} <${fromEmail}>`,
@@ -243,7 +243,7 @@ class EmailService {
       } else if (this.transporter) {
         // Use Nodemailer for local development
         const info = await this.transporter.sendMail({
-          from: `"${process.env.EMAIL_FROM_NAME || "MrMorris"}" <${process.env.EMAIL_USER}>`,
+          from: `"${process.env.EMAIL_FROM_NAME || "Clianta"}" <${process.env.EMAIL_USER}>`,
           to,
           subject: processedSubject,
           html: htmlContent,
@@ -283,7 +283,7 @@ class EmailService {
           <!-- Header -->
           <tr>
             <td style="padding: 30px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">MrMorris</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Clianta</h1>
             </td>
           </tr>
 
@@ -300,10 +300,10 @@ class EmailService {
           <tr>
             <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0; background-color: #f8fafc; border-radius: 0 0 16px 16px;">
               <p style="margin: 0 0 10px; color: #94a3b8; font-size: 12px;">
-                This is an automated message from MrMorris CRM
+                This is an automated message from Clianta CRM
               </p>
               <p style="margin: 0; color: #94a3b8; font-size: 12px;">
-                © ${new Date().getFullYear()} MrMorris. All rights reserved.
+                © ${new Date().getFullYear()} Clianta. All rights reserved.
               </p>
             </td>
           </tr>
@@ -334,7 +334,7 @@ class EmailService {
 
     await this.sendEmail({
       to: email,
-      subject: `${purposeText[purpose]} - MrMorris`,
+      subject: `${purposeText[purpose]} - Clianta`,
       html,
     });
   }
@@ -362,7 +362,7 @@ class EmailService {
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">MrMorris</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Clianta</h1>
             </td>
           </tr>
 
@@ -371,7 +371,7 @@ class EmailService {
             <td style="padding: 40px;">
               <h2 style="margin: 0 0 20px; color: #1e293b; font-size: 24px; font-weight: 600;">Hi ${name}!</h2>
               <p style="margin: 0 0 20px; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Thanks for signing up for MrMorris! We're excited to have you on board. To get started, please verify your email address by clicking the button below.
+                Thanks for signing up for Clianta! We're excited to have you on board. To get started, please verify your email address by clicking the button below.
               </p>
 
               <!-- CTA Button -->
@@ -386,7 +386,7 @@ class EmailService {
               </table>
 
               <p style="margin: 30px 0 0; color: #94a3b8; font-size: 14px; line-height: 1.6;">
-                If you didn't create an account with MrMorris, you can safely ignore this email.
+                If you didn't create an account with Clianta, you can safely ignore this email.
               </p>
 
               <p style="margin: 20px 0 0; color: #94a3b8; font-size: 14px; line-height: 1.6;">
@@ -400,7 +400,7 @@ class EmailService {
           <tr>
             <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-                © ${new Date().getFullYear()} MrMorris. All rights reserved.
+                © ${new Date().getFullYear()} Clianta. All rights reserved.
               </p>
             </td>
           </tr>
@@ -436,7 +436,7 @@ class EmailService {
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">MrMorris</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Clianta</h1>
             </td>
           </tr>
 
@@ -478,7 +478,7 @@ class EmailService {
           <tr>
             <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-                © ${new Date().getFullYear()} MrMorris. All rights reserved.
+                © ${new Date().getFullYear()} Clianta. All rights reserved.
               </p>
             </td>
           </tr>
@@ -501,7 +501,7 @@ class EmailService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to MrMorris</title>
+  <title>Welcome to Clianta</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -511,7 +511,7 @@ class EmailService {
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🎉 Welcome to MrMorris!</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🎉 Welcome to Clianta!</h1>
             </td>
           </tr>
 
@@ -520,11 +520,11 @@ class EmailService {
             <td style="padding: 40px;">
               <h2 style="margin: 0 0 20px; color: #1e293b; font-size: 24px; font-weight: 600;">Hi ${name}!</h2>
               <p style="margin: 0 0 20px; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Your email has been successfully verified! You're now ready to experience the power of MrMorris - your autonomous marketing copilot.
+                Your email has been successfully verified! You're now ready to experience the power of Clianta - your autonomous marketing copilot.
               </p>
 
               <p style="margin: 0 0 20px; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Here's what you can do with MrMorris:
+                Here's what you can do with Clianta:
               </p>
 
               <ul style="margin: 0 0 30px; color: #64748b; font-size: 16px; line-height: 1.8;">
@@ -555,7 +555,7 @@ class EmailService {
           <tr>
             <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-                © ${new Date().getFullYear()} MrMorris. All rights reserved.
+                © ${new Date().getFullYear()} Clianta. All rights reserved.
               </p>
             </td>
           </tr>
@@ -592,7 +592,7 @@ class EmailService {
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">MrMorris</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Clianta</h1>
             </td>
           </tr>
 
@@ -608,7 +608,7 @@ class EmailService {
 
               <p style="margin: 0 0 20px; color: #64748b; font-size: 16px; line-height: 1.6; text-align: center;">
                 <strong style="color: #1e293b;">${inviterName}</strong> has invited you to collaborate on 
-                <strong style="color: #1e293b;">${workspaceName}</strong> in MrMorris.
+                <strong style="color: #1e293b;">${workspaceName}</strong> in Clianta.
               </p>
 
               <p style="margin: 0 0 30px; color: #64748b; font-size: 16px; line-height: 1.6; text-align: center;">
@@ -644,7 +644,7 @@ class EmailService {
                 If you don't recognize this invitation, you can safely ignore this email.
               </p>
               <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-                © ${new Date().getFullYear()} MrMorris. All rights reserved.
+                © ${new Date().getFullYear()} Clianta. All rights reserved.
               </p>
             </td>
           </tr>
@@ -687,7 +687,7 @@ class EmailService {
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">MrMorris</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Clianta</h1>
             </td>
           </tr>
 
@@ -725,7 +725,7 @@ class EmailService {
           <tr>
             <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="margin: 0; color: #94a3b8; font-size: 14px;">
-                © ${new Date().getFullYear()} MrMorris. All rights reserved.
+                © ${new Date().getFullYear()} Clianta. All rights reserved.
               </p>
             </td>
           </tr>

@@ -10,7 +10,7 @@ const testimonials = [
     role: "CEO & Co-founder",
     company: "TechFlow (B2B SaaS)",
     quote:
-      "MrMorris has been a game-changer for our lean team. We're achieving growth metrics that would normally require a 10-person marketing team, and our CAC has dropped by 35%. It's like having an entire growth team working 24/7.",
+      "Clianta has been a game-changer for our lean team. We're achieving growth metrics that would normally require a 10-person marketing team, and our CAC has dropped by 35%. It's like having an entire growth team working 24/7.",
     rating: 5,
   },
   {
@@ -26,7 +26,7 @@ const testimonials = [
     role: "Founder",
     company: "DataPulse (Pre-seed)",
     quote:
-      "Finally, a tool that lets us compete with well-funded competitors. MrMorris gives us enterprise-level marketing execution on a startup budget. It's leveled the playing field completely.",
+      "Finally, a tool that lets us compete with well-funded competitors. Clianta gives us enterprise-level marketing execution on a startup budget. It's leveled the playing field completely.",
     rating: 5,
   },
 ]
@@ -56,7 +56,7 @@ export function SocialProof() {
             </span>
           </h2>
           <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-            See what startup founders are saying about MrMorris
+            See what startup founders are saying about Clianta
           </p>
         </motion.div>
 

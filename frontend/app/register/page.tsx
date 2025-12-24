@@ -248,7 +248,7 @@ function RegisterContent() {
                   Create Account
                 </h1>
                 <p className="text-muted-foreground">
-                  Join MrMorris and start automating
+                  Join Clianta and start automating
                 </p>
               </motion.div>
             </div>
