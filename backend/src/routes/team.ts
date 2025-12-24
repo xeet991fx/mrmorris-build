@@ -134,26 +134,6 @@ router.post(
 
             const { email, role } = result.data;
 
-            // Check if already a member or has pending invite
-            const existingMember = await TeamMember.findOne({
-                workspaceId,
-                $or: [
-                    { inviteEmail: email },
-                    { userId: { $exists: true } }
-                ],
-                status: { $ne: "removed" },
-            }).populate("userId", "email");
-
-            if (existingMember) {
-                const memberEmail = (existingMember.userId as any)?.email || existingMember.inviteEmail;
-                if (memberEmail === email) {
-                    return res.status(400).json({
-                        success: false,
-                        error: "User is already a team member or has a pending invite"
-                    });
-                }
-            }
-
             // Get workspace and inviter info for email
             const workspace = await Project.findById(workspaceId);
             const inviter = await User.findById(userId);
@@ -165,21 +145,59 @@ router.post(
             // Check if user exists (they still need to accept)
             const existingUser = await User.findOne({ email });
 
+            // Check for ANY existing record (including removed ones) to handle unique index
+            const existingMember = await TeamMember.findOne({
+                workspaceId,
+                $or: [
+                    { inviteEmail: email },
+                    ...(existingUser ? [{ userId: existingUser._id }] : [])
+                ],
+            }).populate("userId", "email");
+
             // Generate invite token
             const inviteToken = crypto.randomBytes(32).toString("hex");
 
-            // Always create as pending - users must explicitly accept
-            const teamMember = await TeamMember.create({
-                workspaceId,
-                userId: existingUser?._id, // Link to existing user if they exist
-                role,
-                invitedBy: userId,
-                invitedAt: new Date(),
-                status: "pending", // Always pending until explicit acceptance
-                inviteToken,
-                inviteEmail: email,
-                inviteExpiresAt: getInviteExpiryDate(),
-            });
+            let teamMember;
+
+            if (existingMember) {
+                const memberEmail = (existingMember.userId as any)?.email || existingMember.inviteEmail;
+
+                // If the member was removed, we can re-invite them
+                if (existingMember.status === "removed") {
+                    // Reactivate the removed member as a new pending invite
+                    existingMember.role = role;
+                    existingMember.status = "pending";
+                    existingMember.invitedBy = userId as any;
+                    existingMember.invitedAt = new Date();
+                    existingMember.inviteToken = inviteToken;
+                    existingMember.inviteEmail = email;
+                    existingMember.inviteExpiresAt = getInviteExpiryDate();
+                    existingMember.joinedAt = undefined;
+                    await existingMember.save();
+                    teamMember = existingMember;
+                } else if (memberEmail === email) {
+                    // Active or pending member with same email
+                    return res.status(400).json({
+                        success: false,
+                        error: "User is already a team member or has a pending invite"
+                    });
+                }
+            }
+
+            // Only create new record if no existing record was found/reactivated
+            if (!teamMember) {
+                teamMember = await TeamMember.create({
+                    workspaceId,
+                    userId: existingUser?._id, // Link to existing user if they exist
+                    role,
+                    invitedBy: userId,
+                    invitedAt: new Date(),
+                    status: "pending", // Always pending until explicit acceptance
+                    inviteToken,
+                    inviteEmail: email,
+                    inviteExpiresAt: getInviteExpiryDate(),
+                });
+            }
 
             // Send invite email
             try {
