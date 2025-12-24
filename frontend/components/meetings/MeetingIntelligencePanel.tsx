@@ -52,9 +52,7 @@ interface PreMeetingBrief {
     lastMeetingNotes: string;
     talkingPoints: string[];
     warnings: string[];
-    opportunit
-
-ies: string[];
+    opportunities: string[];
 }
 
 export const MeetingIntelligencePanel: React.FC<MeetingIntelligencePanelProps> = ({
