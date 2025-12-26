@@ -68,7 +68,12 @@
       "Bash(node:*)",
       "Bash(del fix-parse-imports.js fix-regex-injection.js)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsc:*)",
-      "Bash(set NODE_OPTIONS=--max-old-space-size=8192)"
+      "Bash(set NODE_OPTIONS=--max-old-space-size=8192)",
+      "Bash(done)",
+      "Bash(xargs -I {} sh -c 'if grep -q \"\"timestamp\"\" \"\"{}\"\" && grep -q \"\"\\\\.index\\(\"\" \"\"{}\"\"; then echo \"\"{}\"\"; fi')",
+      "Bash(where:*)",
+      "Bash(docker:*)",
+      "Bash(copy \"C:\\\\app\\\\morrisB\\\\backend\\\\.env.example\" \"C:\\\\app\\\\morrisB\\\\backend\\\\.env\")"
     ],
     "deny": [],
     "ask": []

@@ -85,7 +85,7 @@ export const ReportInsightsPanel: React.FC<ReportInsightsPanelProps> = ({
     const handleGenerate = async () => {
         setIsGenerating(true);
         try {
-            const response = await generateInsights(workspaceId, 'pipeline');
+            const response = await generateInsights(workspaceId, 'analytics');
             if (response.success) {
                 setInsights(response.data);
                 processReportInsights(response.data);

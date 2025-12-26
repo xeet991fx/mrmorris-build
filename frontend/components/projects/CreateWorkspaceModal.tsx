@@ -37,8 +37,8 @@ export default function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspac
       reset();
       onClose();
 
-      // Redirect to workspace page
-      router.push(`/projects/${workspace._id}`);
+      // Redirect to AI setup page for new workspaces
+      router.push(`/projects/${workspace._id}/setup`);
     } catch (error: any) {
       const message = error.response?.data?.error || "Failed to create workspace";
       toast.error(message);

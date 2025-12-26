@@ -95,7 +95,7 @@ const proposalSchema = new Schema<IProposal>(
             type: Schema.Types.ObjectId,
             ref: "Opportunity",
             required: [true, "Opportunity ID is required"],
-            index: true,
+            // index: true, // Removed - separate index defined below (line 165)
         },
 
         title: {

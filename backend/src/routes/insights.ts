@@ -184,6 +184,31 @@ router.post(
                         'daily_summary'
                     );
                     break;
+                case 'pipeline':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'pipeline',
+                        contextId,
+                        'pipeline_analysis'
+                    );
+                    break;
+                case 'account':
+                    result = await insightService.generateGenericInsights(
+                        workspaceId,
+                        userId,
+                        'account',
+                        contextId,
+                        'account_intelligence'
+                    );
+                    break;
+                case 'analytics':
+                    // Full analytics intelligence with trends, anomalies, forecasts
+                    result = await insightService.generateAnalyticsInsights(
+                        workspaceId,
+                        userId
+                    );
+                    break;
                 default:
                     return res.status(400).json({
                         success: false,

@@ -5,6 +5,11 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import connectDB from "./config/database";
 import passport from "./config/passport";
+import { createBullBoard } from "@bull-board/api";
+import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
+import { ExpressAdapter } from "@bull-board/express";
+import rateLimit from 'express-rate-limit';
+import * as Sentry from "@sentry/node";
 import waitlistRoutes from "./routes/waitlist";
 import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/project";
@@ -35,8 +40,18 @@ import agentRoutes from "./routes/agent";
 import insightsRoutes from "./routes/insights";
 import calendarIntegrationRoutes from "./routes/calendarIntegration";
 import dashboardRoutes from "./routes/dashboard";
+import setupWithAgentsRoutes from "./routes/setupWithAgents";
+import proposalRoutes from "./routes/proposal";
+import analyticsRoutes from "./routes/analytics";
+import webhookRoutes from "./routes/webhooks";
+import forecastRoutes from "./routes/forecast";
+import callRecordingRoutes from "./routes/callRecording";
+import formRoutes from "./routes/form";
+import landingPageRoutes from "./routes/landingPage";
+import trackingRoutes from "./routes/tracking";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 import { startContactSyncScheduler } from "./services/contactSyncService";
+import { startEmailSyncJob } from "./jobs/emailSyncJob";
 
 import fs from "fs";
 
@@ -86,9 +101,60 @@ setupGoogleCredentials();
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
+// ============================================
+// SENTRY ERROR TRACKING
+// ============================================
+if (process.env.SENTRY_DSN) {
+  try {
+    Sentry.init({
+      dsn: process.env.SENTRY_DSN,
+      environment: process.env.NODE_ENV || 'development',
+      tracesSampleRate: 0.1,
+    });
+
+    // RequestHandler creates a separate execution context for each transaction
+    if (Sentry.Handlers) {
+      app.use(Sentry.Handlers.requestHandler());
+      app.use(Sentry.Handlers.tracingHandler());
+    }
+
+    console.log('📊 Sentry error tracking enabled');
+  } catch (error) {
+    console.log('⚠️  Sentry initialization failed:', error);
+  }
+} else {
+  console.log('⚠️  Sentry DSN not configured - error tracking disabled');
+  console.log('   Add SENTRY_DSN to .env to enable error tracking');
+}
+
 // Trust proxy - Required for Railway/cloud deployments
 // This allows express-rate-limit to correctly identify users via X-Forwarded-For header
 app.set('trust proxy', 1);
+
+// ============================================
+// GLOBAL RATE LIMITING
+// ============================================
+// General API rate limit: 100 requests per 15 minutes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
+  skip: (req) => req.path.startsWith('/admin'), // Skip admin routes
+});
+
+// Auth rate limit: 5 requests per 15 minutes (stricter for login/register)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many authentication attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// NOTE: Rate limiting is applied AFTER CORS middleware below (see lines 177-187)
+// This ensures rate-limited responses include proper CORS headers
 
 // Middleware
 app.use(cors({
@@ -96,7 +162,7 @@ app.use(cors({
     process.env.FRONTEND_URL || "http://localhost:3000",
     "http://localhost:3001", // Allow both ports for local development
     "http://localhost:3002", // Allow both ports for local development
-    "https://mrmorris-build-front.vercel.app", //vercel dev
+    "https://clianta.online", //vercel dev
   ],
   credentials: true,
 }));
@@ -104,11 +170,61 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Apply rate limiting AFTER CORS middleware (so rate-limited responses include CORS headers)
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/', apiLimiter);
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/register', authLimiter);
+  app.use('/api/auth/forgot-password', authLimiter);
+  app.use('/api/auth/reset-password', authLimiter);
+  console.log('🛡️  Global rate limiting enabled (production)');
+} else {
+  console.log('⚠️  Rate limiting disabled in development');
+}
+
 // Initialize Passport
 app.use(passport.initialize());
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Serve tracking script (public, cacheable)
+app.get('/track.js', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour cache
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  // Serve minified tracking script
+  const scriptPath = path.join(process.cwd(), 'frontend', 'public', 'track.min.js');
+
+  // Check if minified version exists, fallback to non-minified
+  if (fs.existsSync(scriptPath)) {
+    res.sendFile(scriptPath);
+  } else {
+    const fallbackPath = path.join(process.cwd(), 'frontend', 'public', 'track.js');
+    if (fs.existsSync(fallbackPath)) {
+      res.sendFile(fallbackPath);
+    } else {
+      res.status(404).send('// Tracking script not found');
+    }
+  }
+});
+
+// Serve form embed script (public, cacheable)
+app.get('/forms/embed.js', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour cache
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+
+  const scriptPath = path.join(process.cwd(), 'frontend', 'public', 'forms', 'embed.js');
+
+  if (fs.existsSync(scriptPath)) {
+    res.sendFile(scriptPath);
+  } else {
+    res.status(404).send('// Form embed script not found');
+  }
+});
 
 // Health check endpoint (before DB middleware)
 app.get("/health", (req: Request, res: Response) => {
@@ -148,6 +264,22 @@ app.use(async (req: Request, res: Response, next: any) => {
   }
 });
 
+// ============================================
+// BULL BOARD - Job Queue Monitoring Dashboard
+// Access at: /admin/queues
+// ============================================
+const serverAdapter = new ExpressAdapter();
+serverAdapter.setBasePath("/admin/queues");
+
+// Initialize Bull Board (will add queues dynamically in startServer)
+createBullBoard({
+  queues: [], // Queues added after initialization
+  serverAdapter,
+});
+
+app.use("/admin/queues", serverAdapter.getRouter());
+console.log("📊 Bull Board dashboard available at /admin/queues");
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/waitlist", waitlistRoutes);
@@ -180,6 +312,28 @@ app.use("/api/workspaces", agentRoutes);
 app.use("/api/workspaces", insightsRoutes);
 app.use("/api/workspaces", dashboardRoutes);
 app.use("/api/calendar", calendarIntegrationRoutes);
+app.use("/api/workspaces", setupWithAgentsRoutes);
+app.use("/api/workspaces", proposalRoutes);
+app.use("/api/workspaces", analyticsRoutes);
+app.use("/api/workspaces", webhookRoutes);
+app.use("/api/workspaces", forecastRoutes);
+app.use("/api/workspaces", callRecordingRoutes);
+app.use("/api/workspaces", formRoutes);
+app.use("/api", formRoutes); // Public form routes
+app.use("/api/workspaces", landingPageRoutes);
+app.use("/api", landingPageRoutes); // Public landing page routes
+app.use("/api", trackingRoutes); // Tracking routes (public and authenticated)
+
+// ============================================
+// SENTRY ERROR HANDLER (must be before other error handlers)
+// ============================================
+if (process.env.SENTRY_DSN && Sentry.Handlers) {
+  try {
+    app.use(Sentry.Handlers.errorHandler());
+  } catch (error) {
+    console.log('⚠️  Sentry error handler not available');
+  }
+}
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -211,12 +365,28 @@ const startServer = async () => {
       startContactSyncScheduler();
       console.log(`⚡ Contact sync scheduler: Running`);
 
+      // Start email sync job (runs every 5 minutes)
+      startEmailSyncJob().catch((error) => {
+        console.error('❌ Failed to start email sync job:', error);
+      });
+
       // Initialize event consumers (NEW)
       (async () => {
         try {
           const { initializeConsumers } = await import('./events/consumers');
+          const { queueManager } = await import('./events/queue/QueueManager');
           initializeConsumers();
           console.log(`⚡ Event consumers: Running`);
+
+          // Add all BullMQ queues to Bull Board for monitoring
+          const queues = Array.from((queueManager as any).queues.values());
+          if (queues.length > 0) {
+            const { addQueue } = await import('@bull-board/api');
+            queues.forEach((queue: any) => {
+              addQueue(new BullMQAdapter(queue));
+            });
+            console.log(`📊 Bull Board monitoring ${queues.length} queue(s)`);
+          }
         } catch (eventError) {
           console.error('❌ Failed to initialize event consumers:', eventError);
           // Don't crash server - events are non-critical

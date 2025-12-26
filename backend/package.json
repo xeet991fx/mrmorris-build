@@ -11,9 +11,12 @@
     "start:dev": "ts-node src/server.ts"
   },
   "dependencies": {
+    "@bull-board/api": "^6.16.1",
+    "@bull-board/express": "^6.16.1",
     "@google/generative-ai": "^0.24.1",
     "@langchain/core": "^1.1.6",
     "@langchain/google-vertexai": "^2.1.1",
+    "@sentry/node": "^10.32.1",
     "@types/multer": "^2.0.0",
     "@types/pdf-parse": "^1.1.5",
     "axios": "^1.13.2",

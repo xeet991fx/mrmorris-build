@@ -80,7 +80,7 @@ const activitySchema = new Schema<IActivity>(
       type: Schema.Types.ObjectId,
       ref: "Opportunity",
       required: false, // Optional - can link to other entities
-      index: true,
+      // index: true, // Removed - covered by compound index below
     },
 
     // Entity linking (polymorphic)

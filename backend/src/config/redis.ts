@@ -30,17 +30,19 @@ export const getRedisClient = (): Redis => {
         port: parseInt(process.env.REDIS_PORT || '6379'),
         password: process.env.REDIS_PASSWORD || undefined,
         db: parseInt(process.env.REDIS_DB || '0'),
-        maxRetriesPerRequest: 3,
-        enableReadyCheck: true,
+        maxRetriesPerRequest: 1,
+        enableReadyCheck: false,
+        lazyConnect: true, // Don't connect immediately
         retryStrategy(times: number) {
-          const delay = Math.min(times * 50, 2000);
-          return delay;
+          // Stop retrying after 3 attempts for local dev
+          if (times > 3) {
+            console.log('⚠️  Redis unavailable - Queue features disabled. Install Redis or use Upstash cloud Redis.');
+            return null; // Stop retrying
+          }
+          return Math.min(times * 100, 1000);
         },
         reconnectOnError(err: Error) {
-          const targetError = 'READONLY';
-          if (err.message.includes(targetError)) {
-            return true;
-          }
+          // Don't reconnect on errors in development
           return false;
         },
       });
@@ -50,8 +52,16 @@ export const getRedisClient = (): Redis => {
       console.log('✅ Redis connected');
     });
 
+    let errorLogged = false;
     redisClient.on('error', (err) => {
-      console.error('❌ Redis connection error:', err);
+      // Only log the first error to avoid spam
+      if (!errorLogged && err.code === 'ECONNREFUSED') {
+        console.error('⚠️  Redis connection failed - Queue features disabled');
+        console.log('💡 To enable queues: Install Redis locally or use Upstash cloud Redis (see .env file)');
+        errorLogged = true;
+      } else if (err.code !== 'ECONNREFUSED') {
+        console.error('❌ Redis error:', err.message);
+      }
     });
 
     redisClient.on('ready', () => {

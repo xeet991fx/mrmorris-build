@@ -11,7 +11,7 @@ export interface IAgentInsight extends Document {
     userId: Types.ObjectId;
 
     // Context reference
-    contextType: 'contact' | 'deal' | 'campaign' | 'email' | 'workflow' | 'pipeline';
+    contextType: 'contact' | 'deal' | 'campaign' | 'email' | 'workflow' | 'pipeline' | 'analytics' | 'account' | 'sequence' | 'ticket' | 'meeting' | 'lead_score' | 'email_template' | 'data_quality' | 'email_analytics' | 'email_account' | 'daily_briefing';
     contextId?: Types.ObjectId;
 
     // Agent info
@@ -72,7 +72,7 @@ const agentInsightSchema = new Schema<IAgentInsight>(
         // Context
         contextType: {
             type: String,
-            enum: ['contact', 'deal', 'campaign', 'email', 'workflow', 'pipeline'],
+            enum: ['contact', 'deal', 'campaign', 'email', 'workflow', 'pipeline', 'analytics', 'account', 'sequence', 'ticket', 'meeting', 'lead_score', 'email_template', 'data_quality', 'email_analytics', 'email_account', 'daily_briefing'],
             required: true,
             index: true,
         },

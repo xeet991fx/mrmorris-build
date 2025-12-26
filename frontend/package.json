@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:tracker": "terser public/track.js -o public/track.min.js -c -m",
     "start": "next start",
     "lint": "next lint"
   },
@@ -55,6 +56,7 @@
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "terser": "^5.44.1",
     "typescript": "^5.0.0"
   },
   "overrides": {

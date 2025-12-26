@@ -70,7 +70,7 @@ const userActionSchema = new Schema<IUserAction>(
         timestamp: {
             type: Date,
             default: Date.now,
-            index: true,
+            // index: true, // Removed - covered by compound indexes below (lines 85-90)
         },
         durationMs: {
             type: Number,

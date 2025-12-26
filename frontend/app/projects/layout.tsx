@@ -24,6 +24,13 @@ import {
   ShieldCheckIcon,
   ChartBarIcon,
   CalendarDaysIcon,
+  DocumentTextIcon,
+  PresentationChartBarIcon,
+  CurrencyDollarIcon,
+  PhoneIcon,
+  ClipboardDocumentListIcon,
+  GlobeAltIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -51,6 +58,30 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   });
 
   const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false);
+
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('expandedSections');
+      return saved ? JSON.parse(saved) : {
+        crm: true,
+        marketing: true,
+        communication: true,
+        automation: false,
+        analytics: true,
+      };
+    }
+    return { crm: true, marketing: true, communication: true, automation: false, analytics: true };
+  });
+
+  // Save expanded sections to localStorage
+  useEffect(() => {
+    localStorage.setItem('expandedSections', JSON.stringify(expandedSections));
+  }, [expandedSections]);
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   // Save sidebar expanded state to localStorage
   useEffect(() => {
@@ -157,341 +188,440 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
             "py-3",
             isExpanded ? "px-3" : "px-2"
           )}>
-            <div className={cn(isExpanded ? "space-y-0.5" : "space-y-1")}>
-              {/* Dashboard */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/dashboard`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/dashboard')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Dashboard" : ""}
-              >
-                <HomeIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Dashboard
-                  </span>
-                )}
-              </Link>
+            <div className={cn(isExpanded ? "space-y-1" : "space-y-1")}>
 
-              {/* Contacts */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/contacts`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/contacts')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Contacts" : ""}
-              >
-                <UserGroupIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Contacts
-                  </span>
-                )}
-              </Link>
+              {/* ===== CRM SECTION ===== */}
+              {isExpanded && (
+                <button
+                  onClick={() => toggleSection('crm')}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide"
+                >
+                  <span>CRM</span>
+                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.crm && "rotate-180")} />
+                </button>
+              )}
 
-              {/* Companies */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/companies`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/companies')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Companies" : ""}
-              >
-                <BuildingOffice2Icon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Companies
-                  </span>
-                )}
-              </Link>
+              {(expandedSections.crm || !isExpanded) && (
+                <>
+                  {/* Dashboard */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/dashboard`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/dashboard')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Dashboard" : ""}
+                  >
+                    <HomeIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Dashboard</span>}
+                  </Link>
 
-              {/* Pipelines */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/pipelines`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/pipelines')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Pipelines" : ""}
-              >
-                <Squares2X2Icon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Pipelines
-                  </span>
-                )}
-              </Link>
+                  {/* Contacts */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/contacts`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/contacts')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Contacts" : ""}
+                  >
+                    <UserGroupIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Contacts</span>}
+                  </Link>
 
-              {/* Tasks */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/tasks`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/tasks')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Tasks" : ""}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Tasks
-                  </span>
-                )}
-              </Link>
+                  {/* Companies */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/companies`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/companies')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Companies" : ""}
+                  >
+                    <BuildingOffice2Icon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Companies</span>}
+                  </Link>
 
-              {/* Meetings */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/meetings`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/meetings')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Meetings" : ""}
-              >
-                <CalendarDaysIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Meetings
-                  </span>
-                )}
-              </Link>
+                  {/* Pipelines */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/pipelines`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/pipelines')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Pipelines" : ""}
+                  >
+                    <Squares2X2Icon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Pipelines</span>}
+                  </Link>
 
-              {/* Tickets */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/tickets`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/tickets')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Tickets" : ""}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
-                </svg>
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Tickets
-                  </span>
-                )}
-              </Link>
+                  {/* Proposals */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/proposals`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/proposals')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Proposals" : ""}
+                  >
+                    <DocumentTextIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Proposals</span>}
+                  </Link>
+                </>
+              )}
 
-              {/* Workflows */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/workflows`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/workflows')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Workflows" : ""}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                </svg>
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Workflows
-                  </span>
-                )}
-              </Link>
+              {/* ===== MARKETING SECTION ===== */}
+              {isExpanded && (
+                <button
+                  onClick={() => toggleSection('marketing')}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide mt-3"
+                >
+                  <span>Marketing</span>
+                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.marketing && "rotate-180")} />
+                </button>
+              )}
 
-              {/* Email Templates */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/email-templates`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/email-templates')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Templates" : ""}
-              >
-                <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Templates
-                  </span>
-                )}
-              </Link>
+              {(expandedSections.marketing || !isExpanded) && (
+                <>
+                  {/* Forms */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/forms`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/forms')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Forms" : ""}
+                  >
+                    <ClipboardDocumentListIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Forms</span>}
+                  </Link>
 
-              {/* Sequences */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/sequences`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/sequences')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Sequences" : ""}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Sequences
-                  </span>
-                )}
-              </Link>
+                  {/* Landing Pages */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/pages`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/pages')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Pages" : ""}
+                  >
+                    <GlobeAltIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Pages</span>}
+                  </Link>
 
-              {/* Reports */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/reports`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/reports')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Reports" : ""}
-              >
-                <ChartBarIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Reports
-                  </span>
-                )}
-              </Link>
+                  {/* Visitors */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/visitors`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/visitors')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Visitors" : ""}
+                  >
+                    <EyeIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Visitors</span>}
+                  </Link>
 
-              {/* Campaigns */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/campaigns`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/campaigns')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Campaigns" : ""}
-              >
-                <RocketLaunchIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Campaigns
-                  </span>
-                )}
-              </Link>
+                  {/* Campaigns */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/campaigns`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/campaigns')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Campaigns" : ""}
+                  >
+                    <RocketLaunchIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Campaigns</span>}
+                  </Link>
 
-              {/* Email Accounts */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/email-accounts`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/email-accounts')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Email Accounts" : ""}
-              >
-                <AtSymbolIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Email Accounts
-                  </span>
-                )}
-              </Link>
+                  {/* Sequences */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/sequences`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/sequences')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Sequences" : ""}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                    </svg>
+                    {isExpanded && <span className="text-sm">Sequences</span>}
+                  </Link>
 
-              {/* Inbox */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/inbox`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/inbox')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Inbox" : ""}
-              >
-                <InboxIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Inbox
-                  </span>
-                )}
-              </Link>
+                  {/* Email Templates */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/email-templates`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/email-templates')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Templates" : ""}
+                  >
+                    <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Templates</span>}
+                  </Link>
+                </>
+              )}
 
-              {/* Data Stewardship */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/data-stewardship`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/data-stewardship')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Data Stewardship" : ""}
-              >
-                <ShieldCheckIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Data Quality
-                  </span>
-                )}
-              </Link>
+              {/* ===== COMMUNICATION SECTION ===== */}
+              {isExpanded && (
+                <button
+                  onClick={() => toggleSection('communication')}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide mt-3"
+                >
+                  <span>Communication</span>
+                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.communication && "rotate-180")} />
+                </button>
+              )}
 
-              {/* Email Analytics */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/email-analytics`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
-                  pathname.includes('/email-analytics')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Email Analytics" : ""}
-              >
-                <ChartBarIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Analytics
-                  </span>
-                )}
-              </Link>
+              {(expandedSections.communication || !isExpanded) && (
+                <>
+                  {/* Email Accounts */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/email-accounts`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/email-accounts')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Email" : ""}
+                  >
+                    <AtSymbolIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Email Account</span>}
+                  </Link>
+
+                  {/* Inbox */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/inbox`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/inbox')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Inbox" : ""}
+                  >
+                    <InboxIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Inbox</span>}
+                  </Link>
+
+                  {/* Calls */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/calls`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname === `/projects/${currentWorkspaceFromUrl._id}/calls`
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Calls" : ""}
+                  >
+                    <PhoneIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Calls</span>}
+                  </Link>
+
+                  {/* Meetings */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/meetings`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/meetings')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Meetings" : ""}
+                  >
+                    <CalendarDaysIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Meetings</span>}
+                  </Link>
+                </>
+              )}
+
+              {/* ===== AUTOMATION SECTION ===== */}
+              {isExpanded && (
+                <button
+                  onClick={() => toggleSection('automation')}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide mt-3"
+                >
+                  <span>Automation</span>
+                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.automation && "rotate-180")} />
+                </button>
+              )}
+
+              {(expandedSections.automation || !isExpanded) && (
+                <>
+                  {/* Workflows */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/workflows`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/workflows')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Workflows" : ""}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                    {isExpanded && <span className="text-sm">Workflows</span>}
+                  </Link>
+
+                  {/* Tasks */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/tasks`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/tasks')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Tasks" : ""}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {isExpanded && <span className="text-sm">Tasks</span>}
+                  </Link>
+
+                  {/* Tickets */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/tickets`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/tickets')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Tickets" : ""}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
+                    </svg>
+                    {isExpanded && <span className="text-sm">Tickets</span>}
+                  </Link>
+                </>
+              )}
+
+              {/* ===== ANALYTICS SECTION ===== */}
+              {isExpanded && (
+                <button
+                  onClick={() => toggleSection('analytics')}
+                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide mt-3"
+                >
+                  <span>Analytics</span>
+                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.analytics && "rotate-180")} />
+                </button>
+              )}
+
+              {(expandedSections.analytics || !isExpanded) && (
+                <>
+                  {/* Reports */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/reports`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname.includes('/reports')
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Reports" : ""}
+                  >
+                    <ChartBarIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Reports</span>}
+                  </Link>
+
+                  {/* Analytics */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/analytics`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname === `/projects/${currentWorkspaceFromUrl._id}/analytics`
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Analytics" : ""}
+                  >
+                    <PresentationChartBarIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Analytics</span>}
+                  </Link>
+
+                  {/* Forecasting */}
+                  <Link
+                    href={`/projects/${currentWorkspaceFromUrl._id}/forecasting`}
+                    className={cn(
+                      "w-full flex items-center rounded-md transition-all",
+                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
+                      pathname === `/projects/${currentWorkspaceFromUrl._id}/forecasting`
+                        ? "bg-muted/70 text-foreground"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                    )}
+                    title={!isExpanded ? "Forecasting" : ""}
+                  >
+                    <CurrencyDollarIcon className="w-4 h-4 flex-shrink-0" />
+                    {isExpanded && <span className="text-sm">Forecasting</span>}
+                  </Link>
+                </>
+              )}
+
+              {/* ===== SETTINGS (No collapse) ===== */}
+              {isExpanded && (
+                <div className="w-full px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-3">
+                  Settings
+                </div>
+              )}
 
               {/* Settings */}
               <Link
                 href={`/projects/${currentWorkspaceFromUrl._id}/settings`}
                 className={cn(
                   "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1 text-left" : "justify-center p-1.5",
+                  isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
                   pathname.includes('/settings')
                     ? "bg-muted/70 text-foreground"
                     : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
@@ -499,15 +629,12 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                 title={!isExpanded ? "Settings" : ""}
               >
                 <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && (
-                  <span className="text-sm font-normal">
-                    Settings
-                  </span>
-                )}
+                {isExpanded && <span className="text-sm">Settings</span>}
               </Link>
             </div>
           </div>
         )}
+
       </div>
 
       {/* Bottom Actions */}

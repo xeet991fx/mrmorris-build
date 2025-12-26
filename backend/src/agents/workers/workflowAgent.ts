@@ -829,10 +829,9 @@ JSON: {"tool": "update_delay", "args": {"workflowName": "Cold Lead Re-Engagement
 ---
 
 FOR NEW WORKFLOWS:
-- Simple 3-step → Use templates (create_welcome_workflow, create_follow_up_workflow)
-- Custom/Complex → Use create_custom_workflow with thoughtful step design
-- Multi-touch → Design 5-10 step workflows with varied actions
-- Nurture → Mix emails, delays, and tasks strategically
+- Use create_custom_workflow for full flexibility
+- Think carefully about what the user actually needs
+- Design the optimal structure based on the request - you decide the right number of steps
 
 🎯 BEST PRACTICES:
 - Lead nurture: 3-7 touches over 1-2 weeks

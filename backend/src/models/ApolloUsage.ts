@@ -72,7 +72,7 @@ const apolloUsageSchema = new Schema<IApolloUsage>(
     timestamp: {
       type: Date,
       default: Date.now,
-      index: true,
+      // index: true, // Removed - covered by compound indexes below (lines 97-100)
     },
     responseTime: {
       type: Number,

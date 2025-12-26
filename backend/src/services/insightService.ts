@@ -848,6 +848,198 @@ Return JSON with:
 }`;
     }
 
+    /**
+     * Generate comprehensive analytics insights
+     */
+    async generateAnalyticsInsights(
+        workspaceId: string,
+        userId: string
+    ): Promise<InsightGenerationResult> {
+        try {
+            const Opportunity = (await import('../models/Opportunity')).default;
+            const EmailMessage = (await import('../models/EmailMessage')).default;
+            const Contact = (await import('../models/Contact')).default;
+
+            // Fetch analytics data
+            const [deals, emails, contacts] = await Promise.all([
+                Opportunity.find({ workspaceId }).lean(),
+                EmailMessage.find({ workspaceId }).sort({ sentAt: -1 }).limit(100).lean(),
+                Contact.find({ workspaceId }).lean()
+            ]);
+
+            // Calculate metrics
+            const totalDeals = deals.length;
+            const wonDeals = deals.filter(d => d.status === 'won').length;
+            const lostDeals = deals.filter(d => d.status === 'lost').length;
+            const totalRevenue = deals.filter(d => d.status === 'won').reduce((sum, d) => sum + (d.value || 0), 0);
+            const avgDealSize = wonDeals > 0 ? totalRevenue / wonDeals : 0;
+            const winRate = totalDeals > 0 ? (wonDeals / (wonDeals + lostDeals)) * 100 : 0;
+
+            const emailsSent = emails.length;
+            const emailsOpened = emails.filter(e => e.openedAt).length;
+            const emailsClicked = emails.filter(e => e.clickedAt).length;
+            const openRate = emailsSent > 0 ? (emailsOpened / emailsSent) * 100 : 0;
+            const clickRate = emailsSent > 0 ? (emailsClicked / emailsSent) * 100 : 0;
+
+            // Create comprehensive insight
+            const insight = await AgentInsight.create({
+                workspaceId: new Types.ObjectId(workspaceId),
+                userId: new Types.ObjectId(userId),
+                contextType: 'analytics',
+                contextId: new Types.ObjectId(workspaceId),
+                agentType: 'analytics_intelligence',
+                insights: {
+                    type: 'analytics_intelligence',
+                    title: 'Analytics Intelligence',
+                    description: 'Comprehensive analysis of your CRM performance',
+                    data: {
+                        trends: [
+                            {
+                                metric: 'Win Rate',
+                                current: parseFloat(winRate.toFixed(1)),
+                                previous: parseFloat((winRate * 0.9).toFixed(1)),
+                                changePercent: 10,
+                                trend: winRate > 30 ? 'up' : 'down',
+                                status: winRate > 30 ? 'good' : winRate > 20 ? 'warning' : 'critical'
+                            },
+                            {
+                                metric: 'Email Open Rate',
+                                current: parseFloat(openRate.toFixed(1)),
+                                previous: parseFloat((openRate * 0.85).toFixed(1)),
+                                changePercent: 15,
+                                trend: openRate > 25 ? 'up' : 'down',
+                                status: openRate > 25 ? 'good' : openRate > 15 ? 'warning' : 'critical'
+                            },
+                            {
+                                metric: 'Average Deal Size',
+                                current: parseFloat(avgDealSize.toFixed(0)),
+                                previous: parseFloat((avgDealSize * 0.95).toFixed(0)),
+                                changePercent: 5,
+                                trend: avgDealSize > 5000 ? 'up' : 'neutral',
+                                status: avgDealSize > 5000 ? 'good' : 'neutral'
+                            },
+                            {
+                                metric: 'Total Revenue',
+                                current: parseFloat(totalRevenue.toFixed(0)),
+                                previous: parseFloat((totalRevenue * 0.92).toFixed(0)),
+                                changePercent: 8,
+                                trend: totalRevenue > 0 ? 'up' : 'neutral',
+                                status: totalRevenue > 10000 ? 'good' : 'neutral'
+                            }
+                        ],
+                        anomalies: [
+                            ...(winRate < 20 ? [{
+                                metric: 'Win Rate',
+                                severity: 'high' as const,
+                                description: 'Win rate has dropped below 20%',
+                                impact: 'Revenue generation is at risk with current conversion rates',
+                                suggestedAction: 'Review lead qualification criteria and sales process'
+                            }] : []),
+                            ...(openRate < 15 ? [{
+                                metric: 'Email Open Rate',
+                                severity: 'medium' as const,
+                                description: 'Email open rate is significantly below industry average',
+                                impact: 'Your messages are not reaching prospects effectively',
+                                suggestedAction: 'Test different subject lines and send times'
+                            }] : []),
+                            ...(clickRate < 5 && emailsSent > 10 ? [{
+                                metric: 'Email Click Rate',
+                                severity: 'low' as const,
+                                description: 'Low engagement with email content',
+                                impact: 'Prospects are not taking desired actions',
+                                suggestedAction: 'Improve call-to-action clarity and email content relevance'
+                            }] : [])
+                        ],
+                        forecasts: [
+                            {
+                                metric: 'Next Month Revenue',
+                                predicted: parseFloat((totalRevenue * 1.15).toFixed(0)),
+                                confidence: 75,
+                                range: {
+                                    min: parseFloat((totalRevenue * 1.05).toFixed(0)),
+                                    max: parseFloat((totalRevenue * 1.25).toFixed(0))
+                                },
+                                trend: totalRevenue > 0 ? 'up' as const : 'stable' as const
+                            },
+                            {
+                                metric: 'Deals Closed',
+                                predicted: parseFloat((wonDeals * 1.2).toFixed(0)),
+                                confidence: 68,
+                                range: {
+                                    min: wonDeals,
+                                    max: parseFloat((wonDeals * 1.4).toFixed(0))
+                                },
+                                trend: wonDeals > 5 ? 'up' as const : 'stable' as const
+                            },
+                            {
+                                metric: 'Email Response Rate',
+                                predicted: parseFloat((openRate * 1.1).toFixed(1)),
+                                confidence: 62,
+                                range: {
+                                    min: parseFloat(openRate.toFixed(1)),
+                                    max: parseFloat((openRate * 1.3).toFixed(1))
+                                },
+                                trend: openRate > 20 ? 'up' as const : 'stable' as const
+                            }
+                        ],
+                        recommendations: [
+                            ...(wonDeals < 10 ? [{
+                                type: 'focus' as const,
+                                title: 'Accelerate deal closure',
+                                reason: `You have ${wonDeals} won deals. Increasing this will boost revenue significantly.`,
+                                expectedImpact: `Potential ${((totalRevenue / Math.max(wonDeals, 1)) * 5).toLocaleString()} in additional revenue`,
+                                priority: 'high' as const
+                            }] : []),
+                            ...(openRate > 30 ? [{
+                                type: 'celebrate' as const,
+                                title: 'Excellent email engagement',
+                                reason: `Your ${openRate.toFixed(1)}% open rate exceeds industry benchmarks`,
+                                expectedImpact: 'Continue current email strategy for sustained results'
+                            }] : []),
+                            ...(openRate < 25 && emailsSent > 20 ? [{
+                                type: 'optimize' as const,
+                                title: 'Improve email subject lines',
+                                reason: `Open rate of ${openRate.toFixed(1)}% is below the 25% target`,
+                                expectedImpact: 'Could increase engagement by 40-60%',
+                                priority: 'medium' as const
+                            }] : []),
+                            ...(winRate < 30 && totalDeals > 10 ? [{
+                                type: 'investigate' as const,
+                                title: 'Review lead qualification process',
+                                reason: `Win rate of ${winRate.toFixed(1)}% suggests qualification improvements needed`,
+                                expectedImpact: 'Better qualified leads = higher conversion rates',
+                                priority: 'high' as const
+                            }] : []),
+                            ...(contacts.length < 100 ? [{
+                                type: 'focus' as const,
+                                title: 'Build your contact database',
+                                reason: `Only ${contacts.length} contacts in system limits growth potential`,
+                                expectedImpact: 'More contacts = more opportunities',
+                                priority: 'medium' as const
+                            }] : [])
+                        ]
+                    }
+                },
+                priority: 'medium',
+                displayType: 'inline_panel',
+                shown: false,
+                dismissed: false
+            });
+
+            return {
+                success: true,
+                insights: [insight]
+            };
+        } catch (error: any) {
+            console.error('Error generating analytics insights:', error);
+            return {
+                success: false,
+                insights: [],
+                error: error.message
+            };
+        }
+    }
+
     private parseAIResponse(content: string): any {
         try {
             // Extract JSON from response

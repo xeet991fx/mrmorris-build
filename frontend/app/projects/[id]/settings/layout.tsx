@@ -7,6 +7,7 @@ import {
   Cog6ToothIcon,
   UserGroupIcon,
   ChevronRightIcon,
+  CodeBracketIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,12 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       href: `/projects/${workspaceId}/settings/team`,
       icon: UserGroupIcon,
       match: (path: string) => path.includes('/settings/team'),
+    },
+    {
+      name: "Tracking",
+      href: `/projects/${workspaceId}/settings/tracking`,
+      icon: CodeBracketIcon,
+      match: (path: string) => path.includes('/settings/tracking'),
     },
     {
       name: "Integrations",
