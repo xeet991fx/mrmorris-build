@@ -112,11 +112,17 @@ class MorrisB_Tracking {
                 <li>Form submissions (automatic contact creation)</li>
             </ul>
 
-            <h2>Need Help?</h2>
-            <p>
-                <a href="https://docs.morrisb.com/wordpress-plugin" target="_blank">📚 Documentation</a> |
-                <a href="https://morrisb.com/support" target="_blank">💬 Get Support</a>
-            </p>
+            <h2>How to Configure</h2>
+            <ol style="margin-left: 20px;">
+                <li>Log in to your MorrisB account</li>
+                <li>Go to Settings → Tracking</li>
+                <li>Copy your Workspace ID</li>
+                <li>Paste it in the field above and save</li>
+            </ol>
+
+            <p><strong>Advanced Configuration:</strong></p>
+            <p>To use a custom tracking URL (self-hosted), add this to your <code>wp-config.php</code>:</p>
+            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;">define('MORRISB_TRACKING_URL', 'https://your-domain.com/track.js');</pre>
         </div>
         <?php
     }
@@ -132,10 +138,15 @@ class MorrisB_Tracking {
             return;
         }
 
+        // Get tracking script URL (configurable via wp-config.php)
+        $tracking_url = defined('MORRISB_TRACKING_URL')
+            ? MORRISB_TRACKING_URL
+            : 'https://app.morrisb.com/track.js';
+
         // Output tracking script
         ?>
         <!-- MorrisB Tracking -->
-        <script src="<?php echo esc_url('https://api.morrisb.com/track.js'); ?>" async></script>
+        <script src="<?php echo esc_url($tracking_url); ?>" async></script>
         <script>
             (function() {
                 function initMorrisB() {

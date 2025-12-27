@@ -737,6 +737,122 @@ class EmailService {
 </html>
     `;
   }
+
+  /**
+   * Send form submission notification email
+   */
+  async sendFormNotificationEmail(
+    to: string,
+    formName: string,
+    submissionData: Record<string, any>,
+    submissionId: string
+  ): Promise<void> {
+    const html = this.getFormNotificationTemplate(formName, submissionData, submissionId);
+
+    await this.sendEmail({
+      to,
+      subject: `New Form Submission: ${formName}`,
+      html,
+    });
+  }
+
+  /**
+   * Form notification email template
+   */
+  private getFormNotificationTemplate(
+    formName: string,
+    submissionData: Record<string, any>,
+    submissionId: string
+  ): string {
+    // Format submission data as table rows
+    const dataRows = Object.entries(submissionData)
+      .map(([key, value]) => {
+        const displayValue = Array.isArray(value) ? value.join(', ') : value;
+        return `
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #475569; text-transform: capitalize;">
+              ${key.replace(/([A-Z])/g, ' $1').trim()}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">
+              ${displayValue || '-'}
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Form Submission</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px 16px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">New Form Submission</h1>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px; color: #1e293b; font-size: 20px; font-weight: 600;">
+                ${formName}
+              </h2>
+              <p style="margin: 0 0 20px; color: #64748b; font-size: 16px; line-height: 1.6;">
+                You've received a new form submission. Here are the details:
+              </p>
+
+              <!-- Submission Data Table -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 30px 0; background-color: #f8fafc; border-radius: 8px; overflow: hidden;">
+                ${dataRows}
+              </table>
+
+              <!-- Submission ID -->
+              <p style="margin: 30px 0 0; padding: 20px; background-color: #f1f5f9; border-radius: 8px; color: #64748b; font-size: 14px;">
+                <strong style="color: #475569;">Submission ID:</strong><br/>
+                <code style="background-color: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #1e293b;">
+                  ${submissionId}
+                </code>
+              </p>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.FRONTEND_URL}/projects"
+                   style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                  View in Dashboard
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 30px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; color: #94a3b8; font-size: 14px;">
+                © ${new Date().getFullYear()} MorrisB. All rights reserved.
+              </p>
+              <p style="margin: 10px 0 0; color: #cbd5e1; font-size: 12px;">
+                This is an automated notification for form submissions.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+  }
 }
 
 export default new EmailService();

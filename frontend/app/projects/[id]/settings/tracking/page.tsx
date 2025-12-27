@@ -248,7 +248,8 @@ export default function TrackingSettingsPage() {
                       Download the plugin
                     </p>
                     <a
-                      href="/downloads/morrisb-tracking.zip"
+                      href="/morrisb-tracking.zip"
+                      download="morrisb-tracking.zip"
                       className="text-sm text-blue-600 hover:underline"
                     >
                       Download morrisb-tracking.zip

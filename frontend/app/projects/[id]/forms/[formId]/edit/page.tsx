@@ -395,6 +395,25 @@ export default function FormEditorPage() {
                                 />
                             </div>
 
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-2">
+                                    Notification Email (Optional)
+                                </label>
+                                <input
+                                    type="email"
+                                    value={form.settings.notificationEmail || ''}
+                                    onChange={(e) => setForm({
+                                        ...form,
+                                        settings: { ...form.settings, notificationEmail: e.target.value }
+                                    })}
+                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                                    placeholder="sales@yourcompany.com"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Receive an email notification when someone submits this form
+                                </p>
+                            </div>
+
                             <div className="flex items-center gap-2">
                                 <input
                                     type="checkbox"

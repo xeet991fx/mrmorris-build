@@ -9,6 +9,7 @@ import { AuthRequest, authenticate } from "../middleware/auth";
 import Form from "../models/Form";
 import FormSubmission from "../models/FormSubmission";
 import Contact from "../models/Contact";
+import emailService from "../services/email";
 
 const router = Router();
 
@@ -343,8 +344,18 @@ router.post(
 
             // Send notification email if configured
             if (form.settings.notificationEmail) {
-                // TODO: Send email notification
-                console.log(`Send notification to: ${form.settings.notificationEmail}`);
+                try {
+                    await emailService.sendFormNotificationEmail(
+                        form.settings.notificationEmail,
+                        form.name,
+                        data,
+                        submission._id.toString()
+                    );
+                    console.log(`✅ Notification email sent to: ${form.settings.notificationEmail}`);
+                } catch (emailError: any) {
+                    console.error(`❌ Failed to send notification email:`, emailError.message);
+                    // Don't fail the submission if email fails
+                }
             }
 
             res.json({
