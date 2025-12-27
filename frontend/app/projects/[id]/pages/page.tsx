@@ -12,6 +12,7 @@ import {
     EyeIcon,
     ChartBarIcon,
     GlobeAltIcon,
+    QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import { getLandingPages, deleteLandingPage, LandingPage } from "@/lib/api/landingPage";
 import { cn } from "@/lib/utils";
@@ -84,6 +85,14 @@ export default function LandingPagesListPage() {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    <Link
+                        href={`/projects/${workspaceId}/pages/help`}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-500/20 transition-colors border border-blue-500/20"
+                        title="View Guide"
+                    >
+                        <QuestionMarkCircleIcon className="w-5 h-5" />
+                        <span className="hidden sm:inline">Help</span>
+                    </Link>
                     <button
                         onClick={loadPages}
                         disabled={isLoading}

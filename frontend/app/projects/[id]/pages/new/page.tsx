@@ -403,21 +403,34 @@ export default function NewLandingPagePage() {
                     <label className="block text-sm font-medium text-foreground mb-2">
                         URL Slug *
                     </label>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">/p/</span>
-                        <input
-                            type="text"
-                            value={formData.slug}
-                            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                            placeholder="my-awesome-page"
-                            className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
-                            pattern="[a-z0-9-]+"
-                            required
-                        />
+                    <div className="space-y-2">
+                        <div className="flex items-stretch border border-border rounded-lg overflow-hidden bg-background">
+                            <span className="px-4 py-2 bg-muted text-muted-foreground text-sm flex items-center border-r border-border">
+                                {typeof window !== 'undefined' ? window.location.origin : 'your-domain.com'}/p/
+                            </span>
+                            <input
+                                type="text"
+                                value={formData.slug}
+                                onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
+                                placeholder="my-awesome-page"
+                                className="flex-1 px-4 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                                pattern="[a-z0-9-]+"
+                                required
+                            />
+                        </div>
+                        <div className="flex items-start gap-2 text-xs">
+                            <div className="flex-1 space-y-1">
+                                <p className="text-muted-foreground">
+                                    ✓ Lowercase letters, numbers, and hyphens only
+                                </p>
+                                {formData.slug && (
+                                    <p className="text-green-600 dark:text-green-400 font-medium">
+                                        Your page will be: <span className="font-mono">{typeof window !== 'undefined' ? window.location.origin : 'your-domain.com'}/p/{formData.slug}</span>
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Lowercase letters, numbers, and hyphens only
-                    </p>
                 </div>
 
                 <div>

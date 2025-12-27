@@ -14,6 +14,7 @@ import {
     DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { getLandingPage, updateLandingPage, LandingPage, PageSection } from "@/lib/api/landingPage";
+import { getForms, Form } from "@/lib/api/form";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import Link from "next/link";
@@ -41,9 +42,11 @@ export default function EditLandingPagePage() {
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'builder' | 'settings' | 'seo'>('builder');
     const [editingSection, setEditingSection] = useState<PageSection | null>(null);
+    const [availableForms, setAvailableForms] = useState<Form[]>([]);
 
     useEffect(() => {
         loadPage();
+        loadForms();
     }, [workspaceId, pageId]);
 
     const loadPage = async () => {
@@ -58,6 +61,17 @@ export default function EditLandingPagePage() {
             toast.error("Failed to load landing page");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const loadForms = async () => {
+        try {
+            const response = await getForms(workspaceId, 'published');
+            if (response.success) {
+                setAvailableForms(response.data);
+            }
+        } catch (error) {
+            console.error("Error loading forms:", error);
         }
     };
 
@@ -155,6 +169,21 @@ export default function EditLandingPagePage() {
                     alignment: 'left' as const,
                     heading: 'About Us',
                     content: 'Your content here...',
+                };
+            case 'form':
+                return {
+                    alignment: 'center' as const,
+                    heading: 'Get in Touch',
+                    formId: '', // Will be selected in the editor
+                };
+            case 'image':
+                return {
+                    imageUrl: '',
+                    alt: 'Section image',
+                };
+            case 'video':
+                return {
+                    videoUrl: '',
                 };
             default:
                 return {};
@@ -747,6 +776,34 @@ export default function EditLandingPagePage() {
                                             placeholder="https://youtube.com/watch?v=..."
                                             className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
                                         />
+                                    </div>
+                                )}
+
+                                {editingSection.type === 'form' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">
+                                            Select Form
+                                        </label>
+                                        <select
+                                            value={editingSection.settings.formId || ''}
+                                            onChange={(e) => setEditingSection({
+                                                ...editingSection,
+                                                settings: { ...editingSection.settings, formId: e.target.value }
+                                            })}
+                                            className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                                        >
+                                            <option value="">Select a form...</option>
+                                            {availableForms.map((form) => (
+                                                <option key={form._id} value={form._id}>
+                                                    {form.name} ({form.stats.submissions} submissions)
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {availableForms.length === 0 && (
+                                            <p className="text-sm text-muted-foreground mt-2">
+                                                No published forms available. <Link href={`/projects/${workspaceId}/forms/new`} className="text-primary hover:underline">Create one first</Link>
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>

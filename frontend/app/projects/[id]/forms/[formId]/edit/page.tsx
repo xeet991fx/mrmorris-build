@@ -12,10 +12,29 @@ import {
     CheckIcon,
     XMarkIcon,
     Cog6ToothIcon,
+    Bars3Icon,
+    DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
 import { getForm, updateForm, Form, FormField } from "@/lib/api/form";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const FIELD_TYPES = [
     { type: 'text', label: 'Text', icon: '📝' },
@@ -28,7 +47,126 @@ const FIELD_TYPES = [
     { type: 'number', label: 'Number', icon: '🔢' },
     { type: 'date', label: 'Date', icon: '📅' },
     { type: 'url', label: 'URL', icon: '🔗' },
+    { type: 'file', label: 'File Upload', icon: '📎' },
 ] as const;
+
+// Sortable Field Component
+function SortableFieldItem({
+    field,
+    onEdit,
+    onDelete,
+    onDuplicate
+}: {
+    field: FormField;
+    onEdit: () => void;
+    onDelete: () => void;
+    onDuplicate: () => void;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: field.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all group"
+        >
+            <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2 flex-1">
+                    <button
+                        {...attributes}
+                        {...listeners}
+                        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        <Bars3Icon className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                    <label className="block text-sm font-medium text-foreground">
+                        {field.label}
+                        {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {field.conditionalLogic?.enabled && (
+                        <span className="px-2 py-0.5 bg-purple-500/10 text-purple-600 text-xs rounded-full">
+                            Conditional
+                        </span>
+                    )}
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onClick={onDuplicate}
+                        className="p-1 hover:bg-muted rounded"
+                        title="Duplicate field"
+                    >
+                        <DocumentDuplicateIcon className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                    <button
+                        onClick={onEdit}
+                        className="p-1 hover:bg-muted rounded"
+                        title="Edit field"
+                    >
+                        <Cog6ToothIcon className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                    <button
+                        onClick={onDelete}
+                        className="p-1 hover:bg-red-500/10 rounded"
+                        title="Delete field"
+                    >
+                        <TrashIcon className="w-4 h-4 text-red-500" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Field Preview */}
+            {field.type === 'textarea' ? (
+                <textarea
+                    placeholder={field.placeholder}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                    rows={3}
+                    disabled
+                />
+            ) : field.type === 'select' ? (
+                <select className="w-full px-3 py-2 bg-background border border-border rounded-lg" disabled>
+                    <option>{field.placeholder || 'Select an option'}</option>
+                    {field.options?.map((opt, i) => (
+                        <option key={i}>{opt}</option>
+                    ))}
+                </select>
+            ) : field.type === 'checkbox' || field.type === 'radio' ? (
+                <div className="space-y-2">
+                    {(field.options || ['Option 1']).map((opt, i) => (
+                        <label key={i} className="flex items-center gap-2">
+                            <input type={field.type} disabled className="rounded" />
+                            <span className="text-sm text-foreground">{opt}</span>
+                        </label>
+                    ))}
+                </div>
+            ) : field.type === 'file' ? (
+                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                    <p className="text-sm text-muted-foreground">Click to upload or drag and drop</p>
+                    <p className="text-xs text-muted-foreground mt-1">{field.placeholder || 'Max file size: 10MB'}</p>
+                </div>
+            ) : (
+                <input
+                    type={field.type === 'file' ? 'text' : field.type}
+                    placeholder={field.placeholder}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                    disabled
+                />
+            )}
+        </div>
+    );
+}
 
 export default function FormEditorPage() {
     const params = useParams();
@@ -43,6 +181,14 @@ export default function FormEditorPage() {
     const [editingField, setEditingField] = useState<FormField | null>(null);
     const [showFieldEditor, setShowFieldEditor] = useState(false);
     const [embedMode, setEmbedMode] = useState<'iframe' | 'direct'>('iframe');
+
+    // Drag and drop sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     // Generate embed codes dynamically
     const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
@@ -147,6 +293,39 @@ export default function FormEditorPage() {
     const deleteField = (fieldId: string) => {
         if (!form) return;
         setForm({ ...form, fields: form.fields.filter(f => f.id !== fieldId) });
+    };
+
+    const duplicateField = (fieldId: string) => {
+        if (!form) return;
+        const fieldToDuplicate = form.fields.find(f => f.id === fieldId);
+        if (!fieldToDuplicate) return;
+
+        const newField = {
+            ...fieldToDuplicate,
+            id: `field_${Date.now()}`,
+            label: `${fieldToDuplicate.label} (Copy)`,
+        };
+
+        const fieldIndex = form.fields.findIndex(f => f.id === fieldId);
+        const newFields = [...form.fields];
+        newFields.splice(fieldIndex + 1, 0, newField);
+
+        setForm({ ...form, fields: newFields });
+        toast.success('Field duplicated');
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over || !form) return;
+
+        if (active.id !== over.id) {
+            const oldIndex = form.fields.findIndex((f) => f.id === active.id);
+            const newIndex = form.fields.findIndex((f) => f.id === over.id);
+
+            const newFields = arrayMove(form.fields, oldIndex, newIndex);
+            setForm({ ...form, fields: newFields });
+        }
     };
 
     const togglePublish = async () => {
@@ -261,71 +440,29 @@ export default function FormEditorPage() {
                                         </p>
                                     </div>
                                 ) : (
-                                    form.fields.map((field, idx) => (
-                                        <motion.div
-                                            key={field.id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all group"
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleDragEnd}
+                                    >
+                                        <SortableContext
+                                            items={form.fields.map(f => f.id)}
+                                            strategy={verticalListSortingStrategy}
                                         >
-                                            <div className="flex items-start justify-between mb-2">
-                                                <label className="block text-sm font-medium text-foreground">
-                                                    {field.label}
-                                                    {field.required && <span className="text-red-500 ml-1">*</span>}
-                                                </label>
-                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingField(field);
-                                                            setShowFieldEditor(true);
-                                                        }}
-                                                        className="p-1 hover:bg-muted rounded"
-                                                    >
-                                                        <Cog6ToothIcon className="w-4 h-4 text-muted-foreground" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteField(field.id)}
-                                                        className="p-1 hover:bg-red-500/10 rounded"
-                                                    >
-                                                        <TrashIcon className="w-4 h-4 text-red-500" />
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Field Preview */}
-                                            {field.type === 'textarea' ? (
-                                                <textarea
-                                                    placeholder={field.placeholder}
-                                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg"
-                                                    rows={3}
-                                                    disabled
+                                            {form.fields.map((field) => (
+                                                <SortableFieldItem
+                                                    key={field.id}
+                                                    field={field}
+                                                    onEdit={() => {
+                                                        setEditingField(field);
+                                                        setShowFieldEditor(true);
+                                                    }}
+                                                    onDelete={() => deleteField(field.id)}
+                                                    onDuplicate={() => duplicateField(field.id)}
                                                 />
-                                            ) : field.type === 'select' ? (
-                                                <select className="w-full px-3 py-2 bg-background border border-border rounded-lg" disabled>
-                                                    <option>{field.placeholder || 'Select an option'}</option>
-                                                    {field.options?.map((opt, i) => (
-                                                        <option key={i}>{opt}</option>
-                                                    ))}
-                                                </select>
-                                            ) : field.type === 'checkbox' || field.type === 'radio' ? (
-                                                <div className="space-y-2">
-                                                    {(field.options || ['Option 1']).map((opt, i) => (
-                                                        <label key={i} className="flex items-center gap-2">
-                                                            <input type={field.type} disabled className="rounded" />
-                                                            <span className="text-sm text-foreground">{opt}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <input
-                                                    type={field.type}
-                                                    placeholder={field.placeholder}
-                                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg"
-                                                    disabled
-                                                />
-                                            )}
-                                        </motion.div>
-                                    ))
+                                            ))}
+                                        </SortableContext>
+                                    </DndContext>
                                 )}
 
                                 {/* Submit Button Preview */}
@@ -594,7 +731,7 @@ export default function FormEditorPage() {
                         >
                             <h3 className="text-lg font-bold text-foreground mb-4">Edit Field</h3>
 
-                            <div className="space-y-4">
+                            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
                                 <div>
                                     <label className="block text-sm font-medium text-foreground mb-1">
                                         Label
@@ -632,7 +769,173 @@ export default function FormEditorPage() {
                                     </label>
                                 </div>
 
-                                <div className="flex gap-3 justify-end">
+                                {/* Options for select, checkbox, radio */}
+                                {(editingField.type === 'select' || editingField.type === 'checkbox' || editingField.type === 'radio') && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-1">
+                                            Options (one per line)
+                                        </label>
+                                        <textarea
+                                            value={(editingField.options || []).join('\n')}
+                                            onChange={(e) => setEditingField({
+                                                ...editingField,
+                                                options: e.target.value.split('\n').filter(o => o.trim())
+                                            })}
+                                            className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                                            rows={5}
+                                            placeholder="Option 1&#10;Option 2&#10;Option 3"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* File upload settings */}
+                                {editingField.type === 'file' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-1">
+                                                Max File Size (MB)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={editingField.validation?.max || 10}
+                                                onChange={(e) => setEditingField({
+                                                    ...editingField,
+                                                    validation: { ...editingField.validation, max: parseInt(e.target.value) }
+                                                })}
+                                                className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                                                min={1}
+                                                max={100}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-1">
+                                                Allowed File Types
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editingField.validation?.pattern || ''}
+                                                onChange={(e) => setEditingField({
+                                                    ...editingField,
+                                                    validation: { ...editingField.validation, pattern: e.target.value }
+                                                })}
+                                                className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                                                placeholder=".pdf,.doc,.docx,.jpg,.png"
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Leave empty to allow all file types
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Conditional Logic */}
+                                <div className="border-t border-border pt-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <input
+                                            type="checkbox"
+                                            id="conditionalLogic"
+                                            checked={editingField.conditionalLogic?.enabled || false}
+                                            onChange={(e) => setEditingField({
+                                                ...editingField,
+                                                conditionalLogic: {
+                                                    enabled: e.target.checked,
+                                                    showIf: editingField.conditionalLogic?.showIf || {
+                                                        fieldId: '',
+                                                        operator: 'equals',
+                                                        value: ''
+                                                    }
+                                                }
+                                            })}
+                                            className="rounded"
+                                        />
+                                        <label htmlFor="conditionalLogic" className="text-sm font-medium text-foreground">
+                                            Conditional Logic
+                                        </label>
+                                    </div>
+
+                                    {editingField.conditionalLogic?.enabled && (
+                                        <div className="space-y-3 pl-6">
+                                            <p className="text-xs text-muted-foreground">
+                                                Show this field only if:
+                                            </p>
+                                            <div>
+                                                <label className="block text-xs font-medium text-foreground mb-1">
+                                                    Field
+                                                </label>
+                                                <select
+                                                    value={editingField.conditionalLogic?.showIf?.fieldId || ''}
+                                                    onChange={(e) => setEditingField({
+                                                        ...editingField,
+                                                        conditionalLogic: {
+                                                            ...editingField.conditionalLogic!,
+                                                            showIf: {
+                                                                ...editingField.conditionalLogic!.showIf,
+                                                                fieldId: e.target.value
+                                                            }
+                                                        }
+                                                    })}
+                                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                                                >
+                                                    <option value="">Select a field...</option>
+                                                    {form?.fields.filter(f => f.id !== editingField.id).map(field => (
+                                                        <option key={field.id} value={field.id}>{field.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-foreground mb-1">
+                                                    Condition
+                                                </label>
+                                                <select
+                                                    value={editingField.conditionalLogic?.showIf?.operator || 'equals'}
+                                                    onChange={(e) => setEditingField({
+                                                        ...editingField,
+                                                        conditionalLogic: {
+                                                            ...editingField.conditionalLogic!,
+                                                            showIf: {
+                                                                ...editingField.conditionalLogic!.showIf,
+                                                                operator: e.target.value as any
+                                                            }
+                                                        }
+                                                    })}
+                                                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                                                >
+                                                    <option value="equals">Equals</option>
+                                                    <option value="notEquals">Not Equals</option>
+                                                    <option value="contains">Contains</option>
+                                                    <option value="isEmpty">Is Empty</option>
+                                                    <option value="isNotEmpty">Is Not Empty</option>
+                                                </select>
+                                            </div>
+                                            {editingField.conditionalLogic?.showIf?.operator !== 'isEmpty' &&
+                                             editingField.conditionalLogic?.showIf?.operator !== 'isNotEmpty' && (
+                                                <div>
+                                                    <label className="block text-xs font-medium text-foreground mb-1">
+                                                        Value
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={editingField.conditionalLogic?.showIf?.value || ''}
+                                                        onChange={(e) => setEditingField({
+                                                            ...editingField,
+                                                            conditionalLogic: {
+                                                                ...editingField.conditionalLogic!,
+                                                                showIf: {
+                                                                    ...editingField.conditionalLogic!.showIf,
+                                                                    value: e.target.value
+                                                                }
+                                                            }
+                                                        })}
+                                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                                                        placeholder="Enter value..."
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 justify-end pt-4 border-t border-border">
                                     <button
                                         onClick={() => setShowFieldEditor(false)}
                                         className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/70"

@@ -195,6 +195,69 @@ export default function PublicFormPage() {
         }
     };
 
+    // Check if a field should be shown based on conditional logic
+    const shouldShowField = (field: any): boolean => {
+        if (!field.conditionalLogic?.enabled) {
+            return true;
+        }
+
+        const { fieldId, operator, value } = field.conditionalLogic.showIf;
+        const dependentFieldValue = formData[fieldId];
+
+        switch (operator) {
+            case 'equals':
+                return dependentFieldValue === value;
+            case 'notEquals':
+                return dependentFieldValue !== value;
+            case 'contains':
+                return String(dependentFieldValue || '').includes(value);
+            case 'isEmpty':
+                return !dependentFieldValue || dependentFieldValue === '' || (Array.isArray(dependentFieldValue) && dependentFieldValue.length === 0);
+            case 'isNotEmpty':
+                return !!dependentFieldValue && dependentFieldValue !== '' && (!Array.isArray(dependentFieldValue) || dependentFieldValue.length > 0);
+            default:
+                return true;
+        }
+    };
+
+    const handleFileChange = async (fieldId: string, file: File | null) => {
+        if (!file) {
+            handleChange(fieldId, null);
+            return;
+        }
+
+        // Validate file size
+        const field = form?.fields.find(f => f.id === fieldId);
+        const maxSize = field?.validation?.max || 10; // Default 10MB
+        if (file.size > maxSize * 1024 * 1024) {
+            setErrors({ ...errors, [fieldId]: `File size must be less than ${maxSize}MB` });
+            return;
+        }
+
+        // Validate file type
+        const allowedTypes = field?.validation?.pattern;
+        if (allowedTypes) {
+            const fileExt = '.' + file.name.split('.').pop()?.toLowerCase();
+            const allowed = allowedTypes.split(',').map((t: string) => t.trim().toLowerCase());
+            if (!allowed.includes(fileExt)) {
+                setErrors({ ...errors, [fieldId]: `Allowed file types: ${allowedTypes}` });
+                return;
+            }
+        }
+
+        // Convert to base64 for storage
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            handleChange(fieldId, {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                data: e.target?.result
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background">
@@ -245,14 +308,57 @@ export default function PublicFormPage() {
                             )}
 
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {form.fields.map((field) => (
-                                    <div key={field.id}>
-                                        <label className="block text-sm font-medium text-gray-900 mb-2">
-                                            {field.label}
-                                            {field.required && <span className="text-red-500 ml-1">*</span>}
-                                        </label>
+                                <AnimatePresence mode="sync">
+                                    {form.fields.filter(shouldShowField).map((field) => (
+                                        <motion.div
+                                            key={field.id}
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                        >
+                                            <label className="block text-sm font-medium text-gray-900 mb-2">
+                                                {field.label}
+                                                {field.required && <span className="text-red-500 ml-1">*</span>}
+                                            </label>
 
-                                        {field.type === 'textarea' ? (
+                                            {field.type === 'file' ? (
+                                                <div className="relative">
+                                                    <input
+                                                        type="file"
+                                                        onChange={(e) => handleFileChange(field.id, e.target.files?.[0] || null)}
+                                                        accept={field.validation?.pattern}
+                                                        className="hidden"
+                                                        id={`file-${field.id}`}
+                                                    />
+                                                    <label
+                                                        htmlFor={`file-${field.id}`}
+                                                        className={cn(
+                                                            "block w-full px-4 py-8 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors",
+                                                            errors[field.id]
+                                                                ? "border-red-500 bg-red-50"
+                                                                : "border-gray-300 hover:border-blue-500 hover:bg-blue-50"
+                                                        )}
+                                                    >
+                                                        {formData[field.id] ? (
+                                                            <div>
+                                                                <p className="font-medium text-gray-900">{formData[field.id].name}</p>
+                                                                <p className="text-sm text-gray-500 mt-1">
+                                                                    {(formData[field.id].size / 1024).toFixed(2)} KB
+                                                                </p>
+                                                            </div>
+                                                        ) : (
+                                                            <div>
+                                                                <p className="text-gray-600">{field.placeholder || 'Click to upload or drag and drop'}</p>
+                                                                <p className="text-sm text-gray-500 mt-1">
+                                                                    Max size: {field.validation?.max || 10}MB
+                                                                    {field.validation?.pattern && ` • ${field.validation.pattern}`}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </label>
+                                                </div>
+                                            ) : field.type === 'textarea' ? (
                                             <textarea
                                                 value={formData[field.id] || ''}
                                                 onChange={(e) => handleChange(field.id, e.target.value)}
@@ -335,11 +441,12 @@ export default function PublicFormPage() {
                                             />
                                         )}
 
-                                        {errors[field.id] && (
-                                            <p className="text-red-500 text-sm mt-1">{errors[field.id]}</p>
-                                        )}
-                                    </div>
-                                ))}
+                                            {errors[field.id] && (
+                                                <p className="text-red-500 text-sm mt-1">{errors[field.id]}</p>
+                                            )}
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
 
                                 {errors.submit && (
                                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg">

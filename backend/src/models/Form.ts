@@ -9,7 +9,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IFormField {
     id: string;
-    type: 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'number' | 'date' | 'url';
+    type: 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'number' | 'date' | 'url' | 'file';
     label: string;
     placeholder?: string;
     required: boolean;
@@ -23,6 +23,14 @@ export interface IFormField {
     };
     mapToField?: 'firstName' | 'lastName' | 'email' | 'phone' | 'company' | 'jobTitle' | 'website' | 'custom';
     customFieldName?: string;
+    conditionalLogic?: {
+        enabled: boolean;
+        showIf: {
+            fieldId: string;
+            operator: 'equals' | 'notEquals' | 'contains' | 'isEmpty' | 'isNotEmpty';
+            value: string;
+        };
+    };
 }
 
 export interface IForm extends Document {
@@ -76,7 +84,7 @@ const formFieldSchema = new Schema<IFormField>({
     id: { type: String, required: true },
     type: {
         type: String,
-        enum: ['text', 'email', 'phone', 'textarea', 'select', 'checkbox', 'radio', 'number', 'date', 'url'],
+        enum: ['text', 'email', 'phone', 'textarea', 'select', 'checkbox', 'radio', 'number', 'date', 'url', 'file'],
         required: true,
     },
     label: { type: String, required: true },
@@ -95,6 +103,17 @@ const formFieldSchema = new Schema<IFormField>({
         enum: ['firstName', 'lastName', 'email', 'phone', 'company', 'jobTitle', 'website', 'custom'],
     },
     customFieldName: { type: String },
+    conditionalLogic: {
+        enabled: { type: Boolean, default: false },
+        showIf: {
+            fieldId: { type: String },
+            operator: {
+                type: String,
+                enum: ['equals', 'notEquals', 'contains', 'isEmpty', 'isNotEmpty'],
+            },
+            value: { type: String },
+        },
+    },
 }, { _id: false });
 
 const formSchema = new Schema<IForm>(

@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export interface FormField {
     id: string;
-    type: 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'number' | 'date' | 'url';
+    type: 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'checkbox' | 'radio' | 'number' | 'date' | 'url' | 'file';
     label: string;
     placeholder?: string;
     required: boolean;
@@ -20,6 +20,14 @@ export interface FormField {
     };
     mapToField?: 'firstName' | 'lastName' | 'email' | 'phone' | 'company' | 'jobTitle' | 'website' | 'custom';
     customFieldName?: string;
+    conditionalLogic?: {
+        enabled: boolean;
+        showIf: {
+            fieldId: string;
+            operator: 'equals' | 'notEquals' | 'contains' | 'isEmpty' | 'isNotEmpty';
+            value: string;
+        };
+    };
 }
 
 export interface Form {

@@ -2,7 +2,20 @@
  * Landing Page API Client
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { useAuthStore } from "@/store/useAuthStore";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+/**
+ * Get auth headers with Bearer token
+ */
+const getAuthHeaders = () => {
+    const token = useAuthStore.getState().token;
+    return {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+    };
+};
 
 export interface PageSection {
     id: string;
@@ -95,11 +108,10 @@ export async function getLandingPages(
     if (status) params.append('status', status);
 
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/landing-pages?${params}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/landing-pages?${params}`,
         {
             method: "GET",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
         }
     );
 
@@ -112,11 +124,10 @@ export async function getLandingPage(
     id: string
 ): Promise<{ success: boolean; data: LandingPage }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/landing-pages/${id}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/landing-pages/${id}`,
         {
             method: "GET",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
         }
     );
 
@@ -129,11 +140,10 @@ export async function createLandingPage(
     data: Partial<LandingPage>
 ): Promise<{ success: boolean; data: LandingPage; message: string }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/landing-pages`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/landing-pages`,
         {
             method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify(data),
         }
     );
@@ -148,11 +158,10 @@ export async function updateLandingPage(
     data: Partial<LandingPage>
 ): Promise<{ success: boolean; data: LandingPage; message: string }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/landing-pages/${id}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/landing-pages/${id}`,
         {
             method: "PUT",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify(data),
         }
     );
@@ -166,11 +175,10 @@ export async function deleteLandingPage(
     id: string
 ): Promise<{ success: boolean; message: string }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/landing-pages/${id}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/landing-pages/${id}`,
         {
             method: "DELETE",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
         }
     );
 
@@ -182,7 +190,7 @@ export async function getPublicLandingPage(
     slug: string
 ): Promise<{ success: boolean; data: LandingPage }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/public/pages/${slug}`,
+        `${API_BASE_URL}/public/pages/${slug}`,
         {
             method: "GET",
             headers: { "Content-Type": "application/json" },
@@ -197,7 +205,7 @@ export async function trackConversion(
     pageId: string
 ): Promise<{ success: boolean; message: string }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/public/pages/${pageId}/track-conversion`,
+        `${API_BASE_URL}/public/pages/${pageId}/track-conversion`,
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },

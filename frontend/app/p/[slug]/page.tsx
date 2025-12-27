@@ -529,6 +529,56 @@ function Section({ section, index, primaryColor, secondaryColor, isDark, onConve
                 </motion.section>
             );
 
+        case 'form':
+            return (
+                <motion.section
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className={containerClasses}
+                    style={bgStyle}
+                >
+                    <div className={`${maxWidthClasses} max-w-2xl`}>
+                        {settings.heading && (
+                            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8" style={textColorStyle}>
+                                {settings.heading}
+                            </h2>
+                        )}
+                        {settings.formId ? (
+                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+                                <iframe
+                                    src={`${process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin}/forms/${settings.formId}`}
+                                    className="w-full border-0"
+                                    style={{ minHeight: '500px' }}
+                                    onLoad={(e) => {
+                                        // Auto-resize iframe based on content
+                                        const iframe = e.currentTarget;
+                                        const resizeIframe = () => {
+                                            if (iframe.contentWindow) {
+                                                const height = iframe.contentWindow.document.body.scrollHeight;
+                                                iframe.style.height = height + 'px';
+                                            }
+                                        };
+                                        // Initial resize
+                                        setTimeout(resizeIframe, 100);
+                                        // Listen for form height changes
+                                        window.addEventListener('message', (event) => {
+                                            if (event.data?.type === 'morrisb-form-height' && event.data?.formId === settings.formId) {
+                                                iframe.style.height = event.data.height + 'px';
+                                            }
+                                        });
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-8 text-center" style={textColorStyle}>
+                                <p className="opacity-70">No form selected. Please configure this section in the editor.</p>
+                            </div>
+                        )}
+                    </div>
+                </motion.section>
+            );
+
         default:
             return null;
     }
