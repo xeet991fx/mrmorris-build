@@ -33,6 +33,7 @@ import {
     ChartBarIcon,
     GlobeAltIcon,
     DocumentTextIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { WorkflowStep, TRIGGER_TYPE_LABELS, ACTION_TYPE_LABELS } from "@/lib/workflow/types";
@@ -156,6 +157,14 @@ export default function WorkflowEditorPage() {
     const [showGoalSettings, setShowGoalSettings] = useState(false);
     const [failedCount, setFailedCount] = useState(0);
     const [isCloning, setIsCloning] = useState(false);
+    const [showQuickTips, setShowQuickTips] = useState(() => {
+        // Check localStorage for user preference, default to true
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('workflow-quick-tips-visible');
+            return saved !== null ? saved === 'true' : true;
+        }
+        return true;
+    });
 
     // Undo/Redo history
     const [history, setHistory] = useState<WorkflowStep[][]>([]);
@@ -190,6 +199,17 @@ export default function WorkflowEditorPage() {
             updateStepsFromCanvas(history[historyIndex + 1]);
         }
     }, [historyIndex, history, updateStepsFromCanvas]);
+
+    // Toggle quick tips panel
+    const handleToggleQuickTips = useCallback(() => {
+        setShowQuickTips(prev => {
+            const newValue = !prev;
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('workflow-quick-tips-visible', String(newValue));
+            }
+            return newValue;
+        });
+    }, []);
 
     // Clone workflow handler
     const handleClone = useCallback(async () => {
@@ -709,22 +729,33 @@ export default function WorkflowEditorPage() {
                         </Panel>
 
                         {/* Help panel */}
-                        <Panel position="bottom-left" className="!m-4 !mb-20">
-                            <div className="bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-1">
-                                <p className="font-medium text-foreground mb-1">Quick Tips</p>
-                                <p>• Drag nodes from sidebar to canvas</p>
-                                <p>• Click nodes to configure</p>
-                                <p className="font-medium text-foreground mt-2 mb-1">Keyboard Shortcuts</p>
-                                <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + S</kbd> Save workflow</p>
-                                <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Z</kbd> Undo</p>
-                                <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Y</kbd> Redo</p>
-                                <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Delete</kbd> Remove selected node</p>
-                                <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Esc</kbd> Deselect</p>
-                                {currentWorkflow.status === "active" && (
-                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + B</kbd> Bulk enroll</p>
-                                )}
-                            </div>
-                        </Panel>
+                        {showQuickTips && (
+                            <Panel position="bottom-left" className="!m-4 !mb-20">
+                                <div className="bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-1 relative">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="font-medium text-foreground">Quick Tips</p>
+                                        <button
+                                            onClick={handleToggleQuickTips}
+                                            className="p-0.5 rounded hover:bg-muted transition-colors"
+                                            title="Hide quick tips"
+                                        >
+                                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                                        </button>
+                                    </div>
+                                    <p>• Drag nodes from sidebar to canvas</p>
+                                    <p>• Click nodes to configure</p>
+                                    <p className="font-medium text-foreground mt-2 mb-1">Keyboard Shortcuts</p>
+                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + S</kbd> Save workflow</p>
+                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Z</kbd> Undo</p>
+                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Y</kbd> Redo</p>
+                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Delete</kbd> Remove selected node</p>
+                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Esc</kbd> Deselect</p>
+                                    {currentWorkflow.status === "active" && (
+                                        <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + B</kbd> Bulk enroll</p>
+                                    )}
+                                </div>
+                            </Panel>
+                        )}
                     </ReactFlow>
 
                     {/* Validation Error Panel */}

@@ -66,7 +66,7 @@ export default function ContactDetailsPanel({
             {/* Profile Header */}
             <div className="text-center pb-4 border-b border-border">
                 {/* Avatar */}
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#9ACD32] to-emerald-600 flex items-center justify-center mx-auto mb-3">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-black to-emerald-600 flex items-center justify-center mx-auto mb-3">
                     <span className="text-2xl font-bold text-white">{initials || "?"}</span>
                 </div>
 
@@ -121,7 +121,7 @@ export default function ContactDetailsPanel({
                         <div className="flex items-center gap-3">
                             <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-gradient-to-r from-[#9ACD32] to-emerald-500 rounded-full transition-all"
+                                    className="h-full bg-gradient-to-r from-black to-emerald-500 rounded-full transition-all"
                                     style={{ width: `${contact.leadScore.currentScore}%` }}
                                 />
                             </div>
@@ -160,7 +160,7 @@ export default function ContactDetailsPanel({
                         {contact.email ? (
                             <a
                                 href={`mailto:${contact.email}`}
-                                className="text-foreground hover:text-[#9ACD32] transition-colors truncate"
+                                className="text-foreground hover:text-black transition-colors truncate"
                             >
                                 {contact.email}
                             </a>
@@ -185,7 +185,7 @@ export default function ContactDetailsPanel({
                         {contact.phone ? (
                             <a
                                 href={`tel:${contact.phone}`}
-                                className="text-foreground hover:text-[#9ACD32] transition-colors"
+                                className="text-foreground hover:text-black transition-colors"
                             >
                                 {contact.phone}
                             </a>
@@ -276,7 +276,7 @@ export default function ContactDetailsPanel({
                             href={contact.website.startsWith("http") ? contact.website : `https://${contact.website}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-foreground hover:text-[#9ACD32] transition-colors truncate"
+                            className="text-foreground hover:text-black transition-colors truncate"
                         >
                             {contact.website}
                         </a>
@@ -391,7 +391,7 @@ export default function ContactDetailsPanel({
                         {contact.tags.map((tag) => (
                             <span
                                 key={tag}
-                                className="px-2 py-0.5 text-xs font-medium rounded-full bg-[#9ACD32]/10 text-[#9ACD32] border border-[#9ACD32]/20"
+                                className="px-2 py-0.5 text-xs font-medium rounded-full bg-black/10 text-black border border-black/20"
                             >
                                 {tag}
                             </span>

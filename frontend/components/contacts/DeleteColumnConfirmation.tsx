@@ -190,7 +190,7 @@ export default function DeleteColumnConfirmation({
                           className={cn(
                             "flex items-start p-4 rounded-lg border-2 cursor-pointer transition-colors",
                             deleteMode === "soft"
-                              ? "border-[#9ACD32] bg-[#9ACD32]/10"
+                              ? "border-black bg-black/10"
                               : "border-border hover:border-border"
                           )}
                         >
@@ -200,7 +200,7 @@ export default function DeleteColumnConfirmation({
                             value="soft"
                             checked={deleteMode === "soft"}
                             onChange={(e) => setDeleteMode("soft")}
-                            className="mt-1 w-4 h-4 text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
+                            className="mt-1 w-4 h-4 text-black focus:ring-primary focus:ring-offset-0"
                           />
                           <div className="ml-3">
                             <div className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -304,7 +304,7 @@ export default function DeleteColumnConfirmation({
                         "px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                         step === 3 || (step === 2 && deleteMode === "hard")
                           ? "bg-red-500 hover:bg-red-600 text-white"
-                          : "bg-[#9ACD32] hover:bg-[#8AB82E] text-background"
+                          : "bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white text-background"
                       )}
                     >
                       {isDeleting
@@ -325,9 +325,9 @@ export default function DeleteColumnConfirmation({
                         className={cn(
                           "w-2 h-2 rounded-full transition-colors",
                           step > s
-                            ? "bg-[#9ACD32]"
+                            ? "bg-black"
                             : step === s
-                            ? "bg-[#9ACD32]"
+                            ? "bg-black"
                             : "bg-muted-foreground"
                         )}
                       />

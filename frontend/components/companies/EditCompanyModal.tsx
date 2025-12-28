@@ -163,7 +163,7 @@ export default function EditCompanyModal({
                       <button
                         type="submit"
                         disabled={isLoading}
-                        className="px-4 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8AB82E] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 text-sm font-medium text-background bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isLoading ? "Saving..." : "Save Changes"}
                       </button>

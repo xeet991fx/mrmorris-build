@@ -67,7 +67,7 @@ export default function ContactNotesTab({
                         <button
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8BC22A] rounded-lg transition-colors disabled:opacity-50"
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-background bg-black hover:bg-[#8BC22A] rounded-lg transition-colors disabled:opacity-50"
                         >
                             <CheckIcon className="w-4 h-4" />
                             {isSaving ? "Saving..." : "Save"}
@@ -86,7 +86,7 @@ export default function ContactNotesTab({
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Add notes about this contact..."
-                        className="w-full h-[300px] px-4 py-3 text-sm bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 resize-none"
+                        className="w-full h-[300px] px-4 py-3 text-sm bg-input border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                     />
                 ) : notes ? (
                     <div className="p-4 rounded-lg border border-border bg-card">
@@ -100,7 +100,7 @@ export default function ContactNotesTab({
                         <p className="text-sm text-muted-foreground">No notes yet</p>
                         <button
                             onClick={() => setIsEditing(true)}
-                            className="mt-3 px-4 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8BC22A] rounded-lg transition-colors"
+                            className="mt-3 px-4 py-2 text-sm font-medium text-background bg-black hover:bg-[#8BC22A] rounded-lg transition-colors"
                         >
                             Add Notes
                         </button>

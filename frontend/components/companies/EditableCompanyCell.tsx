@@ -209,7 +209,7 @@ export default function EditableCompanyCell({ company, column, value }: Editable
                         onBlur={handleSave}
                         onKeyDown={handleKeyDown}
                         disabled={isSaving}
-                        className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+                        className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-black disabled:opacity-50"
                     />
                 );
             case "select":
@@ -221,7 +221,7 @@ export default function EditableCompanyCell({ company, column, value }: Editable
                         onBlur={handleSave}
                         onKeyDown={handleKeyDown}
                         disabled={isSaving}
-                        className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+                        className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-black disabled:opacity-50"
                     >
                         <option value="">Select...</option>
                         {customColumnDef.selectOptions?.map((option) => (
@@ -242,7 +242,7 @@ export default function EditableCompanyCell({ company, column, value }: Editable
                         onBlur={handleSave}
                         onKeyDown={handleKeyDown}
                         disabled={isSaving}
-                        className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+                        className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-black disabled:opacity-50"
                     />
                 );
         }
@@ -258,7 +258,7 @@ export default function EditableCompanyCell({ company, column, value }: Editable
                 onBlur={handleSave}
                 onKeyDown={handleKeyDown}
                 disabled={isSaving}
-                className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+                className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-black disabled:opacity-50"
             >
                 {STATUS_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -279,7 +279,7 @@ export default function EditableCompanyCell({ company, column, value }: Editable
                 onBlur={handleSave}
                 onKeyDown={handleKeyDown}
                 disabled={isSaving}
-                className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+                className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-black disabled:opacity-50"
             >
                 <option value="">Select...</option>
                 {COMPANY_SIZE_OPTIONS.map((option) => (
@@ -302,7 +302,7 @@ export default function EditableCompanyCell({ company, column, value }: Editable
                 onKeyDown={handleKeyDown}
                 disabled={isSaving}
                 rows={2}
-                className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] resize-none disabled:opacity-50"
+                className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-black resize-none disabled:opacity-50"
             />
         );
     }
@@ -317,7 +317,7 @@ export default function EditableCompanyCell({ company, column, value }: Editable
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             disabled={isSaving}
-            className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] disabled:opacity-50"
+            className="w-full px-2 py-1 bg-input border border-border rounded text-sm text-foreground focus:outline-none focus:border-black disabled:opacity-50"
         />
     );
 }

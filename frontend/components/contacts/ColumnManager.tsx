@@ -220,7 +220,7 @@ export default function ColumnManager({ isOpen, onClose }: ColumnManagerProps) {
                                     checked={isVisible}
                                     onChange={() => toggleColumn(column.value)}
                                     disabled={isOnlyVisible}
-                                    className="w-4 h-4 rounded border-border bg-muted text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-4 h-4 rounded border-border bg-muted text-black focus:ring-primary focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                   />
                                   <span
                                     className={cn(
@@ -258,7 +258,7 @@ export default function ColumnManager({ isOpen, onClose }: ColumnManagerProps) {
                             <button
                               type="button"
                               onClick={() => setShowAddModal(true)}
-                              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8AB82E] rounded-lg transition-colors"
+                              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-background bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white rounded-lg transition-colors"
                             >
                               <PlusIcon className="w-4 h-4" />
                               Add Column
@@ -282,7 +282,7 @@ export default function ColumnManager({ isOpen, onClose }: ColumnManagerProps) {
                                 .map((column) => (
                                   <div
                                     key={column._id}
-                                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors"
                                   >
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2">
@@ -367,7 +367,7 @@ export default function ColumnManager({ isOpen, onClose }: ColumnManagerProps) {
                                       onChange={(e) =>
                                         updateColumnLabel(column.value, e.target.value)
                                       }
-                                      className="w-full px-2 py-1 bg-muted border border-border rounded text-sm text-foreground focus:outline-none focus:border-[#9ACD32] transition-colors"
+                                      className="w-full px-2 py-1 bg-muted border border-border rounded text-sm text-foreground focus:outline-none focus:border-black transition-colors"
                                     />
                                   </div>
                                   {!column.isCustom && hasCustomLabel && (
@@ -401,7 +401,7 @@ export default function ColumnManager({ isOpen, onClose }: ColumnManagerProps) {
                       <button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8AB82E] rounded-lg transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-background bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white rounded-lg transition-colors"
                       >
                         Done
                       </button>

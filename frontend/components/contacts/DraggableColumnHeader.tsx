@@ -61,7 +61,7 @@ export default function DraggableColumnHeader({
 
         {/* Sort indicator */}
         {sortColumn === column && (
-          <span className="text-[#9ACD32] flex-shrink-0">
+          <span className="text-black flex-shrink-0">
             {sortDirection === "asc" ? "↑" : "↓"}
           </span>
         )}

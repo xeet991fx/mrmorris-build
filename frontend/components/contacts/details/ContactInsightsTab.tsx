@@ -256,7 +256,7 @@ export default function ContactInsightsTab({ contact }: ContactInsightsTabProps)
                                         transition={{ delay: 0.3 + index * 0.1 }}
                                         className="flex items-start gap-2 text-sm text-foreground"
                                     >
-                                        <span className="text-[#9ACD32] mt-0.5">→</span>
+                                        <span className="text-black mt-0.5">→</span>
                                         <span>{action}</span>
                                     </motion.li>
                                 ))}

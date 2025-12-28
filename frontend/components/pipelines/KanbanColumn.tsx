@@ -82,7 +82,7 @@ export default function KanbanColumn({
         ref={setNodeRef}
         className={cn(
           "flex-1 bg-muted/30 border-2 border-dashed rounded-lg p-2 space-y-3 overflow-y-auto",
-          isOver ? "border-[#9ACD32] bg-[#9ACD32]/10" : "border-border"
+          isOver ? "border-black bg-black/10" : "border-border"
         )}
       >
         {opportunities.length === 0 ? (
@@ -91,7 +91,7 @@ export default function KanbanColumn({
               <p className="text-sm text-muted-foreground">No opportunities</p>
               <button
                 onClick={() => onAddOpportunity(stage._id)}
-                className="mt-2 text-xs text-[#9ACD32] hover:underline"
+                className="mt-2 text-xs text-black hover:underline"
               >
                 Add one
               </button>

@@ -3,23 +3,24 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-    TicketIcon,
-    PlusIcon,
-    MagnifyingGlassIcon,
-    FunnelIcon,
-    ClockIcon,
-    UserIcon,
-    ChatBubbleLeftRightIcon,
-    ExclamationTriangleIcon,
-    CheckCircleIcon,
-    ArrowPathIcon,
-    SparklesIcon,
-    XMarkIcon,
-    PlayIcon,
-    PauseIcon,
-    TrashIcon,
-} from "@heroicons/react/24/outline";
+    faTicket,
+    faPlus,
+    faMagnifyingGlass,
+    faFilter,
+    faClock,
+    faUser,
+    faComments,
+    faTriangleExclamation,
+    faCircleCheck,
+    faArrowsRotate,
+    faSparkles,
+    faXmark,
+    faPlay,
+    faPause,
+    faTrash,
+} from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import {
     Ticket,
@@ -201,7 +202,7 @@ function CreateTicketModal({
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] disabled:opacity-50"
+                            className="px-4 py-2 rounded-lg bg-white dark:bg-neutral-800 text-black dark:text-white font-medium hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50"
                         >
                             {isSubmitting ? "Creating..." : "Create Ticket"}
                         </button>
@@ -240,17 +241,17 @@ function TicketCard({
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 hover:shadow-lg transition-all cursor-pointer"
+            className="group bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-lg transition-all cursor-pointer"
             onClick={onView}
         >
             {/* Header */}
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center">
-                        <TicketIcon className="w-5 h-5 text-white" />
+                        <FontAwesomeIcon icon={faTicket} className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 font-heading">
                             {ticket.subject}
                         </h3>
                         <p className="text-xs text-muted-foreground">
@@ -271,16 +272,16 @@ function TicketCard({
             {/* Stats */}
             <div className="flex items-center gap-4 mb-4 text-sm">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <UserIcon className="w-4 h-4" />
+                    <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
                     <span className="truncate max-w-[100px]">{ticket.requesterName || ticket.requesterEmail}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <ClockIcon className="w-4 h-4" />
+                    <FontAwesomeIcon icon={faClock} className="w-4 h-4" />
                     <span>{formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true })}</span>
                 </div>
                 {ticket.comments.length > 0 && (
                     <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                        <FontAwesomeIcon icon={faComments} className="w-4 h-4" />
                         <span>{ticket.comments.length}</span>
                     </div>
                 )}
@@ -302,7 +303,7 @@ function TicketCard({
                         onClick={onReopen}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                     >
-                        <PlayIcon className="w-4 h-4" />
+                        <FontAwesomeIcon icon={faPlay} className="w-4 h-4" />
                         Reopen
                     </button>
                 ) : (
@@ -310,7 +311,7 @@ function TicketCard({
                         onClick={onResolve}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
                     >
-                        <CheckCircleIcon className="w-4 h-4" />
+                        <FontAwesomeIcon icon={faCircleCheck} className="w-4 h-4" />
                         Resolve
                     </button>
                 )}
@@ -318,7 +319,7 @@ function TicketCard({
                     onClick={onDelete}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-auto"
                 >
-                    <TrashIcon className="w-4 h-4" />
+                    <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
                 </button>
             </div>
         </motion.div>
@@ -333,17 +334,17 @@ function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
     return (
         <div className="flex flex-col items-center justify-center py-16 px-4">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-600/20 flex items-center justify-center mb-6">
-                <TicketIcon className="w-10 h-10 text-blue-500" />
+                <FontAwesomeIcon icon={faTicket} className="w-10 h-10 text-blue-500" />
             </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">No tickets yet</h3>
+            <h3 className="text-xl font-semibold text-foreground mb-2 font-heading">No tickets yet</h3>
             <p className="text-muted-foreground text-center max-w-md mb-6">
                 Create support tickets to track customer requests, issues, and feature suggestions.
             </p>
             <button
                 onClick={onCreateNew}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white dark:bg-neutral-800 text-black dark:text-white font-medium hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
             >
-                <PlusIcon className="w-5 h-5" />
+                <FontAwesomeIcon icon={faPlus} className="w-5 h-5" />
                 Create Your First Ticket
             </button>
         </div>
@@ -457,16 +458,16 @@ export default function TicketsPage() {
                     animate={{ opacity: 1 }}
                     className="flex items-center gap-3"
                 >
-                    <h1 className="text-lg font-semibold text-foreground">Tickets</h1>
+                    <h1 className="text-lg font-semibold text-foreground font-heading">Tickets</h1>
                     <p className="text-xs text-muted-foreground">
                         Manage customer support requests
                     </p>
                 </motion.div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white dark:bg-neutral-800 text-black dark:text-white font-medium hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
                 >
-                    <PlusIcon className="w-5 h-5" />
+                    <FontAwesomeIcon icon={faPlus} className="w-5 h-5" />
                     New Ticket
                 </button>
             </div>
@@ -476,24 +477,24 @@ export default function TicketsPage() {
                 <div className="flex items-center gap-4">
                     {/* Search */}
                     <div className="relative flex-1 max-w-md">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <FontAwesomeIcon icon={faMagnifyingGlass} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <input
                             type="text"
                             placeholder="Search tickets..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && fetchTickets()}
-                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
+                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                         />
                     </div>
 
                     {/* Filters */}
                     <div className="flex items-center gap-2">
-                        <FunnelIcon className="w-4 h-4 text-muted-foreground" />
+                        <FontAwesomeIcon icon={faFilter} className="w-4 h-4 text-muted-foreground" />
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
+                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                         >
                             <option value="all">All Status</option>
                             <option value="open">Open</option>
@@ -505,7 +506,7 @@ export default function TicketsPage() {
                         <select
                             value={priorityFilter}
                             onChange={(e) => setPriorityFilter(e.target.value)}
-                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
+                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
                         >
                             <option value="all">All Priority</option>
                             <option value="urgent">Urgent</option>
@@ -522,8 +523,8 @@ export default function TicketsPage() {
                 <div className="max-w-7xl mx-auto px-6 mb-6">
                     <div className="bg-card border border-border rounded-xl p-5">
                         <div className="flex items-center gap-2 mb-4">
-                            <ExclamationTriangleIcon className="w-5 h-5 text-blue-500" />
-                            <h2 className="text-base font-semibold text-foreground">Ticket Overview</h2>
+                            <FontAwesomeIcon icon={faTriangleExclamation} className="w-5 h-5 text-blue-500" />
+                            <h2 className="text-base font-semibold text-foreground font-heading">Ticket Overview</h2>
                         </div>
                         <div className="grid grid-cols-4 gap-6">
                             <div>
@@ -555,14 +556,14 @@ export default function TicketsPage() {
                     <div className="bg-card border border-border rounded-xl p-5">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                                <SparklesIcon className="w-5 h-5 text-violet-500" />
-                                <h2 className="text-base font-semibold text-foreground">Ticket Intelligence</h2>
+                                <FontAwesomeIcon icon={faSparkles} className="w-5 h-5 text-violet-500" />
+                                <h2 className="text-base font-semibold text-foreground font-heading">Ticket Intelligence</h2>
                             </div>
                             <button
                                 onClick={fetchTickets}
                                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                             >
-                                <ArrowPathIcon className="w-4 h-4" />
+                                <FontAwesomeIcon icon={faArrowsRotate} className="w-4 h-4" />
                                 Refresh
                             </button>
                         </div>

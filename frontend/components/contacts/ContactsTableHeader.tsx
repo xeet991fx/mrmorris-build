@@ -98,7 +98,7 @@ export default function ContactsTableHeader({
 
           <button
             onClick={onAddContact}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#9ACD32] text-background font-medium text-xs hover:bg-[#8AB82E] transition-all border border-[#9ACD32] flex-1 sm:flex-initial justify-center rounded"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-neutral-800 text-black dark:text-white font-medium text-xs hover:bg-neutral-800 transition-all border border-black flex-1 sm:flex-initial justify-center rounded"
           >
             <PlusIcon className="w-3.5 h-3.5" />
             Add Contact

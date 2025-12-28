@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Hanken_Grotesk } from "next/font/google"
+import { Hanken_Grotesk, Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { Toaster } from "sonner"
@@ -11,10 +11,17 @@ const hankenGrotesk = Hanken_Grotesk({
   display: "swap",
 })
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-inter",
+  display: "swap",
+})
+
 export const metadata: Metadata = {
-  title: "Clianta - Autonomous Marketing Copilot for Agencies",
-  description: "Your AI Marketing Team That Never Sleeps. Multi-agent autonomous marketing system that manages campaigns, optimizes performance, and drives results 24/7.",
-  keywords: ["AI marketing", "marketing automation", "marketing copilot", "autonomous marketing", "marketing agencies", "AI agents", "campaign optimization"],
+  title: "Clianta - AI-Native CRM That Builds Itself",
+  description: "Describe how you sell. Clianta builds personalized workflows and automations in minutes. No configuration. No consultants. Just results.",
+  keywords: ["AI CRM", "AI-native CRM", "automated CRM", "CRM automation", "AI workflows", "sales automation", "AI sales assistant", "zero-config CRM"],
   authors: [{ name: "Clianta" }],
   icons: {
     icon: [
@@ -23,14 +30,14 @@ export const metadata: Metadata = {
     apple: '/Clianta-logo-removebg-preview.png',
   },
   openGraph: {
-    title: "Clianta - Autonomous Marketing Copilot for Agencies",
-    description: "Your AI Marketing Team That Never Sleeps. Multi-agent autonomous marketing system for agencies.",
+    title: "Clianta - AI-Native CRM That Builds Itself",
+    description: "Describe how you sell. Clianta builds personalized workflows and automations in minutes. No configuration. No consultants. Just results.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Clianta - Autonomous Marketing Copilot",
-    description: "Your AI Marketing Team That Never Sleeps",
+    title: "Clianta - Your CRM, Built by AI",
+    description: "CRM that builds itself. Describe your sales process and get instant workflows and automations.",
   },
 }
 
@@ -41,7 +48,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${hankenGrotesk.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${hankenGrotesk.variable} ${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
