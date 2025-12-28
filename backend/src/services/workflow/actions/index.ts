@@ -17,8 +17,12 @@ import enrollWorkflowAction from "./enrollWorkflowAction";
 import leadScoreAction from "./leadScoreAction";
 import webhookAction from "./webhookAction";
 import apolloEnrichAction from "./apolloEnrichAction";
-import { executeSlackAction } from "./slackAction";
 import { executeSmsAction } from "./smsAction";
+import { HttpActionExecutor } from "./httpAction";
+import { SetNodeExecutor, MapNodeExecutor, FilterNodeExecutor } from "./transformAction";
+import { LoopActionExecutor } from "./loopAction";
+import { AIAgentActionExecutor } from "./aiAgentAction";
+import { SlackNodeExecutor } from "./slackNodeAction";
 
 // ============================================
 // ACTION REGISTRY
@@ -36,8 +40,18 @@ const actionRegistry: Record<string, ActionExecutor> = {
     update_lead_score: leadScoreAction,
     send_webhook: webhookAction,
     apollo_enrich: apolloEnrichAction,
-    send_slack: { execute: executeSlackAction },
     send_sms: { execute: executeSmsAction },
+
+    // NEW N8N-STYLE ACTIONS
+    http_request: new HttpActionExecutor(),
+    transform_set: new SetNodeExecutor(),
+    transform_map: new MapNodeExecutor(),
+    transform_filter: new FilterNodeExecutor(),
+    loop: new LoopActionExecutor(),
+    ai_agent: new AIAgentActionExecutor(),
+
+    // INTEGRATION NODES
+    integration_slack: new SlackNodeExecutor(),
 };
 
 // ============================================

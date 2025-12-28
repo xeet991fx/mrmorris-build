@@ -13,6 +13,8 @@ import { executeAction, ActionContext } from "./actions";
 import { evaluateCondition } from "./conditionEvaluator";
 import { completeEnrollment } from "./enrollmentManager";
 import { calculateDelayMs, getEntity } from "./utils";
+import { executeTryCatch } from "./errorHandler";
+import { executeParallel, executeMerge } from "./parallelExecutor";
 
 // ============================================
 // STEP EXECUTION
@@ -122,6 +124,44 @@ export async function executeNextStep(
                 case "wait_event":
                     await executeWaitEventStep(step, enrollment, workflow, nextStepId);
                     return; // Wait event step pauses execution
+
+                // NEW N8N-STYLE STEP TYPES
+                case "try_catch":
+                    const tryCatchResult = await executeTryCatch(step, enrollment, workflow, enrollment.workspaceId);
+                    result = tryCatchResult;
+                    nextStepId = tryCatchResult.nextStepId;
+                    if (!tryCatchResult.success) {
+                        throw new Error(tryCatchResult.error || 'Try/catch block failed');
+                    }
+                    break;
+
+                case "parallel":
+                    const parallelResult = await executeParallel(step, enrollment, workflow, enrollment.workspaceId);
+                    result = parallelResult;
+                    nextStepId = parallelResult.nextStepId;
+                    if (!parallelResult.success) {
+                        throw new Error(parallelResult.error || 'Parallel execution failed');
+                    }
+                    break;
+
+                case "merge":
+                    const mergeResult = await executeMerge(step, enrollment, workflow, enrollment.workspaceId);
+                    result = mergeResult;
+                    nextStepId = mergeResult.nextStepId;
+                    if (!mergeResult.success) {
+                        throw new Error(mergeResult.error || 'Merge failed');
+                    }
+                    break;
+
+                case "loop":
+                case "transform":
+                case "ai_agent":
+                case "integration_slack":
+                case "integration_whatsapp":
+                case "integration_discord":
+                    // These are treated as special action types
+                    result = await executeActionStep(step, enrollment);
+                    break;
             }
 
             // Update step as completed
