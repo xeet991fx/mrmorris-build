@@ -27,7 +27,13 @@ export type ActionType =
     | 'enroll_workflow'
     | 'update_lead_score'
     | 'send_webhook'
-    | 'apollo_enrich';
+    | 'apollo_enrich'
+    // NEW N8N-STYLE ACTIONS
+    | 'http_request'        // Enhanced HTTP with full auth
+    | 'transform_set'       // Set variables
+    | 'transform_map'       // Map/transform data
+    | 'transform_filter'    // Filter arrays
+    | 'ai_agent';           // AI agent execution
 
 export type DelayType = 'duration' | 'until_date' | 'until_time' | 'until_weekday';
 
@@ -45,7 +51,23 @@ export type ConditionOperator =
 
 export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'archived';
 
-export type StepType = 'trigger' | 'action' | 'delay' | 'condition' | 'wait_event';
+export type StepType =
+    | 'trigger'
+    | 'action'
+    | 'delay'
+    | 'condition'
+    | 'wait_event'
+    // NEW N8N-STYLE STEP TYPES
+    | 'parallel'              // Split execution into parallel branches
+    | 'merge'                 // Join parallel branches back together
+    | 'loop'                  // Iterate over arrays
+    | 'transform'             // Data transformation (set/map/filter)
+    | 'try_catch'             // Error handling wrapper
+    | 'ai_agent'              // AI agent integration
+    // INTEGRATION NODES (each integration is its own type)
+    | 'integration_slack'     // Slack integration
+    | 'integration_whatsapp'  // WhatsApp (future)
+    | 'integration_discord';  // Discord (future)
 
 // ============================================
 // SUB-DOCUMENT INTERFACES
@@ -113,12 +135,28 @@ export interface IWorkflowStep {
 
         // Apollo enrichment config
         enrichType?: 'person' | 'company' | 'linkedin_to_email';
+
+        // NEW N8N-STYLE CONFIG (flexible - stores all config for new node types)
+        [key: string]: any;  // Allow any additional properties for new node types
     };
     position: {
         x: number;
         y: number;
     };
     nextStepIds: string[];
+
+    // NEW: Named branches for advanced routing
+    branches?: {
+        success?: string;      // Success path (try_catch)
+        error?: string;        // Error path (try_catch)
+        yes?: string;          // True branch (condition) - kept for backward compatibility
+        no?: string;           // False branch (condition) - kept for backward compatibility
+        timeout?: string;      // Timeout path (wait_event)
+        parallel?: string[];   // Parallel execution paths
+    };
+
+    // NEW: Execution mode
+    executionMode?: 'sequential' | 'parallel';
 }
 
 export interface IEnrollmentCriteria {

@@ -61,6 +61,18 @@ export interface IWorkflowEnrollment extends Document {
     lastError?: string;
     errorCount: number;
 
+    // NEW: Runtime data context for n8n-style workflows
+    dataContext?: {
+        variables?: Record<string, any>;        // User-defined variables
+        loopContext?: {                         // Active loop state
+            array: any[];
+            currentIndex: number;
+            currentItem: any;
+            results: any[];
+        };
+        previousResults?: Record<string, any>;  // HTTP/action results by stepId
+    };
+
     // Timestamps
     enrolledAt: Date;
     completedAt?: Date;
@@ -168,6 +180,25 @@ const workflowEnrollmentSchema = new Schema<IWorkflowEnrollment>(
         // Error tracking
         lastError: { type: String },
         errorCount: { type: Number, default: 0 },
+
+        // NEW: Runtime data context for n8n-style workflows
+        dataContext: {
+            type: {
+                variables: { type: Schema.Types.Mixed, default: {} },
+                loopContext: {
+                    type: {
+                        array: { type: [Schema.Types.Mixed] },
+                        currentIndex: { type: Number },
+                        currentItem: { type: Schema.Types.Mixed },
+                        results: { type: [Schema.Types.Mixed] },
+                    },
+                    required: false,
+                },
+                previousResults: { type: Schema.Types.Mixed, default: {} },
+            },
+            required: false,
+            default: { variables: {}, previousResults: {} },
+        },
 
         // Timestamps
         enrolledAt: {

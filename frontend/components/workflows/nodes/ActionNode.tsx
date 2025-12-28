@@ -37,7 +37,6 @@ const actionIcons: Record<ActionType, React.ReactNode> = {
     send_webhook: <GlobeAltIcon className="w-4 h-4" />,
     apollo_enrich: <SparklesIcon className="w-4 h-4" />,
     wait_event: <ClockIcon className="w-4 h-4" />,
-    send_slack: <ChatBubbleLeftIcon className="w-4 h-4" />,
     send_sms: <DevicePhoneMobileIcon className="w-4 h-4" />,
 };
 

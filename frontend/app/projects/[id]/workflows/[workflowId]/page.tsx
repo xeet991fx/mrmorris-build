@@ -45,7 +45,7 @@ import Cookies from "js-cookie";
 import toast from "react-hot-toast";
 
 // Import custom components
-import WorkflowSidebar from "@/components/workflows/WorkflowSidebar";
+import NodePalette from "@/components/workflows/NodePalette";
 import WorkflowConfigPanel from "@/components/workflows/WorkflowConfigPanel";
 import ValidationErrorPanel from "@/components/workflows/ValidationErrorPanel";
 import BulkEnrollmentModal from "@/components/workflows/BulkEnrollmentModal";
@@ -53,10 +53,19 @@ import TestWorkflowModal from "@/components/workflows/TestWorkflowModal";
 import FailedEnrollmentsPanel from "@/components/workflows/FailedEnrollmentsPanel";
 import WebhookPanel from "@/components/workflows/WebhookPanel";
 import GoalSettingsPanel from "@/components/workflows/GoalSettingsPanel";
+
+// Import node components
 import TriggerNode from "@/components/workflows/nodes/TriggerNode";
 import ActionNode from "@/components/workflows/nodes/ActionNode";
 import DelayNode from "@/components/workflows/nodes/DelayNode";
 import ConditionNode from "@/components/workflows/nodes/ConditionNode";
+import ParallelNode from "@/components/workflows/nodes/ParallelNode";
+import MergeNode from "@/components/workflows/nodes/MergeNode";
+import TryCatchNode from "@/components/workflows/nodes/TryCatchNode";
+import LoopNode from "@/components/workflows/nodes/LoopNode";
+import AIAgentNode from "@/components/workflows/nodes/AIAgentNode";
+import SlackNode from "@/components/workflows/nodes/SlackNode";
+import HTTPRequestNode from "@/components/workflows/nodes/HTTPRequestNode";
 
 // ============================================
 // CUSTOM NODE TYPES
@@ -67,6 +76,16 @@ const nodeTypes = {
     action: ActionNode,
     delay: DelayNode,
     condition: ConditionNode,
+    parallel: ParallelNode,
+    merge: MergeNode,
+    try_catch: TryCatchNode,
+    loop: LoopNode,
+    transform: ActionNode, // Transform uses ActionNode for now
+    ai_agent: AIAgentNode,
+    integration_slack: SlackNode,
+    integration_whatsapp: ActionNode, // Placeholder for future
+    integration_discord: ActionNode, // Placeholder for future
+    http_request: HTTPRequestNode
 };
 
 // ============================================
@@ -89,11 +108,65 @@ function stepsToNodes(steps: WorkflowStep[], selectedId: string | null): Node[] 
 function stepsToEdges(steps: WorkflowStep[]): Edge[] {
     const edges: Edge[] = [];
     steps.forEach((step) => {
+        // Handle branches for new node types
+        if (step.branches) {
+            // Try/Catch branches
+            if (step.branches.success) {
+                edges.push({
+                    id: `${step.id}-${step.branches.success}-success`,
+                    source: step.id,
+                    target: step.branches.success,
+                    sourceHandle: 'success',
+                    type: "smoothstep",
+                    animated: true,
+                    style: { stroke: "#22c55e", strokeWidth: 2 },
+                    markerEnd: { type: MarkerType.ArrowClosed, color: "#22c55e" },
+                });
+            }
+            if (step.branches.error) {
+                edges.push({
+                    id: `${step.id}-${step.branches.error}-error`,
+                    source: step.id,
+                    target: step.branches.error,
+                    sourceHandle: 'error',
+                    type: "smoothstep",
+                    animated: true,
+                    style: { stroke: "#ef4444", strokeWidth: 2 },
+                    markerEnd: { type: MarkerType.ArrowClosed, color: "#ef4444" },
+                });
+            }
+            // Parallel branches
+            if (step.branches.parallel) {
+                step.branches.parallel.forEach((targetId, index) => {
+                    edges.push({
+                        id: `${step.id}-${targetId}-branch-${index}`,
+                        source: step.id,
+                        target: targetId,
+                        sourceHandle: `branch-${index}`,
+                        type: "smoothstep",
+                        animated: true,
+                        style: { stroke: "#3b82f6", strokeWidth: 2 },
+                        markerEnd: { type: MarkerType.ArrowClosed, color: "#3b82f6" },
+                    });
+                });
+            }
+        }
+
+        // Handle regular nextStepIds
         step.nextStepIds.forEach((targetId, index) => {
-            // For condition nodes, determine which handle based on index
             let sourceHandle: string | undefined = undefined;
+            let strokeColor = "#8b5cf6";
+
+            // Determine handle based on node type
             if (step.type === 'condition') {
                 sourceHandle = index === 0 ? 'yes' : 'no';
+                strokeColor = index === 0 ? "#22c55e" : "#ef4444";
+            } else if (step.type === 'try_catch') {
+                sourceHandle = index === 0 ? 'success' : 'error';
+                strokeColor = index === 0 ? "#22c55e" : "#ef4444";
+            } else if (step.type === 'loop') {
+                sourceHandle = index === 0 ? 'loop-body' : 'complete';
+                strokeColor = index === 0 ? "#a855f7" : "#8b5cf6";
             }
 
             edges.push({
@@ -103,10 +176,10 @@ function stepsToEdges(steps: WorkflowStep[]): Edge[] {
                 sourceHandle,
                 type: "smoothstep",
                 animated: true,
-                style: { stroke: "#8b5cf6", strokeWidth: 2 },
+                style: { stroke: strokeColor, strokeWidth: 2 },
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
-                    color: "#8b5cf6",
+                    color: strokeColor,
                 },
             });
         });
@@ -491,6 +564,101 @@ export default function WorkflowEditorPage() {
                     position,
                     nextStepIds: [],
                 };
+            } else if (type === "parallel") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "parallel",
+                    name: "Parallel Split",
+                    config: { branches: [], mode: "wait_all" },
+                    position,
+                    nextStepIds: [],
+                    branches: { parallel: [] },
+                };
+            } else if (type === "merge") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "merge",
+                    name: "Merge",
+                    config: { aggregateResults: false },
+                    position,
+                    nextStepIds: [],
+                };
+            } else if (type === "try_catch") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "try_catch",
+                    name: "Try/Catch",
+                    config: { retryOnError: false, maxRetries: 3 },
+                    position,
+                    nextStepIds: [],
+                    branches: { success: "", error: "" },
+                };
+            } else if (type === "loop") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "loop",
+                    name: "Loop",
+                    config: {
+                        sourceArray: "items",
+                        sourceType: "variable",
+                        itemVariable: "item",
+                        indexVariable: "index",
+                        mode: "sequential",
+                        maxIterations: 1000
+                    },
+                    position,
+                    nextStepIds: [],
+                };
+            } else if (type === "transform") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "transform",
+                    name: "Transform",
+                    config: {
+                        actionType: "transform_set",
+                        operations: []
+                    },
+                    position,
+                    nextStepIds: [],
+                };
+            } else if (type === "ai_agent") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "ai_agent",
+                    name: "AI Agent",
+                    config: {
+                        taskPrompt: "",
+                        agentType: "auto",
+                        timeout: 60000
+                    },
+                    position,
+                    nextStepIds: [],
+                };
+            } else if (type === "integration_slack") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "integration_slack",
+                    name: "Slack",
+                    config: {
+                        action: "post_message",
+                        credentials: { botToken: "" }
+                    },
+                    position,
+                    nextStepIds: [],
+                };
+            } else if (type === "http_request") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "http_request",
+                    name: "HTTP Request",
+                    config: {
+                        method: "GET",
+                        url: "",
+                        authentication: { type: "none" }
+                    },
+                    position,
+                    nextStepIds: [],
+                };
             } else {
                 return;
             }
@@ -647,8 +815,8 @@ export default function WorkflowEditorPage() {
 
             {/* Main content */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Left sidebar - Toolbox */}
-                <WorkflowSidebar />
+                {/* Left sidebar - Node Palette */}
+                <NodePalette />
 
                 {/* Canvas */}
                 <div className="flex-1 relative">

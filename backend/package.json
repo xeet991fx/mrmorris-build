@@ -17,6 +17,7 @@
     "@langchain/core": "^1.1.6",
     "@langchain/google-vertexai": "^2.1.1",
     "@sentry/node": "^10.32.1",
+    "@slack/web-api": "^7.13.0",
     "@types/multer": "^2.0.0",
     "@types/pdf-parse": "^1.1.5",
     "axios": "^1.13.2",

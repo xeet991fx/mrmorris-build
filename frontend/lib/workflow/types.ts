@@ -26,10 +26,15 @@ export type ActionType =
     | 'enroll_workflow'
     | 'update_lead_score'
     | 'send_webhook'
-    | 'send_slack'
     | 'send_sms'
     | 'apollo_enrich'
-    | 'wait_event';
+    | 'wait_event'
+    // NEW N8N-STYLE ACTIONS
+    | 'http_request'        // Enhanced HTTP with full auth
+    | 'transform_set'       // Set variables
+    | 'transform_map'       // Map/transform data
+    | 'transform_filter'    // Filter arrays
+    | 'ai_agent';           // AI agent execution
 
 // Delay Types
 export type DelayType = 'duration' | 'until_date' | 'until_time' | 'until_weekday';
@@ -52,7 +57,23 @@ export type ConditionOperator =
 export type WorkflowStatus = 'draft' | 'active' | 'paused' | 'archived';
 
 // Step Types
-export type StepType = 'trigger' | 'action' | 'delay' | 'condition';
+export type StepType =
+    | 'trigger'
+    | 'action'
+    | 'delay'
+    | 'condition'
+    | 'wait_event'
+    // NEW N8N-STYLE STEP TYPES
+    | 'parallel'              // Split execution into parallel branches
+    | 'merge'                 // Join parallel branches back together
+    | 'loop'                  // Iterate over arrays
+    | 'transform'             // Data transformation (set/map/filter)
+    | 'try_catch'             // Error handling wrapper
+    | 'ai_agent'              // AI agent integration
+    // INTEGRATION NODES (each integration is its own type)
+    | 'integration_slack'     // Slack integration
+    | 'integration_whatsapp'  // WhatsApp (future)
+    | 'integration_discord';  // Discord (future)
 
 // Entity Types
 export type EntityType = 'contact' | 'deal' | 'company';
@@ -185,6 +206,19 @@ export interface WorkflowStep {
         y: number;
     };
     nextStepIds: string[];
+
+    // NEW: Named branches for advanced routing
+    branches?: {
+        success?: string;      // Success path (try_catch)
+        error?: string;        // Error path (try_catch)
+        yes?: string;          // True branch (condition)
+        no?: string;           // False branch (condition)
+        timeout?: string;      // Timeout path (wait_event)
+        parallel?: string[];   // Parallel execution paths
+    };
+
+    // NEW: Execution mode
+    executionMode?: 'sequential' | 'parallel';
 }
 
 // ============================================
@@ -339,7 +373,6 @@ export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
     send_webhook: 'Send Webhook',
     apollo_enrich: 'Enrich with Apollo',
     wait_event: 'Wait for Event',
-    send_slack: 'Send Slack Message',
     send_sms: 'Send SMS',
 };
 
