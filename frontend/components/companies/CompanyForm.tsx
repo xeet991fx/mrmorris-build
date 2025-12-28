@@ -139,16 +139,16 @@ export default function CompanyForm({ form, contacts = [], isLoadingContacts = f
             {associatedContacts.map((contact) => (
               <span
                 key={contact._id}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#9ACD32]/10 text-[#9ACD32] text-xs rounded-full border border-[#9ACD32]/20"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-black/10 text-black text-xs rounded-full border border-black/20"
               >
-                <span className="w-5 h-5 rounded-full bg-[#9ACD32]/20 flex items-center justify-center text-[10px] font-medium">
+                <span className="w-5 h-5 rounded-full bg-black/20 flex items-center justify-center text-[10px] font-medium">
                   {contact.firstName[0]}{contact.lastName[0]}
                 </span>
                 {contact.firstName} {contact.lastName}
                 <button
                   type="button"
                   onClick={() => handleRemoveContact(contact._id)}
-                  className="p-0.5 hover:bg-[#9ACD32]/20 rounded-full transition-colors"
+                  className="p-0.5 hover:bg-black/20 rounded-full transition-colors"
                 >
                   <XMarkIcon className="w-3 h-3" />
                 </button>
@@ -192,7 +192,7 @@ export default function CompanyForm({ form, contacts = [], isLoadingContacts = f
                     key={contact._id}
                     type="button"
                     onClick={() => handleAddContact(contact._id)}
-                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors text-left"
                   >
                     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-foreground">
                       {contact.firstName[0]}{contact.lastName[0]}

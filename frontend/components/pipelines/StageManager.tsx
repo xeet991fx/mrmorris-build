@@ -101,7 +101,7 @@ function SortableStageItem({
         value={stage.name}
         onChange={(e) => onUpdate(index, "name", e.target.value)}
         placeholder="Stage name"
-        className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-transparent"
+        className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-700 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
       />
 
       {/* Delete Button */}
@@ -238,7 +238,7 @@ export default function StageManager({ stages, onChange, errors }: StageManagerP
         type="button"
         onClick={handleAddStage}
         disabled={stages.length >= 20}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-800 border-2 border-dashed border-neutral-700 hover:border-[#9ACD32] hover:bg-neutral-800/50 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-400 hover:text-white rounded-lg transition-all"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neutral-800 border-2 border-dashed border-neutral-700 hover:border-black hover:bg-neutral-800/50 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-400 hover:text-white rounded-lg transition-all"
       >
         <PlusIcon className="w-5 h-5" />
         Add Stage

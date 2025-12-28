@@ -109,7 +109,7 @@ export default function CompanyTableRow({
               href={company.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#9ACD32] hover:underline"
+              className="text-primary hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
               {company.website}
@@ -201,7 +201,7 @@ export default function CompanyTableRow({
       transition={transition}
       onClick={handleRowClick}
       className={cn(
-        "border-b border-border hover:bg-muted/30 transition-colors cursor-pointer",
+        "border-b border-border hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors cursor-pointer",
         isSelected && "bg-muted/20"
       )}
     >
@@ -211,7 +211,7 @@ export default function CompanyTableRow({
           type="checkbox"
           checked={isSelected}
           onChange={() => toggleCompanySelection(company._id)}
-          className="w-4 h-4 rounded border-border bg-input text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
+          className="w-4 h-4 rounded border-border bg-input text-black focus:ring-primary focus:ring-offset-0"
         />
       </td>
 

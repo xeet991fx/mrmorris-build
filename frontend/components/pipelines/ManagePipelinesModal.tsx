@@ -242,7 +242,7 @@ export default function ManagePipelinesModal({
                               </p>
                               <button
                                 onClick={() => setCurrentView("create")}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] hover:bg-[#8BC225] text-neutral-900 rounded-lg text-sm font-medium transition-colors"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white text-neutral-900 rounded-lg text-sm font-medium transition-colors"
                               >
                                 <PlusIcon className="w-4 h-4" />
                                 Create Your First Pipeline
@@ -260,7 +260,7 @@ export default function ManagePipelinesModal({
                                       {pipeline.name}
                                     </h3>
                                     {pipeline.isDefault && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#9ACD32]/20 text-[#9ACD32] text-xs rounded-full">
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-black/20 text-black text-xs rounded-full">
                                         <CheckCircleIcon className="w-3 h-3" />
                                         Default
                                       </span>
@@ -291,7 +291,7 @@ export default function ManagePipelinesModal({
                                   {!pipeline.isDefault && (
                                     <button
                                       onClick={() => handleSetDefault(pipeline)}
-                                      className="p-2 text-neutral-400 hover:text-[#9ACD32] transition-colors"
+                                      className="p-2 text-neutral-400 hover:text-black transition-colors"
                                       title="Set as default"
                                     >
                                       <CheckCircleIcon className="w-4 h-4" />
@@ -391,7 +391,7 @@ export default function ManagePipelinesModal({
                         <button
                           type="button"
                           onClick={() => setCurrentView("create")}
-                          className="px-4 py-2 text-sm font-medium bg-[#9ACD32] hover:bg-[#8BC225] text-neutral-900 rounded-md transition-colors"
+                          className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white text-neutral-900 rounded-md transition-colors"
                         >
                           <PlusIcon className="w-4 h-4 inline mr-2" />
                           Create Pipeline
@@ -403,7 +403,7 @@ export default function ManagePipelinesModal({
                           type="button"
                           disabled={isLoading}
                           onClick={createForm.handleSubmit(handleCreatePipeline)}
-                          className="px-4 py-2 text-sm font-medium bg-[#9ACD32] hover:bg-[#8BC225] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
+                          className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
                         >
                           {isLoading ? "Creating..." : "Create Pipeline"}
                         </button>
@@ -414,7 +414,7 @@ export default function ManagePipelinesModal({
                           type="button"
                           disabled={isLoading}
                           onClick={editForm.handleSubmit(handleEditPipeline)}
-                          className="px-4 py-2 text-sm font-medium bg-[#9ACD32] hover:bg-[#8BC225] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
+                          className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
                         >
                           {isLoading ? "Saving..." : "Save Changes"}
                         </button>
@@ -424,7 +424,7 @@ export default function ManagePipelinesModal({
                         <button
                           type="button"
                           onClick={() => setCurrentView("list")}
-                          className="px-4 py-2 text-sm font-medium bg-[#9ACD32] hover:bg-[#8BC225] text-neutral-900 rounded-md transition-colors"
+                          className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white text-neutral-900 rounded-md transition-colors"
                         >
                           Done
                         </button>

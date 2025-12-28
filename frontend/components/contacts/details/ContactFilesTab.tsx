@@ -150,7 +150,7 @@ export default function ContactFilesTab({
                     <label
                         htmlFor="file-upload"
                         className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8BC22A] rounded-lg transition-colors cursor-pointer",
+                            "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-background bg-black hover:bg-[#8BC22A] rounded-lg transition-colors cursor-pointer",
                             isUploading && "opacity-50 cursor-not-allowed"
                         )}
                     >
@@ -180,7 +180,7 @@ export default function ContactFilesTab({
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                className="p-4 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors group"
+                                className="p-4 rounded-lg border border-border bg-card hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors group"
                             >
                                 <div className="flex items-start gap-3">
                                     <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">

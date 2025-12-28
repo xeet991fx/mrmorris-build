@@ -68,7 +68,7 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
         <input
           type="checkbox"
           id="isDefault"
-          className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-[#9ACD32] focus:ring-2 focus:ring-[#9ACD32] focus:ring-offset-0"
+          className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-black focus:ring-2 focus:ring-primary focus:ring-offset-0"
           {...(register as any)("isDefault")}
         />
         <label htmlFor="isDefault" className="text-sm text-foreground cursor-pointer">

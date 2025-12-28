@@ -170,7 +170,7 @@ export default function AddCustomColumnModal({
                         onChange={(e) => setFieldLabel(e.target.value)}
                         placeholder="e.g., Annual Revenue"
                         maxLength={100}
-                        className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-[#9ACD32] transition-colors"
+                        className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-black transition-colors"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
                         {fieldLabel.length}/100 characters
@@ -193,7 +193,7 @@ export default function AddCustomColumnModal({
                             className={cn(
                               "flex items-start p-3 rounded-lg border-2 cursor-pointer transition-colors",
                               fieldType === type.value
-                                ? "border-[#9ACD32] bg-[#9ACD32]/10"
+                                ? "border-black bg-black/10"
                                 : "border-border hover:border-border"
                             )}
                           >
@@ -205,7 +205,7 @@ export default function AddCustomColumnModal({
                               onChange={(e) =>
                                 setFieldType(e.target.value as "text" | "number" | "select")
                               }
-                              className="mt-1 w-4 h-4 text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
+                              className="mt-1 w-4 h-4 text-black focus:ring-primary focus:ring-offset-0"
                             />
                             <div className="ml-3">
                               <div className="text-sm font-medium text-foreground">
@@ -234,7 +234,7 @@ export default function AddCustomColumnModal({
                                 value={option}
                                 onChange={(e) => handleOptionChange(index, e.target.value)}
                                 placeholder={`Option ${index + 1}`}
-                                className="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-[#9ACD32] transition-colors"
+                                className="flex-1 px-3 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:border-black transition-colors"
                               />
                               {selectOptions.length > 1 && (
                                 <button
@@ -250,7 +250,7 @@ export default function AddCustomColumnModal({
                           <button
                             type="button"
                             onClick={handleAddOption}
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-[#9ACD32] hover:bg-[#9ACD32]/10 rounded-lg transition-colors"
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-black hover:bg-black/10 rounded-lg transition-colors"
                           >
                             <PlusIcon className="w-4 h-4" />
                             Add Option
@@ -265,7 +265,7 @@ export default function AddCustomColumnModal({
                         type="checkbox"
                         checked={isRequired}
                         onChange={(e) => setIsRequired(e.target.checked)}
-                        className="w-4 h-4 rounded border-border bg-input text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
+                        className="w-4 h-4 rounded border-border bg-input text-black focus:ring-primary focus:ring-offset-0"
                       />
                       <div>
                         <div className="text-sm font-medium text-foreground">
@@ -292,7 +292,7 @@ export default function AddCustomColumnModal({
                       type="button"
                       onClick={handleSubmit}
                       disabled={isCreating}
-                      className="px-4 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8AB82E] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 text-sm font-medium text-background bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isCreating ? "Creating..." : "Create Column"}
                     </button>

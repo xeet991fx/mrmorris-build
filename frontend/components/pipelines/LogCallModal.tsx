@@ -239,7 +239,7 @@ export default function LogCallModal({
                     isSubmitting ||
                     (!formData.durationMinutes && !formData.durationSeconds)
                   }
-                  className="px-4 py-2 bg-[#84cc16] text-black font-medium rounded-lg hover:bg-[#9ACD32] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-[#84cc16] text-black font-medium rounded-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Logging...' : 'Log Call'}
                 </button>

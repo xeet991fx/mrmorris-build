@@ -179,7 +179,7 @@ export default function EditOpportunityModal({
                           <button
                             type="submit"
                             disabled={isLoading}
-                            className="px-4 py-2 text-sm font-medium bg-[#9ACD32] hover:bg-[#8BC225] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
+                            className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
                           >
                             {isLoading ? "Saving..." : "Save Changes"}
                           </button>

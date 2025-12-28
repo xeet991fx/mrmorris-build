@@ -132,7 +132,7 @@ export default function FileUploadZone({ workspaceId, opportunityId }: FileUploa
           {isDragging ? 'Drop files here' : 'Drag and drop files here'}
         </p>
         <p className="text-xs text-neutral-500 mb-3">or</p>
-        <label className="inline-block px-4 py-2 bg-[#84cc16] text-black font-medium rounded-lg cursor-pointer hover:bg-[#9ACD32] transition-colors">
+        <label className="inline-block px-4 py-2 bg-[#84cc16] text-black font-medium rounded-lg cursor-pointer hover:bg-black transition-colors">
           Choose Files
           <input
             type="file"

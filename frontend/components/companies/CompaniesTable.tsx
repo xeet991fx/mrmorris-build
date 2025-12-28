@@ -162,7 +162,7 @@ export default function CompaniesTable({
                       }
                     }}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-border bg-input text-[#9ACD32] focus:ring-[#9ACD32] focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-border bg-input text-black focus:ring-primary focus:ring-offset-0"
                   />
                 </th>
 

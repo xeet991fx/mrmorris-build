@@ -77,14 +77,14 @@ export default function OpportunityCard({
       {...attributes}
       {...listeners}
       className={cn(
-        "bg-neutral-800 border border-neutral-700 rounded-lg p-3 cursor-grab active:cursor-grabbing group hover:border-neutral-600 transition-all",
+        "bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing group hover:border-primary/50 dark:hover:border-primary/30 transition-all shadow-sm hover:shadow-md",
         isDragging && "opacity-50"
       )}
     >
       {/* Title */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-white line-clamp-2">
+          <h3 className="text-sm font-semibold text-foreground line-clamp-2">
             {opportunity.title}
           </h3>
           {inWorkflow && (
@@ -102,7 +102,7 @@ export default function OpportunityCard({
               e.stopPropagation();
               onEdit(opportunity);
             }}
-            className="p-1 text-neutral-400 hover:text-white transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
             title="Edit"
           >
             <PencilIcon className="w-4 h-4" />
@@ -111,12 +111,12 @@ export default function OpportunityCard({
       </div>
 
       {/* Value */}
-      <div className="text-xl font-bold text-[#9ACD32] mb-3">
+      <div className="text-xl font-bold text-black mb-3">
         {formatCurrency(opportunity.value, opportunity.currency)}
       </div>
 
       {/* Footer with icons */}
-      <div className="flex items-center gap-2 text-xs text-neutral-400">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {/* Assigned User */}
         {opportunity.assignedTo && (
           <div className="flex items-center gap-1" title="Assigned to">
@@ -150,7 +150,7 @@ export default function OpportunityCard({
 
       {/* Contact/Company info */}
       {(opportunity.contactId || opportunity.companyId) && (
-        <div className="mt-2 pt-2 border-t border-neutral-700 text-xs text-neutral-400 truncate">
+        <div className="mt-2 pt-2 border-t border-border text-xs text-muted-foreground truncate">
           {opportunity.companyId && typeof opportunity.companyId === "object" && (
             <span>{(opportunity.companyId as any).name}</span>
           )}

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ViewColumnsIcon, Squares2X2Icon, PlusIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faColumns, faTableCells, faPlus, faGear } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import { usePipelineStore } from "@/store/usePipelineStore";
 import { Opportunity } from "@/lib/api/opportunity";
@@ -111,7 +112,7 @@ export default function PipelinesPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <h1 className="text-2xl font-bold text-foreground mb-1">Pipelines</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-1 font-heading">Pipelines</h1>
         <p className="text-sm text-muted-foreground">
           Manage your sales opportunities through customizable pipelines
         </p>
@@ -124,8 +125,8 @@ export default function PipelinesPage() {
         className="flex items-center justify-center min-h-[400px]"
       >
         <div className="text-center max-w-md">
-          <Squares2X2Icon className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-foreground mb-2">No pipelines yet</h2>
+          <FontAwesomeIcon icon={faTableCells} className="w-16 h-16 text-neutral-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-foreground mb-2 font-heading">No pipelines yet</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Create your first pipeline to start managing opportunities
           </p>
@@ -134,9 +135,9 @@ export default function PipelinesPage() {
               console.log("Create Pipeline button clicked");
               setIsManagePipelinesModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] hover:bg-[#8BC225] text-neutral-900 rounded-lg font-medium transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white rounded-lg font-medium transition-colors"
           >
-            <PlusIcon className="w-5 h-5" />
+            <FontAwesomeIcon icon={faPlus} className="w-5 h-5" />
             Create Pipeline
           </button>
         </div>
@@ -157,7 +158,7 @@ export default function PipelinesPage() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-6"
           >
-            <h1 className="text-2xl font-bold text-foreground mb-1">Pipelines</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-1 font-heading">Pipelines</h1>
             <p className="text-sm text-muted-foreground">
               Manage your sales opportunities through customizable pipelines
             </p>
@@ -176,7 +177,7 @@ export default function PipelinesPage() {
               <select
                 value={currentPipeline?._id || ""}
                 onChange={(e) => handlePipelineChange(e.target.value)}
-                className="px-4 py-2 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-transparent"
+                className="px-4 py-2 bg-card border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 {pipelines.map((pipeline) => (
                   <option key={pipeline._id} value={pipeline._id}>
@@ -190,21 +191,21 @@ export default function PipelinesPage() {
                 <button
                   onClick={() => setViewMode("kanban")}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "kanban"
-                    ? "bg-[#9ACD32] text-neutral-900"
+                    ? "bg-white dark:bg-neutral-800 text-black dark:text-white"
                     : "text-muted-foreground hover:text-foreground"
                     }`}
                 >
-                  <Squares2X2Icon className="w-4 h-4" />
+                  <FontAwesomeIcon icon={faTableCells} className="w-4 h-4" />
                   Kanban
                 </button>
                 <button
                   onClick={() => setViewMode("table")}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "table"
-                    ? "bg-[#9ACD32] text-neutral-900"
+                    ? "bg-white dark:bg-neutral-800 text-black dark:text-white"
                     : "text-muted-foreground hover:text-foreground"
                     }`}
                 >
-                  <ViewColumnsIcon className="w-4 h-4" />
+                  <FontAwesomeIcon icon={faColumns} className="w-4 h-4" />
                   Table
                 </button>
               </div>
@@ -216,15 +217,15 @@ export default function PipelinesPage() {
                 onClick={() => setIsManagePipelinesModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-lg text-sm font-medium transition-colors"
               >
-                <Cog6ToothIcon className="w-4 h-4" />
+                <FontAwesomeIcon icon={faGear} className="w-4 h-4" />
                 Manage Pipelines
               </button>
               <button
                 onClick={() => handleAddOpportunity()}
                 disabled={!currentPipeline}
-                className="flex items-center gap-2 px-4 py-2 bg-[#9ACD32] hover:bg-[#8BC225] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
               >
-                <PlusIcon className="w-5 h-5" />
+                <FontAwesomeIcon icon={faPlus} className="w-5 h-5" />
                 Add Opportunity
               </button>
             </div>

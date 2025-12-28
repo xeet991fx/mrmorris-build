@@ -20,34 +20,34 @@ interface OpportunityTableRowProps {
 
 const PRIORITY_CONFIG = {
   low: {
-    color: "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
+    color: "bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border-neutral-500/20",
     label: "Low",
   },
   medium: {
-    color: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
     label: "Medium",
   },
   high: {
-    color: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
     label: "High",
   },
 };
 
 const STATUS_CONFIG = {
   open: {
-    color: "bg-green-500/10 text-green-400 border-green-500/20",
+    color: "bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20",
     label: "Open",
   },
   won: {
-    color: "bg-[#9ACD32]/10 text-[#9ACD32] border-[#9ACD32]/20",
+    color: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
     label: "Won",
   },
   lost: {
-    color: "bg-red-500/10 text-red-400 border-red-500/20",
+    color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
     label: "Lost",
   },
   abandoned: {
-    color: "bg-neutral-500/10 text-neutral-400 border-neutral-500/20",
+    color: "bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border-neutral-500/20",
     label: "Abandoned",
   },
 };
@@ -86,7 +86,7 @@ export default function OpportunityTableRow({
       animate={animate}
       transition={transition}
       className={cn(
-        "border-b border-border hover:bg-muted/50 transition-colors",
+        "border-b border-border hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors cursor-pointer",
         index % 2 === 0 ? "bg-background" : "bg-muted/10"
       )}
     >
@@ -133,11 +133,15 @@ export default function OpportunityTableRow({
       <td className="px-4 py-3 text-sm text-foreground">
         {opportunity.assignedTo ? (
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-[#9ACD32]/20 flex items-center justify-center text-xs font-semibold text-[#9ACD32]">
-              U
+            <div className="w-6 h-6 rounded-full bg-primary/20 dark:bg-primary/30 flex items-center justify-center text-xs font-semibold text-primary-foreground">
+              {typeof opportunity.assignedTo === 'object' && opportunity.assignedTo.name
+                ? opportunity.assignedTo.name.charAt(0).toUpperCase()
+                : 'U'}
             </div>
             <span className="truncate text-xs text-muted-foreground">
-              User {opportunity.assignedTo.substring(0, 8)}
+              {typeof opportunity.assignedTo === 'object'
+                ? opportunity.assignedTo.name
+                : `User ${opportunity.assignedTo.substring(0, 8)}`}
             </span>
           </div>
         ) : (

@@ -128,7 +128,7 @@ export default function CompanyActivityTab({
 
     const getActivityColor = (type: ContactActivity["type"], source?: string) => {
         if (source === "company") {
-            return "text-[#9ACD32] bg-[#9ACD32]/10";
+            return "text-black bg-black/10";
         }
         switch (type) {
             case "email":
@@ -237,7 +237,7 @@ export default function CompanyActivityTab({
                                                         </p>
                                                     )}
                                                     {activity.source === "contact" && activity.metadata?.contactName && (
-                                                        <p className="text-xs text-[#9ACD32] mt-1">
+                                                        <p className="text-xs text-black mt-1">
                                                             Contact: {activity.metadata.contactName}
                                                         </p>
                                                     )}

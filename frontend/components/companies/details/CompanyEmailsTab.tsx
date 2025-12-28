@@ -218,7 +218,7 @@ export default function CompanyEmailsTab({
                     <button
                         onClick={() => setShowCompose(true)}
                         disabled={contactsWithEmail.length === 0}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8BC22A] rounded-lg transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-background bg-black hover:bg-[#8BC22A] rounded-lg transition-colors disabled:opacity-50"
                     >
                         <PaperAirplaneIcon className="w-4 h-4" />
                         Compose
@@ -240,7 +240,7 @@ export default function CompanyEmailsTab({
                         {contactsWithEmail.length > 0 && (
                             <button
                                 onClick={() => setShowCompose(true)}
-                                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8BC22A] rounded-lg transition-colors"
+                                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-background bg-black hover:bg-[#8BC22A] rounded-lg transition-colors"
                             >
                                 <PaperAirplaneIcon className="w-4 h-4" />
                                 Send First Email
@@ -290,7 +290,7 @@ export default function CompanyEmailsTab({
                                                 </p>
                                             </div>
                                             {email.contactName && (
-                                                <p className="text-xs text-[#9ACD32] mb-1">
+                                                <p className="text-xs text-black mb-1">
                                                     {email.contactName}
                                                 </p>
                                             )}
@@ -345,7 +345,7 @@ export default function CompanyEmailsTab({
                                                         const contact = contactsWithEmail.find((c) => c._id === e.target.value);
                                                         setSelectedContact(contact || null);
                                                     }}
-                                                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50"
+                                                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                                                 >
                                                     <option value="">Select a contact...</option>
                                                     {contactsWithEmail.map((contact) => (
@@ -365,7 +365,7 @@ export default function CompanyEmailsTab({
                                                     value={composeData.subject}
                                                     onChange={(e) => setComposeData({ ...composeData, subject: e.target.value })}
                                                     placeholder="Email subject..."
-                                                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50"
+                                                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                                                 />
                                             </div>
 
@@ -378,7 +378,7 @@ export default function CompanyEmailsTab({
                                                     onChange={(e) => setComposeData({ ...composeData, body: e.target.value })}
                                                     placeholder="Write your message..."
                                                     rows={10}
-                                                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 resize-none"
+                                                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                                                 />
                                             </div>
 
@@ -395,7 +395,7 @@ export default function CompanyEmailsTab({
                                                 <button
                                                     onClick={handleSendEmail}
                                                     disabled={isSending || !selectedContact?.email}
-                                                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-background bg-[#9ACD32] hover:bg-[#8BC22A] rounded-lg transition-colors disabled:opacity-50"
+                                                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-background bg-black hover:bg-[#8BC22A] rounded-lg transition-colors disabled:opacity-50"
                                                 >
                                                     <PaperAirplaneIcon className="w-4 h-4" />
                                                     {isSending ? "Sending..." : "Send Email"}
@@ -439,7 +439,7 @@ export default function CompanyEmailsTab({
                                                 </p>
                                                 {selectedEmail.contactName && (
                                                     <p className="text-muted-foreground">
-                                                        Contact: <span className="text-[#9ACD32]">{selectedEmail.contactName}</span>
+                                                        Contact: <span className="text-black">{selectedEmail.contactName}</span>
                                                     </p>
                                                 )}
                                             </div>

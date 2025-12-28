@@ -147,9 +147,9 @@ export default function PipelineTableView({
       return <ChevronUpDownIcon className="w-4 h-4 text-muted-foreground" />;
     }
     return sortDirection === "asc" ? (
-      <ChevronUpIcon className="w-4 h-4 text-[#9ACD32]" />
+      <ChevronUpIcon className="w-4 h-4 text-black" />
     ) : (
-      <ChevronDownIcon className="w-4 h-4 text-[#9ACD32]" />
+      <ChevronDownIcon className="w-4 h-4 text-black" />
     );
   };
 
@@ -165,7 +165,7 @@ export default function PipelineTableView({
     <th className={cn("px-4 py-3", className)}>
       <button
         onClick={() => handleSort(column)}
-        className="flex items-center gap-2 text-sm font-semibold text-foreground hover:text-[#9ACD32] transition-colors"
+        className="flex items-center gap-2 text-sm font-semibold text-foreground hover:text-black transition-colors"
       >
         {children}
         <SortIcon column={column} />
@@ -199,7 +199,7 @@ export default function PipelineTableView({
           placeholder="Search opportunities..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-transparent"
+          className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
         />
       </motion.div>
 
@@ -280,7 +280,7 @@ export default function PipelineTableView({
           </div>
           <div className="text-foreground">
             Total Value:{" "}
-            <span className="font-semibold text-[#9ACD32]">
+            <span className="font-semibold text-black">
               {new Intl.NumberFormat("en-US", {
                 style: "currency",
                 currency: "USD",

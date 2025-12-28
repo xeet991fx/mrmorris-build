@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { BuildingOffice2Icon, InformationCircleIcon } from "@heroicons/react/24/outline";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBuilding, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import { useCompanyStore } from "@/store/useCompanyStore";
 import { Company } from "@/lib/api/company";
@@ -91,9 +92,9 @@ export default function CompaniesPage() {
             animate={{ opacity: 1 }}
             className="flex items-center gap-3"
           >
-            <h1 className="text-lg font-semibold text-foreground">Companies</h1>
+            <h1 className="text-lg font-semibold text-foreground font-heading">Companies</h1>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <InformationCircleIcon className="w-4 h-4" />
+              <FontAwesomeIcon icon={faCircleInfo} className="w-4 h-4" />
               <span>Manage your business relationships</span>
             </div>
           </motion.div>
@@ -135,9 +136,9 @@ export default function CompaniesPage() {
               <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center max-w-md">
                   <div className="w-16 h-16 bg-neutral-800/50 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <BuildingOffice2Icon className="w-8 h-8 text-neutral-500" />
+                    <FontAwesomeIcon icon={faBuilding} className="w-8 h-8 text-neutral-500" />
                   </div>
-                  <h2 className="text-xl font-semibold text-foreground mb-2">
+                  <h2 className="text-xl font-semibold text-foreground mb-2 font-heading">
                     No companies yet
                   </h2>
                   <p className="text-sm text-muted-foreground mb-6">
@@ -146,7 +147,7 @@ export default function CompaniesPage() {
                   </p>
                   <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-neutral-900 font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all shadow-sm hover:shadow"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 text-black dark:text-white font-medium text-sm rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all shadow-sm hover:shadow"
                   >
                     Add Your First Company
                   </button>
