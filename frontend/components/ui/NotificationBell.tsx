@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BellIcon, CheckIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { BellAlertIcon } from "@heroicons/react/24/solid";
@@ -122,79 +123,103 @@ export function NotificationBell() {
                 )}
             </button>
 
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        className="fixed left-[220px] bottom-[60px] w-80 max-h-[400px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden z-[100]"
-                    >
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                            <h3 className="font-semibold text-foreground">Notifications</h3>
-                            {unreadCount > 0 && (
-                                <button
-                                    onClick={handleMarkAllRead}
-                                    className="text-xs text-primary hover:underline"
-                                >
-                                    Mark all read
-                                </button>
-                            )}
-                        </div>
+            {/* Portal-rendered dropdown to avoid sidebar clipping */}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {isOpen && (
+                        <>
+                            {/* Backdrop */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-[9998]"
+                                onClick={() => setIsOpen(false)}
+                            />
 
-                        {/* Content */}
-                        <div className="overflow-y-auto max-h-[320px]">
-                            {isLoading ? (
-                                <div className="p-4 text-center text-muted-foreground">
-                                    Loading...
+                            {/* Dropdown */}
+                            <motion.div
+                                ref={dropdownRef}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="fixed w-80 max-h-[400px] bg-card border border-border rounded-xl shadow-2xl overflow-hidden z-[9999]"
+                                style={{
+                                    left: '70px',
+                                    bottom: '80px',
+                                }}
+                            >
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                                    <h3 className="font-semibold text-foreground">Notifications</h3>
+                                    {unreadCount > 0 && (
+                                        <button
+                                            onClick={handleMarkAllRead}
+                                            className="text-xs text-primary hover:underline"
+                                        >
+                                            Mark all read
+                                        </button>
+                                    )}
                                 </div>
-                            ) : notifications.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <BellIcon className="w-12 h-12 mx-auto text-muted-foreground/30 mb-2" />
-                                    <p className="text-muted-foreground text-sm">No notifications</p>
-                                </div>
-                            ) : (
-                                notifications.map((notification) => (
-                                    <div
-                                        key={notification._id}
-                                        onClick={() => !notification.isRead && handleMarkRead(notification._id)}
-                                        className={cn(
-                                            "px-4 py-3 border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors",
-                                            !notification.isRead && "bg-primary/5"
-                                        )}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <span className="text-lg flex-shrink-0">
-                                                {TYPE_ICONS[notification.type] || "📌"}
-                                            </span>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <p className={cn(
-                                                        "text-sm truncate",
-                                                        !notification.isRead ? "font-medium text-foreground" : "text-muted-foreground"
-                                                    )}>
-                                                        {notification.title}
-                                                    </p>
-                                                    {!notification.isRead && (
-                                                        <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
-                                                    )}
-                                                </div>
-                                                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                                    {notification.message}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-                                                </p>
-                                            </div>
+
+                                {/* Content */}
+                                <div className="overflow-y-auto max-h-[320px]">
+                                    {isLoading ? (
+                                        <div className="p-4 text-center text-muted-foreground">
+                                            Loading...
                                         </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                    ) : notifications.length === 0 ? (
+                                        <div className="p-8 text-center">
+                                            <BellIcon className="w-12 h-12 mx-auto text-muted-foreground/30 mb-2" />
+                                            <p className="text-muted-foreground text-sm">No notifications</p>
+                                        </div>
+                                    ) : (
+                                        notifications.map((notification) => (
+                                            <div
+                                                key={notification._id}
+                                                onClick={() => !notification.isRead && handleMarkRead(notification._id)}
+                                                className={cn(
+                                                    "px-4 py-3 border-b border-border/50 hover:bg-muted/50 cursor-pointer transition-colors",
+                                                    !notification.isRead && "bg-primary/5"
+                                                )}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <span className="text-lg flex-shrink-0">
+                                                        {TYPE_ICONS[notification.type] || "📌"}
+                                                    </span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className={cn(
+                                                                "text-sm truncate",
+                                                                !notification.isRead ? "font-medium text-foreground" : "text-muted-foreground"
+                                                            )}>
+                                                                {notification.title}
+                                                            </p>
+                                                            {!notification.isRead && (
+                                                                <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                                            {notification.message}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground mt-1">
+                                                            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </div>
     );
 }
+
+
+

@@ -147,15 +147,15 @@ export default function PublicFormPage() {
                         const tracker = window.morrisb(form.workspaceId.toString());
 
                         // Find email field
-                        const emailField = form.fields.find(f => f.type === 'email' || f.mapToContactField === 'email');
+                        const emailField = form.fields.find(f => f.type === 'email' || f.mapToField === 'email');
                         const email = emailField ? formData[emailField.id] : null;
 
                         if (email) {
                             tracker.identify(email, {
-                                firstName: formData[form.fields.find(f => f.mapToContactField === 'firstName')?.id || ''],
-                                lastName: formData[form.fields.find(f => f.mapToContactField === 'lastName')?.id || ''],
-                                company: formData[form.fields.find(f => f.mapToContactField === 'company')?.id || ''],
-                                phone: formData[form.fields.find(f => f.mapToContactField === 'phone')?.id || ''],
+                                firstName: formData[form.fields.find(f => f.mapToField === 'firstName')?.id || ''],
+                                lastName: formData[form.fields.find(f => f.mapToField === 'lastName')?.id || ''],
+                                company: formData[form.fields.find(f => f.mapToField === 'company')?.id || ''],
+                                phone: formData[form.fields.find(f => f.mapToField === 'phone')?.id || ''],
                                 source: 'form_submission',
                                 formId: formId,
                                 formName: form.name,
@@ -322,14 +322,16 @@ export default function PublicFormPage() {
                                                 {field.required && <span className="text-red-500 ml-1">*</span>}
                                             </label>
 
+                                            {/* File Upload */}
                                             {field.type === 'file' ? (
                                                 <div className="relative">
                                                     <input
                                                         type="file"
                                                         onChange={(e) => handleFileChange(field.id, e.target.files?.[0] || null)}
-                                                        accept={field.validation?.pattern}
+                                                        accept={field.fileSettings?.allowedTypes?.map(t => `.${t}`).join(',')}
                                                         className="hidden"
                                                         id={`file-${field.id}`}
+                                                        multiple={field.fileSettings?.multiple}
                                                     />
                                                     <label
                                                         htmlFor={`file-${field.id}`}
@@ -351,95 +353,203 @@ export default function PublicFormPage() {
                                                             <div>
                                                                 <p className="text-gray-600">{field.placeholder || 'Click to upload or drag and drop'}</p>
                                                                 <p className="text-sm text-gray-500 mt-1">
-                                                                    Max size: {field.validation?.max || 10}MB
-                                                                    {field.validation?.pattern && ` • ${field.validation.pattern}`}
+                                                                    {field.fileSettings?.allowedTypes?.join(', ') || 'All types'} • Max {field.fileSettings?.maxSize || 10}MB
                                                                 </p>
                                                             </div>
                                                         )}
                                                     </label>
                                                 </div>
-                                            ) : field.type === 'textarea' ? (
-                                            <textarea
-                                                value={formData[field.id] || ''}
-                                                onChange={(e) => handleChange(field.id, e.target.value)}
-                                                placeholder={field.placeholder}
-                                                className={cn(
-                                                    "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 outline-none",
-                                                    errors[field.id]
-                                                        ? "border-red-500 focus:ring-red-500"
-                                                        : "border-gray-300 focus:ring-blue-500"
-                                                )}
-                                                rows={4}
-                                            />
-                                        ) : field.type === 'select' ? (
-                                            <select
-                                                value={formData[field.id] || ''}
-                                                onChange={(e) => handleChange(field.id, e.target.value)}
-                                                className={cn(
-                                                    "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 outline-none",
-                                                    errors[field.id]
-                                                        ? "border-red-500 focus:ring-red-500"
-                                                        : "border-gray-300 focus:ring-blue-500"
-                                                )}
-                                            >
-                                                <option value="">{field.placeholder || 'Select an option'}</option>
-                                                {field.options?.map((opt, i) => (
-                                                    <option key={i} value={opt}>{opt}</option>
-                                                ))}
-                                            </select>
-                                        ) : field.type === 'checkbox' ? (
-                                            <div className="space-y-2">
-                                                {field.options?.map((opt, i) => (
-                                                    <label key={i} className="flex items-center gap-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            value={opt}
-                                                            checked={(formData[field.id] || []).includes(opt)}
-                                                            onChange={(e) => {
-                                                                const current = formData[field.id] || [];
-                                                                const updated = e.target.checked
-                                                                    ? [...current, opt]
-                                                                    : current.filter((v: string) => v !== opt);
-                                                                handleChange(field.id, updated);
+                                            ) : field.type === 'textarea' || field.type === 'richtext' ? (
+                                                <textarea
+                                                    value={formData[field.id] || ''}
+                                                    onChange={(e) => handleChange(field.id, e.target.value)}
+                                                    placeholder={field.placeholder}
+                                                    className={cn(
+                                                        "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 outline-none",
+                                                        errors[field.id]
+                                                            ? "border-red-500 focus:ring-red-500"
+                                                            : "border-gray-300 focus:ring-blue-500"
+                                                    )}
+                                                    rows={field.type === 'richtext' ? 8 : 4}
+                                                />
+                                            ) : field.type === 'select' || field.type === 'country' || field.type === 'state' ? (
+                                                <select
+                                                    value={formData[field.id] || ''}
+                                                    onChange={(e) => handleChange(field.id, e.target.value)}
+                                                    className={cn(
+                                                        "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 outline-none",
+                                                        errors[field.id]
+                                                            ? "border-red-500 focus:ring-red-500"
+                                                            : "border-gray-300 focus:ring-blue-500"
+                                                    )}
+                                                >
+                                                    <option value="">{field.placeholder || 'Select an option'}</option>
+                                                    {field.type === 'country' ? (
+                                                        <>
+                                                            <option value="US">United States</option>
+                                                            <option value="CA">Canada</option>
+                                                            <option value="GB">United Kingdom</option>
+                                                            <option value="AU">Australia</option>
+                                                            <option value="DE">Germany</option>
+                                                            <option value="FR">France</option>
+                                                            <option value="IN">India</option>
+                                                            <option value="JP">Japan</option>
+                                                        </>
+                                                    ) : field.type === 'state' ? (
+                                                        <>
+                                                            <option value="CA">California</option>
+                                                            <option value="NY">New York</option>
+                                                            <option value="TX">Texas</option>
+                                                            <option value="FL">Florida</option>
+                                                        </>
+                                                    ) : (
+                                                        field.options?.map((opt, i) => (
+                                                            <option key={i} value={opt}>{opt}</option>
+                                                        ))
+                                                    )}
+                                                </select>
+                                            ) : field.type === 'multiselect' ? (
+                                                <select
+                                                    value={formData[field.id] || []}
+                                                    onChange={(e) => {
+                                                        const selected = Array.from(e.target.selectedOptions, option => option.value);
+                                                        handleChange(field.id, selected);
+                                                    }}
+                                                    multiple
+                                                    className={cn(
+                                                        "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 outline-none",
+                                                        errors[field.id]
+                                                            ? "border-red-500 focus:ring-red-500"
+                                                            : "border-gray-300 focus:ring-blue-500"
+                                                    )}
+                                                    size={Math.min(field.options?.length || 5, 8)}
+                                                >
+                                                    {field.options?.map((opt, i) => (
+                                                        <option key={i} value={opt}>{opt}</option>
+                                                    ))}
+                                                </select>
+                                            ) : field.type === 'checkbox' ? (
+                                                <div className="space-y-2">
+                                                    {field.options?.map((opt, i) => (
+                                                        <label key={i} className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                value={opt}
+                                                                checked={(formData[field.id] || []).includes(opt)}
+                                                                onChange={(e) => {
+                                                                    const current = formData[field.id] || [];
+                                                                    const updated = e.target.checked
+                                                                        ? [...current, opt]
+                                                                        : current.filter((v: string) => v !== opt);
+                                                                    handleChange(field.id, updated);
+                                                                }}
+                                                                className="rounded"
+                                                                style={{ accentColor: form.settings.primaryColor }}
+                                                            />
+                                                            <span className="text-sm text-gray-700">{opt}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            ) : field.type === 'radio' ? (
+                                                <div className="space-y-2">
+                                                    {field.options?.map((opt, i) => (
+                                                        <label key={i} className="flex items-center gap-2">
+                                                            <input
+                                                                type="radio"
+                                                                name={field.id}
+                                                                value={opt}
+                                                                checked={formData[field.id] === opt}
+                                                                onChange={(e) => handleChange(field.id, e.target.value)}
+                                                                className="rounded-full"
+                                                                style={{ accentColor: form.settings.primaryColor }}
+                                                            />
+                                                            <span className="text-sm text-gray-700">{opt}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            ) : field.type === 'rating' ? (
+                                                <div className="flex gap-2">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <button
+                                                            key={star}
+                                                            type="button"
+                                                            onClick={() => handleChange(field.id, star)}
+                                                            className="text-3xl transition-colors"
+                                                            style={{
+                                                                color: (formData[field.id] || 0) >= star
+                                                                    ? form.settings.primaryColor
+                                                                    : '#d1d5db'
                                                             }}
-                                                            className="rounded"
-                                                            style={{ accentColor: form.settings.primaryColor }}
-                                                        />
-                                                        <span className="text-sm text-gray-700">{opt}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        ) : field.type === 'radio' ? (
-                                            <div className="space-y-2">
-                                                {field.options?.map((opt, i) => (
-                                                    <label key={i} className="flex items-center gap-2">
-                                                        <input
-                                                            type="radio"
-                                                            name={field.id}
-                                                            value={opt}
-                                                            checked={formData[field.id] === opt}
-                                                            onChange={(e) => handleChange(field.id, e.target.value)}
-                                                            className="rounded-full"
-                                                            style={{ accentColor: form.settings.primaryColor }}
-                                                        />
-                                                        <span className="text-sm text-gray-700">{opt}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <input
-                                                type={field.type}
-                                                value={formData[field.id] || ''}
-                                                onChange={(e) => handleChange(field.id, e.target.value)}
-                                                placeholder={field.placeholder}
-                                                className={cn(
-                                                    "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 outline-none",
-                                                    errors[field.id]
-                                                        ? "border-red-500 focus:ring-red-500"
-                                                        : "border-gray-300 focus:ring-blue-500"
-                                                )}
-                                            />
-                                        )}
+                                                        >
+                                                            ⭐
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : field.type === 'gdpr_consent' || field.type === 'marketing_consent' ? (
+                                                <label className="flex items-start gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData[field.id] || false}
+                                                        onChange={(e) => handleChange(field.id, e.target.checked)}
+                                                        className="mt-1 rounded"
+                                                        style={{ accentColor: form.settings.primaryColor }}
+                                                    />
+                                                    <span className="text-sm text-gray-700">
+                                                        {field.gdprSettings?.consentText ||
+                                                         (field.type === 'gdpr_consent'
+                                                            ? 'I agree to the privacy policy and consent to my data being processed'
+                                                            : 'I would like to receive marketing communications')}
+                                                        {field.gdprSettings?.privacyPolicyUrl && (
+                                                            <a
+                                                                href={field.gdprSettings.privacyPolicyUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-600 hover:underline ml-1"
+                                                            >
+                                                                Privacy Policy
+                                                            </a>
+                                                        )}
+                                                    </span>
+                                                </label>
+                                            ) : field.type === 'divider' ? (
+                                                <hr className="border-gray-300" />
+                                            ) : field.type === 'html' ? (
+                                                <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: field.defaultValue || '' }} />
+                                            ) : field.type === 'hidden' ? (
+                                                <input
+                                                    type="hidden"
+                                                    value={field.defaultValue || ''}
+                                                    onChange={() => {}}
+                                                />
+                                            ) : field.type === 'datetime' ? (
+                                                <input
+                                                    type="datetime-local"
+                                                    value={formData[field.id] || ''}
+                                                    onChange={(e) => handleChange(field.id, e.target.value)}
+                                                    className={cn(
+                                                        "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 outline-none",
+                                                        errors[field.id]
+                                                            ? "border-red-500 focus:ring-red-500"
+                                                            : "border-gray-300 focus:ring-blue-500"
+                                                    )}
+                                                />
+                                            ) : (
+                                                <input
+                                                    type={field.type}
+                                                    value={formData[field.id] || ''}
+                                                    onChange={(e) => handleChange(field.id, e.target.value)}
+                                                    placeholder={field.placeholder}
+                                                    min={field.validation?.min}
+                                                    max={field.validation?.max}
+                                                    pattern={field.validation?.pattern}
+                                                    className={cn(
+                                                        "w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-offset-2 outline-none",
+                                                        errors[field.id]
+                                                            ? "border-red-500 focus:ring-red-500"
+                                                            : "border-gray-300 focus:ring-blue-500"
+                                                    )}
+                                                />
+                                            )}
 
                                             {errors[field.id] && (
                                                 <p className="text-red-500 text-sm mt-1">{errors[field.id]}</p>

@@ -4,6 +4,21 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+// Helper to get auth token
+function getAuthToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('token');
+}
+
+// Helper to get auth headers
+function getAuthHeaders(): HeadersInit {
+    const token = getAuthToken();
+    return {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+    };
+}
+
 export interface ForecastData {
     period: string;
     forecast: {
@@ -78,13 +93,11 @@ export async function getForecast(
     if (pipelineId) params.append('pipelineId', pipelineId);
 
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/forecast?${params}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/forecast?${params}`,
         {
             method: "GET",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
         }
     );
 
@@ -108,13 +121,11 @@ export async function getTrends(
     if (months) params.append('months', months.toString());
 
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/forecast/trends?${params}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/forecast/trends?${params}`,
         {
             method: "GET",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
         }
     );
 
@@ -136,13 +147,11 @@ export async function getRisks(
     if (threshold) params.append('threshold', threshold.toString());
 
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/forecast/risks?${params}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/forecast/risks?${params}`,
         {
             method: "GET",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
         }
     );
 
@@ -164,13 +173,11 @@ export async function getSummary(
     if (reportType) params.append('reportType', reportType);
 
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/forecast/summary?${params}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/forecast/summary?${params}`,
         {
             method: "GET",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
         }
     );
 

@@ -342,19 +342,21 @@ router.post(
                 'stats.lastSubmittedAt': new Date(),
             });
 
-            // Send notification email if configured
-            if (form.settings.notificationEmail) {
-                try {
-                    await emailService.sendFormNotificationEmail(
-                        form.settings.notificationEmail,
-                        form.name,
-                        data,
-                        submission._id.toString()
-                    );
-                    console.log(`✅ Notification email sent to: ${form.settings.notificationEmail}`);
-                } catch (emailError: any) {
-                    console.error(`❌ Failed to send notification email:`, emailError.message);
-                    // Don't fail the submission if email fails
+            // Send notification emails if configured
+            if (form.settings.notificationEmails && form.settings.notificationEmails.length > 0) {
+                for (const email of form.settings.notificationEmails) {
+                    try {
+                        await emailService.sendFormNotificationEmail(
+                            email,
+                            form.name,
+                            data,
+                            submission._id.toString()
+                        );
+                        console.log(`✅ Notification email sent to: ${email}`);
+                    } catch (emailError: any) {
+                        console.error(`❌ Failed to send notification email to ${email}:`, emailError.message);
+                        // Don't fail the submission if email fails
+                    }
                 }
             }
 
