@@ -107,12 +107,6 @@ function HTTPRequestNode({ data, selected }: NodeProps<HTTPRequestNodeData>) {
                 position={Position.Bottom}
                 className="!w-3 !h-3 !bg-gray-600 dark:!bg-gray-400 !border-2 !border-white dark:!border-gray-900"
             />
-
-            {/* Method indicator badge */}
-            <div
-                className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900"
-                style={{ backgroundColor: methodColor }}
-            />
         </div>
     );
 }

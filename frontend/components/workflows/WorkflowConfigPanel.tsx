@@ -18,13 +18,20 @@ import {
     FunnelIcon,
     ShieldExclamationIcon,
     ArrowPathIcon,
-    SparklesIcon,
     ChatBubbleLeftRightIcon,
     GlobeAltIcon,
     AdjustmentsHorizontalIcon,
+    ExclamationTriangleIcon,
+    InformationCircleIcon,
 } from "@heroicons/react/24/outline";
+import { GiArtificialIntelligence } from "react-icons/gi";
+import { Loader2, GitBranch, Table, FileText } from "lucide-react";
 import { WorkflowStep } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { getIntegrationMeta } from "@/lib/workflow/integrations";
+import axios from "@/lib/axios";
 
 // Import modular config components
 import TriggerConfig from "./config/TriggerConfig";
@@ -35,6 +42,9 @@ import LoopConfig from "./config/LoopConfig";
 import AIAgentConfig from "./config/AIAgentConfig";
 import HttpActionConfig from "./config/HttpActionConfig";
 import SlackNodeConfig from "./config/SlackNodeConfig";
+import GoogleSheetsNodeConfig from "./config/GoogleSheetsNodeConfig";
+import NotionNodeConfig from "./config/NotionNodeConfig";
+import TransformConfig from "./config/TransformConfig";
 
 // ============================================
 // TYPES
@@ -45,6 +55,8 @@ interface WorkflowConfigPanelProps {
     onUpdate: (updates: Partial<WorkflowStep>) => void;
     onDelete: () => void;
     onClose: () => void;
+    workspaceId?: string;
+    workflowId?: string;
 }
 
 // ============================================
@@ -76,7 +88,7 @@ function getPanelInfo(stepType: string) {
             };
         case "condition":
             return {
-                icon: <span className="text-xl">🔀</span>,
+                icon: <GitBranch className="w-5 h-5" />,
                 color: "from-teal-500 to-cyan-600",
                 bgColor: "bg-teal-500/10",
                 label: "Configure Condition",
@@ -111,18 +123,41 @@ function getPanelInfo(stepType: string) {
             };
         case "ai_agent":
             return {
-                icon: <SparklesIcon className="w-5 h-5" />,
-                color: "from-violet-500 to-fuchsia-600",
-                bgColor: "bg-violet-500/10",
+                icon: <GiArtificialIntelligence className="w-5 h-5" />,
+                color: "from-gray-800 to-gray-900",
+                bgColor: "bg-gray-800/10",
                 label: "Configure AI Agent",
             };
-        case "integration_slack":
+        case "integration_slack": {
+            const slackMeta = getIntegrationMeta("integration_slack");
+            const SlackIcon = slackMeta?.icon;
             return {
-                icon: <ChatBubbleLeftRightIcon className="w-5 h-5" />,
+                icon: SlackIcon ? <SlackIcon className="w-5 h-5" /> : <ChatBubbleLeftRightIcon className="w-5 h-5" />,
                 color: "from-purple-600 to-purple-800",
                 bgColor: "bg-purple-600/10",
                 label: "Configure Slack",
             };
+        }
+        case "integration_google_sheets": {
+            const sheetsMeta = getIntegrationMeta("integration_google_sheets");
+            const SheetsIcon = sheetsMeta?.icon;
+            return {
+                icon: SheetsIcon ? <SheetsIcon className="w-5 h-5" /> : <Table className="w-5 h-5" />,
+                color: "from-green-600 to-green-700",
+                bgColor: "bg-green-600/10",
+                label: "Configure Google Sheets",
+            };
+        }
+        case "integration_notion": {
+            const notionMeta = getIntegrationMeta("integration_notion");
+            const NotionIcon = notionMeta?.icon;
+            return {
+                icon: NotionIcon ? <NotionIcon className="w-5 h-5" /> : <FileText className="w-5 h-5" />,
+                color: "from-gray-800 to-gray-900",
+                bgColor: "bg-gray-800/10",
+                label: "Configure Notion",
+            };
+        }
         case "http_request":
             return {
                 icon: <GlobeAltIcon className="w-5 h-5" />,
@@ -151,20 +186,63 @@ function getPanelInfo(stepType: string) {
 // MAIN COMPONENT
 // ============================================
 
+interface ValidationResult {
+    canOpenConfig: boolean;
+    reason?: string;
+    message?: string;
+}
+
 export default function WorkflowConfigPanel({
     step,
     onUpdate,
     onDelete,
     onClose,
+    workspaceId,
+    workflowId,
 }: WorkflowConfigPanelProps) {
     const [name, setName] = useState(step.name);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+    const [isValidating, setIsValidating] = useState(true);
+
+    // Validate step configuration when component mounts or when the step/workflow changes
+    useEffect(() => {
+        validateStepConfig();
+    }, [step.id, workspaceId, workflowId]);
 
     // Update name when step changes
     useEffect(() => {
         setName(step.name);
         setShowDeleteConfirm(false);
     }, [step.id, step.name]);
+
+    async function validateStepConfig() {
+        // Always allow config to open
+        // Validation is just for metadata, not gating
+        if (!workspaceId || !workflowId) {
+            setValidationResult({ canOpenConfig: true });
+            setIsValidating(false);
+            return;
+        }
+
+        setIsValidating(true);
+
+        try {
+            const response = await axios.get(
+                `/workspaces/${workspaceId}/workflows/${workflowId}/steps/${step.id}/validation`
+            );
+
+            setValidationResult(response.data);
+        } catch (error: any) {
+            console.error('Validation error:', error);
+            // On error, STILL allow config to open
+            setValidationResult({
+                canOpenConfig: true,
+            });
+        } finally {
+            setIsValidating(false);
+        }
+    }
 
     const handleConfigChange = (newConfig: any) => {
         onUpdate({ config: newConfig });
@@ -238,12 +316,21 @@ export default function WorkflowConfigPanel({
                     {/* Divider */}
                     <div className="border-t border-border" />
 
-                    {/* Step-specific config */}
+                    {/* Validation Loading State */}
+                    {isValidating && (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                        </div>
+                    )}
+
+                    {/* Step-specific config (always render) */}
+                    {!isValidating && (
+                        <>
                     {step.type === "trigger" && (
                         <TriggerConfig step={step} onChange={handleConfigChange} />
                     )}
                     {step.type === "action" && (
-                        <ActionConfig step={step} onChange={handleConfigChange} />
+                        <ActionConfig step={step} onChange={handleConfigChange} workspaceId={workspaceId} workflowId={workflowId} />
                     )}
                     {step.type === "delay" && (
                         <DelayConfig step={step} onChange={handleConfigChange} />
@@ -252,19 +339,25 @@ export default function WorkflowConfigPanel({
                         <ConditionConfig step={step} onChange={handleConfigChange} />
                     )}
                     {step.type === "loop" && (
-                        <LoopConfig step={step} onUpdate={onUpdate} />
+                        <LoopConfig step={step} onUpdate={onUpdate} workspaceId={workspaceId} workflowId={workflowId} />
                     )}
                     {step.type === "ai_agent" && (
-                        <AIAgentConfig step={step} onUpdate={onUpdate} />
+                        <AIAgentConfig step={step} onUpdate={onUpdate} workspaceId={workspaceId} workflowId={workflowId} />
                     )}
                     {step.type === "http_request" && (
-                        <HttpActionConfig step={step} onUpdate={onUpdate} />
+                        <HttpActionConfig step={step} onUpdate={onUpdate} workspaceId={workspaceId} workflowId={workflowId} />
                     )}
                     {step.type === "integration_slack" && (
-                        <SlackNodeConfig step={step} onUpdate={onUpdate} />
+                        <SlackNodeConfig step={step} onUpdate={onUpdate} workspaceId={workspaceId} workflowId={workflowId} />
+                    )}
+                    {step.type === "integration_google_sheets" && (
+                        <GoogleSheetsNodeConfig step={step} onUpdate={onUpdate} workspaceId={workspaceId} workflowId={workflowId} />
+                    )}
+                    {step.type === "integration_notion" && (
+                        <NotionNodeConfig step={step} onUpdate={onUpdate} workspaceId={workspaceId} workflowId={workflowId} />
                     )}
                     {step.type === "transform" && (
-                        <ActionConfig step={step} onChange={handleConfigChange} />
+                        <TransformConfig step={step} onUpdate={onUpdate} workspaceId={workspaceId} workflowId={workflowId} />
                     )}
                     {(step.type === "parallel" || step.type === "merge" || step.type === "try_catch") && (
                         <div className="p-4 bg-muted rounded-lg">
@@ -272,6 +365,8 @@ export default function WorkflowConfigPanel({
                                 Configuration for {step.type} nodes coming soon.
                             </p>
                         </div>
+                    )}
+                        </>
                     )}
                 </div>
             </div>

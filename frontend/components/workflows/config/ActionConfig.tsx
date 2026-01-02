@@ -11,6 +11,10 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { WorkflowStep, ActionType, ACTION_TYPE_LABELS } from "@/lib/workflow/types";
 import SmsActionConfig from "./SmsActionConfig";
+import { DragInput } from "../DragInput";
+import { DragTextarea } from "../DragTextarea";
+import { DataSourceFloatingCard } from "../DataSourceFloatingCard";
+import { useDataSources } from "@/hooks/useDataSources";
 
 // ============================================
 // TYPES
@@ -19,6 +23,8 @@ import SmsActionConfig from "./SmsActionConfig";
 interface ActionConfigProps {
     step: WorkflowStep;
     onChange: (config: any) => void;
+    workspaceId?: string;
+    workflowId?: string;
 }
 
 interface EmailTemplate {
@@ -57,7 +63,7 @@ const PLACEHOLDER_VARIABLES = [
 // SUB-COMPONENTS
 // ============================================
 
-function EmailActionFields({ step, onChange }: ActionConfigProps) {
+function EmailActionFields({ step, onChange, dataSources }: ActionConfigProps & { dataSources: any[] }) {
     const params = useParams();
     const workspaceId = (params?.workspaceId || params?.id) as string; // Support both param names
     const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -223,18 +229,14 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
 
                 {useCustomEmail ? (
                     <div>
-                        <input
-                            type="email"
-                            placeholder="e.g., sales@yourcompany.com"
+                        <DragInput
                             value={step.config.recipientEmail || ""}
-                            onChange={(e) =>
-                                onChange({ ...step.config, recipientEmail: e.target.value })
+                            onChange={(value) =>
+                                onChange({ ...step.config, recipientEmail: value })
                             }
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                            placeholder="e.g., sales@yourcompany.com"
+                            className="w-full"
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                            You can use variables like {"{{email}}"}
-                        </p>
                     </div>
                 ) : (
                     <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
@@ -258,14 +260,13 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                     Email Subject *
                 </label>
-                <input
-                    type="text"
-                    placeholder="e.g., Welcome to our service, {{firstName}}!"
+                <DragInput
                     value={step.config.emailSubject || ""}
-                    onChange={(e) =>
-                        onChange({ ...step.config, emailSubject: e.target.value })
+                    onChange={(value) =>
+                        onChange({ ...step.config, emailSubject: value })
                     }
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="e.g., Welcome to our service, {{firstName}}!"
+                    className="w-full"
                 />
             </div>
 
@@ -274,14 +275,14 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                     Email Body *
                 </label>
-                <textarea
-                    placeholder="Hi {{firstName}},&#10;&#10;Thanks for connecting with us!&#10;&#10;Best regards"
+                <DragTextarea
                     value={step.config.emailBody || ""}
-                    onChange={(e) =>
-                        onChange({ ...step.config, emailBody: e.target.value })
+                    onChange={(value) =>
+                        onChange({ ...step.config, emailBody: value })
                     }
+                    placeholder="Hi {{firstName}},&#10;&#10;Thanks for connecting with us!&#10;&#10;Best regards"
                     rows={5}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                    className="w-full"
                 />
                 <div className="mt-2 p-2 bg-muted/30 rounded-md">
                     <p className="text-xs text-muted-foreground mb-1">
@@ -308,7 +309,7 @@ function EmailActionFields({ step, onChange }: ActionConfigProps) {
 }
 
 
-function UpdateFieldActionFields({ step, onChange }: ActionConfigProps) {
+function UpdateFieldActionFields({ step, onChange, dataSources }: ActionConfigProps & { dataSources: any[] }) {
     return (
         <div className="space-y-4">
             <div>
@@ -333,49 +334,47 @@ function UpdateFieldActionFields({ step, onChange }: ActionConfigProps) {
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                     New Value *
                 </label>
-                <input
-                    type="text"
-                    placeholder="Enter new value..."
+                <DragInput
                     value={step.config.fieldValue || ""}
-                    onChange={(e) =>
-                        onChange({ ...step.config, fieldValue: e.target.value })
+                    onChange={(value) =>
+                        onChange({ ...step.config, fieldValue: value })
                     }
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="Enter new value..."
+                    className="w-full"
                 />
             </div>
         </div>
     );
 }
 
-function CreateTaskActionFields({ step, onChange }: ActionConfigProps) {
+function CreateTaskActionFields({ step, onChange, dataSources }: ActionConfigProps & { dataSources: any[] }) {
     return (
         <div className="space-y-4">
             <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                     Task Title *
                 </label>
-                <input
-                    type="text"
-                    placeholder="e.g., Follow up with {{firstName}}"
+                <DragInput
                     value={step.config.taskTitle || ""}
-                    onChange={(e) =>
-                        onChange({ ...step.config, taskTitle: e.target.value })
+                    onChange={(value) =>
+                        onChange({ ...step.config, taskTitle: value })
                     }
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    placeholder="e.g., Follow up with {{firstName}}"
+                    className="w-full"
                 />
             </div>
             <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                     Description
                 </label>
-                <textarea
-                    placeholder="Task details..."
+                <DragTextarea
                     value={step.config.taskDescription || ""}
-                    onChange={(e) =>
-                        onChange({ ...step.config, taskDescription: e.target.value })
+                    onChange={(value) =>
+                        onChange({ ...step.config, taskDescription: value })
                     }
+                    placeholder="Task details..."
                     rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                    className="w-full"
                 />
             </div>
             <div>
@@ -589,8 +588,11 @@ function EnrollWorkflowActionFields({ step, onChange }: ActionConfigProps) {
 // MAIN COMPONENT
 // ============================================
 
-export default function ActionConfig({ step, onChange }: ActionConfigProps) {
+export default function ActionConfig({ step, onChange, workspaceId, workflowId }: ActionConfigProps) {
     const actionType = (step.config.actionType || "update_field") as ActionType;
+
+    // Fetch available data sources for autocomplete
+    const { dataSources } = useDataSources(workspaceId, workflowId, step.id);
 
     const handleActionTypeChange = (newType: ActionType) => {
         onChange({ ...step.config, actionType: newType });
@@ -618,13 +620,13 @@ export default function ActionConfig({ step, onChange }: ActionConfigProps) {
 
             {/* Action-specific fields */}
             {actionType === "send_email" && (
-                <EmailActionFields step={step} onChange={onChange} />
+                <EmailActionFields step={step} onChange={onChange} dataSources={dataSources} />
             )}
             {actionType === "update_field" && (
-                <UpdateFieldActionFields step={step} onChange={onChange} />
+                <UpdateFieldActionFields step={step} onChange={onChange} dataSources={dataSources} />
             )}
             {actionType === "create_task" && (
-                <CreateTaskActionFields step={step} onChange={onChange} />
+                <CreateTaskActionFields step={step} onChange={onChange} dataSources={dataSources} />
             )}
             {actionType === "add_tag" && (
                 <TagActionFields step={step} onChange={onChange} />
@@ -656,6 +658,13 @@ export default function ActionConfig({ step, onChange }: ActionConfigProps) {
             {actionType === "send_sms" && (
                 <SmsActionFields step={step} onChange={onChange} />
             )}
+
+            {/* Floating Data Source Card */}
+            <DataSourceFloatingCard
+                dataSources={dataSources}
+                workspaceId={workspaceId}
+                workflowId={workflowId}
+            />
         </div>
     );
 }

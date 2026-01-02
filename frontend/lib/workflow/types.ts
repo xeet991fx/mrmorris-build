@@ -70,8 +70,11 @@ export type StepType =
     | 'transform'             // Data transformation (set/map/filter)
     | 'try_catch'             // Error handling wrapper
     | 'ai_agent'              // AI agent integration
+    | 'http_request'          // HTTP request node
     // INTEGRATION NODES (each integration is its own type)
     | 'integration_slack'     // Slack integration
+    | 'integration_google_sheets'  // Google Sheets integration
+    | 'integration_notion'    // Notion integration
     | 'integration_whatsapp'  // WhatsApp (future)
     | 'integration_discord';  // Discord (future)
 
@@ -102,6 +105,11 @@ export interface WorkflowCondition {
 // ============================================
 
 export interface WorkflowStepConfig {
+    // NEW N8N-STYLE INTEGRATION CONFIG
+    credentialId?: string;           // Reference to IntegrationCredential
+    action?: string;                 // Action type for integrations
+    responseVariable?: string;       // Variable to store API response
+
     // Trigger config
     triggerType?: TriggerType;
     filters?: Array<{
@@ -190,6 +198,9 @@ export interface WorkflowStepConfig {
     fromNumber?: string;          // Sender phone number
     toNumber?: string;            // Recipient phone number (if fixed)
     toField?: string;             // Contact field for phone (e.g., "phone")
+
+    // Allow dynamic properties for integration-specific configs
+    [key: string]: any;
 }
 
 // ============================================

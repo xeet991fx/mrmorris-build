@@ -5,7 +5,7 @@
  * Includes app icons, colors, and metadata.
  */
 
-import { SiSlack, SiWhatsapp, SiDiscord } from "react-icons/si";
+import { SiSlack, SiWhatsapp, SiDiscord, SiGooglesheets, SiNotion } from "react-icons/si";
 
 export interface IntegrationMetadata {
     name: string;
@@ -24,6 +24,22 @@ export const INTEGRATIONS: Record<string, IntegrationMetadata> = {
         bgColor: "from-[#4A154B] to-[#36123A]",
         domain: "slack.com",
         description: "Team communication & collaboration",
+    },
+    integration_google_sheets: {
+        name: "Google Sheets",
+        icon: SiGooglesheets,
+        color: "#0F9D58",
+        bgColor: "from-[#0F9D58] to-[#0B8043]",
+        domain: "google.com",
+        description: "Spreadsheet data & automation",
+    },
+    integration_notion: {
+        name: "Notion",
+        icon: SiNotion,
+        color: "#000000",
+        bgColor: "from-[#000000] to-[#2B2B2B]",
+        domain: "notion.so",
+        description: "Notes, docs & knowledge base",
     },
     integration_whatsapp: {
         name: "WhatsApp",
