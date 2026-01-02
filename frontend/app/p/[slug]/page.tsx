@@ -531,55 +531,228 @@ function Section({ section, index, primaryColor, secondaryColor, isDark, onConve
 
         case 'form':
             return (
-                <motion.section
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={containerClasses}
-                    style={bgStyle}
-                >
-                    <div className={`${maxWidthClasses} max-w-2xl`}>
-                        {settings.heading && (
-                            <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8" style={textColorStyle}>
-                                {settings.heading}
-                            </h2>
-                        )}
-                        {settings.formId ? (
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
-                                <iframe
-                                    src={`${process.env.NEXT_PUBLIC_FRONTEND_URL || window.location.origin}/forms/${settings.formId}`}
-                                    className="w-full border-0"
-                                    style={{ minHeight: '500px' }}
-                                    onLoad={(e) => {
-                                        // Auto-resize iframe based on content
-                                        const iframe = e.currentTarget;
-                                        const resizeIframe = () => {
-                                            if (iframe.contentWindow) {
-                                                const height = iframe.contentWindow.document.body.scrollHeight;
-                                                iframe.style.height = height + 'px';
-                                            }
-                                        };
-                                        // Initial resize
-                                        setTimeout(resizeIframe, 100);
-                                        // Listen for form height changes
-                                        window.addEventListener('message', (event) => {
-                                            if (event.data?.type === 'morrisb-form-height' && event.data?.formId === settings.formId) {
-                                                iframe.style.height = event.data.height + 'px';
-                                            }
-                                        });
-                                    }}
-                                />
-                            </div>
-                        ) : (
-                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-8 text-center" style={textColorStyle}>
-                                <p className="opacity-70">No form selected. Please configure this section in the editor.</p>
-                            </div>
-                        )}
-                    </div>
-                </motion.section>
+                <FormSection
+                    section={section}
+                    index={index}
+                    containerClasses={containerClasses}
+                    maxWidthClasses={maxWidthClasses}
+                    bgStyle={bgStyle}
+                    textColorStyle={textColorStyle}
+                    primaryColor={primaryColor}
+                    isDark={isDark}
+                    onConversion={onConversion}
+                />
             );
 
         default:
             return null;
     }
+}
+
+// Form Section Component for Lead Capture
+interface FormSectionProps {
+    section: any;
+    index: number;
+    containerClasses: string;
+    maxWidthClasses: string;
+    bgStyle: React.CSSProperties;
+    textColorStyle: React.CSSProperties;
+    primaryColor: string;
+    isDark: boolean;
+    onConversion: () => void;
+}
+
+function FormSection({
+    section,
+    index,
+    containerClasses,
+    maxWidthClasses,
+    bgStyle,
+    textColorStyle,
+    primaryColor,
+    isDark,
+    onConversion
+}: FormSectionProps) {
+    const { settings } = section;
+    const [formData, setFormData] = useState<Record<string, string>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const params = useParams();
+    const slug = params.slug as string;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        setError(null);
+
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+            const response = await fetch(`${API_URL}/public/pages/${slug}/capture-lead`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setIsSubmitted(true);
+                onConversion();
+            } else {
+                setError(data.error || "Something went wrong. Please try again.");
+            }
+        } catch (err: any) {
+            setError("Failed to submit. Please try again.");
+            console.error("Form submission error:", err);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // If form has fields array, render inline form
+    if (settings.fields && settings.fields.length > 0) {
+        return (
+            <motion.section
+                id="signup-form"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={containerClasses}
+                style={bgStyle}
+            >
+                <div className={`${maxWidthClasses} max-w-xl mx-auto`}>
+                    {settings.heading && (
+                        <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4" style={textColorStyle}>
+                            {settings.heading}
+                        </h2>
+                    )}
+                    {settings.subheading && (
+                        <p className="text-center mb-8 opacity-80" style={textColorStyle}>
+                            {settings.subheading}
+                        </p>
+                    )}
+
+                    {isSubmitted ? (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="p-8 rounded-lg text-center"
+                            style={{ backgroundColor: isDark ? '#2a2a2a' : '#f0fdf4', border: '1px solid #22c55e' }}
+                        >
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#22c55e' }}>
+                                <CheckIcon className="w-8 h-8 text-white" />
+                            </div>
+                            <p className="text-lg font-semibold" style={{ color: '#22c55e' }}>
+                                {settings.successMessage || "Thanks! We'll be in touch soon."}
+                            </p>
+                        </motion.div>
+                    ) : (
+                        <form
+                            onSubmit={handleSubmit}
+                            className="p-8 rounded-lg shadow-lg"
+                            style={{ backgroundColor: isDark ? '#2a2a2a' : '#ffffff', border: `1px solid ${isDark ? '#444' : '#e5e7eb'}` }}
+                        >
+                            <div className="space-y-4">
+                                {settings.fields.map((field: any, i: number) => (
+                                    <div key={i}>
+                                        <label
+                                            className="block text-sm font-medium mb-2"
+                                            style={textColorStyle}
+                                        >
+                                            {field.label} {field.required && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <input
+                                            type={field.type || "text"}
+                                            name={field.name}
+                                            placeholder={field.placeholder}
+                                            required={field.required}
+                                            value={formData[field.name] || ""}
+                                            onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                                            className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
+                                            style={{
+                                                backgroundColor: isDark ? '#1a1a1a' : '#fff',
+                                                borderColor: isDark ? '#444' : '#e5e7eb',
+                                                color: isDark ? '#fff' : '#1a1a1a',
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+
+                            {error && (
+                                <div className="mt-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="w-full mt-6 px-8 py-4 rounded-lg font-semibold text-lg transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{ backgroundColor: primaryColor, color: '#ffffff' }}
+                            >
+                                {isSubmitting ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Submitting...
+                                    </span>
+                                ) : (
+                                    settings.buttonText || "Submit"
+                                )}
+                            </button>
+                        </form>
+                    )}
+                </div>
+            </motion.section>
+        );
+    }
+
+    // Fallback: render iframe form if formId is provided
+    if (settings.formId) {
+        return (
+            <motion.section
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={containerClasses}
+                style={bgStyle}
+            >
+                <div className={`${maxWidthClasses} max-w-2xl mx-auto`}>
+                    {settings.heading && (
+                        <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8" style={textColorStyle}>
+                            {settings.heading}
+                        </h2>
+                    )}
+                    <div className="rounded-lg shadow-lg p-8" style={{ backgroundColor: isDark ? '#2a2a2a' : '#fff' }}>
+                        <iframe
+                            src={`${typeof window !== 'undefined' ? window.location.origin : ''}/forms/${settings.formId}`}
+                            className="w-full border-0"
+                            style={{ minHeight: '500px' }}
+                        />
+                    </div>
+                </div>
+            </motion.section>
+        );
+    }
+
+    // No form configured
+    return (
+        <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className={containerClasses}
+            style={bgStyle}
+        >
+            <div className={`${maxWidthClasses} max-w-2xl mx-auto`}>
+                <div className="p-8 rounded-lg text-center" style={{ backgroundColor: isDark ? '#2a2a2a' : '#f9fafb' }}>
+                    <p className="opacity-70" style={textColorStyle}>No form configured for this section.</p>
+                </div>
+            </div>
+        </motion.section>
+    );
 }

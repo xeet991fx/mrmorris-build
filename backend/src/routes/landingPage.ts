@@ -262,4 +262,110 @@ router.post(
     }
 );
 
+/**
+ * POST /api/public/pages/:slug/capture-lead
+ *
+ * Capture lead from landing page form submission.
+ * Creates a new contact in the CRM with source = landing page.
+ * No authentication required (public endpoint).
+ */
+router.post(
+    "/public/pages/:slug/capture-lead",
+    async (req: any, res: Response) => {
+        try {
+            const { slug } = req.params;
+            const { firstName, lastName, email, phone, company, message, customFields } = req.body;
+
+            if (!firstName || !email) {
+                return res.status(400).json({
+                    success: false,
+                    error: "First name and email are required",
+                });
+            }
+
+            // Find the landing page to get workspaceId and userId
+            const page = await LandingPage.findOne({ slug }).lean();
+
+            if (!page) {
+                return res.status(404).json({
+                    success: false,
+                    error: "Landing page not found",
+                });
+            }
+
+            // Import Contact model dynamically to avoid circular dependencies
+            const Contact = (await import("../models/Contact")).default;
+
+            // Check if contact already exists with this email in the workspace
+            const existingContact = await Contact.findOne({
+                workspaceId: (page as any).workspaceId,
+                email: email.toLowerCase().trim(),
+            });
+
+            if (existingContact) {
+                // Update existing contact with any new info
+                if (phone && !existingContact.phone) existingContact.phone = phone;
+                if (company && !existingContact.company) existingContact.company = company;
+                if (message) existingContact.notes = `${existingContact.notes || ''}\n\n[Landing Page: ${(page as any).name}] ${message}`.trim();
+
+                // Add landing page tag if not present
+                if (!existingContact.tags?.includes(`landing-page:${slug}`)) {
+                    existingContact.tags = [...(existingContact.tags || []), `landing-page:${slug}`];
+                }
+
+                await existingContact.save();
+
+                // Track conversion
+                await LandingPage.findByIdAndUpdate(page._id, {
+                    $inc: { 'stats.conversions': 1 },
+                });
+
+                return res.json({
+                    success: true,
+                    message: "Thanks! We'll be in touch soon.",
+                    contactId: existingContact._id,
+                    isExisting: true,
+                });
+            }
+
+            // Create new contact
+            const contact = await Contact.create({
+                workspaceId: (page as any).workspaceId,
+                userId: (page as any).userId,
+                firstName: firstName.trim(),
+                lastName: lastName?.trim() || "",
+                email: email.toLowerCase().trim(),
+                phone: phone?.trim(),
+                company: company?.trim(),
+                source: `Landing Page: ${(page as any).name}`,
+                status: "lead",
+                tags: [`landing-page:${slug}`, "web-lead"],
+                notes: message ? `[Initial Message]\n${message}` : undefined,
+                customFields: customFields ? new Map(Object.entries(customFields)) : undefined,
+            });
+
+            // Track conversion
+            await LandingPage.findByIdAndUpdate(page._id, {
+                $inc: { 'stats.conversions': 1 },
+            });
+
+            console.log(`🎯 Lead captured from ${slug}: ${email}`);
+
+            res.status(201).json({
+                success: true,
+                message: "Thanks! We'll be in touch soon.",
+                contactId: contact._id,
+                isExisting: false,
+            });
+        } catch (error: any) {
+            console.error("Error capturing lead:", error);
+            res.status(500).json({
+                success: false,
+                error: error.message || "Failed to submit form. Please try again.",
+            });
+        }
+    }
+);
+
 export default router;
+

@@ -3,8 +3,9 @@
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeftIcon, RocketLaunchIcon, BriefcaseIcon, ShoppingCartIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, RocketLaunchIcon, BriefcaseIcon, ShoppingCartIcon, DocumentTextIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { createLandingPage, PageSection } from "@/lib/api/landingPage";
+import { sendAgentMessage } from "@/lib/api/agent";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -233,11 +234,21 @@ const TEMPLATES = [
     },
 ];
 
+// AI Template suggestions
+const AI_SUGGESTIONS = [
+    "Create a landing page for my AI writing assistant SaaS called WordFlow",
+    "Build a page for my digital marketing agency",
+    "I need a product launch page for premium wireless headphones",
+    "Create a waitlist page for my upcoming mobile app",
+    "Build a lead capture page for my free e-book on productivity",
+];
+
 export default function NewLandingPagePage() {
     const params = useParams();
     const router = useRouter();
     const workspaceId = params.id as string;
 
+    const [mode, setMode] = useState<"template" | "ai">("template");
     const [step, setStep] = useState<"template" | "details">("template");
     const [selectedTemplate, setSelectedTemplate] = useState<typeof TEMPLATES[0] | null>(null);
     const [isCreating, setIsCreating] = useState(false);
@@ -246,6 +257,18 @@ export default function NewLandingPagePage() {
         slug: "",
         description: "",
     });
+
+    // AI Generation state
+    const [aiPrompt, setAiPrompt] = useState("");
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [aiResult, setAiResult] = useState<{
+        success: boolean;
+        pageId?: string;
+        slug?: string;
+        name?: string;
+        message?: string;
+        error?: string;
+    } | null>(null);
 
     const handleSlugGeneration = (name: string) => {
         const slug = name
@@ -263,6 +286,64 @@ export default function NewLandingPagePage() {
             description: template.description,
         });
         setStep("details");
+    };
+
+    const handleAIGenerate = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!aiPrompt.trim()) {
+            toast.error("Please describe your landing page");
+            return;
+        }
+
+        setIsGenerating(true);
+        setAiResult(null);
+
+        try {
+            const response = await sendAgentMessage(
+                workspaceId,
+                aiPrompt.includes("landing page")
+                    ? aiPrompt
+                    : `Create a landing page for ${aiPrompt}`
+            );
+
+            if (response.success && response.data) {
+                const data = response.data;
+
+                // Check if page was created by looking for toolResults
+                if (data.toolResults?.generate_landing_page?.success) {
+                    const pageResult = data.toolResults.generate_landing_page;
+                    setAiResult({
+                        success: true,
+                        pageId: pageResult.pageId,
+                        slug: pageResult.slug,
+                        name: pageResult.name,
+                        message: `Created "${pageResult.name}" with ${pageResult.sections} sections!`,
+                    });
+                    toast.success("Landing page created with AI! 🎉");
+                } else {
+                    // Show the response message
+                    setAiResult({
+                        success: false,
+                        error: data.response || "Page generation failed",
+                    });
+                }
+            } else {
+                setAiResult({
+                    success: false,
+                    error: response.error || "Failed to generate page",
+                });
+            }
+        } catch (error: any) {
+            console.error("AI generation error:", error);
+            setAiResult({
+                success: false,
+                error: error.response?.data?.error || error.message || "Failed to generate landing page",
+            });
+            toast.error("Failed to generate page");
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const handleCreate = async (e: React.FormEvent) => {
@@ -333,11 +414,153 @@ export default function NewLandingPagePage() {
                 </Link>
                 <h1 className="text-2xl font-bold text-foreground">Create Landing Page</h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                    {step === "template" ? "Choose a template to get started" : "Customize your landing page details"}
+                    Choose a template or let AI generate your page
                 </p>
             </div>
 
-            {step === "template" ? (
+            {/* Mode Toggle - AI vs Template */}
+            <div className="flex gap-2 mb-6 p-1 bg-muted rounded-lg w-fit">
+                <button
+                    onClick={() => { setMode("template"); setStep("template"); }}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${mode === "template"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                        }`}
+                >
+                    📋 Templates
+                </button>
+                <button
+                    onClick={() => setMode("ai")}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${mode === "ai"
+                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                        }`}
+                >
+                    <SparklesIcon className="w-4 h-4" />
+                    AI Generate
+                </button>
+            </div>
+
+            {mode === "ai" ? (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                >
+                    {/* AI Generation Panel */}
+                    <div className="p-6 rounded-xl border-2 border-dashed border-purple-300 dark:border-purple-700 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
+                                <SparklesIcon className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-semibold text-foreground">AI Page Generator</h2>
+                                <p className="text-sm text-muted-foreground">Describe your page and Gemini AI will create it</p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleAIGenerate} className="space-y-4">
+                            <div>
+                                <textarea
+                                    value={aiPrompt}
+                                    onChange={(e) => setAiPrompt(e.target.value)}
+                                    placeholder="Describe your landing page... (e.g., 'Create a landing page for my AI writing assistant SaaS called WordFlow that helps content creators write faster')"
+                                    rows={4}
+                                    className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-foreground resize-none"
+                                    disabled={isGenerating}
+                                />
+                            </div>
+
+                            {/* Quick suggestions */}
+                            <div className="flex flex-wrap gap-2">
+                                <span className="text-xs text-muted-foreground">Try:</span>
+                                {AI_SUGGESTIONS.slice(0, 3).map((suggestion, i) => (
+                                    <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => setAiPrompt(suggestion)}
+                                        className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                                    >
+                                        {suggestion.substring(0, 40)}...
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isGenerating || !aiPrompt.trim()}
+                                className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center gap-2"
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                        Generating with AI...
+                                    </>
+                                ) : (
+                                    <>
+                                        <SparklesIcon className="w-5 h-5" />
+                                        Generate Landing Page
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        {/* AI Result */}
+                        {aiResult && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`mt-4 p-4 rounded-lg ${aiResult.success
+                                    ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+                                    : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+                                    }`}
+                            >
+                                {aiResult.success ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                                            <span className="text-xl">🎉</span>
+                                            <span className="font-medium">{aiResult.message}</span>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => router.push(`/projects/${workspaceId}/pages/${aiResult.pageId}/edit`)}
+                                                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                                            >
+                                                ✏️ Edit Page
+                                            </button>
+                                            <Link
+                                                href={`/p/${aiResult.slug}`}
+                                                target="_blank"
+                                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center"
+                                            >
+                                                👁️ Preview
+                                            </Link>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-red-700 dark:text-red-400">
+                                        <span className="font-medium">Error: </span>
+                                        {aiResult.error}
+                                    </div>
+                                )}
+                            </motion.div>
+                        )}
+                    </div>
+
+                    {/* What AI Creates */}
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                        <h3 className="text-sm font-medium text-foreground mb-2">✨ AI will automatically create:</h3>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                            <li>• Hero section with compelling headline & CTA</li>
+                            <li>• Features section highlighting key benefits</li>
+                            <li>• Testimonials with social proof</li>
+                            <li>• Pricing table (for SaaS pages)</li>
+                            <li>• Call-to-action section for conversions</li>
+                            <li>• Professional theme & color scheme</li>
+                        </ul>
+                    </div>
+                </motion.div>
+            ) : step === "template" ? (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -380,71 +603,71 @@ export default function NewLandingPagePage() {
                             Using <strong className="text-foreground">{selectedTemplate?.name}</strong> template
                         </span>
                     </div>
-                <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                        Page Name *
-                    </label>
-                    <input
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => {
-                            setFormData({ ...formData, name: e.target.value });
-                            if (!formData.slug) {
-                                handleSlugGeneration(e.target.value);
-                            }
-                        }}
-                        placeholder="My Awesome Landing Page"
-                        className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
-                        required
-                    />
-                </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Page Name *
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => {
+                                setFormData({ ...formData, name: e.target.value });
+                                if (!formData.slug) {
+                                    handleSlugGeneration(e.target.value);
+                                }
+                            }}
+                            placeholder="My Awesome Landing Page"
+                            className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                            required
+                        />
+                    </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                        URL Slug *
-                    </label>
-                    <div className="space-y-2">
-                        <div className="flex items-stretch border border-border rounded-lg overflow-hidden bg-background">
-                            <span className="px-4 py-2 bg-muted text-muted-foreground text-sm flex items-center border-r border-border">
-                                {typeof window !== 'undefined' ? window.location.origin : 'your-domain.com'}/p/
-                            </span>
-                            <input
-                                type="text"
-                                value={formData.slug}
-                                onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
-                                placeholder="my-awesome-page"
-                                className="flex-1 px-4 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
-                                pattern="[a-z0-9-]+"
-                                required
-                            />
-                        </div>
-                        <div className="flex items-start gap-2 text-xs">
-                            <div className="flex-1 space-y-1">
-                                <p className="text-muted-foreground">
-                                    ✓ Lowercase letters, numbers, and hyphens only
-                                </p>
-                                {formData.slug && (
-                                    <p className="text-green-600 dark:text-green-400 font-medium">
-                                        Your page will be: <span className="font-mono">{typeof window !== 'undefined' ? window.location.origin : 'your-domain.com'}/p/{formData.slug}</span>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            URL Slug *
+                        </label>
+                        <div className="space-y-2">
+                            <div className="flex items-stretch border border-border rounded-lg overflow-hidden bg-background">
+                                <span className="px-4 py-2 bg-muted text-muted-foreground text-sm flex items-center border-r border-border">
+                                    {typeof window !== 'undefined' ? window.location.origin : 'your-domain.com'}/p/
+                                </span>
+                                <input
+                                    type="text"
+                                    value={formData.slug}
+                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })}
+                                    placeholder="my-awesome-page"
+                                    className="flex-1 px-4 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                                    pattern="[a-z0-9-]+"
+                                    required
+                                />
+                            </div>
+                            <div className="flex items-start gap-2 text-xs">
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-muted-foreground">
+                                        ✓ Lowercase letters, numbers, and hyphens only
                                     </p>
-                                )}
+                                    {formData.slug && (
+                                        <p className="text-green-600 dark:text-green-400 font-medium">
+                                            Your page will be: <span className="font-mono">{typeof window !== 'undefined' ? window.location.origin : 'your-domain.com'}/p/{formData.slug}</span>
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                        Description
-                    </label>
-                    <textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Brief description of this landing page"
-                        rows={3}
-                        className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground resize-none"
-                    />
-                </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Description
+                        </label>
+                        <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            placeholder="Brief description of this landing page"
+                            rows={3}
+                            className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground resize-none"
+                        />
+                    </div>
 
                     <div className="flex gap-3 pt-4">
                         <button

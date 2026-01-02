@@ -71,3 +71,5 @@ export { schedulingAgentNode } from "./schedulingAgent";
 // General questions and web search
 export { generalAgentNode } from "./generalAgent";
 
+// Landing page creation and management
+export { landingPageAgentNode } from "./landingPageAgent";

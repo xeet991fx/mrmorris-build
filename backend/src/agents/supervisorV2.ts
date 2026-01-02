@@ -41,6 +41,7 @@ import {
     dataEntryAgentNode,
     schedulingAgentNode,
     generalAgentNode,
+    landingPageAgentNode,
 } from "./workers";
 
 // ⚡ FAST model for routing and verification (lazy initialization)
@@ -66,7 +67,10 @@ const getFlashModel = () => {
 
 // Agent routing - ORDER MATTERS (more specific first)
 const PRIORITY_ROUTES: Array<[string[], string]> = [
-    // WORKFLOW CREATION (highest priority - must come before other agents with keyword overlap)
+    // LANDING PAGE CREATION (highest priority)
+    [["landing page", "create page", "generate page", "build page", "website page", "make landing", "create a page"], "landingpage"],
+
+    // WORKFLOW CREATION (high priority - must come before other agents with keyword overlap)
     [["create workflow", "create a workflow", "workflow called", "new workflow"], "workflow"],
 
     // NEW AI AGENTS (high priority)
@@ -126,10 +130,23 @@ async function supervisorNode(state: AgentStateType): Promise<Partial<AgentState
     const lastMessage = state.messages[state.messages.length - 1];
     const userRequest = lastMessage.content as string;
 
-    // Step 1: Analyze task complexity
+    // Step 1: Check fast routing FIRST for dedicated agent keywords
+    // This prevents complexity analyzer from overriding specific dedicated agents
+    let nextAgent = fastRoute(userRequest);
+
+    if (nextAgent) {
+        console.log(`✓ FAST ROUTE to: ${nextAgent} (${Date.now() - start}ms)`);
+        return {
+            nextAgent,
+            isComplexTask: false,
+            coordinationMode: 'single',
+        };
+    }
+
+    // Step 2: Analyze task complexity only if no dedicated agent matched
     const complexityAnalysis = await analyzeTaskComplexity(userRequest);
 
-    // Step 2: If complex, route to planner. Otherwise, route to single agent
+    // Step 3: If complex, route to planner. Otherwise, route to single agent
     if (complexityAnalysis.requiresMultipleAgents && complexityAnalysis.confidence >= 70) {
         console.log(`✓ COMPLEX TASK detected (${Date.now() - start}ms)`);
         console.log(`   Mode: ${complexityAnalysis.coordinationMode}`);
@@ -142,8 +159,7 @@ async function supervisorNode(state: AgentStateType): Promise<Partial<AgentState
         };
     }
 
-    // Step 3: Simple task - use fast routing
-    let nextAgent = fastRoute(userRequest);
+    // Step 4: Simple task - use AI routing
 
     if (!nextAgent) {
         // Use Flash AI for complex routing
@@ -226,10 +242,12 @@ async function plannerNode(state: AgentStateType): Promise<Partial<AgentStateTyp
     const userRequest = state.messages[state.messages.length - 1].content as string;
 
     // Create execution plan
+    // coordinationMode could be 'single' but createExecutionPlan only accepts 'parallel' or 'sequential'
+    const mode = state.coordinationMode === 'sequential' ? 'sequential' : 'parallel';
     const plan = await createExecutionPlan(
         userRequest,
         [], // Let the planner suggest agents
-        state.coordinationMode || 'parallel'
+        mode
     );
 
     // Optimize plan
@@ -390,6 +408,7 @@ function routeFromSupervisor(state: AgentStateType): string {
         competitor: "competitor_agent",
         dataentry: "dataentry_agent",
         general: "general_agent",
+        landingpage: "landingpage_agent",
     };
     return agentMap[state.nextAgent] || "general_agent";
 }
@@ -427,6 +446,7 @@ export function buildAgentGraphV2() {
         .addNode("competitor_agent", competitorAgentNode)
         .addNode("dataentry_agent", dataEntryAgentNode)
         .addNode("general_agent", generalAgentNode)
+        .addNode("landingpage_agent", landingPageAgentNode)
 
         // Entry point
         .setEntryPoint("supervisor")
@@ -455,6 +475,7 @@ export function buildAgentGraphV2() {
             competitor_agent: "competitor_agent",
             dataentry_agent: "dataentry_agent",
             general_agent: "general_agent",
+            landingpage_agent: "landingpage_agent",
         })
 
         // Multi-agent flow
@@ -483,6 +504,7 @@ export function buildAgentGraphV2() {
         .addEdge("competitor_agent", "verifier")
         .addEdge("dataentry_agent", "verifier")
         .addEdge("general_agent", "verifier")
+        .addEdge("landingpage_agent", "verifier")
 
         // Verifier to END
         .addEdge("verifier", END);
