@@ -9,11 +9,12 @@ import {
     FunnelIcon,
     ShieldExclamationIcon,
     ArrowPathIcon,
-    SparklesIcon,
     GlobeAltIcon,
     AdjustmentsHorizontalIcon,
     MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
+import { GiArtificialIntelligence } from "react-icons/gi";
+import { GitBranch, Table, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { getIntegrationMeta } from "@/lib/workflow/integrations";
@@ -74,6 +75,32 @@ const NODE_DEFINITIONS: NodeDefinition[] = [
         keywords: ["slack", "message", "chat", "notification", "integration", "team"],
     },
     {
+        type: "integration_google_sheets",
+        label: "Google Sheets",
+        icon: (() => {
+            const meta = getIntegrationMeta("integration_google_sheets");
+            const Icon = meta?.icon;
+            return Icon ? <Icon className="w-5 h-5" /> : <Table className="w-5 h-5" />;
+        })(),
+        color: "bg-gradient-to-br from-[#0F9D58] to-[#0B8043]",
+        description: "Spreadsheet data & automation",
+        category: "integrations",
+        keywords: ["google", "sheets", "spreadsheet", "data", "integration", "excel"],
+    },
+    {
+        type: "integration_notion",
+        label: "Notion",
+        icon: (() => {
+            const meta = getIntegrationMeta("integration_notion");
+            const Icon = meta?.icon;
+            return Icon ? <Icon className="w-5 h-5" /> : <FileText className="w-5 h-5" />;
+        })(),
+        color: "bg-gradient-to-br from-[#000000] to-[#2B2B2B]",
+        description: "Notes, docs & knowledge base",
+        category: "integrations",
+        keywords: ["notion", "notes", "docs", "database", "integration", "wiki"],
+    },
+    {
         type: "integration_whatsapp",
         label: "WhatsApp",
         icon: (() => {
@@ -104,7 +131,7 @@ const NODE_DEFINITIONS: NodeDefinition[] = [
     {
         type: "condition",
         label: "Condition",
-        icon: <span className="text-xl">🔀</span>,
+        icon: <GitBranch className="w-5 h-5" />,
         color: "bg-gradient-to-br from-teal-500 via-cyan-500 to-cyan-600",
         description: "If/else branching logic",
         category: "flow",
@@ -180,8 +207,8 @@ const NODE_DEFINITIONS: NodeDefinition[] = [
     {
         type: "ai_agent",
         label: "AI Agent",
-        icon: <SparklesIcon className="w-5 h-5" />,
-        color: "bg-gradient-to-br from-violet-500 to-fuchsia-600",
+        icon: <GiArtificialIntelligence className="w-5 h-5" />,
+        color: "bg-gradient-to-br from-gray-800 to-gray-900",
         description: "AI reasoning with CRM tools",
         category: "ai",
         keywords: ["ai", "agent", "intelligence", "reasoning", "automation"],
@@ -338,7 +365,7 @@ export default function NodePalette() {
                         />
                         <CategorySection title="🔄 Flow Control" color="teal" nodes={nodesByCategory.flow} />
                         <CategorySection title="🔧 Data" color="emerald" nodes={nodesByCategory.data} />
-                        <CategorySection title="🤖 AI" color="fuchsia" nodes={nodesByCategory.ai} />
+                        <CategorySection title="🤖 AI" color="gray" nodes={nodesByCategory.ai} />
                     </>
                 )}
             </div>

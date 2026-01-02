@@ -15,6 +15,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { DragTextarea } from "../DragTextarea";
+import { DataSourceFloatingCard } from "../DataSourceFloatingCard";
+import { useDataSources } from "@/hooks/useDataSources";
 
 // ============================================
 // AI AGENT CONFIG COMPONENT
@@ -23,10 +26,15 @@ import { Button } from "@/components/ui/button";
 interface AIAgentConfigProps {
     step: WorkflowStep;
     onUpdate: (updates: Partial<WorkflowStep>) => void;
+    workspaceId?: string;
+    workflowId?: string;
 }
 
-export default function AIAgentConfig({ step, onUpdate }: AIAgentConfigProps) {
+export default function AIAgentConfig({ step, onUpdate, workspaceId, workflowId }: AIAgentConfigProps) {
     const config = step.config || {};
+
+    // Fetch available data sources for autocomplete
+    const { dataSources } = useDataSources(workspaceId, workflowId, step.id);
 
     const handleConfigUpdate = (field: string, value: any) => {
         onUpdate({
@@ -68,16 +76,12 @@ export default function AIAgentConfig({ step, onUpdate }: AIAgentConfigProps) {
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="taskPrompt">Task Prompt</Label>
-                        <Textarea
-                            id="taskPrompt"
-                            placeholder="Find all contacts with email domain {{contact.company}} and create deals for qualified leads"
+                        <DragTextarea
                             value={config.taskPrompt || ""}
-                            onChange={(e) => handleConfigUpdate("taskPrompt", e.target.value)}
+                            onChange={(value) => handleConfigUpdate("taskPrompt", value)}
+                            placeholder="Find all contacts with email domain {{contact.company}} and create deals for qualified leads"
                             rows={6}
                         />
-                        <p className="text-xs text-muted-foreground">
-                            Use {"{{placeholders}}"} to insert dynamic values
-                        </p>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -109,11 +113,10 @@ export default function AIAgentConfig({ step, onUpdate }: AIAgentConfigProps) {
 
                     <div className="space-y-2">
                         <Label htmlFor="additionalContext">Additional Context (Optional)</Label>
-                        <Textarea
-                            id="additionalContext"
-                            placeholder="Include any additional information the agent should know..."
+                        <DragTextarea
                             value={config.additionalContext || ""}
-                            onChange={(e) => handleConfigUpdate("additionalContext", e.target.value)}
+                            onChange={(value) => handleConfigUpdate("additionalContext", value)}
+                            placeholder="Include any additional information the agent should know..."
                             rows={3}
                         />
                     </div>
@@ -199,11 +202,10 @@ export default function AIAgentConfig({ step, onUpdate }: AIAgentConfigProps) {
 
                     <div className="space-y-2">
                         <Label htmlFor="systemPromptOverride">System Prompt Override (Optional)</Label>
-                        <Textarea
-                            id="systemPromptOverride"
-                            placeholder="You are a helpful assistant that..."
+                        <DragTextarea
                             value={config.systemPromptOverride || ""}
-                            onChange={(e) => handleConfigUpdate("systemPromptOverride", e.target.value)}
+                            onChange={(value) => handleConfigUpdate("systemPromptOverride", value)}
+                            placeholder="You are a helpful assistant that..."
                             rows={3}
                         />
                         <p className="text-xs text-muted-foreground">
@@ -327,6 +329,13 @@ export default function AIAgentConfig({ step, onUpdate }: AIAgentConfigProps) {
                     <li>• Returns structured results to the workflow</li>
                 </ul>
             </div>
+
+            {/* Floating Data Source Card */}
+            <DataSourceFloatingCard
+                dataSources={dataSources}
+                workspaceId={workspaceId}
+                workflowId={workflowId}
+            />
         </div>
     );
 }

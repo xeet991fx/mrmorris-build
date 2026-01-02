@@ -137,6 +137,7 @@ export interface IWorkflowStep {
         enrichType?: 'person' | 'company' | 'linkedin_to_email';
 
         // NEW N8N-STYLE CONFIG (flexible - stores all config for new node types)
+        credentialId?: Types.ObjectId;  // Reference to IntegrationCredential for API access
         [key: string]: any;  // Allow any additional properties for new node types
     };
     position: {

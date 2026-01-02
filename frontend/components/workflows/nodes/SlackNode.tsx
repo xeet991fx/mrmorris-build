@@ -98,12 +98,6 @@ function SlackNode({ data, selected }: NodeProps<SlackNodeData>) {
                 position={Position.Bottom}
                 className="!w-3 !h-3 !bg-[#4A154B] !border-2 !border-white dark:!border-gray-900"
             />
-
-            {/* App indicator badge */}
-            <div
-                className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900"
-                style={{ backgroundColor: integrationMeta?.color || "#4A154B" }}
-            />
         </div>
     );
 }

@@ -16,6 +16,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GlobeAltIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { DndContext } from '@dnd-kit/core';
+import { DragInput } from "../DragInput";
+import { DragTextarea } from "../DragTextarea";
+import { DataSourceFloatingCard } from "../DataSourceFloatingCard";
+import { useDataSources } from "@/hooks/useDataSources";
+import { useDataSourceStore } from "@/store/useDataSourceStore";
 
 // ============================================
 // HTTP ACTION CONFIG COMPONENT
@@ -24,11 +30,17 @@ import { GlobeAltIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 interface HttpActionConfigProps {
     step: WorkflowStep;
     onUpdate: (updates: Partial<WorkflowStep>) => void;
+    workspaceId?: string;
+    workflowId?: string;
 }
 
-export default function HttpActionConfig({ step, onUpdate }: HttpActionConfigProps) {
+export default function HttpActionConfig({ step, onUpdate, workspaceId, workflowId }: HttpActionConfigProps) {
     const [activeTab, setActiveTab] = useState("request");
     const config = step.config || {};
+
+    // Fetch available data sources for autocomplete
+    const { dataSources } = useDataSources(workspaceId, workflowId, step.id);
+    const { insertPlaceholder } = useDataSourceStore();
 
     const handleConfigUpdate = (field: string, value: any) => {
         onUpdate({
@@ -37,6 +49,16 @@ export default function HttpActionConfig({ step, onUpdate }: HttpActionConfigPro
                 [field]: value,
             },
         });
+    };
+
+    const handleDragEnd = (event: any) => {
+        const { active, over } = event;
+        if (over) {
+            const source = active.data.current?.source;
+            if (source) {
+                insertPlaceholder(source);
+            }
+        }
     };
 
     const addHeader = () => {
@@ -56,6 +78,7 @@ export default function HttpActionConfig({ step, onUpdate }: HttpActionConfigPro
     };
 
     return (
+        <DndContext onDragEnd={handleDragEnd}>
         <div className="space-y-4">
             {/* Header */}
             <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-950/20 rounded-lg">
@@ -107,15 +130,11 @@ export default function HttpActionConfig({ step, onUpdate }: HttpActionConfigPro
 
                             <div className="space-y-2">
                                 <Label htmlFor="url">URL</Label>
-                                <Input
-                                    id="url"
-                                    placeholder="https://api.example.com/endpoint"
+                                <DragInput
                                     value={config.url || ""}
-                                    onChange={(e) => handleConfigUpdate("url", e.target.value)}
+                                    onChange={(value) => handleConfigUpdate("url", value)}
+                                    placeholder="https://api.example.com/endpoint"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Use {"{{placeholders}}"} for dynamic values
-                                </p>
                             </div>
 
                             <div className="space-y-2">
@@ -133,10 +152,10 @@ export default function HttpActionConfig({ step, onUpdate }: HttpActionConfigPro
                                             value={header.key}
                                             onChange={(e) => updateHeader(index, "key", e.target.value)}
                                         />
-                                        <Input
-                                            placeholder="Value"
+                                        <DragInput
                                             value={header.value}
-                                            onChange={(e) => updateHeader(index, "value", e.target.value)}
+                                            onChange={(value) => updateHeader(index, "value", value)}
+                                            placeholder="Value"
                                         />
                                         <Button
                                             type="button"
@@ -153,16 +172,15 @@ export default function HttpActionConfig({ step, onUpdate }: HttpActionConfigPro
                             {(config.method === "POST" || config.method === "PUT" || config.method === "PATCH") && (
                                 <div className="space-y-2">
                                     <Label htmlFor="body">Request Body</Label>
-                                    <Textarea
-                                        id="body"
-                                        placeholder='{"key": "value"}'
+                                    <DragTextarea
                                         value={config.body?.content || ""}
-                                        onChange={(e) =>
+                                        onChange={(value) =>
                                             handleConfigUpdate("body", {
                                                 ...config.body,
-                                                content: e.target.value,
+                                                content: value,
                                             })
                                         }
+                                        placeholder='{"key": "value"}'
                                         rows={6}
                                         className="font-mono text-xs"
                                     />
@@ -299,16 +317,15 @@ export default function HttpActionConfig({ step, onUpdate }: HttpActionConfigPro
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="extractPath">Extract Path (JSONPath)</Label>
-                                <Input
-                                    id="extractPath"
-                                    placeholder="data.results[0]"
+                                <DragInput
                                     value={config.responseHandling?.extractPath || ""}
-                                    onChange={(e) =>
+                                    onChange={(value) =>
                                         handleConfigUpdate("responseHandling", {
                                             ...config.responseHandling,
-                                            extractPath: e.target.value,
+                                            extractPath: value,
                                         })
                                     }
+                                    placeholder="data.results[0]"
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     Extract specific data from the response
@@ -333,6 +350,14 @@ export default function HttpActionConfig({ step, onUpdate }: HttpActionConfigPro
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Floating Data Source Card */}
+            <DataSourceFloatingCard
+                dataSources={dataSources}
+                workspaceId={workspaceId}
+                workflowId={workflowId}
+            />
         </div>
+        </DndContext>
     );
 }

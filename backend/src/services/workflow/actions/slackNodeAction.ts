@@ -503,7 +503,7 @@ export class SlackNodeExecutor extends BaseActionExecutor {
     }
 
     /**
-     * Replace placeholders in a string using workflow context
+     * Replace placeholders in a string using workflow context with enhanced data flow support
      */
     private replacePlaceholdersInContext(
         template: string,
@@ -511,9 +511,15 @@ export class SlackNodeExecutor extends BaseActionExecutor {
     ): string {
         const { entity, enrollment } = context;
 
-        const placeholderContext = {
+        const placeholderContext: any = {
             ...entity,
             ...(enrollment.dataContext?.variables || {}),
+            // Enhanced context for step references ({{steps.stepId.field}})
+            _variables: enrollment.dataContext?.variables || {},
+            _previousResults: enrollment.dataContext?.previousResults || {},
+            // Also expose directly for backward compatibility
+            variables: enrollment.dataContext?.variables || {},
+            previousResults: enrollment.dataContext?.previousResults || {},
         };
 
         // Include loop context if active

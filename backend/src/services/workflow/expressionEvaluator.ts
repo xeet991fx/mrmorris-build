@@ -154,6 +154,55 @@ function getNestedValue(obj: any, path: string): any {
 }
 
 /**
+ * Enhanced context resolver with step references
+ *
+ * Supports:
+ * - {{steps.stepId.field}} - Reference step outputs from previousResults
+ * - {{variables.varName}} - Reference workflow variables explicitly
+ * - {{contact.field}} - Reference entity fields (backward compatible)
+ * - {{field}} - Reference entity fields directly (backward compatible)
+ */
+function getNestedValueEnhanced(context: any, path: string): any {
+    if (!path) return context;
+
+    // Handle special prefixes for data flow
+    if (path.startsWith('steps.')) {
+        // Step reference: {{steps.stepId.field}}
+        const parts = path.substring(6).split('.'); // Remove 'steps.'
+        const stepId = parts[0];
+        const fieldPath = parts.slice(1).join('.');
+
+        // Access previousResults from context
+        const previousResults = context._previousResults || context.previousResults;
+        if (!previousResults || !previousResults[stepId]) {
+            console.warn(`[Expression] Step output not found: ${stepId}`);
+            return undefined;
+        }
+
+        const stepOutput = previousResults[stepId].output || {};
+
+        if (!fieldPath) {
+            // Return entire output if no field specified
+            return stepOutput;
+        }
+
+        // Navigate nested path in step output
+        return getNestedValue(stepOutput, fieldPath);
+    }
+
+    if (path.startsWith('variables.')) {
+        // Variable reference: {{variables.varName}}
+        const varPath = path.substring(10); // Remove 'variables.'
+        const variables = context._variables || context.variables || {};
+        return getNestedValue(variables, varPath);
+    }
+
+    // Default: standard field access (backward compatible)
+    // This handles {{contact.field}}, {{field}}, etc.
+    return getNestedValue(context, path);
+}
+
+/**
  * Apply filters to a value
  */
 function applyFilters(value: any, filterList: Array<{ name: string; args: any[] }>): any {
@@ -192,8 +241,8 @@ export function evaluateExpression(expression: string, context: any): any {
     try {
         const { field, filters: filterList } = parseExpression(expression);
 
-        // Get initial value
-        let value = getNestedValue(context, field);
+        // Get initial value using enhanced resolver (supports steps.* and variables.*)
+        let value = getNestedValueEnhanced(context, field);
 
         // Apply filters
         value = applyFilters(value, filterList);

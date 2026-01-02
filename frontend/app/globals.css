@@ -57,18 +57,36 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
-  
+
   /* Premium Typography */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-heading tracking-tight;
   }
-  h1 { @apply text-4xl font-bold lg:text-5xl; }
-  h2 { @apply text-3xl font-semibold; }
-  h3 { @apply text-2xl font-semibold; }
-  h4 { @apply text-xl font-semibold; }
+
+  h1 {
+    @apply text-4xl font-bold lg:text-5xl;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold;
+  }
+
+  h4 {
+    @apply text-xl font-semibold;
+  }
 }
 
 /* Custom Scrollbar Styles */
@@ -76,10 +94,24 @@
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
 }
-*::-webkit-scrollbar { width: 6px; height: 6px; }
-*::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 10px; }
-*::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
 
 /* CMDK Specific Styles (Command Palette) */
 [cmdk-root] {
@@ -158,12 +190,52 @@
 }
 
 .premium-shadow {
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.05);
 }
+
 .dark .premium-shadow {
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .glass-panel {
   @apply bg-background/80 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-lg;
+}
+
+/* ReactFlow Edge Animation - Smooth curved lines */
+.react-flow__edge-path {
+  stroke-width: 2.5px !important;
+  stroke: #f59e0b !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Override ReactFlow default edge styles */
+.react-flow__edge path.react-flow__edge-path {
+  stroke: #f59e0b !important;
+}
+
+/* Ensure custom edges use black stroke */
+.react-flow__edge>path:first-child {
+  stroke: #f59e0b !important;
+}
+
+/* Smooth edge rendering */
+.react-flow__edge {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+/* Animated white stream flowing along the path */
+.animated-white-stream {
+  animation: whiteStreamFlow 1s linear infinite;
+}
+
+@keyframes whiteStreamFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -506;
+  }
 }

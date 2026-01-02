@@ -146,7 +146,7 @@ export class AIAgentActionExecutor extends BaseActionExecutor {
     // ============================================
 
     /**
-     * Build context object for placeholder replacement
+     * Build context object for placeholder replacement with enhanced data flow support
      */
     private buildPlaceholderContext(
         config: AIAgentConfig,
@@ -164,6 +164,13 @@ export class AIAgentActionExecutor extends BaseActionExecutor {
         if (config.includeVariables !== false && enrollment.dataContext?.variables) {
             Object.assign(context, enrollment.dataContext.variables);
         }
+
+        // Enhanced context for step references ({{steps.stepId.field}})
+        context._variables = enrollment.dataContext?.variables || {};
+        context._previousResults = enrollment.dataContext?.previousResults || {};
+        // Also expose directly for backward compatibility
+        context.variables = enrollment.dataContext?.variables || {};
+        context.previousResults = enrollment.dataContext?.previousResults || {};
 
         // Include loop context if active
         if (enrollment.dataContext?.loopContext) {

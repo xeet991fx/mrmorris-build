@@ -170,6 +170,26 @@ export async function executeNextStep(
             stepExec.completedAt = new Date();
             stepExec.result = result;
 
+            // CRITICAL: Store step output in dataContext.previousResults for data flow
+            if (!enrollment.dataContext) {
+                enrollment.dataContext = { variables: {}, previousResults: {} };
+            }
+            if (!enrollment.dataContext.previousResults) {
+                enrollment.dataContext.previousResults = {};
+            }
+
+            // Store output using step ID as key
+            enrollment.dataContext.previousResults[step.id] = {
+                stepId: step.id,
+                stepName: step.name,
+                stepType: step.type,
+                actionType: step.type === 'action' ? (step.config as any)?.actionType : undefined,
+                output: result,
+                completedAt: new Date().toISOString()
+            };
+
+            console.log(`💾 [Data Flow] Stored output for step "${step.name}" (${step.id}) in previousResults`);
+
             // Move to next step
             enrollment.currentStepId = nextStepId;
 

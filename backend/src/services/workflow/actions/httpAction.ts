@@ -85,10 +85,16 @@ export class HttpActionExecutor extends BaseActionExecutor {
             return this.error("HTTP URL is required");
         }
 
-        // Build context for placeholder replacement
+        // Build context for placeholder replacement with enhanced data flow support
         const replacementContext = {
             ...entity,
             ...(enrollment.dataContext?.variables || {}),
+            // Enhanced context for step references ({{steps.stepId.field}})
+            _variables: enrollment.dataContext?.variables || {},
+            _previousResults: enrollment.dataContext?.previousResults || {},
+            // Also expose directly for backward compatibility
+            variables: enrollment.dataContext?.variables || {},
+            previousResults: enrollment.dataContext?.previousResults || {},
         };
 
         try {

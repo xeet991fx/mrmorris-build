@@ -65,7 +65,11 @@ import TryCatchNode from "@/components/workflows/nodes/TryCatchNode";
 import LoopNode from "@/components/workflows/nodes/LoopNode";
 import AIAgentNode from "@/components/workflows/nodes/AIAgentNode";
 import SlackNode from "@/components/workflows/nodes/SlackNode";
+import GoogleSheetsNode from "@/components/workflows/nodes/GoogleSheetsNode";
+import NotionNode from "@/components/workflows/nodes/NotionNode";
 import HTTPRequestNode from "@/components/workflows/nodes/HTTPRequestNode";
+import TransformNode from "@/components/workflows/nodes/TransformNode";
+import CustomAnimatedEdge from "@/components/workflows/CustomAnimatedEdge";
 
 // ============================================
 // CUSTOM NODE TYPES
@@ -80,12 +84,20 @@ const nodeTypes = {
     merge: MergeNode,
     try_catch: TryCatchNode,
     loop: LoopNode,
-    transform: ActionNode, // Transform uses ActionNode for now
+    transform: TransformNode,
     ai_agent: AIAgentNode,
     integration_slack: SlackNode,
+    integration_google_sheets: GoogleSheetsNode,
+    integration_notion: NotionNode,
     integration_whatsapp: ActionNode, // Placeholder for future
     integration_discord: ActionNode, // Placeholder for future
     http_request: HTTPRequestNode
+};
+
+const edgeTypes = {
+    default: CustomAnimatedEdge,
+    custom_edge: CustomAnimatedEdge,
+    smoothstep: CustomAnimatedEdge,
 };
 
 // ============================================
@@ -107,6 +119,10 @@ function stepsToNodes(steps: WorkflowStep[], selectedId: string | null): Node[] 
 
 function stepsToEdges(steps: WorkflowStep[]): Edge[] {
     const edges: Edge[] = [];
+    const edgeStyle = {
+        strokeWidth: 2,
+        stroke: "#f59e0b",
+    };
     steps.forEach((step) => {
         // Handle branches for new node types
         if (step.branches) {
@@ -117,10 +133,10 @@ function stepsToEdges(steps: WorkflowStep[]): Edge[] {
                     source: step.id,
                     target: step.branches.success,
                     sourceHandle: 'success',
-                    type: "smoothstep",
+                    type: "custom_edge",
                     animated: true,
-                    style: { stroke: "#22c55e", strokeWidth: 2 },
-                    markerEnd: { type: MarkerType.ArrowClosed, color: "#22c55e" },
+                    style: edgeStyle,
+                    markerEnd: { type: MarkerType.ArrowClosed, color: "#f59e0b" },
                 });
             }
             if (step.branches.error) {
@@ -129,10 +145,10 @@ function stepsToEdges(steps: WorkflowStep[]): Edge[] {
                     source: step.id,
                     target: step.branches.error,
                     sourceHandle: 'error',
-                    type: "smoothstep",
+                    type: "custom_edge",
                     animated: true,
-                    style: { stroke: "#ef4444", strokeWidth: 2 },
-                    markerEnd: { type: MarkerType.ArrowClosed, color: "#ef4444" },
+                    style: edgeStyle,
+                    markerEnd: { type: MarkerType.ArrowClosed, color: "#f59e0b" },
                 });
             }
             // Parallel branches
@@ -143,10 +159,10 @@ function stepsToEdges(steps: WorkflowStep[]): Edge[] {
                         source: step.id,
                         target: targetId,
                         sourceHandle: `branch-${index}`,
-                        type: "smoothstep",
+                        type: "custom_edge",
                         animated: true,
-                        style: { stroke: "#3b82f6", strokeWidth: 2 },
-                        markerEnd: { type: MarkerType.ArrowClosed, color: "#3b82f6" },
+                        style: edgeStyle,
+                        markerEnd: { type: MarkerType.ArrowClosed, color: "#f59e0b" },
                     });
                 });
             }
@@ -155,18 +171,14 @@ function stepsToEdges(steps: WorkflowStep[]): Edge[] {
         // Handle regular nextStepIds
         step.nextStepIds.forEach((targetId, index) => {
             let sourceHandle: string | undefined = undefined;
-            let strokeColor = "#8b5cf6";
 
             // Determine handle based on node type
             if (step.type === 'condition') {
                 sourceHandle = index === 0 ? 'yes' : 'no';
-                strokeColor = index === 0 ? "#22c55e" : "#ef4444";
             } else if (step.type === 'try_catch') {
                 sourceHandle = index === 0 ? 'success' : 'error';
-                strokeColor = index === 0 ? "#22c55e" : "#ef4444";
             } else if (step.type === 'loop') {
                 sourceHandle = index === 0 ? 'loop-body' : 'complete';
-                strokeColor = index === 0 ? "#a855f7" : "#8b5cf6";
             }
 
             edges.push({
@@ -174,12 +186,12 @@ function stepsToEdges(steps: WorkflowStep[]): Edge[] {
                 source: step.id,
                 target: targetId,
                 sourceHandle,
-                type: "smoothstep",
+                type: "custom_edge",
                 animated: true,
-                style: { stroke: strokeColor, strokeWidth: 2 },
+                style: edgeStyle,
                 markerEnd: {
                     type: MarkerType.ArrowClosed,
-                    color: strokeColor,
+                    color: "#f59e0b",
                 },
             });
         });
@@ -238,6 +250,13 @@ export default function WorkflowEditorPage() {
         }
         return true;
     });
+
+    // Edge context menu state
+    const [edgeContextMenu, setEdgeContextMenu] = useState<{
+        edge: Edge | null;
+        x: number;
+        y: number;
+    } | null>(null);
 
     // Undo/Redo history
     const [history, setHistory] = useState<WorkflowStep[][]>([]);
@@ -357,6 +376,7 @@ export default function WorkflowEditorPage() {
                 selectStep(null);
                 setShowConfigPanel(false);
                 setShowValidationPanel(false);
+                setEdgeContextMenu(null);
             }
 
             // Cmd/Ctrl + B to open bulk enrollment (if active)
@@ -449,12 +469,12 @@ export default function WorkflowEditorPage() {
                 connectSteps(connection.source, connection.target, connection.sourceHandle || undefined);
                 setEdges((eds) => addEdge({
                     ...connection,
-                    type: "smoothstep",
+                    type: "custom_edge",
                     animated: true,
-                    style: { stroke: "#8b5cf6", strokeWidth: 2 },
+                    style: { strokeWidth: 2, stroke: "#f59e0b" },
                     markerEnd: {
                         type: MarkerType.ArrowClosed,
-                        color: "#8b5cf6",
+                        color: "#f59e0b",
                     },
                 }, eds));
             }
@@ -497,7 +517,26 @@ export default function WorkflowEditorPage() {
     const onPaneClick = useCallback(() => {
         selectStep(null);
         setShowConfigPanel(false);
+        setEdgeContextMenu(null);
     }, [selectStep]);
+
+    // Handle edge context menu (right-click)
+    const onEdgeContextMenu = useCallback((event: React.MouseEvent, edge: Edge) => {
+        event.preventDefault();
+        setEdgeContextMenu({
+            edge,
+            x: event.clientX,
+            y: event.clientY,
+        });
+    }, []);
+
+    // Handle delete edge from context menu
+    const handleDeleteEdge = useCallback(() => {
+        if (edgeContextMenu?.edge) {
+            disconnectSteps(edgeContextMenu.edge.source, edgeContextMenu.edge.target);
+            setEdgeContextMenu(null);
+        }
+    }, [edgeContextMenu, disconnectSteps]);
 
     // Handle drag from sidebar
     const onDragOver = useCallback((event: React.DragEvent) => {
@@ -642,6 +681,32 @@ export default function WorkflowEditorPage() {
                     config: {
                         action: "post_message",
                         credentials: { botToken: "" }
+                    },
+                    position,
+                    nextStepIds: [],
+                };
+            } else if (type === "integration_google_sheets") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "integration_google_sheets",
+                    name: "Google Sheets",
+                    config: {
+                        action: "read",
+                        credentialId: "",
+                        responseVariable: "sheetsData"
+                    },
+                    position,
+                    nextStepIds: [],
+                };
+            } else if (type === "integration_notion") {
+                newStep = {
+                    id: generateStepId(),
+                    type: "integration_notion",
+                    name: "Notion",
+                    config: {
+                        action: "create_page",
+                        credentialId: "",
+                        responseVariable: "notionData"
                     },
                     position,
                     nextStepIds: [],
@@ -827,12 +892,14 @@ export default function WorkflowEditorPage() {
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
                         onEdgesDelete={onEdgesDelete}
+                        onEdgeContextMenu={onEdgeContextMenu}
                         onNodeClick={onNodeClick}
                         onNodesDelete={onNodesDelete}
                         onPaneClick={onPaneClick}
                         onDragOver={onDragOver}
                         onDrop={onDrop}
                         nodeTypes={nodeTypes}
+                        edgeTypes={edgeTypes}
                         fitView
                         snapToGrid
                         snapGrid={[15, 15]}
@@ -954,6 +1021,8 @@ export default function WorkflowEditorPage() {
                             selectStep(null);
                             setShowConfigPanel(false);
                         }}
+                        workspaceId={workspaceId}
+                        workflowId={workflowId}
                     />
                 )}
             </div>
@@ -984,14 +1053,14 @@ export default function WorkflowEditorPage() {
                     {currentWorkflow.steps.some(
                         (s) => s.type === "trigger" && s.config?.triggerType === "webhook_received"
                     ) && (
-                        <button
-                            onClick={() => setShowWebhookPanel(true)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500/20 bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 transition-colors"
-                        >
-                            <GlobeAltIcon className="w-4 h-4" />
-                            Webhook Info
-                        </button>
-                    )}
+                            <button
+                                onClick={() => setShowWebhookPanel(true)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500/20 bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 transition-colors"
+                            >
+                                <GlobeAltIcon className="w-4 h-4" />
+                                Webhook Info
+                            </button>
+                        )}
 
                     {/* Failed Enrollments Badge */}
                     {failedCount > 0 && (
@@ -1085,6 +1154,33 @@ export default function WorkflowEditorPage() {
                 workspaceId={workspaceId}
                 workflowId={workflowId}
             />
+
+            {/* Edge Context Menu */}
+            {edgeContextMenu && (
+                <>
+                    {/* Backdrop to close menu on click */}
+                    <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setEdgeContextMenu(null)}
+                    />
+                    {/* Context Menu */}
+                    <div
+                        className="fixed z-50 bg-card border border-border rounded-lg shadow-xl overflow-hidden min-w-[180px]"
+                        style={{
+                            left: edgeContextMenu.x,
+                            top: edgeContextMenu.y,
+                        }}
+                    >
+                        <button
+                            onClick={handleDeleteEdge}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                            <TrashIcon className="w-4 h-4" />
+                            Delete Connection
+                        </button>
+                    </div>
+                </>
+            )}
 
             {/* Webhook Info Modal */}
             {showWebhookPanel && (

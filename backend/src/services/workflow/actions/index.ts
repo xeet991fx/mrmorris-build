@@ -23,6 +23,8 @@ import { SetNodeExecutor, MapNodeExecutor, FilterNodeExecutor } from "./transfor
 import { LoopActionExecutor } from "./loopAction";
 import { AIAgentActionExecutor } from "./aiAgentAction";
 import { SlackNodeExecutor } from "./slackNodeAction";
+import { GoogleSheetsActionExecutor } from "./googleSheetsAction";
+import { NotionActionExecutor } from "./notionAction";
 
 // ============================================
 // ACTION REGISTRY
@@ -52,6 +54,8 @@ const actionRegistry: Record<string, ActionExecutor> = {
 
     // INTEGRATION NODES
     integration_slack: new SlackNodeExecutor(),
+    integration_google_sheets: new GoogleSheetsActionExecutor(),
+    integration_notion: new NotionActionExecutor(),
 };
 
 // ============================================
