@@ -495,3 +495,49 @@ export async function getPublicForm(
 
     return response.json();
 }
+
+/**
+ * Form Analytics Interfaces
+ */
+export interface FieldAnalytics {
+    fieldId: string;
+    fieldLabel: string;
+    completionRate: number;
+    totalResponses: number;
+    uniqueValues?: number;
+    topValues?: Array<{ value: string; count: number }>;
+}
+
+export interface FormAnalytics {
+    totalViews: number;
+    totalSubmissions: number;
+    conversionRate: number;
+    averageTimeToComplete?: number;
+    abandonmentRate: number;
+    submissionsByDay: Array<{ date: string; count: number }>;
+    fieldAnalytics: FieldAnalytics[];
+    lastUpdated: Date;
+}
+
+/**
+ * Get form analytics
+ */
+export async function getFormAnalytics(
+    workspaceId: string,
+    formId: string
+): Promise<{ success: boolean; data: FormAnalytics }> {
+    const response = await fetch(
+        `${API_BASE_URL}/workspaces/${workspaceId}/forms/${formId}/analytics`,
+        {
+            method: "GET",
+            credentials: "include",
+            headers: getAuthHeaders(),
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch form analytics");
+    }
+
+    return response.json();
+}

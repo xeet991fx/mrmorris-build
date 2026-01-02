@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { getPublicForm, submitForm, Form } from "@/lib/api/form";
 import { cn } from "@/lib/utils";
+import { getVisibleFields, validateVisibleFields } from "@/lib/formHelpers";
 
 // Declare morrisb tracking interface
 declare global {
@@ -92,13 +93,24 @@ export default function PublicFormPage() {
     const validateForm = (): boolean => {
         if (!form) return false;
 
+        // Use smart validation from formHelpers (only validates visible fields)
+        const validation = validateVisibleFields(
+            form.fields,
+            formData,
+            null, // No existing contact for public forms
+            form.maxProgressiveFields
+        );
+
+        if (!validation.isValid) {
+            setErrors(validation.errors);
+            return false;
+        }
+
+        // Additional type-specific validation
         const newErrors: Record<string, string> = {};
+        const visibleFields = getVisibleFields(form.fields, formData, null, form.maxProgressiveFields);
 
-        for (const field of form.fields) {
-            if (field.required && !formData[field.id]) {
-                newErrors[field.id] = `${field.label} is required`;
-            }
-
+        for (const field of visibleFields) {
             // Email validation
             if (field.type === 'email' && formData[field.id]) {
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -195,30 +207,8 @@ export default function PublicFormPage() {
         }
     };
 
-    // Check if a field should be shown based on conditional logic
-    const shouldShowField = (field: any): boolean => {
-        if (!field.conditionalLogic?.enabled) {
-            return true;
-        }
-
-        const { fieldId, operator, value } = field.conditionalLogic.showIf;
-        const dependentFieldValue = formData[fieldId];
-
-        switch (operator) {
-            case 'equals':
-                return dependentFieldValue === value;
-            case 'notEquals':
-                return dependentFieldValue !== value;
-            case 'contains':
-                return String(dependentFieldValue || '').includes(value);
-            case 'isEmpty':
-                return !dependentFieldValue || dependentFieldValue === '' || (Array.isArray(dependentFieldValue) && dependentFieldValue.length === 0);
-            case 'isNotEmpty':
-                return !!dependentFieldValue && dependentFieldValue !== '' && (!Array.isArray(dependentFieldValue) || dependentFieldValue.length > 0);
-            default:
-                return true;
-        }
-    };
+    // Note: Field visibility is now handled by getVisibleFields() from formHelpers
+    // which supports both conditional logic AND progressive profiling
 
     const handleFileChange = async (fieldId: string, file: File | null) => {
         if (!file) {
@@ -309,7 +299,7 @@ export default function PublicFormPage() {
 
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <AnimatePresence mode="sync">
-                                    {form.fields.filter(shouldShowField).map((field) => (
+                                    {getVisibleFields(form.fields, formData, null, form.maxProgressiveFields).map((field) => (
                                         <motion.div
                                             key={field.id}
                                             initial={{ opacity: 0, height: 0 }}

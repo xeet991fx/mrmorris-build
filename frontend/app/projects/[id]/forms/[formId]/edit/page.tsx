@@ -39,7 +39,7 @@ import {
     SparklesIcon,
     BeakerIcon,
 } from "@heroicons/react/24/outline";
-import { getForm, updateForm, createForm, type Form, type FormField, type FieldType, type FormStep, type LeadRoutingRule, type FollowUpAction } from "@/lib/api/form";
+import { getForm, updateForm, createForm, getFormAnalytics, type Form, type FormField, type FieldType, type FormStep, type LeadRoutingRule, type FollowUpAction, type FormAnalytics } from "@/lib/api/form";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import {
@@ -374,6 +374,8 @@ export default function EnhancedFormBuilder() {
     const [embedMode, setEmbedMode] = useState<'iframe' | 'direct'>('iframe');
     const [selectedFieldCategory, setSelectedFieldCategory] = useState<'all' | 'basic' | 'selection' | 'datetime' | 'advanced' | 'special'>('all');
     const [currentStep, setCurrentStep] = useState<string | null>(null);
+    const [analytics, setAnalytics] = useState<FormAnalytics | null>(null);
+    const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
 
     // Drag and drop sensors
     const sensors = useSensors(
@@ -424,6 +426,28 @@ export default function EnhancedFormBuilder() {
             loadForm();
         }
     }, [formId]);
+
+    // Load analytics when analytics tab is active
+    useEffect(() => {
+        if (activeTab === 'analytics' && formId !== 'new' && !analytics) {
+            loadAnalytics();
+        }
+    }, [activeTab, formId]);
+
+    const loadAnalytics = async () => {
+        try {
+            setIsLoadingAnalytics(true);
+            const response = await getFormAnalytics(workspaceId, formId);
+            if (response.success) {
+                setAnalytics(response.data);
+            }
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+            toast.error('Failed to load analytics');
+        } finally {
+            setIsLoadingAnalytics(false);
+        }
+    };
 
     const loadForm = async () => {
         try {
@@ -1431,65 +1455,133 @@ export default function EnhancedFormBuilder() {
                 {activeTab === 'analytics' && (
                     <div className="flex-1 p-8 overflow-y-auto bg-muted/10">
                         <div className="max-w-5xl mx-auto">
-                            <div className="mb-6">
-                                <h2 className="text-2xl font-bold text-foreground mb-2">Form Analytics</h2>
-                                <p className="text-muted-foreground">
-                                    Track performance and optimize your form for better conversions
-                                </p>
+                            <div className="mb-6 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-foreground mb-2">Form Analytics</h2>
+                                    <p className="text-muted-foreground">
+                                        Track performance and optimize your form for better conversions
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={loadAnalytics}
+                                    disabled={isLoadingAnalytics}
+                                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    <ArrowPathIcon className={cn("w-4 h-4", isLoadingAnalytics && "animate-spin")} />
+                                    Refresh
+                                </button>
                             </div>
 
-                            {/* Key Metrics */}
-                            <div className="grid grid-cols-4 gap-4 mb-6">
-                                {[
-                                    { label: 'Views', value: form.stats.views.toLocaleString(), change: '+12%' },
-                                    { label: 'Submissions', value: form.stats.submissions.toLocaleString(), change: '+8%' },
-                                    { label: 'Conversion Rate', value: `${form.stats.conversionRate.toFixed(1)}%`, change: '+2.3%' },
-                                    { label: 'Avg. Time', value: form.stats.averageTimeToComplete ? `${Math.floor(form.stats.averageTimeToComplete / 60)}m` : 'N/A', change: '-5%' },
-                                ].map(metric => (
-                                    <div key={metric.label} className="p-6 bg-card border border-border rounded-lg">
-                                        <p className="text-sm text-muted-foreground mb-1">{metric.label}</p>
-                                        <p className="text-3xl font-bold text-foreground">{metric.value}</p>
-                                        <p className="text-sm text-green-500 mt-2">{metric.change}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Chart Placeholder */}
-                            <div className="p-8 bg-card border border-border rounded-lg mb-6">
-                                <h3 className="font-semibold text-foreground mb-4">Submissions Over Time</h3>
-                                <div className="h-64 flex items-center justify-center border-2 border-dashed border-border rounded">
-                                    <div className="text-center text-muted-foreground">
-                                        <ChartBarIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                        <p className="font-medium">Analytics Chart</p>
-                                        <p className="text-sm">Coming soon: Interactive charts and insights</p>
+                            {isLoadingAnalytics ? (
+                                <div className="flex items-center justify-center h-64">
+                                    <div className="text-center">
+                                        <ArrowPathIcon className="w-12 h-12 mx-auto mb-4 animate-spin text-primary" />
+                                        <p className="text-muted-foreground">Loading analytics...</p>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Field Analytics */}
-                            <div className="p-6 bg-card border border-border rounded-lg">
-                                <h3 className="font-semibold text-foreground mb-4">Field Performance</h3>
-                                <div className="space-y-3">
-                                    {form.fields.slice(0, 5).map(field => (
-                                        <div key={field.id} className="flex items-center gap-4">
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-sm font-medium text-foreground">{field.label}</span>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {Math.floor(Math.random() * 30 + 70)}% completion
-                                                    </span>
-                                                </div>
-                                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-primary transition-all"
-                                                        style={{ width: `${Math.floor(Math.random() * 30 + 70)}%` }}
-                                                    />
-                                                </div>
-                                            </div>
+                            ) : analytics ? (
+                                <>
+                                    {/* Key Metrics */}
+                                    <div className="grid grid-cols-4 gap-4 mb-6">
+                                        <div className="p-6 bg-card border border-border rounded-lg">
+                                            <p className="text-sm text-muted-foreground mb-1">Views</p>
+                                            <p className="text-3xl font-bold text-foreground">{analytics.totalViews.toLocaleString()}</p>
                                         </div>
-                                    ))}
+                                        <div className="p-6 bg-card border border-border rounded-lg">
+                                            <p className="text-sm text-muted-foreground mb-1">Submissions</p>
+                                            <p className="text-3xl font-bold text-foreground">{analytics.totalSubmissions.toLocaleString()}</p>
+                                        </div>
+                                        <div className="p-6 bg-card border border-border rounded-lg">
+                                            <p className="text-sm text-muted-foreground mb-1">Conversion Rate</p>
+                                            <p className="text-3xl font-bold text-foreground">{analytics.conversionRate.toFixed(1)}%</p>
+                                        </div>
+                                        <div className="p-6 bg-card border border-border rounded-lg">
+                                            <p className="text-sm text-muted-foreground mb-1">Abandonment Rate</p>
+                                            <p className="text-3xl font-bold text-foreground">{analytics.abandonmentRate.toFixed(1)}%</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Submissions Chart */}
+                                    <div className="p-6 bg-card border border-border rounded-lg mb-6">
+                                        <h3 className="font-semibold text-foreground mb-4">Submissions Over Time (Last 30 Days)</h3>
+                                        <div className="h-64 flex items-end gap-1 px-4">
+                                            {analytics.submissionsByDay.map((day, index) => {
+                                                const maxCount = Math.max(...analytics.submissionsByDay.map(d => d.count), 1);
+                                                const height = (day.count / maxCount) * 100;
+                                                return (
+                                                    <div key={index} className="flex-1 flex flex-col items-center gap-2">
+                                                        <div className="relative group flex-1 flex items-end w-full">
+                                                            <div
+                                                                className="w-full bg-primary rounded-t transition-all hover:bg-primary/80"
+                                                                style={{ height: `${height}%`, minHeight: day.count > 0 ? '4px' : '0' }}
+                                                            >
+                                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                                    {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: {day.count}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        {index % 5 === 0 && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {new Date(day.date).getDate()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Field Analytics */}
+                                    <div className="p-6 bg-card border border-border rounded-lg">
+                                        <h3 className="font-semibold text-foreground mb-4">Field Performance</h3>
+                                        {analytics.fieldAnalytics.length > 0 ? (
+                                            <div className="space-y-4">
+                                                {analytics.fieldAnalytics.map(fieldStat => (
+                                                    <div key={fieldStat.fieldId} className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-sm font-medium text-foreground">{fieldStat.fieldLabel}</span>
+                                                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                                                <span>{fieldStat.totalResponses} responses</span>
+                                                                <span className="font-semibold text-foreground">{fieldStat.completionRate.toFixed(1)}%</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-primary transition-all"
+                                                                style={{ width: `${fieldStat.completionRate}%` }}
+                                                            />
+                                                        </div>
+                                                        {fieldStat.topValues && fieldStat.topValues.length > 0 && (
+                                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                                {fieldStat.topValues.map((value, idx) => (
+                                                                    <span key={idx} className="px-2 py-1 bg-muted text-xs rounded">
+                                                                        {value.value}: {value.count}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center py-8">
+                                                No field data available yet. Submissions will appear here once the form is filled out.
+                                            </p>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="p-8 bg-card border border-border rounded-lg text-center">
+                                    <ChartBarIcon className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                                    <p className="text-muted-foreground mb-4">No analytics data available</p>
+                                    <button
+                                        onClick={loadAnalytics}
+                                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+                                    >
+                                        Load Analytics
+                                    </button>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 )}

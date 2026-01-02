@@ -10,6 +10,9 @@ import Form from "../models/Form";
 import FormSubmission from "../models/FormSubmission";
 import Contact from "../models/Contact";
 import emailService from "../services/email";
+import { routeLead } from "../services/leadRouting";
+import { executeFollowUpActions } from "../services/followUpActions";
+import { calculateFormAnalytics } from "../services/formAnalytics";
 
 const router = Router();
 
@@ -258,6 +261,56 @@ router.post(
                 });
             }
 
+            // Check form scheduling
+            if (form.settings.schedule?.enabled) {
+                const now = new Date();
+                const { startDate, endDate, messageWhenClosed } = form.settings.schedule;
+
+                // Check if form is before start date
+                if (startDate && now < new Date(startDate)) {
+                    return res.status(403).json({
+                        success: false,
+                        error: messageWhenClosed || "This form is not yet available.",
+                    });
+                }
+
+                // Check if form is after end date
+                if (endDate && now > new Date(endDate)) {
+                    return res.status(403).json({
+                        success: false,
+                        error: messageWhenClosed || "This form is no longer accepting submissions.",
+                    });
+                }
+            }
+
+            // Check submission limits
+            if (form.settings.maxSubmissions && form.stats.submissions >= form.settings.maxSubmissions) {
+                return res.status(403).json({
+                    success: false,
+                    error: "This form has reached its maximum number of submissions.",
+                });
+            }
+
+            // Check daily submission limit
+            if (form.settings.maxSubmissionsPerDay) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+
+                const todaySubmissions = await FormSubmission.countDocuments({
+                    formId,
+                    createdAt: { $gte: today, $lt: tomorrow },
+                });
+
+                if (todaySubmissions >= form.settings.maxSubmissionsPerDay) {
+                    return res.status(403).json({
+                        success: false,
+                        error: "This form has reached its daily submission limit. Please try again tomorrow.",
+                    });
+                }
+            }
+
             // Track view
             await Form.findByIdAndUpdate(formId, {
                 $inc: { 'stats.views': 1 },
@@ -336,6 +389,44 @@ router.post(
                 }
             }
 
+            // Lead Routing - Route the lead based on configured rules
+            if (contactId) {
+                try {
+                    const routingResult = await routeLead(formId, data, contactId);
+                    console.log(`Lead routing result:`, routingResult);
+
+                    // Add routing notification emails to the notification list
+                    if (routingResult.notifyEmails && routingResult.notifyEmails.length > 0) {
+                        if (!form.settings.notificationEmails) {
+                            form.settings.notificationEmails = [];
+                        }
+                        form.settings.notificationEmails = [
+                            ...form.settings.notificationEmails,
+                            ...routingResult.notifyEmails
+                        ];
+                    }
+                } catch (routingError: any) {
+                    console.error("Error routing lead:", routingError);
+                    // Don't fail the submission if routing fails
+                }
+            }
+
+            // Execute Follow-up Actions
+            if (form.followUpActions && form.followUpActions.length > 0) {
+                try {
+                    await executeFollowUpActions(form.followUpActions, {
+                        submissionData: data,
+                        contactId,
+                        formName: form.name,
+                        workspaceId: form.workspaceId,
+                        submissionId: submission._id.toString(),
+                    });
+                } catch (actionError: any) {
+                    console.error("Error executing follow-up actions:", actionError);
+                    // Don't fail the submission if actions fail
+                }
+            }
+
             // Update form stats
             await Form.findByIdAndUpdate(formId, {
                 $inc: { 'stats.submissions': 1 },
@@ -408,6 +499,44 @@ router.get(
             res.status(500).json({
                 success: false,
                 error: error.message || "Failed to fetch form",
+            });
+        }
+    }
+);
+
+/**
+ * GET /api/workspaces/:workspaceId/forms/:id/analytics
+ *
+ * Get real-time analytics for a form.
+ */
+router.get(
+    "/:workspaceId/forms/:id/analytics",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+
+            // Verify form exists and belongs to workspace
+            const form = await Form.findOne({ _id: id, workspaceId });
+            if (!form) {
+                return res.status(404).json({
+                    success: false,
+                    error: "Form not found",
+                });
+            }
+
+            // Calculate analytics
+            const analytics = await calculateFormAnalytics(workspaceId, id);
+
+            res.json({
+                success: true,
+                data: analytics,
+            });
+        } catch (error: any) {
+            console.error("Error calculating form analytics:", error);
+            res.status(500).json({
+                success: false,
+                error: error.message || "Failed to calculate analytics",
             });
         }
     }
