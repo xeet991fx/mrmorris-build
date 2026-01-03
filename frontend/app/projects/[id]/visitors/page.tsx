@@ -222,6 +222,9 @@ export default function VisitorsPage() {
                     Page Views
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Website
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Source
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -274,6 +277,16 @@ export default function VisitorsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {visitor.pageViewCount}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {visitor.websites && visitor.websites.length > 0 ? visitor.websites[0] : 'Unknown'}
+                      </div>
+                      {visitor.websites && visitor.websites.length > 1 && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          +{visitor.websites.length - 1} more
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">

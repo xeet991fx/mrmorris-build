@@ -55,6 +55,7 @@ import webhookRoutes from "./routes/webhooks";
 import forecastRoutes from "./routes/forecast";
 import callRecordingRoutes from "./routes/callRecording";
 import formRoutes from "./routes/form";
+import publicFormRoutes from "./routes/publicForm";
 import landingPageRoutes from "./routes/landingPage";
 import trackingRoutes from "./routes/tracking";
 import chatRoutes from "./routes/chat";
@@ -170,6 +171,7 @@ app.use(cors({
     "http://localhost:3001", // Allow both ports for local development
     "http://localhost:3002", // Allow both ports for local development
     "https://clianta.online", //vercel dev
+    "https://abdulgffarsk.netlify.app", // User's test website
   ],
   credentials: true,
 }));
@@ -203,18 +205,40 @@ app.get('/track.js', (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour cache
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // Serve minified tracking script
-  const scriptPath = path.join(process.cwd(), 'frontend', 'public', 'track.min.js');
+  // Serve minified tracking script (go up one level if in backend dir)
+  const baseDir = process.cwd().endsWith('backend') ? path.join(process.cwd(), '..') : process.cwd();
+  const scriptPath = path.join(baseDir, 'frontend', 'public', 'track.min.js');
 
   // Check if minified version exists, fallback to non-minified
   if (fs.existsSync(scriptPath)) {
     res.sendFile(scriptPath);
   } else {
-    const fallbackPath = path.join(process.cwd(), 'frontend', 'public', 'track.js');
+    const fallbackPath = path.join(baseDir, 'frontend', 'public', 'track.js');
     if (fs.existsSync(fallbackPath)) {
       res.sendFile(fallbackPath);
     } else {
       res.status(404).send('// Tracking script not found');
+    }
+  }
+});
+
+// Serve tracking script with ad-blocker friendly name
+app.get('/s.js', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const baseDir = process.cwd().endsWith('backend') ? path.join(process.cwd(), '..') : process.cwd();
+  const scriptPath = path.join(baseDir, 'frontend', 'public', 's.min.js');
+
+  if (fs.existsSync(scriptPath)) {
+    res.sendFile(scriptPath);
+  } else {
+    const fallbackPath = path.join(baseDir, 'frontend', 'public', 's.js');
+    if (fs.existsSync(fallbackPath)) {
+      res.sendFile(fallbackPath);
+    } else {
+      res.status(404).send('// Script not found');
     }
   }
 });
@@ -226,7 +250,8 @@ app.get('/forms/embed.js', (req: Request, res: Response) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
-  const scriptPath = path.join(process.cwd(), 'frontend', 'public', 'forms', 'embed.js');
+  const baseDir = process.cwd().endsWith('backend') ? path.join(process.cwd(), '..') : process.cwd();
+  const scriptPath = path.join(baseDir, 'frontend', 'public', 'forms', 'embed.js');
 
   if (fs.existsSync(scriptPath)) {
     res.sendFile(scriptPath);
@@ -333,10 +358,10 @@ app.use("/api/workspaces", analyticsRoutes);
 app.use("/api/workspaces", webhookRoutes);
 app.use("/api/workspaces", forecastRoutes);
 app.use("/api/workspaces", callRecordingRoutes);
-app.use("/api/workspaces", formRoutes);
-app.use("/api", formRoutes); // Public form routes
+app.use("/api/public", publicFormRoutes); // Public form routes (no auth, mounted at /api/public)
+app.use("/api/workspaces", formRoutes); // Authenticated workspace form routes
+app.use("/api", landingPageRoutes); // Public landing page routes (MUST come before workspace routes)
 app.use("/api/workspaces", landingPageRoutes);
-app.use("/api", landingPageRoutes); // Public landing page routes
 app.use("/api", trackingRoutes); // Tracking routes (public and authenticated)
 app.use("/api/workspaces", chatRoutes); // Chat conversation routes
 app.use("/api/workspaces", chatbotRoutes); // Chatbot CRUD routes

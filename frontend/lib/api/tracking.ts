@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+import { axiosInstance } from '../axios';
 
 export interface Visitor {
   _id: string;
@@ -23,6 +21,8 @@ export interface Visitor {
   lastUtmCampaign?: string;
   lastUtmSource?: string;
   lastUtmMedium?: string;
+  lastPageUrl?: string;
+  websites?: string[];
   sessionCount: number;
   pageViewCount: number;
   eventCount: number;
@@ -85,12 +85,9 @@ export const getVisitors = async (
   }
 ) => {
   try {
-    const response = await axios.get(
-      `${API_URL}/api/workspaces/${workspaceId}/tracking/visitors`,
-      {
-        params,
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/workspaces/${workspaceId}/tracking/visitors`,
+      { params }
     );
     return response.data;
   } catch (error: any) {
@@ -113,12 +110,9 @@ export const getTrackingEvents = async (
   }
 ) => {
   try {
-    const response = await axios.get(
-      `${API_URL}/api/workspaces/${workspaceId}/tracking/events`,
-      {
-        params,
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/workspaces/${workspaceId}/tracking/events`,
+      { params }
     );
     return response.data;
   } catch (error: any) {
@@ -132,11 +126,8 @@ export const getTrackingEvents = async (
  */
 export const getTrackingStats = async (workspaceId: string) => {
   try {
-    const response = await axios.get(
-      `${API_URL}/api/workspaces/${workspaceId}/tracking/stats`,
-      {
-        withCredentials: true,
-      }
+    const response = await axiosInstance.get(
+      `/workspaces/${workspaceId}/tracking/stats`
     );
     return response.data;
   } catch (error: any) {

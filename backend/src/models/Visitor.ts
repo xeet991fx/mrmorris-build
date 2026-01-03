@@ -19,6 +19,10 @@ export interface IVisitor extends Document {
   lastUtmSource?: string;
   lastUtmMedium?: string;
 
+  // Website tracking (for multi-site clients)
+  lastPageUrl?: string; // Last page URL visited
+  websites?: string[]; // List of unique website domains visited
+
   // Activity metrics
   sessionCount: number;
   pageViewCount: number;
@@ -74,6 +78,8 @@ const VisitorSchema: Schema = new Schema(
     lastUtmCampaign: String,
     lastUtmSource: String,
     lastUtmMedium: String,
+    lastPageUrl: String,
+    websites: [String],
     sessionCount: {
       type: Number,
       default: 1,

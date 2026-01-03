@@ -8,7 +8,7 @@ interface TrackingTestFileProps {
 }
 
 export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps) {
-  const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
   const generateTestHTML = () => {
     return `<!DOCTYPE html>
@@ -19,11 +19,13 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
     <title>MorrisB Tracking Test Page</title>
 
     <!-- MorrisB Tracking Code -->
-    <script src="${frontendUrl}/track.min.js" async></script>
+    <script src="${backendUrl}/track.js" async></script>
     <script>
       window.addEventListener('load', function() {
         if (window.morrisb) {
-          var tracker = morrisb('${workspaceId}');
+          var tracker = morrisb('${workspaceId}', {
+            apiEndpoint: '${backendUrl}'
+          });
           console.log('✅ MorrisB tracking initialized!');
           console.log('Visitor ID:', tracker.getVisitorId());
           console.log('Session ID:', tracker.getSessionId());
@@ -198,7 +200,7 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
                     statusDiv.className = 'status success';
                     statusText.textContent = '✅ Tracking is working! All events are being sent to MorrisB.';
 
-                    const tracker = window.morrisb('${workspaceId}');
+                    const tracker = window.morrisb('${workspaceId}', { apiEndpoint: '${backendUrl}' });
                     document.getElementById('visitor-id').textContent = tracker.getVisitorId();
                     document.getElementById('session-id').textContent = tracker.getSessionId();
 
@@ -218,7 +220,7 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
 
         function testClick() {
             if (window.morrisb) {
-                window.morrisb('${workspaceId}').trackClick('Test Button');
+                window.morrisb('${workspaceId}', { apiEndpoint: '${backendUrl}' }).trackClick('Test Button');
                 logEvent('✅ Button click tracked');
                 alert('Button click tracked! Check your dashboard.');
             }
@@ -226,7 +228,7 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
 
         function testCustomEvent() {
             if (window.morrisb) {
-                window.morrisb('${workspaceId}').track('custom', 'Test Event', {
+                window.morrisb('${workspaceId}', { apiEndpoint: '${backendUrl}' }).track('custom', 'Test Event', {
                     testProperty: 'Test Value',
                     timestamp: new Date().toISOString()
                 });
@@ -238,7 +240,7 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
         function testIdentify() {
             const email = prompt('Enter an email to test visitor identification:');
             if (email && window.morrisb) {
-                window.morrisb('${workspaceId}').identify(email, {
+                window.morrisb('${workspaceId}', { apiEndpoint: '${backendUrl}' }).identify(email, {
                     firstName: 'Test',
                     lastName: 'User',
                     source: 'Test Page'

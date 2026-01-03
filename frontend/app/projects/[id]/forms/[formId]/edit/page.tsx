@@ -611,10 +611,38 @@ export default function EnhancedFormBuilder() {
     const togglePublish = async () => {
         if (!form) return;
 
-        const newStatus = form.status === 'published' ? 'draft' : 'published';
-        setForm({ ...form, status: newStatus });
+        // Validate before publishing
+        if (form.status !== 'published') {
+            if (form.fields.length === 0) {
+                toast.error("Cannot publish: Form must have at least one field");
+                return;
+            }
+            if (!form.name || form.name.trim() === '') {
+                toast.error("Cannot publish: Form must have a name");
+                return;
+            }
+        }
 
-        await handleSave();
+        const newStatus = form.status === 'published' ? 'draft' : 'published';
+        const updatedForm = { ...form, status: newStatus };
+
+        setIsSaving(true);
+        try {
+            const response = await updateForm(workspaceId, formId, updatedForm);
+            if (response.success) {
+                setForm(response.data);
+                toast.success(
+                    newStatus === 'published'
+                        ? "✅ Form published successfully!"
+                        : "Form unpublished and saved as draft"
+                );
+            }
+        } catch (error) {
+            console.error("Error updating form status:", error);
+            toast.error("Failed to update form status");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const toggleFormType = () => {
@@ -732,13 +760,15 @@ export default function EnhancedFormBuilder() {
                     </button>
                     <button
                         onClick={togglePublish}
+                        disabled={isSaving}
                         className={cn(
-                            "px-4 py-2 rounded-lg transition-colors font-medium",
+                            "px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-2",
                             form.status === 'published'
-                                ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20"
-                                : "bg-green-500/10 text-green-500 hover:bg-green-500/20"
+                                ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 disabled:opacity-50"
+                                : "bg-green-500/10 text-green-500 hover:bg-green-500/20 disabled:opacity-50"
                         )}
                     >
+                        {isSaving && <ArrowPathIcon className="w-4 h-4 animate-spin" />}
                         {form.status === 'published' ? 'Unpublish' : 'Publish'}
                     </button>
                 </div>

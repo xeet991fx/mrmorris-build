@@ -6,13 +6,14 @@ import Project from '../models/Project';
  * Validates origin against project's allowed domains
  */
 export const secureTrackingCors = async (req: Request, res: Response, next: NextFunction) => {
-  const origin = req.headers.origin || req.headers.referer;
+  const origin = req.headers.origin || req.headers.referer || 'http://localhost:3000';
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Max-Age', '86400'); // 24 hours
     return res.sendStatus(204);
   }
@@ -22,7 +23,8 @@ export const secureTrackingCors = async (req: Request, res: Response, next: Next
     const workspaceId = req.body.workspaceId || req.body.events?.[0]?.workspaceId;
 
     if (!workspaceId) {
-      res.header('Access-Control-Allow-Origin', origin || '*');
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
       return next(); // Will fail in route validation
     }
 
@@ -30,13 +32,15 @@ export const secureTrackingCors = async (req: Request, res: Response, next: Next
     const project = await Project.findById(workspaceId);
 
     if (!project) {
-      res.header('Access-Control-Allow-Origin', origin || '*');
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
       return next(); // Will fail in route validation
     }
 
     // Check if tracking is enabled for this project
     if (!project.trackingEnabled) {
-      res.header('Access-Control-Allow-Origin', origin || '*');
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
       return res.status(403).json({
         success: false,
         message: 'Tracking is disabled for this project',
@@ -60,17 +64,19 @@ export const secureTrackingCors = async (req: Request, res: Response, next: Next
 
       // Origin is allowed
       res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'false');
+      res.header('Access-Control-Allow-Credentials', 'true');
     } else {
       // No origin header (e.g., server-side request)
-      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
     }
 
     next();
   } catch (error) {
     console.error('[SECURITY] Error in secure tracking CORS:', error);
     // Fail open (allow request but log error)
-    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
     next();
   }
 };

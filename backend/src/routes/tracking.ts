@@ -100,10 +100,21 @@ router.post('/public/track/event',
     for (const event of events) {
       const key = event.visitorId;
       if (!visitorUpdates.has(key)) {
+        // Extract website domain from URL
+        let websiteDomain = '';
+        try {
+          const url = new URL(event.url);
+          websiteDomain = url.hostname;
+        } catch (e) {
+          websiteDomain = event.url;
+        }
+
         visitorUpdates.set(key, {
           workspaceId: event.workspaceId,
           visitorId: event.visitorId,
           sessionId: event.sessionId,
+          url: event.url,
+          websiteDomain,
           utmSource: event.utmSource,
           utmMedium: event.utmMedium,
           utmCampaign: event.utmCampaign,
@@ -130,6 +141,13 @@ router.post('/public/track/event',
           // Update existing visitor
           visitor.lastSeen = new Date();
           visitor.eventCount += 1;
+
+          // Update last page URL and website tracking
+          if (update.url) visitor.lastPageUrl = update.url;
+          if (update.websiteDomain && !visitor.websites?.includes(update.websiteDomain)) {
+            if (!visitor.websites) visitor.websites = [];
+            visitor.websites.push(update.websiteDomain);
+          }
 
           // Update last UTM params
           if (update.utmSource) visitor.lastUtmSource = update.utmSource;
@@ -171,6 +189,8 @@ router.post('/public/track/event',
             lastUtmSource: update.utmSource,
             lastUtmMedium: update.utmMedium,
             lastUtmCampaign: update.utmCampaign,
+            lastPageUrl: update.url,
+            websites: update.websiteDomain ? [update.websiteDomain] : [],
             sessionCount: 1,
             eventCount: 1,
             pageViewCount: events.filter((e: any) => e.eventType === 'page_view').length,
