@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import path from "path";
+import http from "http";
 import connectDB from "./config/database";
 import passport from "./config/passport";
 import { createBullBoard } from "@bull-board/api";
@@ -10,6 +11,7 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
 import rateLimit from 'express-rate-limit';
 import * as Sentry from "@sentry/node";
+import { initializeChatSocket } from "./socket/chatSocket";
 import waitlistRoutes from "./routes/waitlist";
 import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/project";
@@ -55,6 +57,8 @@ import callRecordingRoutes from "./routes/callRecording";
 import formRoutes from "./routes/form";
 import landingPageRoutes from "./routes/landingPage";
 import trackingRoutes from "./routes/tracking";
+import chatRoutes from "./routes/chat";
+import chatbotRoutes from "./routes/chatbot";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 import { startContactSyncScheduler } from "./services/contactSyncService";
 import { startEmailSyncJob } from "./jobs/emailSyncJob";
@@ -118,11 +122,8 @@ if (process.env.SENTRY_DSN) {
       tracesSampleRate: 0.1,
     });
 
-    // RequestHandler creates a separate execution context for each transaction
-    if (Sentry.Handlers) {
-      app.use(Sentry.Handlers.requestHandler());
-      app.use(Sentry.Handlers.tracingHandler());
-    }
+    // Note: In Sentry v8+, request/tracing handling is automatic via Sentry.init()
+    // The Handlers API was deprecated and removed
 
     console.log('📊 Sentry error tracking enabled');
   } catch (error) {
@@ -278,7 +279,7 @@ const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath("/admin/queues");
 
 // Initialize Bull Board (will add queues dynamically in startServer)
-createBullBoard({
+const bullBoardInstance = createBullBoard({
   queues: [], // Queues added after initialization
   serverAdapter,
 });
@@ -335,13 +336,16 @@ app.use("/api", formRoutes); // Public form routes
 app.use("/api/workspaces", landingPageRoutes);
 app.use("/api", landingPageRoutes); // Public landing page routes
 app.use("/api", trackingRoutes); // Tracking routes (public and authenticated)
+app.use("/api/workspaces", chatRoutes); // Chat conversation routes
+app.use("/api/workspaces", chatbotRoutes); // Chatbot CRUD routes
 
 // ============================================
 // SENTRY ERROR HANDLER (must be before other error handlers)
 // ============================================
-if (process.env.SENTRY_DSN && Sentry.Handlers) {
+if (process.env.SENTRY_DSN) {
   try {
-    app.use(Sentry.Handlers.errorHandler());
+    // Sentry v8+ uses setupExpressErrorHandler instead of Handlers.errorHandler()
+    Sentry.setupExpressErrorHandler(app);
   } catch (error) {
     console.log('⚠️  Sentry error handler not available');
   }
@@ -359,7 +363,14 @@ const startServer = async () => {
     // Connect to MongoDB before starting the server
     await connectDB();
 
-    app.listen(PORT, () => {
+    // Create HTTP server (required for Socket.IO)
+    const httpServer = http.createServer(app);
+
+    // Initialize Socket.IO for real-time chat
+    initializeChatSocket(httpServer);
+    console.log('💬 Chat Socket.IO initialized');
+
+    httpServer.listen(PORT, () => {
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
       console.log("🚀 Server is running");
       console.log(`📍 Port: ${PORT}`);
@@ -393,9 +404,8 @@ const startServer = async () => {
           // Add all BullMQ queues to Bull Board for monitoring
           const queues = Array.from((queueManager as any).queues.values());
           if (queues.length > 0) {
-            const { addQueue } = await import('@bull-board/api');
             queues.forEach((queue: any) => {
-              addQueue(new BullMQAdapter(queue));
+              bullBoardInstance.addQueue(new BullMQAdapter(queue));
             });
             console.log(`📊 Bull Board monitoring ${queues.length} queue(s)`);
           }

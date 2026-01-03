@@ -9,15 +9,27 @@ import {
   CodeBracketIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
+import UniversalTrackingInstaller from "@/components/tracking/UniversalTrackingInstaller";
 
 export default function TrackingSettingsPage() {
   const params = useParams();
   const workspaceId = params.id as string;
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<string | null>("universal");
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
   const methods = [
+    {
+      id: "universal",
+      title: "Universal Code (Recommended)",
+      description: "One code that works on ANY platform - easiest way!",
+      icon: CodeBracketIcon,
+      color: "blue",
+      difficulty: "Easy",
+      setup: "2 minutes",
+      bestFor: "All websites - WordPress, Shopify, Webflow, React, HTML",
+      automatic: false,
+    },
     {
       id: "landing-pages",
       title: "Use MorrisB Landing Pages",
@@ -34,22 +46,11 @@ export default function TrackingSettingsPage() {
       title: "WordPress Plugin",
       description: "Install our WordPress plugin - one-click setup!",
       icon: CubeIcon,
-      color: "blue",
+      color: "purple",
       difficulty: "Easy",
       setup: "2 minutes",
-      bestFor: "WordPress sites",
+      bestFor: "WordPress sites only",
       automatic: true,
-    },
-    {
-      id: "manual",
-      title: "Manual Installation",
-      description: "Copy-paste code for other platforms",
-      icon: CodeBracketIcon,
-      color: "gray",
-      difficulty: "Medium",
-      setup: "5 minutes",
-      bestFor: "Webflow, Shopify, custom sites",
-      automatic: false,
     },
   ];
 
@@ -133,6 +134,15 @@ export default function TrackingSettingsPage() {
       </div>
 
       {/* Selected Method Details */}
+      {selectedMethod === "universal" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <UniversalTrackingInstaller workspaceId={workspaceId} />
+        </motion.div>
+      )}
+
       {selectedMethod === "landing-pages" && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -308,51 +318,6 @@ export default function TrackingSettingsPage() {
         </motion.div>
       )}
 
-      {selectedMethod === "manual" && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8"
-        >
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            Manual Installation
-          </h2>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Copy this code and paste it before the &lt;/head&gt; tag:
-            </label>
-            <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto">
-              <pre>{`<!-- MorrisB Tracking -->
-<script src="${backendUrl}/track.js"></script>
-<script>
-  morrisb('${workspaceId}');
-</script>`}</pre>
-            </div>
-            <button
-              onClick={() => navigator.clipboard.writeText(`<!-- MorrisB Tracking -->\n<script src="${backendUrl}/track.js"></script>\n<script>\n  morrisb('${workspaceId}');\n</script>`)}
-              className="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              Copy Code
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Webflow</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Project Settings → Custom Code → Head Code
-              </p>
-            </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Shopify</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Online Store → Themes → Edit Code → theme.liquid
-              </p>
-            </div>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 }
