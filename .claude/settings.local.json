@@ -76,7 +76,9 @@
       "Bash(copy \"C:\\\\app\\\\morrisB\\\\backend\\\\.env.example\" \"C:\\\\app\\\\morrisB\\\\backend\\\\.env\")",
       "Bash(tar:*)",
       "Bash(powershell:*)",
-      "Bash(del \"C:\\\\Users\\\\imkum\\\\SDE\\\\Clianta\\\\mrmorris-build\\\\frontend\\\\components\\\\workflows\\\\config\\\\NotionNodeConfig.tsx\")"
+      "Bash(del \"C:\\\\Users\\\\imkum\\\\SDE\\\\Clianta\\\\mrmorris-build\\\\frontend\\\\components\\\\workflows\\\\config\\\\NotionNodeConfig.tsx\")",
+      "Bash(npx terser:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

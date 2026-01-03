@@ -6,24 +6,39 @@ import Visitor from '../models/Visitor';
 import Contact from '../models/Contact';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import WebhookService from '../services/WebhookService';
+import {
+  secureTrackingCors,
+  validateTrackingPayload,
+  sanitizeTrackingData,
+  logTrackingRequest,
+} from '../middleware/secureTracking';
 
 const router = express.Router();
 
-// Rate limiter for public tracking endpoints
+// Rate limiter for public tracking endpoints (more aggressive)
 const trackingLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 100, // 100 requests per minute per IP
-  message: 'Too many tracking requests from this IP',
+  message: 'Too many tracking requests from this IP. Please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false,
 });
 
 /**
  * POST /api/public/track/event
  * Batch insert tracking events
- * No authentication required (public endpoint)
+ * No authentication required (public endpoint with security layers)
+ * Security: Domain whitelist, rate limiting, payload validation, data sanitization
  */
-router.post('/public/track/event', trackingLimiter, async (req, res) => {
+router.post('/public/track/event',
+  validateTrackingPayload,
+  sanitizeTrackingData,
+  trackingLimiter,
+  secureTrackingCors,
+  logTrackingRequest,
+  async (req, res) => {
   try {
     const { events } = req.body;
 
@@ -189,8 +204,15 @@ router.post('/public/track/event', trackingLimiter, async (req, res) => {
  * POST /api/public/track/identify
  * Link visitorId to contactId
  * Backfill all TrackingEvents with contactId
+ * Security: Domain whitelist, rate limiting, payload validation, data sanitization
  */
-router.post('/public/track/identify', trackingLimiter, async (req, res) => {
+router.post('/public/track/identify',
+  validateTrackingPayload,
+  sanitizeTrackingData,
+  trackingLimiter,
+  secureTrackingCors,
+  logTrackingRequest,
+  async (req, res) => {
   try {
     const { workspaceId, visitorId, email, properties } = req.body;
 

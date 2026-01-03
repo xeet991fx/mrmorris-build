@@ -4,6 +4,8 @@ export interface IProject extends Document {
   userId: Types.ObjectId;
   name: string;
   timezone: string; // e.g., 'America/New_York', 'UTC'
+  allowedDomains: string[]; // Whitelist of domains allowed to track for this project
+  trackingEnabled: boolean; // Master switch to enable/disable tracking
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +29,22 @@ const projectSchema = new Schema<IProject>(
       type: String,
       default: "UTC",
       trim: true,
+    },
+    allowedDomains: {
+      type: [String],
+      default: [], // Empty array = allow all domains (backward compatible)
+      validate: {
+        validator: function(domains: string[]) {
+          // Validate domain format (e.g., "example.com" or "*.example.com")
+          const domainRegex = /^(\*\.)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
+          return domains.every(domain => domainRegex.test(domain) || domain === '*');
+        },
+        message: 'Invalid domain format. Use "example.com" or "*.example.com"'
+      }
+    },
+    trackingEnabled: {
+      type: Boolean,
+      default: true, // Enabled by default
     },
   },
   {

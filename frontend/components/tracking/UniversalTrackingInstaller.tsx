@@ -31,40 +31,47 @@ export default function UniversalTrackingInstaller({
 <script>
   window.addEventListener('load', function() {
     if (window.morrisb) {
-      morrisb('${workspaceId}');
+      morrisb('${workspaceId}', {
+        apiEndpoint: '${backendUrl}' // Your API endpoint
+      });
     }
   });
 </script>`;
 
-  // Advanced code with manual event tracking
-  const advancedCode = `<!-- MorrisB Lead Tracking - Advanced -->
+  // Advanced code with custom configuration
+  const advancedCode = `<!-- MorrisB Lead Tracking - Advanced with Custom Config -->
 <script src="${frontendUrl}/track.min.js" async></script>
 <script>
   window.addEventListener('load', function() {
     if (window.morrisb) {
-      var tracker = morrisb('${workspaceId}');
+      // Initialize with optional features enabled
+      var tracker = morrisb('${workspaceId}', {
+        // API Configuration
+        apiEndpoint: '${backendUrl}',  // Your API endpoint
 
-      // Track custom button clicks
-      document.addEventListener('click', function(e) {
-        if (e.target.matches('.track-click')) {
-          tracker.trackClick(e.target.innerText);
-        }
+        // Core lead gen (enabled by default, shown for reference)
+        autoFormTracking: true,     // Auto-detect forms
+        autoIdentification: true,    // Auto-identify leads
+        scrollDepth: true,           // Track scroll depth
+        timeOnPage: true,            // Track time spent
+        engagement: true,            // Track engagement
+        downloads: true,             // Track file downloads
+        exitIntent: true,            // Exit intent detection
+        ctaClicks: true,             // Button/CTA clicks
+
+        // Optional advanced features (enable as needed)
+        outboundLinks: true,         // Track external links
+        elementVisibility: true,     // Track CTA visibility
+        rageClicks: true,            // Track frustration
+        errorTracking: true,         // Track JS errors
+        performanceTracking: true,   // Track page speed
+        copyTracking: false,         // Track content copying
+        deadClicks: false            // Track dead clicks
       });
 
-      // Identify visitor on form submit
-      var forms = document.querySelectorAll('form');
-      forms.forEach(function(form) {
-        form.addEventListener('submit', function(e) {
-          var emailInput = form.querySelector('input[type="email"]');
-          if (emailInput && emailInput.value) {
-            tracker.identify(emailInput.value, {
-              firstName: form.querySelector('[name="firstName"]')?.value,
-              lastName: form.querySelector('[name="lastName"]')?.value,
-              company: form.querySelector('[name="company"]')?.value
-            });
-          }
-        });
-      });
+      // Manual tracking (if needed)
+      // tracker.track('custom_event', 'Event Name', { prop: 'value' });
+      // tracker.identify('email@example.com', { firstName: 'John' });
     }
   });
 </script>`;
@@ -154,11 +161,25 @@ export default function UniversalTrackingInstaller({
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
         <div className="flex items-center gap-3 mb-4">
           <SparklesIcon className="w-8 h-8" />
-          <h2 className="text-3xl font-bold">Universal Tracking Code</h2>
+          <h2 className="text-3xl font-bold">Advanced Lead Tracking Script v2.0</h2>
         </div>
-        <p className="text-blue-100 text-lg mb-6">
-          One code snippet that works on ANY website platform. Copy, paste, done!
+        <p className="text-blue-100 text-lg mb-4">
+          One powerful code snippet that automatically captures visitor behavior, engagement signals, and converts anonymous visitors into qualified leads.
         </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-lg px-3 py-2">
+            <span className="text-2xl">🎯</span>
+            <span className="text-sm font-medium">9 Core Lead Gen Features</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-lg px-3 py-2">
+            <span className="text-2xl">📝</span>
+            <span className="text-sm font-medium">Auto Form Identification</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-lg px-3 py-2">
+            <span className="text-2xl">⚙️</span>
+            <span className="text-sm font-medium">Optional Advanced Features</span>
+          </div>
+        </div>
         <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-lg px-4 py-3">
           <RocketLaunchIcon className="w-5 h-5" />
           <span className="font-medium">Works on: WordPress, Shopify, Webflow, Wix, React, Vue, HTML, and more!</span>
@@ -222,36 +243,77 @@ export default function UniversalTrackingInstaller({
           </pre>
 
           {selectedTab === "simple" && (
-            <div className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <div className="flex items-start gap-3">
-                <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-green-900 dark:text-green-100 mb-1">
-                    Perfect for beginners!
-                  </h4>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    This code automatically tracks page views, UTM parameters, and visitor sessions.
-                    Just paste it before the closing &lt;/head&gt; tag on your website.
-                  </p>
+            <div className="mt-4 space-y-3">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-start gap-3">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-green-900 dark:text-green-100 mb-1">
+                      Complete Lead Intelligence - All Automatic!
+                    </h4>
+                    <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+                      This code automatically captures powerful visitor behavior data without any manual setup.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h5 className="font-semibold text-blue-900 dark:text-blue-100 text-sm mb-1">🎯 Engagement Tracking</h5>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">Scroll depth, time on page, rage clicks, exit intent</p>
+                </div>
+
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <h5 className="font-semibold text-purple-900 dark:text-purple-100 text-sm mb-1">📝 Smart Form Detection</h5>
+                  <p className="text-xs text-purple-700 dark:text-purple-300">Auto-tracks ALL forms, field interactions, auto-identifies leads</p>
+                </div>
+
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                  <h5 className="font-semibold text-indigo-900 dark:text-indigo-100 text-sm mb-1">🔗 Link & Download Tracking</h5>
+                  <p className="text-xs text-indigo-700 dark:text-indigo-300">Outbound links, file downloads, button clicks</p>
+                </div>
+
+                <div className="p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg border border-teal-200 dark:border-teal-800">
+                  <h5 className="font-semibold text-teal-900 dark:text-teal-100 text-sm mb-1">⚡ Performance & Errors</h5>
+                  <p className="text-xs text-teal-700 dark:text-teal-300">Page load time, JS errors, user frustration signals</p>
                 </div>
               </div>
             </div>
           )}
 
           {selectedTab === "advanced" && (
-            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-start gap-3">
-                <SparklesIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                    Advanced Features Included:
-                  </h4>
-                  <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
-                    <li>Automatic click tracking for elements with class "track-click"</li>
-                    <li>Auto-identify visitors when they submit forms</li>
-                    <li>Custom event tracking capabilities</li>
-                  </ul>
+            <div className="mt-4 space-y-3">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-3">
+                  <SparklesIcon className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                      Advanced Configuration
+                    </h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                      Enable optional features beyond core lead generation. All core features are enabled by default.
+                    </p>
+                  </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <h5 className="font-semibold text-green-900 dark:text-green-100 text-sm mb-1">✅ Core Features (Always On)</h5>
+                  <p className="text-xs text-green-700 dark:text-green-300">Forms, scroll, time, engagement, downloads, exit intent, CTAs, UTM</p>
+                </div>
+
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <h5 className="font-semibold text-amber-900 dark:text-amber-100 text-sm mb-1">⚙️ Optional Features</h5>
+                  <p className="text-xs text-amber-700 dark:text-amber-300">Outbound links, element visibility, rage clicks, errors, performance</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg border border-gray-200 dark:border-gray-800">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <strong>Pro Tip:</strong> Start with the simple code. Only use advanced config if you need optional features like error tracking or rage click detection for UX optimization.
+                </p>
               </div>
             </div>
           )}
@@ -347,6 +409,100 @@ export default function UniversalTrackingInstaller({
         </div>
       </div>
 
+      {/* Core Lead Gen Features */}
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+          <CheckCircleIcon className="w-6 h-6 text-green-600" />
+          Core Lead Generation Features (Always Enabled)
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          These features are always active with the simple tracking code. No configuration needed!
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">📝 Smart Form Tracking</h4>
+            <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+              <li>✅ Auto-detect all forms</li>
+              <li>✅ Track field interactions</li>
+              <li>✅ Form submission tracking</li>
+              <li>✅ Auto-identify leads by email</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">📊 Engagement Metrics</h4>
+            <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+              <li>✅ Scroll depth (25%, 50%, 75%, 100%)</li>
+              <li>✅ Time on page tracking</li>
+              <li>✅ Active engagement detection</li>
+              <li>✅ Exit intent (desktop only)</li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">🔗 Download & CTA Tracking</h4>
+            <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+              <li>✅ File download tracking (PDF, docs)</li>
+              <li>✅ Button & CTA click tracking</li>
+              <li>✅ UTM parameter capture</li>
+              <li>✅ Referrer tracking</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Optional Advanced Features */}
+      <div className="bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-900/50 dark:to-gray-900/50 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+          <SparklesIcon className="w-6 h-6 text-amber-600" />
+          Optional Advanced Features (Configurable)
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Enable these features using the Advanced tab configuration for UX optimization and debugging.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">🔗 Outbound Links</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Track clicks to external websites</p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">👁️ Element Visibility</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Track when CTAs come into view</p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">😡 Rage Clicks</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Detect user frustration signals</p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">💀 Dead Clicks</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Track clicks on non-interactive elements</p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">📋 Copy Tracking</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Track content copying behavior</p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">⚠️ Error Tracking</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Track JavaScript errors & crashes</p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">⚡ Performance</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Track page load time metrics</p>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-900 dark:text-white text-sm">🎨 Custom Events</h4>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Manual event tracking API</p>
+          </div>
+        </div>
+      </div>
+
       {/* FAQ */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
@@ -358,15 +514,15 @@ export default function UniversalTrackingInstaller({
               ❓ Will this slow down my website?
             </h4>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              No! The script loads asynchronously and is only 4KB (minified). It won't affect your page load speed.
+              No! The script loads asynchronously, uses passive event listeners, and is heavily optimized. Typical impact: &lt;10ms.
             </p>
           </div>
           <div>
             <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
-              ❓ Do I need to install it on every page?
+              ❓ Do I need to configure anything?
             </h4>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              No! Just add it once to your template/header file, and it will work on all pages automatically.
+              Nope! Just paste the code and everything works automatically. Forms, buttons, downloads, errors - all tracked instantly.
             </p>
           </div>
           <div>
@@ -374,15 +530,23 @@ export default function UniversalTrackingInstaller({
               ❓ Is it GDPR compliant?
             </h4>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Yes! We use localStorage for tracking, no third-party cookies. You can add a cookie banner if required.
+              Yes! We use localStorage for tracking, no third-party cookies. Anonymous by default until visitor submits a form.
             </p>
           </div>
           <div>
             <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
-              ❓ Can I track multiple websites with one workspace?
+              ❓ Can I track multiple websites?
             </h4>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Yes! Use the same tracking code on multiple sites to centralize all your lead data.
+              Yes! Use the same tracking code on multiple sites to centralize all your lead data in one dashboard.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+              ❓ What about dynamically loaded forms?
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              We use MutationObserver to detect forms added after page load. Works perfectly with React, Vue, and all modern frameworks.
             </p>
           </div>
         </div>

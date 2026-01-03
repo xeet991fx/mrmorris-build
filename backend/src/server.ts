@@ -173,8 +173,10 @@ app.use(cors({
   ],
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Request size limits (prevent large payload attacks)
+app.use(express.json({ limit: '100kb' })); // 100KB max for JSON
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
 
 // Apply rate limiting AFTER CORS middleware (so rate-limited responses include CORS headers)
