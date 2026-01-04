@@ -12,6 +12,7 @@ import {
   sanitizeTrackingData,
   logTrackingRequest,
 } from '../middleware/secureTracking';
+import { trackIntentSignal } from '../services/intentScoring';
 
 const router = express.Router();
 
@@ -93,6 +94,120 @@ router.post('/public/track/event',
 
     // Batch insert
     const insertedEvents = await TrackingEvent.insertMany(trackingEvents, { ordered: false });
+
+    // 🎯 AUTOMATIC INTENT SIGNAL DETECTION
+    // Detect high-intent pages and track signals
+    for (const event of events) {
+      if (event.eventType === 'page_view' && event.url) {
+        const url = event.url.toLowerCase();
+        let signalName: string | null = null;
+
+        // Detect high-intent pages automatically
+        if (url.includes('/pricing') || url.includes('/plans')) {
+          signalName = 'pricing_page';
+        } else if (url.includes('/demo') || url.includes('/book-demo')) {
+          signalName = 'demo_request_page';
+        } else if (url.includes('/contact') || url.includes('/get-started')) {
+          signalName = 'contact_page';
+        } else if (url.includes('/case-stud')) {
+          signalName = 'case_study_view';
+        } else if (url.includes('/comparison') || url.includes('/vs-')) {
+          signalName = 'product_comparison';
+        } else if (url.includes('/competitors')) {
+          signalName = 'competitors_page';
+        } else if (url.includes('/features') && event.properties?.scrollDepth > 75) {
+          signalName = 'features_page_deep';
+        } else if (url.includes('/docs') || url.includes('/documentation')) {
+          signalName = 'documentation_view';
+        } else if (url.includes('/api') && url.includes('/docs')) {
+          signalName = 'api_docs_view';
+        } else if (url.includes('/integrations')) {
+          signalName = 'integrations_page';
+        }
+
+        // Track intent signal if detected
+        if (signalName) {
+          try {
+            await trackIntentSignal(event.workspaceId, signalName, {
+              contactId: event.contactId,
+              visitorId: event.visitorId,
+              signalType: 'page_view',
+              url: event.url,
+              sessionId: event.sessionId,
+              metadata: {
+                scrollDepth: event.properties?.scrollDepth,
+                duration: event.properties?.duration,
+              },
+            });
+          } catch (intentError: any) {
+            console.error('Failed to track intent signal:', intentError.message);
+            // Don't fail the whole tracking request if intent tracking fails
+          }
+        }
+      }
+
+      // Track download signals
+      if (event.eventType === 'download' || event.eventName?.includes('download')) {
+        const eventName = event.eventName?.toLowerCase() || '';
+        let signalName: string | null = null;
+
+        if (eventName.includes('case study')) {
+          signalName = 'case_study_download';
+        } else if (eventName.includes('whitepaper')) {
+          signalName = 'whitepaper_download';
+        } else if (eventName.includes('ebook')) {
+          signalName = 'ebook_download';
+        }
+
+        if (signalName) {
+          try {
+            await trackIntentSignal(event.workspaceId, signalName, {
+              contactId: event.contactId,
+              visitorId: event.visitorId,
+              signalType: 'download',
+              url: event.url,
+              sessionId: event.sessionId,
+              metadata: {
+                downloadedFile: event.properties?.fileName,
+              },
+            });
+          } catch (intentError: any) {
+            console.error('Failed to track download intent:', intentError.message);
+          }
+        }
+      }
+
+      // Track video engagement
+      if (event.eventType === 'video' || event.eventName?.includes('video')) {
+        const percentage = event.properties?.percentage || 0;
+        let signalName: string | null = null;
+
+        if (percentage >= 1 && percentage < 50) {
+          signalName = 'demo_video_started';
+        } else if (percentage >= 50 && percentage < 90) {
+          signalName = 'demo_video_50';
+        } else if (percentage >= 90) {
+          signalName = 'demo_video_completed';
+        }
+
+        if (signalName) {
+          try {
+            await trackIntentSignal(event.workspaceId, signalName, {
+              contactId: event.contactId,
+              visitorId: event.visitorId,
+              signalType: 'video_watch',
+              url: event.url,
+              sessionId: event.sessionId,
+              metadata: {
+                videoPercentage: percentage,
+              },
+            });
+          } catch (intentError: any) {
+            console.error('Failed to track video intent:', intentError.message);
+          }
+        }
+      }
+    }
 
     // Update or create Visitor record for each unique visitor
     const visitorUpdates = new Map<string, any>();

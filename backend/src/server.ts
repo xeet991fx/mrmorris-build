@@ -60,6 +60,7 @@ import landingPageRoutes from "./routes/landingPage";
 import trackingRoutes from "./routes/tracking";
 import chatRoutes from "./routes/chat";
 import chatbotRoutes from "./routes/chatbot";
+import intentScoringRoutes from "./routes/intentScoring";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 import { startContactSyncScheduler } from "./services/contactSyncService";
 import { startEmailSyncJob } from "./jobs/emailSyncJob";
@@ -365,6 +366,7 @@ app.use("/api/workspaces", landingPageRoutes);
 app.use("/api", trackingRoutes); // Tracking routes (public and authenticated)
 app.use("/api/workspaces", chatRoutes); // Chat conversation routes
 app.use("/api/workspaces", chatbotRoutes); // Chatbot CRUD routes
+app.use("/api/workspaces", intentScoringRoutes); // Intent scoring routes (behavioral analytics)
 
 // ============================================
 // SENTRY ERROR HANDLER (must be before other error handlers)

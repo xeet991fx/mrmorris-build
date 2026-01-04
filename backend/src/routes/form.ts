@@ -13,6 +13,8 @@ import emailService from "../services/email";
 import { routeLead } from "../services/leadRouting";
 import { executeFollowUpActions } from "../services/followUpActions";
 import { calculateFormAnalytics } from "../services/formAnalytics";
+import { enrichAndQualifyLead, QualificationResult } from "../services/leadQualification";
+import { sendLeadAlert } from "../services/leadAlerts";
 
 const router = Router();
 
@@ -379,6 +381,92 @@ router.post(
                             contactCreated: true,
                             processedAt: new Date(),
                         });
+
+                        // 🎯 AUTOMATIC LEAD QUALIFICATION & ENRICHMENT
+                        console.log(`\n🔍 Starting automatic lead qualification for: ${contactData.email}`);
+
+                        try {
+                            // Enrich and qualify the lead
+                            const qualificationResult: QualificationResult = await enrichAndQualifyLead(
+                                contactId,
+                                form.workspaceId
+                            );
+
+                            // Update contact with qualification data
+                            await Contact.findByIdAndUpdate(contactId, {
+                                qualityScore: qualificationResult.qualityScore,
+                                qualityGrade: qualificationResult.qualityGrade,
+                                qualified: qualificationResult.qualified,
+                            });
+
+                            // Update submission with qualification result
+                            await FormSubmission.findByIdAndUpdate(submission._id, {
+                                qualificationResult: {
+                                    qualified: qualificationResult.qualified,
+                                    score: qualificationResult.qualityScore,
+                                    grade: qualificationResult.qualityGrade,
+                                    action: qualificationResult.recommendedAction,
+                                    flags: qualificationResult.flags,
+                                },
+                            });
+
+                            // Auto-disqualify if needed
+                            if (!qualificationResult.qualified) {
+                                console.log(`❌ Lead automatically disqualified. Reasons:\n${qualificationResult.reasons.join('\n')}`);
+
+                                await Contact.findByIdAndUpdate(contactId, {
+                                    status: 'disqualified',
+                                    disqualificationReason: qualificationResult.reasons.join('; '),
+                                });
+
+                                // Don't route to sales team if disqualified
+                                contactId = null;
+                            } else if (qualificationResult.qualityScore < 50) {
+                                console.log(`⚠️ Low quality lead (${qualificationResult.qualityScore}/100). Adding to nurture.`);
+
+                                await Contact.findByIdAndUpdate(contactId, {
+                                    status: 'nurture',
+                                    tags: ['low_quality', 'needs_nurturing'],
+                                });
+                            } else {
+                                console.log(`✅ High quality lead! Score: ${qualificationResult.qualityScore}/100 (${qualificationResult.qualityGrade})`);
+                            }
+
+                            // 🔔 SEND REAL-TIME ALERTS FOR HIGH-VALUE LEADS
+                            if (qualificationResult.qualified && qualificationResult.qualityScore >= 70) {
+                                try {
+                                    console.log(`📣 Sending real-time alert for high-value lead...`);
+
+                                    // TODO: Load alert config from workspace settings
+                                    // For now, use default config with email notifications
+                                    const alertResult = await sendLeadAlert(contactId, qualificationResult, {
+                                        minQualityScore: 70,
+                                        minQualityGrade: 'B',
+                                        onlyQualified: true,
+                                        channels: {
+                                            email: {
+                                                enabled: true,
+                                                recipients: form.settings.notificationEmails || [],
+                                            },
+                                        },
+                                        includeTalkingPoints: true,
+                                    });
+
+                                    if (alertResult.success) {
+                                        console.log(`✅ Alerts sent via: ${alertResult.channelsSent.join(', ')}`);
+                                    } else {
+                                        console.log(`⚠️ Alert failed: ${alertResult.errors.join('; ')}`);
+                                    }
+                                } catch (alertError: any) {
+                                    console.error("⚠️ Failed to send lead alert:", alertError.message);
+                                    // Don't fail submission if alert fails
+                                }
+                            }
+
+                        } catch (qualError: any) {
+                            console.error("⚠️ Lead qualification failed:", qualError.message);
+                            // Don't fail submission if qualification fails, just log it
+                        }
                     }
                 } catch (contactError: any) {
                     console.error("Error creating contact from form:", contactError);
@@ -390,6 +478,7 @@ router.post(
             }
 
             // Lead Routing - Route the lead based on configured rules
+            // Only route if contact is qualified (contactId not nulled out above)
             if (contactId) {
                 try {
                     const routingResult = await routeLead(formId, data, contactId);

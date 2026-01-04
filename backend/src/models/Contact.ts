@@ -16,7 +16,7 @@ export interface IContact extends Document {
   // Additional Details
   tags?: string[];
   source?: string; // Where did this contact come from? (e.g., "Website", "Referral", "Event")
-  status?: "lead" | "prospect" | "customer" | "inactive";
+  status?: "lead" | "prospect" | "customer" | "inactive" | "disqualified" | "nurture";
 
   // Social/Communication
   linkedin?: string;
@@ -47,6 +47,22 @@ export interface IContact extends Document {
     recommendedActions?: string[];
     lastAnalyzedAt?: Date;
   };
+
+  // Lead Qualification Data (separate from activity-based lead scoring)
+  qualityScore?: number; // 0-100, based on fit (not activity)
+  qualityGrade?: "A" | "B" | "C" | "D" | "F";
+  qualified?: boolean;
+  disqualificationReason?: string;
+  qualifiedAt?: Date;
+
+  // Behavioral Intent Scoring (buying signals)
+  intentScore?: number; // Total intent score based on behavior
+  intentUpdatedAt?: Date;
+
+  // Additional location fields
+  city?: string;
+  state?: string;
+  country?: string;
 
   // Apollo.io Enrichment Data
   apolloEnrichment?: {
@@ -157,7 +173,7 @@ const contactSchema = new Schema<IContact>(
     },
     status: {
       type: String,
-      enum: ["lead", "prospect", "customer", "inactive"],
+      enum: ["lead", "prospect", "customer", "inactive", "disqualified", "nurture"],
       default: "lead",
     },
 
@@ -204,6 +220,33 @@ const contactSchema = new Schema<IContact>(
       recommendedActions: [{ type: String }],
       lastAnalyzedAt: { type: Date },
     },
+
+    // Lead Qualification Data
+    qualityScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+    },
+    qualityGrade: {
+      type: String,
+      enum: ["A", "B", "C", "D", "F"],
+    },
+    qualified: { type: Boolean },
+    disqualificationReason: { type: String },
+    qualifiedAt: { type: Date },
+
+    // Behavioral Intent Scoring
+    intentScore: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    intentUpdatedAt: { type: Date },
+
+    // Additional location fields
+    city: { type: String },
+    state: { type: String },
+    country: { type: String },
 
     // Apollo.io Enrichment Data
     apolloEnrichment: {
