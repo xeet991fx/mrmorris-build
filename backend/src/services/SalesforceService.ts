@@ -4,14 +4,14 @@
  * Handles OAuth authentication and bidirectional sync with Salesforce
  */
 
-import jsforce from 'jsforce';
-import SalesforceIntegration from '../models/SalesforceIntegration';
+import jsforce, { Connection } from 'jsforce';
+import SalesforceIntegration, { ISalesforceIntegration } from '../models/SalesforceIntegration';
 import FieldMapping from '../models/FieldMapping';
 import SyncLog from '../models/SyncLog';
 import Contact from '../models/Contact';
 import Company from '../models/Company';
 import Opportunity from '../models/Opportunity';
-import { encrypt, decrypt } from '../utils/encryption';
+import { encryptCredentials, decryptCredentials } from '../utils/encryption';
 import { Types } from 'mongoose';
 
 export class SalesforceService {
@@ -45,7 +45,7 @@ export class SalesforceService {
         code: string,
         workspaceId: string,
         userId: string
-    ): Promise<SalesforceIntegration> {
+    ): Promise<ISalesforceIntegration> {
         const oauth2 = new jsforce.OAuth2({
             clientId: this.clientId,
             clientSecret: this.clientSecret,
@@ -63,8 +63,8 @@ export class SalesforceService {
         const integration = await SalesforceIntegration.create({
             workspaceId: new Types.ObjectId(workspaceId),
             userId: new Types.ObjectId(userId),
-            accessToken: encrypt(conn.accessToken!),
-            refreshToken: encrypt(conn.refreshToken!),
+            accessToken: encryptCredentials(conn.accessToken!, workspaceId),
+            refreshToken: encryptCredentials(conn.refreshToken!, workspaceId),
             instanceUrl: conn.instanceUrl!,
             organizationId: identity.organization_id,
             organizationName: orgInfo.records[0]?.Name,
@@ -83,14 +83,15 @@ export class SalesforceService {
     /**
      * Get authenticated Salesforce connection
      */
-    async getConnection(integrationId: string): Promise<jsforce.Connection> {
+    async getConnection(integrationId: string): Promise<Connection> {
         const integration = await SalesforceIntegration.findById(integrationId);
         if (!integration) {
             throw new Error('Salesforce integration not found');
         }
 
-        const accessToken = decrypt(integration.accessToken);
-        const refreshToken = decrypt(integration.refreshToken);
+        const workspaceId = integration.workspaceId.toString();
+        const accessToken = decryptCredentials(integration.accessToken, workspaceId);
+        const refreshToken = decryptCredentials(integration.refreshToken, workspaceId);
 
         const oauth2 = new jsforce.OAuth2({
             clientId: this.clientId,
@@ -107,7 +108,7 @@ export class SalesforceService {
 
         // Handle token refresh
         conn.on('refresh', async (newAccessToken) => {
-            integration.accessToken = encrypt(newAccessToken);
+            integration.accessToken = encryptCredentials(newAccessToken, workspaceId);
             await integration.save();
         });
 
@@ -194,7 +195,7 @@ export class SalesforceService {
         } catch (error: any) {
             syncLog.status = 'failed';
             syncLog.completedAt = new Date();
-            syncLog.errors.push({
+            syncLog.syncErrors.push({
                 message: error.message,
                 timestamp: new Date(),
                 stack: error.stack,
@@ -244,7 +245,7 @@ export class SalesforceService {
                     });
                 } else {
                     // Create new
-                    const result = await conn.sobject('Contact').create(sfData);
+                    const result = await conn.sobject('Contact').create(sfData) as unknown as { id: string; success: boolean };
                     contact.salesforceId = result.id;
                 }
 
@@ -337,7 +338,7 @@ export class SalesforceService {
                         ...sfData,
                     });
                 } else {
-                    const result = await conn.sobject('Account').create(sfData);
+                    const result = await conn.sobject('Account').create(sfData) as unknown as { id: string; success: boolean };
                     company.salesforceId = result.id;
                 }
 
@@ -385,7 +386,7 @@ export class SalesforceService {
                         ...sfData,
                     });
                 } else {
-                    const result = await conn.sobject('Opportunity').create(sfData);
+                    const result = await conn.sobject('Opportunity').create(sfData) as unknown as { id: string; success: boolean };
                     opp.salesforceId = result.id;
                 }
 

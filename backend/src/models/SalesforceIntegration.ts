@@ -76,7 +76,7 @@ const SalesforceIntegrationSchema = new Schema<ISalesforceIntegration>(
             type: Schema.Types.ObjectId,
             ref: 'Workspace',
             required: true,
-            index: true,
+            // Note: Indexed via schema.index() below with unique constraint
         },
         userId: {
             type: Schema.Types.ObjectId,

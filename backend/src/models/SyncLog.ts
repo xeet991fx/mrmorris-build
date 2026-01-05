@@ -75,7 +75,7 @@ export interface ISyncLog extends Document {
     };
 
     // Error tracking
-    errors: {
+    syncErrors: {
         message: string;
         objectType?: SyncObjectType;
         objectId?: string;
@@ -222,7 +222,7 @@ const SyncLogSchema = new Schema<ISyncLog>(
         },
 
         // Error tracking
-        errors: [{
+        syncErrors: [{
             message: {
                 type: String,
                 required: true,
@@ -249,6 +249,7 @@ const SyncLogSchema = new Schema<ISyncLog>(
     },
     {
         timestamps: true,
+        suppressReservedKeysWarning: true, // 'errors' is intentionally used as a field name
     }
 );
 
