@@ -66,6 +66,12 @@ export interface IOpportunity extends Document {
     confidenceLevel?: number; // 0-100 AI confidence
   };
 
+  // Salesforce Sync
+  salesforceId?: string; // Salesforce Opportunity ID
+  salesforceSyncedAt?: Date;
+  salesforceSyncStatus?: 'synced' | 'pending' | 'error' | 'conflict';
+  salesforceSyncError?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -272,6 +278,19 @@ const opportunitySchema = new Schema<IOpportunity>(
         max: 100,
       },
     },
+
+    // Salesforce Sync
+    salesforceId: {
+      type: String,
+      index: true,
+      sparse: true,
+    },
+    salesforceSyncedAt: Date,
+    salesforceSyncStatus: {
+      type: String,
+      enum: ['synced', 'pending', 'error', 'conflict'],
+    },
+    salesforceSyncError: String,
   },
   {
     timestamps: true,

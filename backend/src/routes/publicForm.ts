@@ -12,8 +12,60 @@ import Contact from "../models/Contact";
 import emailService from "../services/email";
 import { routeLead } from "../services/leadRouting";
 import { executeFollowUpActions } from "../services/followUpActions";
+import axios from "axios";
 
 const router = Router();
+
+/**
+ * Verify reCAPTCHA v3 token
+ */
+async function verifyCaptcha(token: string, remoteIP: string): Promise<{ success: boolean; score?: number; error?: string }> {
+    if (!process.env.RECAPTCHA_SECRET_KEY) {
+        console.warn('reCAPTCHA not configured. Skipping verification.');
+        return { success: true }; // Allow if not configured
+    }
+
+    try {
+        const response = await axios.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            null,
+            {
+                params: {
+                    secret: process.env.RECAPTCHA_SECRET_KEY,
+                    response: token,
+                    remoteip: remoteIP,
+                },
+            }
+        );
+
+        const { success, score, 'error-codes': errorCodes } = response.data;
+
+        if (!success) {
+            return {
+                success: false,
+                error: `reCAPTCHA verification failed: ${errorCodes?.join(', ') || 'Unknown error'}`,
+            };
+        }
+
+        // reCAPTCHA v3 returns a score from 0.0 to 1.0
+        // 0.5 is a reasonable threshold (1.0 is very likely human, 0.0 is very likely bot)
+        if (score < 0.5) {
+            return {
+                success: false,
+                score,
+                error: `Low reCAPTCHA score: ${score}. Possible bot detected.`,
+            };
+        }
+
+        return { success: true, score };
+    } catch (error: any) {
+        console.error('reCAPTCHA verification error:', error.message);
+        return {
+            success: false,
+            error: `reCAPTCHA verification error: ${error.message}`,
+        };
+    }
+}
 
 /**
  * GET /api/public/forms/:formId
@@ -80,7 +132,23 @@ router.post(
     async (req: any, res: Response) => {
         try {
             const { formId } = req.params;
-            const { data, source } = req.body;
+            const { data, source, captchaToken } = req.body;
+
+            // Verify reCAPTCHA token
+            if (captchaToken) {
+                const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+                const captchaResult = await verifyCaptcha(captchaToken, clientIP);
+
+                if (!captchaResult.success) {
+                    console.warn('reCAPTCHA verification failed:', captchaResult.error);
+                    return res.status(403).json({
+                        success: false,
+                        error: "Bot submission detected. Please try again.",
+                    });
+                }
+
+                console.log(`✅ reCAPTCHA verified. Score: ${captchaResult.score}`);
+            }
 
             // Get form
             const form = await Form.findById(formId);
@@ -201,7 +269,30 @@ router.post(
 
                     // Only create if we have at least email or phone
                     if (contactData.email || contactData.phone) {
-                        const contact = await Contact.create(contactData);
+                        // Use findOneAndUpdate with upsert to prevent race condition
+                        // This atomically finds or creates the contact
+                        const query: any = { workspaceId: form.workspaceId };
+
+                        // Query by email if available (email is unique per workspace)
+                        if (contactData.email) {
+                            query.email = contactData.email;
+                        } else if (contactData.phone) {
+                            // If no email, query by phone
+                            query.phone = contactData.phone;
+                        }
+
+                        const contact = await Contact.findOneAndUpdate(
+                            query,
+                            {
+                                $setOnInsert: contactData, // Only set these fields on insert, not update
+                            },
+                            {
+                                upsert: true, // Create if doesn't exist
+                                new: true, // Return the document after update
+                                setDefaultsOnInsert: true, // Apply schema defaults on insert
+                            }
+                        );
+
                         contactId = contact._id;
 
                         // Update submission with contact ID

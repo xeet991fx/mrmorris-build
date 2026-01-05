@@ -447,6 +447,7 @@ export async function submitForm(
         utmSource?: string;
         utmMedium?: string;
         utmCampaign?: string;
+        captchaToken?: string;
     }
 ): Promise<{
     success: boolean;

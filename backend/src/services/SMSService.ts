@@ -5,10 +5,26 @@
  * Tracks delivery status and replies.
  */
 
+import twilio from 'twilio';
+
 interface SMSConfig {
     accountSid: string;
     authToken: string;
     fromNumber: string;
+}
+
+/**
+ * Get Twilio client from environment variables or provided config
+ */
+function getTwilioClient(config?: SMSConfig) {
+    const accountSid = config?.accountSid || process.env.TWILIO_ACCOUNT_SID;
+    const authToken = config?.authToken || process.env.TWILIO_AUTH_TOKEN;
+
+    if (!accountSid || !authToken) {
+        throw new Error('Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN');
+    }
+
+    return twilio(accountSid, authToken);
 }
 
 interface SendSMSParams {
@@ -30,56 +46,65 @@ interface SMSResult {
  */
 export async function sendSMS(
     params: SendSMSParams,
-    config: SMSConfig
+    config?: SMSConfig
 ): Promise<SMSResult> {
 
     try {
-        console.log(`📱 Sending SMS to: ${params.to}`);
-        console.log(`Message: ${params.message}`);
-
         // Validate phone number format
+        const cleanedPhone = params.to.replace(/[\s\-()]/g, '');
         const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-        if (!phoneRegex.test(params.to.replace(/[\s\-()]/g, ''))) {
+        if (!phoneRegex.test(cleanedPhone)) {
             return {
                 success: false,
-                error: 'Invalid phone number format',
+                error: 'Invalid phone number format. Must be E.164 format (e.g., +12345678900)',
             };
         }
 
-        // TODO: Implement actual Twilio integration
-        // Uncomment and configure when ready to use
+        // Format phone number
+        const formattedPhone = formatPhoneNumber(params.to);
 
-        /*
-        const twilio = require('twilio');
-        const client = twilio(config.accountSid, config.authToken);
+        // Get Twilio configuration
+        const fromNumber = config?.fromNumber || process.env.TWILIO_PHONE_NUMBER;
+        if (!fromNumber) {
+            return {
+                success: false,
+                error: 'Twilio phone number not configured. Set TWILIO_PHONE_NUMBER environment variable',
+            };
+        }
 
+        console.log(`📱 Sending SMS to: ${formattedPhone}`);
+        console.log(`📝 Message: ${params.message.substring(0, 50)}${params.message.length > 50 ? '...' : ''}`);
+
+        // Get Twilio client
+        const client = getTwilioClient(config);
+
+        // Send SMS via Twilio
         const twilioMessage = await client.messages.create({
             body: params.message,
-            from: config.fromNumber,
-            to: params.to,
+            from: fromNumber,
+            to: formattedPhone,
         });
 
-        console.log(`✅ SMS sent successfully. SID: ${twilioMessage.sid}`);
+        console.log(`✅ SMS sent successfully. SID: ${twilioMessage.sid}, Status: ${twilioMessage.status}`);
 
         return {
             success: true,
             messageId: twilioMessage.sid,
             status: twilioMessage.status,
         };
-        */
-
-        // Simulated response for now
-        return {
-            success: true,
-            messageId: `SMS_${Date.now()}`,
-            status: 'sent',
-        };
 
     } catch (error: any) {
-        console.error('SMS send failed:', error);
+        console.error('❌ SMS send failed:', error.message);
+
+        // Parse Twilio-specific errors
+        let errorMessage = error.message;
+        if (error.code) {
+            errorMessage = `Twilio Error ${error.code}: ${error.message}`;
+        }
+
         return {
             success: false,
-            error: error.message,
+            error: errorMessage,
         };
     }
 }
@@ -89,12 +114,14 @@ export async function sendSMS(
  */
 export async function sendBulkSMS(
     messages: SendSMSParams[],
-    config: SMSConfig
+    config?: SMSConfig
 ): Promise<{ sent: number; failed: number; results: SMSResult[] }> {
 
     const results: SMSResult[] = [];
     let sent = 0;
     let failed = 0;
+
+    console.log(`📤 Sending ${messages.length} SMS messages...`);
 
     for (const message of messages) {
         const result = await sendSMS(message, config);
@@ -104,13 +131,14 @@ export async function sendBulkSMS(
             sent++;
         } else {
             failed++;
+            console.error(`Failed to send SMS to ${message.to}: ${result.error}`);
         }
 
-        // Rate limiting: 1 SMS per second
+        // Rate limiting: 1 SMS per second (Twilio default limit)
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    console.log(`📊 Bulk SMS results: ${sent} sent, ${failed} failed`);
+    console.log(`📊 Bulk SMS complete: ${sent} sent, ${failed} failed`);
 
     return { sent, failed, results };
 }
@@ -120,35 +148,36 @@ export async function sendBulkSMS(
  */
 export async function getSMSStatus(
     messageId: string,
-    config: SMSConfig
-): Promise<{ status: string; delivered: boolean }> {
+    config?: SMSConfig
+): Promise<{ status: string; delivered: boolean; error?: string }> {
 
     try {
-        // TODO: Implement actual Twilio status check
+        // Get Twilio client
+        const client = getTwilioClient(config);
 
-        /*
-        const twilio = require('twilio');
-        const client = twilio(config.accountSid, config.authToken);
-
+        // Fetch message status from Twilio
         const message = await client.messages(messageId).fetch();
+
+        console.log(`📊 SMS Status for ${messageId}: ${message.status}`);
 
         return {
             status: message.status,
             delivered: message.status === 'delivered',
         };
-        */
-
-        // Simulated response
-        return {
-            status: 'delivered',
-            delivered: true,
-        };
 
     } catch (error: any) {
-        console.error('SMS status check failed:', error);
+        console.error('❌ SMS status check failed:', error.message);
+
+        // Parse Twilio-specific errors
+        let errorMessage = error.message;
+        if (error.code) {
+            errorMessage = `Twilio Error ${error.code}: ${error.message}`;
+        }
+
         return {
             status: 'unknown',
             delivered: false,
+            error: errorMessage,
         };
     }
 }

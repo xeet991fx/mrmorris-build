@@ -64,58 +64,103 @@ export class WebhookActionExecutor extends BaseActionExecutor {
             });
         }
 
-        try {
-            // Make the HTTP request with 10 second timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+        // Retry configuration
+        const MAX_RETRIES = 3;
+        const BASE_DELAY = 1000; // 1 second
+        let lastError: any = null;
 
-            this.log(`🌐 Sending ${webhookMethod} request to ${url}`);
-
-            const response = await fetch(url, {
-                method: webhookMethod,
-                headers,
-                body: body,
-                signal: controller.signal,
-            });
-
-            clearTimeout(timeoutId);
-
-            const responseStatus = response.status;
-            const responseStatusText = response.statusText;
-            let responseData: any;
-
+        // Attempt webhook with exponential backoff retry
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                responseData = await response.json();
-            } catch {
-                responseData = await response.text();
+                // Make the HTTP request with 10 second timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                this.log(`🌐 Sending ${webhookMethod} request to ${url} (attempt ${attempt}/${MAX_RETRIES})`);
+
+                const response = await fetch(url, {
+                    method: webhookMethod,
+                    headers,
+                    body: body,
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeoutId);
+
+                const responseStatus = response.status;
+                const responseStatusText = response.statusText;
+                let responseData: any;
+
+                try {
+                    responseData = await response.json();
+                } catch {
+                    responseData = await response.text();
+                }
+
+                // Retry on server errors (5xx) or specific client errors
+                if (response.status >= 500 || response.status === 429 || response.status === 408) {
+                    lastError = new Error(`HTTP ${responseStatus}: ${responseStatusText}`);
+                    this.log(`⚠️ Retriable error: ${responseStatus} ${responseStatusText}`);
+
+                    // Don't retry if this was the last attempt
+                    if (attempt === MAX_RETRIES) {
+                        return this.error(`Webhook failed after ${MAX_RETRIES} attempts: ${responseStatus} ${responseStatusText}`);
+                    }
+
+                    // Exponential backoff: 1s, 2s, 4s
+                    const delay = BASE_DELAY * Math.pow(2, attempt - 1);
+                    this.log(`⏳ Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+
+                if (!response.ok) {
+                    this.log(`⚠️ Webhook returned non-2xx status: ${responseStatus} ${responseStatusText}`);
+                    // Non-retriable client error (4xx except 429, 408) - fail immediately
+                    if (response.status >= 400 && response.status < 500) {
+                        return this.error(`Webhook failed: ${responseStatus} ${responseStatusText}`);
+                    }
+                }
+
+                this.log(`✅ Webhook delivered: ${responseStatus} ${responseStatusText} (attempt ${attempt})`);
+
+                return this.success({
+                    delivered: true,
+                    url,
+                    method: webhookMethod,
+                    status: responseStatus,
+                    statusText: responseStatusText,
+                    attempts: attempt,
+                    response: typeof responseData === "string"
+                        ? responseData.substring(0, 500)
+                        : responseData,
+                });
+            } catch (error: any) {
+                lastError = error;
+
+                if (error.name === "AbortError") {
+                    this.log(`❌ Webhook timed out after 10 seconds (attempt ${attempt}/${MAX_RETRIES})`);
+                } else {
+                    this.log(`❌ Webhook failed: ${error.message} (attempt ${attempt}/${MAX_RETRIES})`);
+                }
+
+                // Don't retry if this was the last attempt
+                if (attempt === MAX_RETRIES) {
+                    if (error.name === "AbortError") {
+                        return this.error(`Webhook timed out after ${MAX_RETRIES} attempts (10 second limit)`);
+                    }
+                    return this.error(`Webhook failed after ${MAX_RETRIES} attempts: ${error.message}`);
+                }
+
+                // Exponential backoff: 1s, 2s, 4s
+                const delay = BASE_DELAY * Math.pow(2, attempt - 1);
+                this.log(`⏳ Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
             }
-
-            if (!response.ok) {
-                this.log(`⚠️ Webhook returned non-2xx status: ${responseStatus} ${responseStatusText}`);
-                // Still count as success if it was delivered, but log the issue
-            }
-
-            this.log(`✅ Webhook delivered: ${responseStatus} ${responseStatusText}`);
-
-            return this.success({
-                delivered: true,
-                url,
-                method: webhookMethod,
-                status: responseStatus,
-                statusText: responseStatusText,
-                response: typeof responseData === "string"
-                    ? responseData.substring(0, 500)
-                    : responseData,
-            });
-        } catch (error: any) {
-            if (error.name === "AbortError") {
-                this.log(`❌ Webhook timed out after 10 seconds`);
-                return this.error("Webhook request timed out (10 second limit)");
-            }
-
-            this.log(`❌ Webhook failed: ${error.message}`);
-            return this.error(`Webhook failed: ${error.message}`);
         }
+
+        // Should never reach here, but just in case
+        return this.error(`Webhook failed: ${lastError?.message || 'Unknown error'}`);
     }
 }
 

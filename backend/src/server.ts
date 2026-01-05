@@ -16,6 +16,7 @@ import waitlistRoutes from "./routes/waitlist";
 import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/project";
 import contactRoutes from "./routes/contact";
+import contactDeduplicationRoutes from "./routes/contactDeduplication";
 import companyRoutes from "./routes/company";
 import customFieldRoutes from "./routes/customField";
 import pipelineRoutes from "./routes/pipeline";
@@ -61,9 +62,16 @@ import trackingRoutes from "./routes/tracking";
 import chatRoutes from "./routes/chat";
 import chatbotRoutes from "./routes/chatbot";
 import intentScoringRoutes from "./routes/intentScoring";
+import meetingSchedulerRoutes from "./routes/meetingScheduler";
+import companyVisitorsRoutes from "./routes/companyVisitors";
+import deliverabilityRoutes from "./routes/deliverability";
+import salesforceIntegrationRoutes from "./routes/salesforceIntegration";
+import mlScoringRoutes from "./routes/mlScoring";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 import { startContactSyncScheduler } from "./services/contactSyncService";
 import { startEmailSyncJob } from "./jobs/emailSyncJob";
+import { startIntentScoreDecayJob } from "./jobs/intentScoreDecayJob";
+import { startSalesforceSyncJob } from "./jobs/salesforceSyncJob";
 
 import fs from "fs";
 
@@ -320,6 +328,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/waitlist", waitlistRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/workspaces", contactRoutes);
+app.use("/api/workspaces", contactDeduplicationRoutes);
 app.use("/api/workspaces", companyRoutes);
 app.use("/api/workspaces", customFieldRoutes);
 app.use("/api/workspaces", pipelineRoutes);
@@ -358,6 +367,11 @@ app.use("/api/workspaces", proposalRoutes);
 app.use("/api/workspaces", analyticsRoutes);
 app.use("/api/workspaces", webhookRoutes);
 app.use("/api/workspaces", forecastRoutes);
+app.use("/api/workspaces", meetingSchedulerRoutes);
+app.use("/api/workspaces", companyVisitorsRoutes);
+app.use("/api", deliverabilityRoutes);
+app.use("/api", salesforceIntegrationRoutes); // Salesforce integration routes
+app.use("/api", mlScoringRoutes); // ML scoring routes (predictive analytics)
 app.use("/api/workspaces", callRecordingRoutes);
 app.use("/api/public", publicFormRoutes); // Public form routes (no auth, mounted at /api/public)
 app.use("/api/workspaces", formRoutes); // Authenticated workspace form routes
@@ -420,6 +434,16 @@ const startServer = async () => {
       // Start email sync job (runs every 5 minutes)
       startEmailSyncJob().catch((error) => {
         console.error('❌ Failed to start email sync job:', error);
+      });
+
+      // Start intent score decay job (runs daily at 2 AM)
+      startIntentScoreDecayJob().catch((error) => {
+        console.error('❌ Failed to start intent score decay job:', error);
+      });
+
+      // Start Salesforce sync job (runs every 15 minutes)
+      startSalesforceSyncJob().catch((error) => {
+        console.error('❌ Failed to start Salesforce sync job:', error);
       });
 
       // Initialize event consumers (NEW)

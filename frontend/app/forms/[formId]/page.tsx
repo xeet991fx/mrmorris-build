@@ -20,6 +20,10 @@ declare global {
             identify: (email: string, properties?: Record<string, any>) => void;
             track: (eventType: string, eventName: string, properties?: Record<string, any>) => void;
         };
+        grecaptcha?: {
+            ready: (callback: () => void) => void;
+            execute: (siteKey: string, options: { action: string }) => Promise<string>;
+        };
     }
 }
 
@@ -41,7 +45,7 @@ const AnimatedBackground = () => (
                     y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight : 800),
                 }}
                 animate={{
-                    y: [null, Math.random() * -200, null],
+                    y: [0, Math.random() * -200, 0],
                     opacity: [0.2, 0.8, 0.2],
                 }}
                 transition={{
@@ -217,6 +221,16 @@ export default function PublicFormPage() {
 
     useEffect(() => {
         loadForm();
+
+        // Load reCAPTCHA v3 script
+        const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+        if (recaptchaSiteKey && !document.querySelector(`script[src*="recaptcha"]`)) {
+            const script = document.createElement('script');
+            script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
     }, [formId]);
 
     // Listen for visitor ID from parent window (when embedded in iframe)
@@ -316,12 +330,27 @@ export default function PublicFormPage() {
 
         setIsSubmitting(true);
         try {
+            // Execute reCAPTCHA v3
+            let captchaToken: string | undefined;
+            const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+            if (recaptchaSiteKey && window.grecaptcha) {
+                try {
+                    await new Promise<void>((resolve) => window.grecaptcha!.ready(() => resolve()));
+                    captchaToken = await window.grecaptcha.execute(recaptchaSiteKey, { action: 'submit_form' });
+                } catch (captchaError) {
+                    console.error('reCAPTCHA error:', captchaError);
+                    // Continue without CAPTCHA if it fails
+                }
+            }
+
             const response = await submitForm(formId, formData, {
                 url: window.location.href,
                 referrer: document.referrer,
                 utmSource: new URLSearchParams(window.location.search).get('utm_source') || undefined,
                 utmMedium: new URLSearchParams(window.location.search).get('utm_medium') || undefined,
                 utmCampaign: new URLSearchParams(window.location.search).get('utm_campaign') || undefined,
+                captchaToken,
             });
 
             if (response.success) {
@@ -612,7 +641,7 @@ export default function PublicFormPage() {
                                                         <input
                                                             type="file"
                                                             onChange={(e) => handleFileChange(field.id, e.target.files?.[0] || null)}
-                                                            accept={field.fileSettings?.allowedTypes?.map(t => `.${t}`).join(',')}
+                                                            accept={field.fileSettings?.allowedTypes?.map((t: string) => `.${t}`).join(',')}
                                                             className="hidden"
                                                             id={`file-${field.id}`}
                                                             multiple={field.fileSettings?.multiple}
@@ -677,7 +706,7 @@ export default function PublicFormPage() {
                                                     />
                                                 ) : field.type === 'checkbox' ? (
                                                     <div className="space-y-3">
-                                                        {field.options?.map((opt, i) => (
+                                                        {field.options?.map((opt: string, i: number) => (
                                                             <motion.label
                                                                 key={i}
                                                                 whileHover={{ scale: 1.01 }}
@@ -704,7 +733,7 @@ export default function PublicFormPage() {
                                                     </div>
                                                 ) : field.type === 'radio' ? (
                                                     <div className="space-y-3">
-                                                        {field.options?.map((opt, i) => (
+                                                        {field.options?.map((opt: string, i: number) => (
                                                             <motion.label
                                                                 key={i}
                                                                 whileHover={{ scale: 1.01 }}

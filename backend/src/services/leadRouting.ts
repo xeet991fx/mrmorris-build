@@ -8,6 +8,7 @@
 import { Types } from "mongoose";
 import Form, { ILeadRoutingRule } from "../models/Form";
 import Contact from "../models/Contact";
+import getRedisClient from "../config/redis";
 
 interface RoutingResult {
     assignedTo: string | null;
@@ -17,10 +18,9 @@ interface RoutingResult {
 }
 
 /**
- * Round-robin state tracker (in-memory)
- * In production, this should be in database or Redis
+ * Redis key prefix for round-robin counters
  */
-const roundRobinCounters: Map<string, number> = new Map();
+const ROUND_ROBIN_KEY_PREFIX = 'lead:routing:roundrobin:';
 
 /**
  * Evaluate a single routing condition
@@ -68,23 +68,32 @@ function evaluateRule(rule: ILeadRoutingRule, submissionData: Record<string, any
 }
 
 /**
- * Get next user in round-robin rotation
+ * Get next user in round-robin rotation (using Redis for persistence)
  */
-function getNextRoundRobinUser(formId: string, users: string[]): string {
+async function getNextRoundRobinUser(formId: string, users: string[]): Promise<string> {
     if (!users || users.length === 0) {
         throw new Error("No users available for round-robin assignment");
     }
 
-    // Get current counter or initialize to 0
-    const counter = roundRobinCounters.get(formId) || 0;
+    try {
+        const redis = getRedisClient();
+        const key = `${ROUND_ROBIN_KEY_PREFIX}${formId}`;
 
-    // Get user at current position
-    const selectedUser = users[counter % users.length];
+        // Atomically increment counter and get new value
+        // INCR returns the new value after incrementing
+        const counter = await redis.incr(key);
 
-    // Increment counter for next time
-    roundRobinCounters.set(formId, counter + 1);
+        // Get user at current position (counter - 1 because INCR returns post-increment value)
+        const selectedUser = users[(counter - 1) % users.length];
 
-    return selectedUser;
+        console.log(`🔄 Round-robin: Form ${formId} -> User ${selectedUser} (position ${counter})`);
+
+        return selectedUser;
+    } catch (error: any) {
+        console.error('❌ Redis error in round-robin, falling back to first user:', error.message);
+        // Fallback to first user if Redis fails
+        return users[0];
+    }
 }
 
 /**
@@ -149,7 +158,7 @@ export async function routeLead(
 
         // Step 2: If no rule matched and round-robin is enabled
         if (!assignedTo && routing.roundRobinEnabled && routing.roundRobinUsers && routing.roundRobinUsers.length > 0) {
-            assignedTo = getNextRoundRobinUser(formId, routing.roundRobinUsers);
+            assignedTo = await getNextRoundRobinUser(formId, routing.roundRobinUsers);
             routingReason = "Round-robin assignment";
         }
 
@@ -191,13 +200,28 @@ export async function routeLead(
 /**
  * Reset round-robin counter for a form (useful for testing or manual resets)
  */
-export function resetRoundRobin(formId: string): void {
-    roundRobinCounters.delete(formId);
+export async function resetRoundRobin(formId: string): Promise<void> {
+    try {
+        const redis = getRedisClient();
+        const key = `${ROUND_ROBIN_KEY_PREFIX}${formId}`;
+        await redis.del(key);
+        console.log(`🔄 Round-robin counter reset for form: ${formId}`);
+    } catch (error: any) {
+        console.error('❌ Redis error resetting round-robin:', error.message);
+    }
 }
 
 /**
  * Get current round-robin position for a form
  */
-export function getRoundRobinPosition(formId: string): number {
-    return roundRobinCounters.get(formId) || 0;
+export async function getRoundRobinPosition(formId: string): Promise<number> {
+    try {
+        const redis = getRedisClient();
+        const key = `${ROUND_ROBIN_KEY_PREFIX}${formId}`;
+        const value = await redis.get(key);
+        return value ? parseInt(value, 10) : 0;
+    } catch (error: any) {
+        console.error('❌ Redis error getting round-robin position:', error.message);
+        return 0;
+    }
 }

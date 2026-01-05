@@ -106,6 +106,20 @@ export interface IContact extends Document {
   previousJobTitle?: string;
   linkedContactId?: Types.ObjectId; // Link to new contact after job change
 
+  // Merge History (for deduplication)
+  mergeHistory?: Array<{
+    mergedContactId: Types.ObjectId;
+    mergedAt: Date;
+    mergedBy: Types.ObjectId; // User who performed the merge
+    mergedData: any; // Snapshot of merged contact data
+  }>;
+
+  // Salesforce Sync
+  salesforceId?: string; // Salesforce Contact ID
+  salesforceSyncedAt?: Date; // Last time synced with Salesforce
+  salesforceSyncStatus?: 'synced' | 'pending' | 'error' | 'conflict';
+  salesforceSyncError?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -309,6 +323,41 @@ const contactSchema = new Schema<IContact>(
       type: Schema.Types.ObjectId,
       ref: "Contact",
     },
+
+    // Merge History (for deduplication)
+    mergeHistory: [{
+      mergedContactId: {
+        type: Schema.Types.ObjectId,
+        ref: "Contact",
+        required: true,
+      },
+      mergedAt: {
+        type: Date,
+        required: true,
+        default: Date.now,
+      },
+      mergedBy: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      mergedData: {
+        type: Schema.Types.Mixed,
+      },
+    }],
+
+    // Salesforce Sync
+    salesforceId: {
+      type: String,
+      index: true,
+      sparse: true,
+    },
+    salesforceSyncedAt: Date,
+    salesforceSyncStatus: {
+      type: String,
+      enum: ['synced', 'pending', 'error', 'conflict'],
+    },
+    salesforceSyncError: String,
   },
   {
     timestamps: true,
@@ -318,7 +367,7 @@ const contactSchema = new Schema<IContact>(
 // Compound indexes for efficient queries
 contactSchema.index({ workspaceId: 1, createdAt: -1 });
 contactSchema.index({ workspaceId: 1, status: 1 });
-contactSchema.index({ workspaceId: 1, email: 1 });
+contactSchema.index({ workspaceId: 1, email: 1 }, { unique: true, sparse: true }); // Unique email per workspace
 contactSchema.index({ workspaceId: 1, assignedTo: 1 });
 contactSchema.index({ workspaceId: 1, companyId: 1 });
 

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import Project from '../models/Project';
+import { reverseIPService } from '../services/ReverseIPService';
 
 /**
  * Secure CORS middleware for public tracking endpoints
@@ -231,3 +232,111 @@ export const logTrackingRequest = (req: Request, res: Response, next: NextFuncti
 
   next();
 };
+
+/**
+ * Track company visitor via reverse IP lookup
+ * This middleware runs AFTER CORS validation and identifies companies from IP addresses
+ */
+export const trackCompanyVisitor = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const workspaceId = req.body.workspaceId || req.body.events?.[0]?.workspaceId;
+
+    if (!workspaceId) {
+      return next(); // Skip if no workspace ID
+    }
+
+    // Extract IP address from request
+    const ipAddress = getClientIP(req);
+
+    if (!ipAddress) {
+      return next(); // Skip if no IP
+    }
+
+    // Extract page view data from tracking event
+    const event = req.body.events?.[0];
+    const pageView = event ? {
+      url: event.url || req.body.url,
+      title: event.properties?.pageTitle || event.properties?.title,
+      timestamp: new Date(),
+      referrer: event.referrer,
+      utmParams: extractUTMParams(event),
+    } : {
+      url: req.body.url || req.headers.referer || '',
+      timestamp: new Date(),
+      referrer: req.headers.referer,
+    };
+
+    // Track visitor asynchronously (don't block the request)
+    reverseIPService.trackVisitor({
+      workspaceId,
+      ipAddress,
+      pageView,
+    }).catch((error) => {
+      console.error('[REVERSE IP] Error tracking visitor:', error);
+    });
+
+    next();
+  } catch (error) {
+    console.error('[REVERSE IP] Error in trackCompanyVisitor middleware:', error);
+    next(); // Don't block the request even if tracking fails
+  }
+};
+
+/**
+ * Extract client IP address from request
+ * Handles proxy headers and various deployment scenarios
+ */
+function getClientIP(req: Request): string | null {
+  // Try various headers in order of preference
+  const candidates = [
+    req.headers['cf-connecting-ip'], // Cloudflare
+    req.headers['x-real-ip'], // Nginx
+    req.headers['x-forwarded-for'], // Standard proxy header
+    req.socket.remoteAddress, // Direct connection
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate) {
+      // x-forwarded-for can contain multiple IPs, take the first one
+      const ip = Array.isArray(candidate) ? candidate[0] : candidate;
+      const cleanIP = ip.split(',')[0].trim();
+
+      // Basic IPv4/IPv6 validation
+      if (isValidIP(cleanIP)) {
+        return cleanIP;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Validate IP address format
+ */
+function isValidIP(ip: string): boolean {
+  // IPv4 pattern
+  const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+  // IPv6 pattern (simplified)
+  const ipv6Pattern = /^([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}$/i;
+
+  return ipv4Pattern.test(ip) || ipv6Pattern.test(ip);
+}
+
+/**
+ * Extract UTM parameters from tracking event
+ */
+function extractUTMParams(event: any): any {
+  if (!event?.properties) return undefined;
+
+  const utmParams: any = {};
+  const props = event.properties;
+
+  if (props.utm_source) utmParams.source = props.utm_source;
+  if (props.utm_medium) utmParams.medium = props.utm_medium;
+  if (props.utm_campaign) utmParams.campaign = props.utm_campaign;
+  if (props.utm_term) utmParams.term = props.utm_term;
+  if (props.utm_content) utmParams.content = props.utm_content;
+
+  return Object.keys(utmParams).length > 0 ? utmParams : undefined;
+}

@@ -4,6 +4,21 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+// Helper to get auth token
+function getAuthToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('token');
+}
+
+// Helper to get auth headers
+function getAuthHeaders(): HeadersInit {
+    const token = getAuthToken();
+    return {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+    };
+}
+
 export interface CallRecording {
     _id: string;
     workspaceId: string;
@@ -90,19 +105,22 @@ export async function getCallRecordings(
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.offset) queryParams.append("offset", params.offset.toString());
 
+    const url = `${API_BASE_URL}/workspaces/${workspaceId}/call-recordings?${queryParams}`;
+    console.log('Fetching call recordings from:', url);
+
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/call-recordings?${queryParams}`,
+        url,
         {
             method: "GET",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
         }
     );
 
     if (!response.ok) {
-        throw new Error("Failed to fetch call recordings");
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error(`Call recordings API error: ${response.status} - ${errorText}`);
+        throw new Error(`Failed to fetch call recordings: ${response.status}`);
     }
 
     return response.json();
@@ -116,13 +134,11 @@ export async function getCallRecording(
     id: string
 ): Promise<{ success: boolean; data: CallRecording }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/call-recordings/${id}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/call-recordings/${id}`,
         {
             method: "GET",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
         }
     );
 
@@ -163,11 +179,15 @@ export async function uploadCallRecording(
     if (data.participants) formData.append("participants", JSON.stringify(data.participants));
     if (data.tags) formData.append("tags", JSON.stringify(data.tags));
 
+    const token = getAuthToken();
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/call-recordings`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/call-recordings`,
         {
             method: "POST",
             credentials: "include",
+            headers: {
+                ...(token && { Authorization: `Bearer ${token}` }),
+            },
             body: formData,
         }
     );
@@ -188,13 +208,11 @@ export async function updateCallRecording(
     updates: Partial<CallRecording>
 ): Promise<{ success: boolean; data: CallRecording; message: string }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/call-recordings/${id}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/call-recordings/${id}`,
         {
             method: "PUT",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(updates),
         }
     );
@@ -214,13 +232,11 @@ export async function deleteCallRecording(
     id: string
 ): Promise<{ success: boolean; message: string }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/call-recordings/${id}`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/call-recordings/${id}`,
         {
             method: "DELETE",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
         }
     );
 
@@ -239,13 +255,11 @@ export async function transcribeCallRecording(
     id: string
 ): Promise<{ success: boolean; message: string; data: any }> {
     const response = await fetch(
-        `${API_BASE_URL}/api/workspaces/${workspaceId}/call-recordings/${id}/transcribe`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/call-recordings/${id}/transcribe`,
         {
             method: "POST",
             credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: getAuthHeaders(),
         }
     );
 

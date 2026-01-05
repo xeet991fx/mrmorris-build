@@ -123,6 +123,40 @@ export const INTENT_PATTERNS: IntentPattern[] = [
 ];
 
 // ============================================
+// DECAY CONFIGURATION
+// ============================================
+
+/**
+ * Intent score decay settings
+ * Exponential decay: score = originalScore * (0.5 ^ (daysSince / halfLife))
+ */
+export const DECAY_CONFIG = {
+    HALF_LIFE_DAYS: 30, // Score halves every 30 days
+    MAX_AGE_DAYS: 90,   // Signals older than 90 days are ignored
+};
+
+/**
+ * Apply time-based decay to a signal score
+ */
+export function applyDecay(originalScore: number, signalTimestamp: Date): number {
+    const now = Date.now();
+    const signalTime = new Date(signalTimestamp).getTime();
+    const ageInMs = now - signalTime;
+    const ageInDays = ageInMs / (1000 * 60 * 60 * 24);
+
+    // Ignore very old signals
+    if (ageInDays > DECAY_CONFIG.MAX_AGE_DAYS) {
+        return 0;
+    }
+
+    // Exponential decay: score * (0.5 ^ (age / halfLife))
+    const decayFactor = Math.pow(0.5, ageInDays / DECAY_CONFIG.HALF_LIFE_DAYS);
+    const decayedScore = originalScore * decayFactor;
+
+    return Math.round(decayedScore * 100) / 100; // Round to 2 decimals
+}
+
+// ============================================
 // CORE FUNCTIONS
 // ============================================
 
@@ -188,13 +222,13 @@ export async function calculateIntentScore(
         throw new Error("Either contactId or visitorId is required");
     }
 
-    // Get signals from last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Get signals from last MAX_AGE_DAYS (90 days by default)
+    const maxAgeDate = new Date();
+    maxAgeDate.setDate(maxAgeDate.getDate() - DECAY_CONFIG.MAX_AGE_DAYS);
 
     const filter: any = {
         workspaceId,
-        timestamp: { $gte: thirtyDaysAgo },
+        timestamp: { $gte: maxAgeDate },
     };
 
     if (contactId) {
@@ -207,15 +241,19 @@ export async function calculateIntentScore(
         .sort({ timestamp: -1 })
         .lean();
 
-    // Calculate base score
+    // Calculate base score with time-based decay
     let baseScore = 0;
     const signalSummary: any[] = [];
 
     for (const signal of signals) {
-        baseScore += signal.signalValue;
+        // Apply exponential decay based on signal age
+        const decayedScore = applyDecay(signal.signalValue, signal.timestamp);
+        baseScore += decayedScore;
+
         signalSummary.push({
             name: signal.signalName,
-            score: signal.signalValue,
+            originalScore: signal.signalValue,
+            decayedScore: decayedScore,
             timestamp: signal.timestamp,
         });
     }
@@ -231,12 +269,12 @@ export async function calculateIntentScore(
     const totalScore = baseScore + patternBonus;
 
     console.log(`
-    📈 Intent Score Calculated
-    Base Score: ${baseScore}
+    📈 Intent Score Calculated (with time-based decay)
+    Base Score (decayed): ${Math.round(baseScore * 100) / 100}
     Pattern Bonus: +${patternBonus}
-    Total Score: ${totalScore}
+    Total Score: ${Math.round(totalScore * 100) / 100}
     Patterns: ${detectedPatterns.map(p => p.name).join(', ') || 'None'}
-    Signals: ${signals.length} in last 30 days
+    Signals: ${signals.length} in last ${DECAY_CONFIG.MAX_AGE_DAYS} days
     `);
 
     // Update contact with intent score
@@ -353,24 +391,26 @@ export async function getContactIntentBreakdown(
         .sort({ timestamp: -1 })
         .lean();
 
-    // Group by signal type
+    // Group by signal type with decay applied
     const signalsByType: Record<string, number> = {};
     let totalScore = 0;
 
     for (const signal of signals) {
-        totalScore += signal.signalValue;
+        const decayedScore = applyDecay(signal.signalValue, signal.timestamp);
+        totalScore += decayedScore;
 
         if (!signalsByType[signal.signalType]) {
             signalsByType[signal.signalType] = 0;
         }
-        signalsByType[signal.signalType] += signal.signalValue;
+        signalsByType[signal.signalType] += decayedScore;
     }
 
-    // Get recent signals (last 10)
+    // Get recent signals (last 10) with decay information
     const recentSignals = signals.slice(0, 10).map(s => ({
         name: s.signalName,
         description: INTENT_SIGNALS[s.signalName]?.description || s.signalName,
-        score: s.signalValue,
+        originalScore: s.signalValue,
+        decayedScore: applyDecay(s.signalValue, s.timestamp),
         timestamp: s.timestamp,
         url: s.url,
     }));
@@ -378,14 +418,15 @@ export async function getContactIntentBreakdown(
     // Detect patterns
     const detectedPatterns = detectIntentPatterns(signals);
 
-    // Create timeline (group by day)
+    // Create timeline (group by day) with decay applied
     const timeline: Record<string, number> = {};
     for (const signal of signals) {
         const day = signal.timestamp.toISOString().split('T')[0];
         if (!timeline[day]) {
             timeline[day] = 0;
         }
-        timeline[day] += signal.signalValue;
+        const decayedScore = applyDecay(signal.signalValue, signal.timestamp);
+        timeline[day] += decayedScore;
     }
 
     const timelineArray = Object.entries(timeline).map(([date, score]) => ({
@@ -446,6 +487,8 @@ export default {
     getHotLeads,
     getContactIntentBreakdown,
     trackPricingPageView,
+    applyDecay,
     INTENT_SIGNALS,
     INTENT_PATTERNS,
+    DECAY_CONFIG,
 };

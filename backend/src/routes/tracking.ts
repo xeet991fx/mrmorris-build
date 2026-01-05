@@ -11,6 +11,7 @@ import {
   validateTrackingPayload,
   sanitizeTrackingData,
   logTrackingRequest,
+  trackCompanyVisitor,
 } from '../middleware/secureTracking';
 import { trackIntentSignal } from '../services/intentScoring';
 
@@ -39,6 +40,7 @@ router.post('/public/track/event',
   trackingLimiter,
   secureTrackingCors,
   logTrackingRequest,
+  trackCompanyVisitor,
   async (req, res) => {
   try {
     const { events } = req.body;
@@ -347,6 +349,7 @@ router.post('/public/track/identify',
   trackingLimiter,
   secureTrackingCors,
   logTrackingRequest,
+  trackCompanyVisitor,
   async (req, res) => {
   try {
     const { workspaceId, visitorId, email, properties } = req.body;

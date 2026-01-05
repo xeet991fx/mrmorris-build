@@ -9,6 +9,30 @@ interface WebhookPayload {
 }
 
 export class WebhookService {
+    // Retry configuration
+    private readonly MAX_RETRIES = 5; // Increased from 3 to 5
+    private readonly BASE_DELAY_MS = 1000; // 1 second base delay
+    private readonly MAX_DELAY_MS = 60000; // 1 minute max delay
+    private readonly JITTER_FACTOR = 0.3; // 30% jitter
+
+    /**
+     * Calculate exponential backoff delay with jitter
+     * Formula: min(max_delay, base_delay * 2^attempt) + random_jitter
+     */
+    private calculateBackoffDelay(attempt: number): number {
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+        const exponentialDelay = this.BASE_DELAY_MS * Math.pow(2, attempt);
+
+        // Cap at maximum delay
+        const cappedDelay = Math.min(exponentialDelay, this.MAX_DELAY_MS);
+
+        // Add jitter to prevent thundering herd
+        const jitter = cappedDelay * this.JITTER_FACTOR * (Math.random() - 0.5);
+        const finalDelay = cappedDelay + jitter;
+
+        return Math.max(0, Math.floor(finalDelay));
+    }
+
     /**
      * Trigger webhooks for a specific event
      */
@@ -40,7 +64,7 @@ export class WebhookService {
     }
 
     /**
-     * Send individual webhook
+     * Send individual webhook with exponential backoff retry
      */
     private async sendWebhook(
         subscription: any,
@@ -48,10 +72,9 @@ export class WebhookService {
         workspaceId: string,
         data: any
     ): Promise<void> {
-        const maxRetries = 3;
         let attempt = 0;
 
-        while (attempt < maxRetries) {
+        while (attempt < this.MAX_RETRIES) {
             try {
                 const payload: WebhookPayload = {
                     event,
@@ -111,31 +134,35 @@ export class WebhookService {
                 return; // Success - exit retry loop
             } catch (error: any) {
                 attempt++;
+                const errorMessage = error.name === 'AbortError' ? 'Request timeout' : error.message;
+
                 console.error(
-                    `❌ Webhook delivery failed (attempt ${attempt}/${maxRetries}):`,
-                    error.message
+                    `❌ Webhook delivery failed (attempt ${attempt}/${this.MAX_RETRIES}):`,
+                    errorMessage
                 );
 
-                if (attempt >= maxRetries) {
+                if (attempt >= this.MAX_RETRIES) {
                     // Max retries reached - update error
                     await WebhookSubscription.findByIdAndUpdate(subscription._id, {
-                        lastError: error.message,
+                        lastError: errorMessage,
                         retryCount: subscription.retryCount + 1,
                     });
 
-                    // Disable webhook if it fails too many times
+                    // Disable webhook if it fails too many times (after 10 delivery attempts)
                     if (subscription.retryCount >= 10) {
                         await WebhookSubscription.findByIdAndUpdate(subscription._id, {
                             isActive: false,
                             lastError: `Disabled after ${subscription.retryCount} failed attempts`,
                         });
-                        console.log(`⚠️ Webhook disabled: ${subscription.url}`);
+                        console.log(`⚠️ Webhook disabled due to repeated failures: ${subscription.url}`);
                     }
                 } else {
-                    // Wait before retry (exponential backoff)
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, Math.pow(2, attempt) * 1000)
-                    );
+                    // Calculate exponential backoff delay with jitter
+                    const delayMs = this.calculateBackoffDelay(attempt);
+                    console.log(`⏳ Retrying in ${(delayMs / 1000).toFixed(2)}s...`);
+
+                    // Wait before retry
+                    await new Promise((resolve) => setTimeout(resolve, delayMs));
                 }
             }
         }

@@ -9,12 +9,32 @@ export interface FormField {
     type: string;
     label: string;
     required: boolean;
+    placeholder?: string;
+    options?: string[];
+    defaultValue?: string;
+    validation?: {
+        min?: number;
+        max?: number;
+        pattern?: string;
+        message?: string;
+    };
+    fileSettings?: {
+        maxSize: number;
+        allowedTypes: string[];
+        multiple: boolean;
+    };
+    gdprSettings?: {
+        consentText: string;
+        privacyPolicyUrl?: string;
+        required: boolean;
+    };
+    mapToField?: string;
     conditionalLogic?: {
         enabled: boolean;
         rules: Array<{
             fieldId: string;
             operator: 'equals' | 'notEquals' | 'contains' | 'notContains' |
-                      'isEmpty' | 'isNotEmpty' | 'greaterThan' | 'lessThan';
+            'isEmpty' | 'isNotEmpty' | 'greaterThan' | 'lessThan';
             value: string;
         }>;
         logicType: 'AND' | 'OR';

@@ -22,6 +22,7 @@ export interface IEmailMessage extends Document {
     // Common required fields
     contactId: Types.ObjectId;
     workspaceId: Types.ObjectId;
+    assignedTo?: Types.ObjectId; // User ID of assigned team member
 
     // Email details
     fromAccountId?: Types.ObjectId;
@@ -111,6 +112,11 @@ const emailMessageSchema = new Schema<IEmailMessage>(
             type: Schema.Types.ObjectId,
             ref: "Project",
             required: true,
+            index: true,
+        },
+        assignedTo: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
             index: true,
         },
 

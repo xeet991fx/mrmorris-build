@@ -10,6 +10,7 @@ export interface IUser extends Document {
   authProvider: "email" | "google";
   googleId?: string;
   profilePicture?: string;
+  timezone?: string; // User's preferred timezone (IANA timezone string)
   verificationToken?: string;
   verificationTokenExpires?: Date;
   resetPasswordToken?: string;
@@ -70,6 +71,10 @@ const userSchema = new Schema<IUser>(
     },
     profilePicture: {
       type: String,
+    },
+    timezone: {
+      type: String,
+      default: 'America/New_York', // Default to Eastern Time
     },
     verificationToken: {
       type: String,

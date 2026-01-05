@@ -93,6 +93,9 @@ class ApolloService {
     private client: AxiosInstance;
     private apiKey: string;
     private baseUrl = "https://api.apollo.io/v1";
+    private creditsLowThreshold = 100; // Alert when credits drop below this
+    private lastCreditCheck: Date | null = null;
+    private cachedCredits: number | null = null;
 
     constructor() {
         this.apiKey = process.env.APOLLO_API_KEY || "";
@@ -114,6 +117,73 @@ class ApolloService {
     }
 
     /**
+     * Get remaining API credits
+     */
+    async getRemainingCredits(): Promise<{ credits: number; error?: string }> {
+        if (!this.isConfigured()) {
+            return { credits: 0, error: "Apollo API key not configured" };
+        }
+
+        // Cache credits for 1 hour to avoid excessive API calls
+        const now = new Date();
+        if (this.lastCreditCheck && this.cachedCredits !== null) {
+            const hoursSinceCheck = (now.getTime() - this.lastCreditCheck.getTime()) / (1000 * 60 * 60);
+            if (hoursSinceCheck < 1) {
+                return { credits: this.cachedCredits };
+            }
+        }
+
+        try {
+            // Apollo's credit info endpoint
+            const response = await this.client.get("/auth/health", {
+                params: { api_key: this.apiKey },
+            });
+
+            const credits = response.data?.credits_remaining || 0;
+            this.cachedCredits = credits;
+            this.lastCreditCheck = now;
+
+            // Alert if credits are low
+            if (credits < this.creditsLowThreshold && credits > 0) {
+                console.warn(`⚠️ Apollo credits running low: ${credits} remaining`);
+                // TODO: Send notification email to admin
+            } else if (credits === 0) {
+                console.error(`❌ Apollo credits exhausted! Enrichment will fail.`);
+                // TODO: Send urgent notification to admin
+            }
+
+            return { credits };
+        } catch (error: any) {
+            console.error("Failed to check Apollo credits:", error.message);
+            return { credits: 0, error: error.message };
+        }
+    }
+
+    /**
+     * Check if we have enough credits before making API call
+     */
+    private async checkCredits(): Promise<{ hasCredits: boolean; error?: string }> {
+        const { credits, error } = await this.getRemainingCredits();
+
+        if (error) {
+            return { hasCredits: false, error };
+        }
+
+        if (credits === 0) {
+            return {
+                hasCredits: false,
+                error: "Apollo credits exhausted. Please add more credits to your Apollo.io account.",
+            };
+        }
+
+        if (credits < 10) {
+            console.warn(`⚠️ Apollo credits critically low: ${credits} remaining`);
+        }
+
+        return { hasCredits: true };
+    }
+
+    /**
      * Enrich a person by name, email, or company
      */
     async enrichPerson(params: {
@@ -126,6 +196,12 @@ class ApolloService {
     }): Promise<EnrichmentResult> {
         if (!this.isConfigured()) {
             return { success: false, error: "Apollo API key not configured" };
+        }
+
+        // Check credits before making API call
+        const creditCheck = await this.checkCredits();
+        if (!creditCheck.hasCredits) {
+            return { success: false, error: creditCheck.error || "No credits available" };
         }
 
         try {
@@ -166,6 +242,12 @@ class ApolloService {
     async findEmailFromLinkedIn(linkedinUrl: string): Promise<EnrichmentResult> {
         if (!this.isConfigured()) {
             return { success: false, error: "Apollo API key not configured" };
+        }
+
+        // Check credits before making API call
+        const creditCheck = await this.checkCredits();
+        if (!creditCheck.hasCredits) {
+            return { success: false, error: creditCheck.error || "No credits available" };
         }
 
         try {
@@ -209,6 +291,12 @@ class ApolloService {
             return { success: false, error: "Apollo API key not configured" };
         }
 
+        // Check credits before making API call
+        const creditCheck = await this.checkCredits();
+        if (!creditCheck.hasCredits) {
+            return { success: false, error: creditCheck.error || "No credits available" };
+        }
+
         try {
             const response = await this.client.post("/organizations/enrich", {
                 api_key: this.apiKey,
@@ -241,6 +329,12 @@ class ApolloService {
     async searchPeople(filters: ApolloSearchFilters): Promise<EnrichmentResult> {
         if (!this.isConfigured()) {
             return { success: false, error: "Apollo API key not configured" };
+        }
+
+        // Check credits before making API call
+        const creditCheck = await this.checkCredits();
+        if (!creditCheck.hasCredits) {
+            return { success: false, error: creditCheck.error || "No credits available" };
         }
 
         try {

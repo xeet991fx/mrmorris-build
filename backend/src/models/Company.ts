@@ -67,6 +67,12 @@ export interface ICompany extends Document {
     crunchbase?: string;
   };
 
+  // Salesforce Sync
+  salesforceId?: string; // Salesforce Account ID
+  salesforceSyncedAt?: Date;
+  salesforceSyncStatus?: 'synced' | 'pending' | 'error' | 'conflict';
+  salesforceSyncError?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -200,6 +206,19 @@ const companySchema = new Schema<ICompany>(
       angellist: { type: String },
       crunchbase: { type: String },
     },
+
+    // Salesforce Sync
+    salesforceId: {
+      type: String,
+      index: true,
+      sparse: true,
+    },
+    salesforceSyncedAt: Date,
+    salesforceSyncStatus: {
+      type: String,
+      enum: ['synced', 'pending', 'error', 'conflict'],
+    },
+    salesforceSyncError: String,
   },
   {
     timestamps: true,
