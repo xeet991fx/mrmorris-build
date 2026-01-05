@@ -183,19 +183,7 @@ const workflowEnrollmentSchema = new Schema<IWorkflowEnrollment>(
 
         // NEW: Runtime data context for n8n-style workflows
         dataContext: {
-            type: {
-                variables: { type: Schema.Types.Mixed, default: {} },
-                loopContext: {
-                    type: {
-                        array: { type: [Schema.Types.Mixed] },
-                        currentIndex: { type: Number },
-                        currentItem: { type: Schema.Types.Mixed },
-                        results: { type: [Schema.Types.Mixed] },
-                    },
-                    required: false,
-                },
-                previousResults: { type: Schema.Types.Mixed, default: {} },
-            },
+            type: Schema.Types.Mixed,
             required: false,
             default: { variables: {}, previousResults: {} },
         },
@@ -216,7 +204,7 @@ const workflowEnrollmentSchema = new Schema<IWorkflowEnrollment>(
 // VIRTUAL FOR REF PATH
 // ============================================
 
-workflowEnrollmentSchema.virtual('entityTypeRef').get(function () {
+workflowEnrollmentSchema.virtual('entityTypeRef').get(function (this: IWorkflowEnrollment) {
     const typeMap: Record<string, string> = {
         'contact': 'Contact',
         'deal': 'Opportunity',

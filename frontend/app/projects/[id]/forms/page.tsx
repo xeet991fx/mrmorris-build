@@ -268,12 +268,19 @@ export default function FormsPage() {
           >
             <ArrowPathIcon className={cn("w-5 h-5", isLoading && "animate-spin")} />
           </button>
+          <Link
+            href={`/projects/${workspaceId}/forms/templates`}
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 text-white rounded-lg hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl border border-white/20"
+          >
+            <SparklesIcon className="w-5 h-5" />
+            Smart Templates (AI)
+          </Link>
           <button
             onClick={() => setShowTemplates(true)}
             className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
           >
-            <SparklesIcon className="w-5 h-5" />
-            Create from Template
+            <DocumentDuplicateIcon className="w-5 h-5" />
+            Quick Templates
           </button>
           <Link
             href={`/projects/${workspaceId}/forms/new`}

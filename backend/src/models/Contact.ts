@@ -18,6 +18,11 @@ export interface IContact extends Document {
   source?: string; // Where did this contact come from? (e.g., "Website", "Referral", "Event")
   status?: "lead" | "prospect" | "customer" | "inactive" | "disqualified" | "nurture";
 
+  // Lifecycle Stage (MQL → SQL → SAL → Opportunity → Customer)
+  lifecycleStage?: "subscriber" | "lead" | "mql" | "sql" | "sal" | "opportunity" | "customer" | "evangelist" | "churned" | "disqualified";
+  lifecycleStageUpdatedAt?: Date;
+  previousLifecycleStage?: "subscriber" | "lead" | "mql" | "sql" | "sal" | "opportunity" | "customer" | "evangelist" | "churned" | "disqualified";
+
   // Social/Communication
   linkedin?: string;
   twitter?: string;
@@ -189,6 +194,21 @@ const contactSchema = new Schema<IContact>(
       type: String,
       enum: ["lead", "prospect", "customer", "inactive", "disqualified", "nurture"],
       default: "lead",
+    },
+
+    // Lifecycle Stage
+    lifecycleStage: {
+      type: String,
+      enum: ["subscriber", "lead", "mql", "sql", "sal", "opportunity", "customer", "evangelist", "churned", "disqualified"],
+      default: "lead",
+      index: true,
+    },
+    lifecycleStageUpdatedAt: {
+      type: Date,
+    },
+    previousLifecycleStage: {
+      type: String,
+      enum: ["subscriber", "lead", "mql", "sql", "sal", "opportunity", "customer", "evangelist", "churned", "disqualified"],
     },
 
     // Social/Communication
@@ -367,6 +387,7 @@ const contactSchema = new Schema<IContact>(
 // Compound indexes for efficient queries
 contactSchema.index({ workspaceId: 1, createdAt: -1 });
 contactSchema.index({ workspaceId: 1, status: 1 });
+contactSchema.index({ workspaceId: 1, lifecycleStage: 1 });
 contactSchema.index({ workspaceId: 1, email: 1 }, { unique: true, sparse: true }); // Unique email per workspace
 contactSchema.index({ workspaceId: 1, assignedTo: 1 });
 contactSchema.index({ workspaceId: 1, companyId: 1 });

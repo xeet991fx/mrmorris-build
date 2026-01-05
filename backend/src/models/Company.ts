@@ -37,6 +37,13 @@ export interface ICompany extends Document {
   lastContactedAt?: Date;
   notes?: string;
 
+  // Account Hierarchy (ABM)
+  parentCompanyId?: Types.ObjectId; // Parent company
+  subsidiaryIds?: Types.ObjectId[]; // Child companies
+  accountTier?: "tier1" | "tier2" | "tier3"; // Target account tier
+  accountScore?: number; // 0-100, account fit score
+  isTargetAccount?: boolean;
+
   // Custom Fields
   customFields?: Map<string, any>;
 
@@ -158,6 +165,31 @@ const companySchema = new Schema<ICompany>(
     },
     lastContactedAt: { type: Date },
     notes: { type: String },
+
+    // Account Hierarchy (ABM)
+    parentCompanyId: {
+      type: Schema.Types.ObjectId,
+      ref: "Company",
+      index: true,
+    },
+    subsidiaryIds: [{
+      type: Schema.Types.ObjectId,
+      ref: "Company",
+    }],
+    accountTier: {
+      type: String,
+      enum: ["tier1", "tier2", "tier3"],
+    },
+    accountScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+    },
+    isTargetAccount: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
 
     // Custom Fields
     customFields: {

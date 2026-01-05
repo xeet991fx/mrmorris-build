@@ -67,11 +67,20 @@ import companyVisitorsRoutes from "./routes/companyVisitors";
 import deliverabilityRoutes from "./routes/deliverability";
 import salesforceIntegrationRoutes from "./routes/salesforceIntegration";
 import mlScoringRoutes from "./routes/mlScoring";
+import lifecycleStageRoutes from "./routes/lifecycleStage";
+import leadRecyclingRoutes from "./routes/leadRecycling";
+import attributionRoutes from "./routes/attribution";
+import referralRoutes from "./routes/referral";
+import leadMagnetRoutes from "./routes/leadMagnet";
+import voiceDropRoutes from "./routes/voiceDrop";
+import formTemplateRoutes from "./routes/formTemplate";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 import { startContactSyncScheduler } from "./services/contactSyncService";
 import { startEmailSyncJob } from "./jobs/emailSyncJob";
 import { startIntentScoreDecayJob } from "./jobs/intentScoreDecayJob";
 import { startSalesforceSyncJob } from "./jobs/salesforceSyncJob";
+import { startLifecycleProgressionJob } from "./jobs/lifecycleProgressionJob";
+import { startLeadRecyclingJob } from "./jobs/leadRecyclingJob";
 
 import fs from "fs";
 
@@ -382,6 +391,13 @@ app.use("/api", trackingRoutes); // Tracking routes (public and authenticated)
 app.use("/api/workspaces", chatRoutes); // Chat conversation routes
 app.use("/api/workspaces", chatbotRoutes); // Chatbot CRUD routes
 app.use("/api/workspaces", intentScoringRoutes); // Intent scoring routes (behavioral analytics)
+app.use("/api/lifecycle-stages", lifecycleStageRoutes); // Lifecycle stage management (MQL→SQL→SAL→Opportunity→Customer)
+app.use("/api/lead-recycling", leadRecyclingRoutes); // Lead recycling and re-engagement
+app.use("/api/attribution", attributionRoutes); // Multi-touch attribution and revenue tracking
+app.use("/api/referrals", referralRoutes); // Referral program with viral growth mechanics
+app.use("/api/lead-magnets", leadMagnetRoutes); // Gated content library
+app.use("/api/voice-drops", voiceDropRoutes); // Ringless voicemail campaigns
+app.use("/api/form-templates", formTemplateRoutes); // Smart form templates with conversion optimization
 
 // ============================================
 // SENTRY ERROR HANDLER (must be before other error handlers)
@@ -446,6 +462,14 @@ const startServer = async () => {
       startSalesforceSyncJob().catch((error) => {
         console.error('❌ Failed to start Salesforce sync job:', error);
       });
+
+      // Start lifecycle progression job (runs every 2 hours)
+      startLifecycleProgressionJob();
+      console.log('⚡ Lifecycle progression job: Running');
+
+      // Start lead recycling job (runs daily at 9 AM)
+      startLeadRecyclingJob();
+      console.log('⚡ Lead recycling job: Running');
 
       // Initialize event consumers (NEW)
       (async () => {
