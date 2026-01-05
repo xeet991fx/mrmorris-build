@@ -180,6 +180,7 @@ app.use(cors({
     "http://localhost:3001", // Allow both ports for local development
     "http://localhost:3002", // Allow both ports for local development
     "https://clianta.online", //vercel dev
+    "https://www.clianta.online", // www subdomain
     "https://abdulgffarsk.netlify.app", // User's test website
   ],
   credentials: true,

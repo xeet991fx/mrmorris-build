@@ -1,38 +1,103 @@
 /**
  * UNIVERSAL AUTONOMOUS AGENT FRAMEWORK
  *
- * Apply this pattern to ALL agents to make them intelligent and autonomous
+ * Apply this pattern to ALL agents to make them intelligent and autonomous.
+ * This file contains the template function and documentation for building autonomous agents.
  */
 
-/*
-=============================================================================
-PHASE 1: AUTONOMOUS DATA GATHERING
-=============================================================================
-Before making decisions, GATHER CONTEXT from real CRM data
-*/
+import { Types } from "mongoose";
 
-// Example for ANY agent:
-const existingData = await Model.find({ workspaceId })
-    .select("relevant fields createdAt")
-    .sort({ createdAt: -1 }) // Newest first
-    .limit(10)
-    .lean();
+// ============================================
+// TYPE DEFINITIONS
+// ============================================
 
-const context = existingData.length > 0
-    ? `EXISTING DATA:\n${existingData.map((item, index) => {
-        const timeAgo = getTimeAgo(item.createdAt);
-        const isNewest = index === 0 ? " 🆕 LATEST" : "";
-        return `${index + 1}. ${item.name} - Created ${timeAgo}${isNewest}`;
-      }).join('\n')}`
-    : "No existing data";
+interface AgentContext {
+    workspaceId: Types.ObjectId | string;
+    userRequest: string;
+    Model: any; // The mongoose model to query
+}
 
-/*
-=============================================================================
-PHASE 2: INTELLIGENT SYSTEM PROMPT
-=============================================================================
-*/
+interface ToolCall {
+    tool: string;
+    args: Record<string, any>;
+}
 
-const systemPrompt = `You are an ELITE [AGENT TYPE] powered by Gemini 2.5 Pro.
+interface AgentResult {
+    messages: any[];
+    toolResults: Record<string, any>;
+    finalResponse: string;
+}
+
+// ============================================
+// HELPER FUNCTIONS (to be implemented per agent)
+// ============================================
+
+function getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - new Date(date).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffMins > 0) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    return 'just now';
+}
+
+function parseToolCall(responseText: string): ToolCall | null {
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/JSON:\s*(\{[\s\S]*?\})/);
+    if (!jsonMatch) return null;
+
+    try {
+        const parsed = JSON.parse(jsonMatch[1]);
+        return { tool: parsed.tool, args: parsed.args || {} };
+    } catch {
+        return null;
+    }
+}
+
+// Placeholder - implement per agent
+async function executeToolFunction(tool: string, args: Record<string, any>): Promise<{ success: boolean; message?: string; error?: string }> {
+    console.log(`Executing tool: ${tool}`, args);
+    return { success: true, message: `Executed ${tool}` };
+}
+
+// Placeholder - implement with your LLM provider
+function getProModel(): any {
+    throw new Error("Implement getProModel() with your LLM provider");
+}
+
+// ============================================
+// PHASE 1: AUTONOMOUS DATA GATHERING
+// ============================================
+// Before making decisions, GATHER CONTEXT from real CRM data
+
+export async function gatherContext(ctx: AgentContext): Promise<string> {
+    const existingData = await ctx.Model.find({ workspaceId: ctx.workspaceId })
+        .select("name createdAt")
+        .sort({ createdAt: -1 }) // Newest first
+        .limit(10)
+        .lean();
+
+    const context = existingData.length > 0
+        ? `EXISTING DATA:\n${existingData.map((item: any, index: number) => {
+            const timeAgo = getTimeAgo(item.createdAt);
+            const isNewest = index === 0 ? " 🆕 LATEST" : "";
+            return `${index + 1}. ${item.name} - Created ${timeAgo}${isNewest}`;
+        }).join('\n')}`
+        : "No existing data";
+
+    return context;
+}
+
+// ============================================
+// PHASE 2: INTELLIGENT SYSTEM PROMPT
+// ============================================
+
+export function buildSystemPrompt(context: string, userRequest: string): string {
+    return `You are an ELITE [AGENT TYPE] powered by Gemini 2.5 Pro.
 
 🎯 AUTONOMOUS MODE: You analyze REAL CRM data and make INTELLIGENT decisions.
 
@@ -105,50 +170,58 @@ JSON:
 {"tool": "tool_name", "args": {...}}
 
 CRITICAL: Think contextually, not generically!`;
+}
 
-/*
-=============================================================================
-PHASE 3: RESPONSE PROCESSING WITH REASONING
-=============================================================================
-*/
+// ============================================
+// PHASE 3: RESPONSE PROCESSING WITH REASONING
+// ============================================
 
-const response = await getProModel().invoke([
-    new SystemMessage(systemPrompt),
-    new HumanMessage(userRequest),
-]);
+export async function processAgentResponse(
+    systemPrompt: string,
+    userRequest: string
+): Promise<AgentResult | null> {
+    const { SystemMessage, HumanMessage, AIMessage } = await import("@langchain/core/messages");
 
-const responseText = response.content as string;
+    const response = await getProModel().invoke([
+        new SystemMessage(systemPrompt),
+        new HumanMessage(userRequest),
+    ]);
 
-// Extract AI's reasoning
-const analysisMatch = responseText.match(/ANALYSIS:(.*?)(?=JSON:|$)/s);
-const aiAnalysis = analysisMatch ? analysisMatch[1].trim() : "";
+    const responseText = response.content as string;
 
-console.log("🧠 AI Analysis:", aiAnalysis.substring(0, 200));
+    // Extract AI's reasoning
+    const analysisMatch = responseText.match(/ANALYSIS:(.*?)(?=JSON:|$)/s);
+    const aiAnalysis = analysisMatch ? analysisMatch[1].trim() : "";
 
-// Extract and execute tool call
-const toolCall = parseToolCall(responseText);
+    console.log("🧠 AI Analysis:", aiAnalysis.substring(0, 200));
 
-if (toolCall) {
-    const result = await executeToolFunction(toolCall.tool, toolCall.args, ...);
+    // Extract and execute tool call
+    const toolCall = parseToolCall(responseText);
 
-    // Build response with reasoning (optional - can hide for production)
-    let friendlyResponse = "";
+    if (toolCall) {
+        const result = await executeToolFunction(toolCall.tool, toolCall.args);
 
-    // Show AI thinking (makes responses feel intelligent)
-    if (aiAnalysis && aiAnalysis.length > 50) {
-        friendlyResponse += `## 🧠 Analysis\n${aiAnalysis}\n\n---\n\n`;
+        // Build response with reasoning (optional - can hide for production)
+        let friendlyResponse = "";
+
+        // Show AI thinking (makes responses feel intelligent)
+        if (aiAnalysis && aiAnalysis.length > 50) {
+            friendlyResponse += `## 🧠 Analysis\n${aiAnalysis}\n\n---\n\n`;
+        }
+
+        // Add result
+        friendlyResponse += result.success
+            ? `✅ ${result.message}`
+            : `❌ ${result.error}`;
+
+        return {
+            messages: [new AIMessage(friendlyResponse)],
+            toolResults: { [toolCall.tool]: result, aiAnalysis },
+            finalResponse: friendlyResponse,
+        };
     }
 
-    // Add result
-    friendlyResponse += result.success
-        ? `✅ ${result.message}`
-        : `❌ ${result.error}`;
-
-    return {
-        messages: [new AIMessage(friendlyResponse)],
-        toolResults: { [toolCall.tool]: result, aiAnalysis },
-        finalResponse: friendlyResponse,
-    };
+    return null;
 }
 
 /*
@@ -214,3 +287,11 @@ APPLY THIS TO:
 
 =============================================================================
 */
+
+export default {
+    gatherContext,
+    buildSystemPrompt,
+    processAgentResponse,
+    getTimeAgo,
+    parseToolCall,
+};

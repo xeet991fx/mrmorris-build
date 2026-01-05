@@ -18,7 +18,7 @@ export type EnrollmentStatus =
 export interface IStepExecution {
     stepId: string;
     stepName: string;
-    stepType: 'trigger' | 'action' | 'delay' | 'condition' | 'wait_event';
+    stepType: 'trigger' | 'action' | 'delay' | 'condition' | 'wait_event' | 'parallel' | 'merge' | 'loop' | 'transform' | 'try_catch' | 'ai_agent' | 'http_request' | 'integration_slack' | 'integration_google_sheets' | 'integration_notion' | 'integration_whatsapp' | 'integration_discord';
     startedAt: Date;
     completedAt?: Date;
     status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped' | 'waiting';
@@ -90,7 +90,7 @@ const stepExecutionSchema = new Schema<IStepExecution>(
         stepName: { type: String, required: true },
         stepType: {
             type: String,
-            enum: ['trigger', 'action', 'delay', 'condition', 'wait_event'],
+            enum: ['trigger', 'action', 'delay', 'condition', 'wait_event', 'parallel', 'merge', 'loop', 'transform', 'try_catch', 'ai_agent', 'http_request', 'integration_slack', 'integration_google_sheets', 'integration_notion', 'integration_whatsapp', 'integration_discord'],
             required: true,
         },
         startedAt: { type: Date, required: true, default: Date.now },
