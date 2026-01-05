@@ -122,13 +122,6 @@ export default function ChatbotBuilderPage() {
       newStep.message = "Enter your message here";
     } else if (type === "question" || type === "collect_info") {
       newStep.message = "Enter your question here";
-      newStep.questionType = "text";
-    } else if (type === "choice") {
-      newStep.questionType = "choice";
-      newStep.choices = [
-        { id: "1", label: "Option 1", value: "option1" },
-        { id: "2", label: "Option 2", value: "option2" },
-      ];
     }
 
     setChatbot({
@@ -239,11 +232,10 @@ export default function ChatbotBuilderPage() {
             </div>
             <div className="flex items-center gap-3">
               <span
-                className={`px-3 py-1 text-sm rounded-full font-medium ${
-                  chatbot.status === "active"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-gray-100 text-gray-800"
-                }`}
+                className={`px-3 py-1 text-sm rounded-full font-medium ${chatbot.status === "active"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-100 text-gray-800"
+                  }`}
               >
                 {chatbot.status}
               </span>
@@ -447,45 +439,45 @@ export default function ChatbotBuilderPage() {
                       {(step.type === "message" ||
                         step.type === "question" ||
                         step.type === "collect_info") && (
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Message
-                            </label>
-                            <textarea
-                              value={step.message || ""}
-                              onChange={(e) =>
-                                updateStep(step.id, { message: e.target.value })
-                              }
-                              rows={2}
-                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-600 dark:bg-gray-800 dark:text-white"
-                              placeholder="Enter bot message..."
-                            />
-                          </div>
-
-                          {step.type === "collect_info" && (
+                          <div className="space-y-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Collect Field
+                                Message
                               </label>
-                              <select
-                                value={step.collectField || "email"}
+                              <textarea
+                                value={step.message || ""}
                                 onChange={(e) =>
-                                  updateStep(step.id, {
-                                    collectField: e.target.value as any,
-                                  })
+                                  updateStep(step.id, { message: e.target.value })
                                 }
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
-                              >
-                                <option value="email">Email</option>
-                                <option value="name">Name</option>
-                                <option value="phone">Phone</option>
-                                <option value="company">Company</option>
-                              </select>
+                                rows={2}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-600 dark:bg-gray-800 dark:text-white"
+                                placeholder="Enter bot message..."
+                              />
                             </div>
-                          )}
-                        </div>
-                      )}
+
+                            {step.type === "collect_info" && (
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Collect Field
+                                </label>
+                                <select
+                                  value={step.collectField || "email"}
+                                  onChange={(e) =>
+                                    updateStep(step.id, {
+                                      collectField: e.target.value as any,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+                                >
+                                  <option value="email">Email</option>
+                                  <option value="name">Name</option>
+                                  <option value="phone">Phone</option>
+                                  <option value="company">Company</option>
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                       {step.type === "handoff" && (
                         <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">

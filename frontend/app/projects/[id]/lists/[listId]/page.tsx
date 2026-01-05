@@ -144,11 +144,10 @@ export default function ListDetailPage() {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 {list.name}
               </h1>
-              <span className={`text-sm px-3 py-1 rounded-full ${
-                list.type === "dynamic"
+              <span className={`text-sm px-3 py-1 rounded-full ${list.type === "dynamic"
                   ? "bg-blue-100 text-blue-800"
                   : "bg-gray-100 text-gray-800"
-              }`}>
+                }`}>
                 {list.type === "dynamic" ? "Dynamic List" : "Static List"}
               </span>
             </div>
@@ -229,9 +228,9 @@ export default function ListDetailPage() {
                 <code className="text-sm text-blue-600 dark:text-blue-400">
                   {JSON.stringify(condition.value)}
                 </code>
-                {idx < list.filters.conditions.length - 1 && (
+                {idx < (list.filters?.conditions.length ?? 0) - 1 && (
                   <span className="ml-auto text-sm font-semibold text-purple-600">
-                    {list.filters.logic}
+                    {list.filters?.logic}
                   </span>
                 )}
               </div>
@@ -311,30 +310,28 @@ export default function ListDetailPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        contact.status === "lead"
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${contact.status === "lead"
                           ? "bg-blue-100 text-blue-800"
                           : contact.status === "prospect"
-                          ? "bg-purple-100 text-purple-800"
-                          : contact.status === "customer"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}>
+                            ? "bg-purple-100 text-purple-800"
+                            : contact.status === "customer"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                        }`}>
                         {contact.status || "N/A"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {contact.leadScore ? (
                         <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 text-xs font-bold rounded ${
-                            contact.leadScore.grade === "A"
+                          <span className={`px-2 py-1 text-xs font-bold rounded ${contact.leadScore.grade === "A"
                               ? "bg-green-100 text-green-800"
                               : contact.leadScore.grade === "B"
-                              ? "bg-blue-100 text-blue-800"
-                              : contact.leadScore.grade === "C"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}>
+                                ? "bg-blue-100 text-blue-800"
+                                : contact.leadScore.grade === "C"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-800"
+                            }`}>
                             {contact.leadScore.grade}
                           </span>
                           <span className="text-sm text-gray-600 dark:text-gray-400">

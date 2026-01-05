@@ -329,9 +329,9 @@ function FieldPreview({ field }: { field: FormField }) {
                 <input type="checkbox" className="mt-1 rounded" disabled />
                 <span className="text-sm text-foreground">
                     {field.gdprSettings?.consentText ||
-                     (field.type === 'gdpr_consent'
-                        ? 'I agree to the privacy policy and terms of service'
-                        : 'I would like to receive marketing communications')}
+                        (field.type === 'gdpr_consent'
+                            ? 'I agree to the privacy policy and terms of service'
+                            : 'I would like to receive marketing communications')}
                 </span>
             </label>
         );
@@ -623,7 +623,7 @@ export default function EnhancedFormBuilder() {
             }
         }
 
-        const newStatus = form.status === 'published' ? 'draft' : 'published';
+        const newStatus: 'draft' | 'published' | 'archived' = form.status === 'published' ? 'draft' : 'published';
         const updatedForm = { ...form, status: newStatus };
 
         setIsSaving(true);

@@ -23,9 +23,11 @@ import { Slider } from "@/components/ui/slider";
 interface LoopConfigProps {
     step: WorkflowStep;
     onUpdate: (updates: Partial<WorkflowStep>) => void;
+    workspaceId?: string;
+    workflowId?: string;
 }
 
-export default function LoopConfig({ step, onUpdate }: LoopConfigProps) {
+export default function LoopConfig({ step, onUpdate, workspaceId, workflowId }: LoopConfigProps) {
     const config = step.config || {};
 
     const handleConfigUpdate = (field: string, value: any) => {
@@ -81,8 +83,8 @@ export default function LoopConfig({ step, onUpdate }: LoopConfigProps) {
                             {config.sourceType === "expression"
                                 ? "Expression"
                                 : config.sourceType === "field"
-                                ? "Field Path"
-                                : "Variable Name"}
+                                    ? "Field Path"
+                                    : "Variable Name"}
                         </Label>
                         <Input
                             id="sourceArray"
@@ -90,8 +92,8 @@ export default function LoopConfig({ step, onUpdate }: LoopConfigProps) {
                                 config.sourceType === "expression"
                                     ? "{{contacts}}"
                                     : config.sourceType === "field"
-                                    ? "customData.items"
-                                    : "myArray"
+                                        ? "customData.items"
+                                        : "myArray"
                             }
                             value={config.sourceArray || ""}
                             onChange={(e) => handleConfigUpdate("sourceArray", e.target.value)}
@@ -100,8 +102,8 @@ export default function LoopConfig({ step, onUpdate }: LoopConfigProps) {
                             {config.sourceType === "expression"
                                 ? "Use {{variable}} syntax for dynamic values"
                                 : config.sourceType === "field"
-                                ? "Dot notation for nested fields"
-                                : "Name of the variable containing the array"}
+                                    ? "Dot notation for nested fields"
+                                    : "Name of the variable containing the array"}
                         </p>
                     </div>
                 </CardContent>

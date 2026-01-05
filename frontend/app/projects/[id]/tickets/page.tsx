@@ -15,7 +15,7 @@ import {
     faTriangleExclamation,
     faCircleCheck,
     faArrowsRotate,
-    faSparkles,
+    faWandMagicSparkles,
     faXmark,
     faPlay,
     faPause,
@@ -556,7 +556,7 @@ export default function TicketsPage() {
                     <div className="bg-card border border-border rounded-xl p-5">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                                <FontAwesomeIcon icon={faSparkles} className="w-5 h-5 text-violet-500" />
+                                <FontAwesomeIcon icon={faWandMagicSparkles} className="w-5 h-5 text-violet-500" />
                                 <h2 className="text-base font-semibold text-foreground font-heading">Ticket Intelligence</h2>
                             </div>
                             <button

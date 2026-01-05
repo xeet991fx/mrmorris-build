@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 // ACTION ICONS
 // ============================================
 
-const actionIcons: Record<ActionType, React.ReactNode> = {
+const actionIcons: Partial<Record<ActionType, React.ReactNode>> = {
     send_email: <EnvelopeIcon className="w-4 h-4" />,
     update_field: <PencilSquareIcon className="w-4 h-4" />,
     create_task: <ClipboardDocumentListIcon className="w-4 h-4" />,

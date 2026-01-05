@@ -371,7 +371,7 @@ export const TRIGGER_TYPE_LABELS: Record<TriggerType, string> = {
     manual: 'Manual Enrollment',
 };
 
-export const ACTION_TYPE_LABELS: Record<ActionType, string> = {
+export const ACTION_TYPE_LABELS: Partial<Record<ActionType, string>> = {
     send_email: 'Send Email',
     update_field: 'Update Field',
     create_task: 'Create Task',
@@ -401,7 +401,7 @@ export const STATUS_COLORS: Record<WorkflowStatus, string> = {
     archived: 'red',
 };
 
-export const STEP_TYPE_COLORS: Record<StepType, string> = {
+export const STEP_TYPE_COLORS: Partial<Record<StepType, string>> = {
     trigger: 'violet',
     action: 'blue',
     delay: 'orange',
