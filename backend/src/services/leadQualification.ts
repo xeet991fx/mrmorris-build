@@ -10,7 +10,7 @@
 import { Types } from "mongoose";
 import Contact from "../models/Contact";
 import Company from "../models/Company";
-import { enrichContact } from "./ApolloService";
+import ApolloService from "./ApolloService";
 
 // ============================================
 // DISPOSABLE EMAIL PROVIDERS
@@ -333,10 +333,10 @@ export async function enrichAndQualifyLead(
 
     // Step 1: Enrich with Apollo
     try {
-        const enrichmentResult = await enrichContact(contactId, workspaceId);
+        const enrichmentResult = await ApolloService.enrichContact(String(contactId), workspaceId);
 
         if (enrichmentResult.success) {
-            console.log(`✅ Enrichment successful. Found: ${enrichmentResult.fieldsEnriched?.join(', ')}`);
+            console.log(`✅ Enrichment successful. Found: ${(enrichmentResult as any).fieldsEnriched?.join(', ')}`);
         } else {
             console.log(`⚠️ Enrichment failed or no data found`);
         }

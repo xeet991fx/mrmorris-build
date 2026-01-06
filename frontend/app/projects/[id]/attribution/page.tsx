@@ -5,7 +5,10 @@ import { useParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DollarSign, TrendingUp, Target, BarChart3 } from "lucide-react";
+import { StatCard } from "@/components/ui/stat-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { DollarSign, TrendingUp, Target, BarChart3, GitBranch } from "lucide-react";
 
 const ATTRIBUTION_MODELS = [
   { value: "linear", label: "Linear (Equal Credit)" },
@@ -78,15 +81,13 @@ export default function AttributionPage() {
     .sort((a, b) => b.revenue - a.revenue);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Multi-Touch Attribution</h1>
-          <p className="text-muted-foreground">
-            Understand which channels drive revenue across the customer journey
-          </p>
-        </div>
+      <PageHeader
+        icon={GitBranch}
+        title="Multi-Touch Attribution"
+        description="Understand which channels drive revenue across the customer journey"
+      >
         <Select value={model} onValueChange={setModel}>
           <SelectTrigger className="w-64">
             <SelectValue />
@@ -99,43 +100,33 @@ export default function AttributionPage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </PageHeader>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Revenue</CardDescription>
-            <CardTitle className="text-3xl">
-              ${report?.totalRevenue?.toLocaleString() || 0}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">From converted customers</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard
+          title="Total Revenue"
+          value={`$${report?.totalRevenue?.toLocaleString() || 0}`}
+          description="From converted customers"
+          icon={DollarSign}
+          variant="primary"
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Conversions</CardDescription>
-            <CardTitle className="text-3xl">{report?.totalConversions || 0}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Customers with attribution</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Total Conversions"
+          value={report?.totalConversions || 0}
+          description="Customers with attribution"
+          icon={Target}
+          variant="success"
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Avg. Conversion Value</CardDescription>
-            <CardTitle className="text-3xl">
-              ${report?.avgConversionValue?.toFixed(0) || 0}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Per customer</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Avg. Conversion Value"
+          value={`$${report?.avgConversionValue?.toFixed(0) || 0}`}
+          description="Per customer"
+          icon={TrendingUp}
+          variant="info"
+        />
       </div>
 
       {/* Channel Revenue Bar Chart */}
@@ -168,11 +159,11 @@ export default function AttributionPage() {
             ))}
 
             {channelData.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No attribution data available yet</p>
-                <p className="text-sm mt-2">Conversions will appear here once customers are tracked</p>
-              </div>
+              <EmptyState
+                icon={BarChart3}
+                title="No attribution data available yet"
+                description="Conversions will appear here once customers are tracked through multiple channels"
+              />
             )}
           </div>
         </CardContent>

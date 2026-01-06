@@ -5,7 +5,7 @@ import TrackingEvent from '../models/TrackingEvent';
 import Visitor from '../models/Visitor';
 import Contact from '../models/Contact';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import WebhookService from '../services/WebhookService';
+import { webhookService as WebhookService } from '../services/WebhookService';
 import {
   secureTrackingCors,
   validateTrackingPayload,

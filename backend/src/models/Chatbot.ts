@@ -220,6 +220,10 @@ export interface IChatbot extends Document {
   createdAt: Date;
   updatedAt: Date;
   lastActivatedAt?: Date;
+
+  // Methods
+  getStepById(stepId: string): IChatbotStep | undefined;
+  getFirstStep(): IChatbotStep | undefined;
 }
 
 // ============================================

@@ -100,7 +100,7 @@ export default function WorkspacesPage() {
               </p>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-neutral-900 font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all shadow-sm hover:shadow"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-medium text-sm rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:shadow"
               >
                 <PlusIcon className="w-4 h-4" />
                 Create Workspace
@@ -113,7 +113,7 @@ export default function WorkspacesPage() {
             <div className="flex justify-end mb-5">
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-neutral-900 font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all shadow-sm hover:shadow"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-medium text-sm rounded-lg hover:bg-primary/90 transition-all shadow-sm hover:shadow"
               >
                 <PlusIcon className="w-4 h-4" />
                 New Workspace

@@ -88,7 +88,7 @@ export class AIAgentActionExecutor extends BaseActionExecutor {
 
             // Get workspace and user IDs from enrollment
             const workspaceId = enrollment.workspaceId?.toString() || '';
-            const userId = enrollment.userId?.toString() || '';
+            const userId = (enrollment as any).userId?.toString() || '';
             const sessionId = `workflow-${enrollment._id?.toString()}`;
 
             // Invoke AI agent

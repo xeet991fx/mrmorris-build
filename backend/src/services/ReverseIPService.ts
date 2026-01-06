@@ -154,10 +154,10 @@ export class ReverseIPService {
             }
 
             // Add page view
-            visitor.addPageView(pageView);
+            (visitor as any).addPageView(pageView);
 
             // Check if we should send alerts
-            const alertType = visitor.shouldSendAlert();
+            const alertType = (visitor as any).shouldSendAlert();
             if (alertType) {
                 await this.sendAlert(visitor, alertType);
             }
@@ -322,7 +322,7 @@ export class ReverseIPService {
         };
 
         // Calculate initial account score
-        visitor.calculateAccountScore();
+        (visitor as any).calculateAccountScore();
     }
 
     /**

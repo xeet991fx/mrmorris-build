@@ -39,7 +39,7 @@ function VerifyEmailContent() {
         setStatus("error");
         setMessage(
           error.response?.data?.error ||
-            "Email verification failed. The link may have expired."
+          "Email verification failed. The link may have expired."
         );
       }
     };
@@ -63,7 +63,7 @@ function VerifyEmailContent() {
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="mb-6 inline-block"
               >
-                <Loader2 className="w-16 h-16 text-[#9ACD32]" />
+                <Loader2 className="w-16 h-16 text-primary" />
               </motion.div>
               <h2 className="text-2xl font-bold text-foreground mb-2">
                 Verifying Your Email
@@ -103,7 +103,7 @@ function VerifyEmailContent() {
                   Redirecting to dashboard...
                 </p>
                 <Link href="/dashboard">
-                  <Button className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                     Go to Dashboard
                   </Button>
                 </Link>
@@ -143,7 +143,7 @@ function VerifyEmailContent() {
                   </Button>
                 </Link>
                 <Link href="/login">
-                  <Button className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                     Back to Login
                   </Button>
                 </Link>
@@ -160,7 +160,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black">
-        <Loader2 className="w-16 h-16 text-[#9ACD32] animate-spin" />
+        <Loader2 className="w-16 h-16 text-primary animate-spin" />
       </div>
     }>
       <VerifyEmailContent />

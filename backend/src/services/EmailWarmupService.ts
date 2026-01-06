@@ -110,7 +110,7 @@ export class EmailWarmupService {
             emailsSentToday: emailAccount.sentToday,
             totalEmailsSent: 0, // TODO: Calculate from sent emails
             reputationScore: emailAccount.reputationScore,
-            provider: emailAccount.warmupConfig?.externalProvider || 'internal',
+            provider: (emailAccount.warmupConfig?.externalProvider as WarmupProvider) || 'internal',
             lastActivity: emailAccount.lastSentAt,
         };
     }

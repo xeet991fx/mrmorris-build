@@ -59,7 +59,27 @@ const config: Config = {
           DEFAULT: "hsl(var(--surface))",
           hover: "hsl(var(--surface-hover))",
         },
-        overlay: "hsl(var(--overlay))",
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        teal: {
+          DEFAULT: "hsl(var(--teal))",
+          foreground: "hsl(var(--teal-foreground))",
+        },
+        brand: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+          hover: "hsl(var(--primary) / 0.9)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

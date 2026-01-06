@@ -399,6 +399,10 @@ app.use("/api/lead-magnets", leadMagnetRoutes); // Gated content library
 app.use("/api/voice-drops", voiceDropRoutes); // Ringless voicemail campaigns
 app.use("/api/form-templates", formTemplateRoutes); // Smart form templates with conversion optimization
 
+// AI Content Generation with Business Profile Context
+import aiContentRoutes from "./routes/aiContent";
+app.use("/api/ai-content", aiContentRoutes); // AI-powered form, email, and page generation using business profile
+
 // ============================================
 // SENTRY ERROR HANDLER (must be before other error handlers)
 // ============================================

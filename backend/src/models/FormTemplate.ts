@@ -75,6 +75,9 @@ export interface IFormTemplate extends Document {
 
   createdAt: Date;
   updatedAt: Date;
+
+  // Methods
+  incrementUsage(): Promise<this>;
 }
 
 const FormTemplateSchema = new Schema<IFormTemplate>(

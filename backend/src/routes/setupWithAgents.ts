@@ -44,6 +44,11 @@ router.post(
             console.log(`🚀 AI Setup starting for workspace ${workspaceId}`);
             console.log(`📋 Answers:`, answers);
 
+            // Save business profile
+            const { IntelligentOnboardingService } = await import("../services/IntelligentOnboardingService");
+            const profile = await IntelligentOnboardingService.saveBusinessProfile(workspaceId, answers);
+            console.log(`✅ Business profile saved for workspace ${workspaceId}`);
+
             // Step 1: Use LLM to generate a customized setup plan
             const model = getProModel();
 
@@ -109,9 +114,78 @@ Keep it under 150 words. DO NOT mention creating deals as workflow actions.`;
 
 /**
  * GET /setup-questions
- * Get the onboarding questions for the setup wizard
+ * Get intelligent onboarding questions
  */
 router.get("/setup-questions", authenticate, async (req: Request, res: Response) => {
+    const { IntelligentOnboardingService } = await import("../services/IntelligentOnboardingService");
+
+    const questions = IntelligentOnboardingService.getAllQuestions();
+
+    res.json({
+        success: true,
+        data: {
+            questions,
+        },
+    });
+});
+
+/**
+ * POST /next-question
+ * Get the next contextual question based on previous answers
+ */
+router.post("/next-question", authenticate, async (req: Request, res: Response) => {
+    const { IntelligentOnboardingService } = await import("../services/IntelligentOnboardingService");
+    const { answers } = req.body;
+
+    const nextQuestion = IntelligentOnboardingService.getNextQuestion(answers || {});
+
+    res.json({
+        success: true,
+        data: {
+            question: nextQuestion,
+            progress: answers ? Object.keys(answers).length : 0,
+        },
+    });
+});
+
+/**
+ * GET /business-profile/:workspaceId
+ * Get business profile for a workspace
+ */
+router.get("/business-profile/:workspaceId", authenticate, async (req: Request, res: Response) => {
+    try {
+        const { IntelligentOnboardingService } = await import("../services/IntelligentOnboardingService");
+        const { workspaceId } = req.params;
+
+        const profile = await IntelligentOnboardingService.getBusinessProfile(workspaceId);
+
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                error: "Business profile not found",
+            });
+        }
+
+        const recommendations = IntelligentOnboardingService.generateRecommendations(profile);
+
+        res.json({
+            success: true,
+            data: {
+                profile,
+                recommendations,
+            },
+        });
+    } catch (error: any) {
+        console.error("Error fetching business profile:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+        });
+    }
+});
+
+// Keep the old endpoint for backwards compatibility
+router.get("/setup-questions-legacy", authenticate, async (req: Request, res: Response) => {
     res.json({
         success: true,
         data: {

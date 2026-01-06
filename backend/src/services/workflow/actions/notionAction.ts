@@ -32,7 +32,7 @@ export interface NotionActionConfig {
 export class NotionActionExecutor extends BaseActionExecutor {
     async execute(context: ActionContext): Promise<ActionResult> {
         const { step, entity, enrollment } = context;
-        const config = step.config as NotionActionConfig;
+        const config = step.config as any as NotionActionConfig;
 
         if (!config.credentialId) {
             return this.error('Notion credential not configured');
@@ -162,7 +162,7 @@ async function queryDatabase(
         throw new Error('Database ID is required for query_database action');
     }
 
-    const response = await notion.databases.query({
+    const response = await (notion.databases as any).query({
         database_id: config.databaseId,
         filter: config.filter,
         sorts: config.sorts,

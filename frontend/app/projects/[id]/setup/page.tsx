@@ -17,12 +17,18 @@ import ReactMarkdown from "react-markdown";
 interface Question {
     id: string;
     question: string;
-    type: string;
-    options: { value: string; label: string }[];
+    type: "select" | "multiselect" | "text" | "number";
+    options?: { value: string; label: string; description?: string }[];
+    placeholder?: string;
+    required?: boolean;
+    dependsOn?: {
+        questionId: string;
+        values: string[];
+    };
 }
 
 interface Answers {
-    [key: string]: string;
+    [key: string]: string | string[];
 }
 
 export default function SetupPage() {
@@ -30,7 +36,8 @@ export default function SetupPage() {
     const router = useRouter();
     const workspaceId = params.id as string;
 
-    const [questions, setQuestions] = useState<Question[]>([]);
+    const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+    const [relevantQuestions, setRelevantQuestions] = useState<Question[]>([]);
     const [currentStep, setCurrentStep] = useState(0);
     const [answers, setAnswers] = useState<Answers>({});
     const [isLoading, setIsLoading] = useState(true);
@@ -42,11 +49,17 @@ export default function SetupPage() {
         fetchQuestions();
     }, []);
 
+    useEffect(() => {
+        if (allQuestions.length > 0) {
+            filterRelevantQuestions();
+        }
+    }, [answers, allQuestions]);
+
     const fetchQuestions = async () => {
         try {
             const response = await axios.get("/workspaces/setup-questions");
             if (response.data.success) {
-                setQuestions(response.data.data.questions);
+                setAllQuestions(response.data.data.questions);
             }
         } catch (err) {
             console.error("Failed to fetch questions:", err);
@@ -56,16 +69,54 @@ export default function SetupPage() {
         }
     };
 
-    const handleAnswer = (value: string) => {
-        const currentQuestion = questions[currentStep];
+    const filterRelevantQuestions = () => {
+        const relevant = allQuestions.filter((question) => {
+            // If no dependency, include it
+            if (!question.dependsOn) return true;
+
+            // Check if dependency is satisfied
+            const dependencyValue = answers[question.dependsOn.questionId];
+            if (!dependencyValue) return false;
+
+            // Handle both string and array values
+            if (Array.isArray(dependencyValue)) {
+                return question.dependsOn.values.some((val) => dependencyValue.includes(val));
+            }
+            return question.dependsOn.values.includes(dependencyValue as string);
+        });
+
+        setRelevantQuestions(relevant);
+
+        // Adjust current step if needed
+        if (currentStep >= relevant.length && relevant.length > 0) {
+            setCurrentStep(relevant.length - 1);
+        }
+    };
+
+    const handleAnswer = (value: string | string[]) => {
+        const currentQuestion = relevantQuestions[currentStep];
         setAnswers((prev) => ({
             ...prev,
             [currentQuestion.id]: value,
         }));
     };
 
+    const handleMultiSelectToggle = (value: string) => {
+        const currentQuestion = relevantQuestions[currentStep];
+        const currentAnswers = (answers[currentQuestion.id] as string[]) || [];
+
+        const newAnswers = currentAnswers.includes(value)
+            ? currentAnswers.filter((v) => v !== value)
+            : [...currentAnswers, value];
+
+        setAnswers((prev) => ({
+            ...prev,
+            [currentQuestion.id]: newAnswers,
+        }));
+    };
+
     const nextStep = () => {
-        if (currentStep < questions.length - 1) {
+        if (currentStep < relevantQuestions.length - 1) {
             setCurrentStep((prev) => prev + 1);
         }
     };
@@ -110,11 +161,16 @@ export default function SetupPage() {
         );
     }
 
-    const currentQuestion = questions[currentStep];
+    const currentQuestion = relevantQuestions[currentStep];
     const currentAnswer = currentQuestion ? answers[currentQuestion.id] : null;
-    const progress = ((currentStep + 1) / questions.length) * 100;
-    const isLastQuestion = currentStep === questions.length - 1;
-    const allAnswered = questions.every((q) => answers[q.id]);
+    const progress = relevantQuestions.length > 0 ? ((currentStep + 1) / relevantQuestions.length) * 100 : 0;
+    const isLastQuestion = currentStep === relevantQuestions.length - 1;
+    const allAnswered = relevantQuestions.every((q) => {
+        const answer = answers[q.id];
+        if (!q.required) return true;
+        if (q.type === "multiselect") return Array.isArray(answer) && answer.length > 0;
+        return answer !== undefined && answer !== "";
+    });
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -233,7 +289,7 @@ export default function SetupPage() {
                         {/* Question */}
                         <div className="p-8">
                             <div className="text-sm text-muted-foreground mb-2">
-                                Question {currentStep + 1} of {questions.length}
+                                Question {currentStep + 1} of {relevantQuestions.length}
                             </div>
 
                             <AnimatePresence mode="wait">
@@ -248,22 +304,95 @@ export default function SetupPage() {
                                         {currentQuestion?.question}
                                     </h2>
 
-                                    <div className="space-y-3">
-                                        {currentQuestion?.options.map((option) => (
-                                            <button
-                                                key={option.value}
-                                                onClick={() => handleAnswer(option.value)}
-                                                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${currentAnswer === option.value
-                                                    ? "border-[#9ACD32] bg-[#9ACD32]/10"
-                                                    : "border-border hover:border-muted-foreground"
-                                                    }`}
-                                            >
-                                                <span className="font-medium text-foreground">
-                                                    {option.label}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                    {/* Select Type */}
+                                    {currentQuestion?.type === "select" && (
+                                        <div className="space-y-3">
+                                            {currentQuestion?.options?.map((option) => (
+                                                <button
+                                                    key={option.value}
+                                                    onClick={() => handleAnswer(option.value)}
+                                                    className={`w-full p-4 rounded-lg border-2 text-left transition-all ${currentAnswer === option.value
+                                                        ? "border-[#9ACD32] bg-[#9ACD32]/10"
+                                                        : "border-border hover:border-muted-foreground"
+                                                        }`}
+                                                >
+                                                    <div className="font-medium text-foreground mb-1">
+                                                        {option.label}
+                                                    </div>
+                                                    {option.description && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {option.description}
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Multiselect Type */}
+                                    {currentQuestion?.type === "multiselect" && (
+                                        <div className="space-y-3">
+                                            <div className="text-sm text-muted-foreground mb-4">
+                                                Select all that apply
+                                            </div>
+                                            {currentQuestion?.options?.map((option) => {
+                                                const isSelected = Array.isArray(currentAnswer) && currentAnswer.includes(option.value);
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        onClick={() => handleMultiSelectToggle(option.value)}
+                                                        className={`w-full p-4 rounded-lg border-2 text-left transition-all ${isSelected
+                                                            ? "border-[#9ACD32] bg-[#9ACD32]/10"
+                                                            : "border-border hover:border-muted-foreground"
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected
+                                                                ? "border-[#9ACD32] bg-[#9ACD32]"
+                                                                : "border-muted-foreground"
+                                                                }`}>
+                                                                {isSelected && (
+                                                                    <CheckCircleIcon className="w-4 h-4 text-black" />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <div className="font-medium text-foreground mb-1">
+                                                                    {option.label}
+                                                                </div>
+                                                                {option.description && (
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {option.description}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {/* Text Input Type */}
+                                    {currentQuestion?.type === "text" && (
+                                        <input
+                                            type="text"
+                                            value={(currentAnswer as string) || ""}
+                                            onChange={(e) => handleAnswer(e.target.value)}
+                                            placeholder={currentQuestion.placeholder}
+                                            className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-2 focus:ring-[#9ACD32]/20 transition-all outline-none"
+                                        />
+                                    )}
+
+                                    {/* Number Input Type */}
+                                    {currentQuestion?.type === "number" && (
+                                        <input
+                                            type="number"
+                                            value={(currentAnswer as string) || ""}
+                                            onChange={(e) => handleAnswer(e.target.value)}
+                                            placeholder={currentQuestion.placeholder}
+                                            className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-2 focus:ring-[#9ACD32]/20 transition-all outline-none"
+                                        />
+                                    )}
                                 </motion.div>
                             </AnimatePresence>
                         </div>

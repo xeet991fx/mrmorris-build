@@ -55,7 +55,7 @@ function AuthCallbackContent() {
         {/* Animated background gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
+            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, 100, 0],
               y: [0, 50, 0],
@@ -68,7 +68,7 @@ function AuthCallbackContent() {
             }}
           />
           <motion.div
-            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
+            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-primary/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, -100, 0],
               y: [0, -50, 0],
@@ -94,7 +94,7 @@ function AuthCallbackContent() {
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               className="inline-block mb-6"
             >
-              <Loader2 className="w-16 h-16 text-[#9ACD32]" />
+              <Loader2 className="w-16 h-16 text-primary" />
             </motion.div>
             <h2 className="text-2xl font-bold text-white mb-2">
               Completing Authentication
@@ -114,7 +114,7 @@ export default function AuthCallbackPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-[#9ACD32] mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
           <p className="text-neutral-400 text-lg">Loading...</p>
         </div>
       </div>

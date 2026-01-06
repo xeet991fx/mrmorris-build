@@ -326,7 +326,7 @@ export class FieldFetcherService {
 
         if (databaseId) {
             // Query pages in specific database
-            response = await notion.databases.query({
+            response = await (notion.databases as any).query({
                 database_id: databaseId,
                 page_size: 100,
             });

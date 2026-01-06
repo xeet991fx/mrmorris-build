@@ -9,7 +9,7 @@
 
 import { google } from 'googleapis';
 import EmailAccount from '../models/EmailAccount';
-import { decrypt } from '../utils/encryption';
+import { decryptCredentials as decrypt } from '../utils/encryption';
 
 interface CalendarEvent {
     summary: string;
@@ -58,8 +58,8 @@ export class CalendarService {
         }
 
         // Decrypt tokens
-        const accessToken = decrypt(account.accessToken);
-        const refreshToken = decrypt(account.refreshToken);
+        const accessToken = decrypt(account.accessToken, account.workspaceId.toString());
+        const refreshToken = decrypt(account.refreshToken, account.workspaceId.toString());
 
         // Create OAuth2 client
         const oauth2Client = new google.auth.OAuth2(

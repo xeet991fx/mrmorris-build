@@ -101,6 +101,11 @@ export interface ICompanyVisitor extends Document {
 
     createdAt: Date;
     updatedAt: Date;
+
+    // Methods
+    addPageView(pageView: Partial<IPageView>): void;
+    calculateAccountScore(): number;
+    shouldSendAlert(): string | null;
 }
 
 const PageViewSchema = new Schema<IPageView>({

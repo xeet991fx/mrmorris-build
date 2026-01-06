@@ -26,8 +26,15 @@ import {
   HeartIcon,
   AcademicCapIcon,
 } from "@heroicons/react/24/outline";
+import { ClipboardList, Eye, FileText, Users } from "lucide-react";
 import { getForms, deleteForm, createForm, Form } from "@/lib/api/form";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -249,106 +256,160 @@ export default function FormsPage() {
 
   const filteredForms = selectedStatus === "all" ? forms : forms.filter((f) => f.status === selectedStatus);
 
+  // Calculate stats
+  const totalViews = forms.reduce((sum, f) => sum + (f.stats?.views || 0), 0);
+  const totalSubmissions = forms.reduce((sum, f) => sum + (f.stats?.submissions || 0), 0);
+  const avgConversionRate = forms.length > 0
+    ? forms.reduce((sum, f) => sum + (f.stats?.conversionRate || 0), 0) / forms.length
+    : 0;
+
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="container mx-auto p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Forms</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Create beautiful forms to capture leads and grow your business
-          </p>
-        </div>
+      <PageHeader
+        icon={ClipboardList}
+        title="Forms"
+        description="Create beautiful forms to capture leads and grow your business"
+      >
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={loadForms}
             disabled={isLoading}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             title="Refresh"
           >
             <ArrowPathIcon className={cn("w-5 h-5", isLoading && "animate-spin")} />
-          </button>
-          <Link
-            href={`/projects/${workspaceId}/forms/templates`}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-600 text-white rounded-lg hover:from-purple-700 hover:via-pink-700 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl border border-white/20"
-          >
-            <SparklesIcon className="w-5 h-5" />
-            Smart Templates (AI)
+          </Button>
+          <Link href={`/projects/${workspaceId}/forms/templates`}>
+            <Button variant="default" className="gap-2">
+              <SparklesIcon className="w-5 h-5" />
+              Smart Templates
+            </Button>
           </Link>
-          <button
+          <Button
+            variant="outline"
             onClick={() => setShowTemplates(true)}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
+            className="gap-2"
           >
             <DocumentDuplicateIcon className="w-5 h-5" />
             Quick Templates
-          </button>
-          <Link
-            href={`/projects/${workspaceId}/forms/new`}
-            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Create Blank Form
+          </Button>
+          <Link href={`/projects/${workspaceId}/forms/new`}>
+            <Button className="gap-2">
+              <PlusIcon className="w-5 h-5" />
+              Create Form
+            </Button>
           </Link>
         </div>
-      </div>
+      </PageHeader>
+
+      {/* Stats */}
+      {forms.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Forms"
+            value={forms.length}
+            description={`${forms.filter(f => f.status === 'published').length} published`}
+            icon={FileText}
+            variant="primary"
+          />
+          <StatCard
+            title="Total Views"
+            value={totalViews.toLocaleString()}
+            description="Across all forms"
+            icon={Eye}
+            variant="info"
+          />
+          <StatCard
+            title="Submissions"
+            value={totalSubmissions.toLocaleString()}
+            description="Total form fills"
+            icon={Users}
+            variant="success"
+          />
+          <StatCard
+            title="Avg. Conversion"
+            value={`${avgConversionRate.toFixed(1)}%`}
+            description="Views to submissions"
+            icon={ChartBarIcon}
+            variant="warning"
+          />
+        </div>
+      )}
 
       {/* Status Filter */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center">
+        <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
         {(["all", "published", "draft", "archived"] as const).map((status) => {
           const count = status === "all" ? forms.length : forms.filter((f) => f.status === status).length;
+          const isActive = selectedStatus === status;
+
           return (
-            <button
+            <Button
               key={status}
               onClick={() => setSelectedStatus(status)}
+              variant={isActive ? "default" : "outline"}
+              size="sm"
               className={cn(
-                "px-4 py-2 rounded-lg font-medium transition-all capitalize",
-                selectedStatus === status
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                "capitalize gap-2 transition-all",
+                !isActive && "hover:border-primary"
               )}
             >
-              {status} ({count})
-            </button>
+              {status}
+              <Badge
+                variant={isActive ? "secondary" : "outline"}
+                className="ml-1 px-1.5 py-0 min-w-[20px] justify-center"
+              >
+                {count}
+              </Badge>
+            </Button>
           );
         })}
       </div>
 
       {/* Forms Grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
+        <Card className="flex items-center justify-center py-16">
           <div className="text-center">
-            <ArrowPathIcon className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400">Loading forms...</p>
+            <ArrowPathIcon className="w-12 h-12 animate-spin text-primary mx-auto mb-3" />
+            <p className="text-muted-foreground">Loading forms...</p>
           </div>
-        </div>
+        </Card>
       ) : filteredForms.length === 0 ? (
-        <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-blue-900/20 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-          <DocumentTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            {selectedStatus === "all" ? "No forms yet" : `No ${selectedStatus} forms`}
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            {selectedStatus === "all"
-              ? "Get started by creating your first form from a template or build one from scratch"
-              : `Create a new form to see it here`}
-          </p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => setShowTemplates(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl"
-            >
-              <SparklesIcon className="w-5 h-5" />
-              Use a Template
-            </button>
-            <Link
-              href={`/projects/${workspaceId}/forms/new`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
-            >
-              <PlusIcon className="w-5 h-5" />
-              Create Blank Form
-            </Link>
-          </div>
-        </div>
+        <Card className="border-2 border-dashed">
+          <EmptyState
+            icon={DocumentTextIcon}
+            title={selectedStatus === "all" ? "No forms yet" : `No ${selectedStatus} forms`}
+            description={
+              selectedStatus === "all"
+                ? "Get started by creating your first form from a template or build one from scratch"
+                : `Create a new form to see it here`
+            }
+            action={{
+              label: selectedStatus === "all" ? "Use a Template" : "Create Form",
+              onClick: () => selectedStatus === "all" ? setShowTemplates(true) : router.push(`/projects/${workspaceId}/forms/new`)
+            }}
+          />
+          {selectedStatus === "all" && (
+            <div className="flex justify-center pb-8 gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowTemplates(true)}
+                className="gap-2"
+              >
+                <SparklesIcon className="w-5 h-5" />
+                Use a Template
+              </Button>
+              <Link href={`/projects/${workspaceId}/forms/new`}>
+                <Button className="gap-2">
+                  <PlusIcon className="w-5 h-5" />
+                  Create Blank Form
+                </Button>
+              </Link>
+            </div>
+          )}
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredForms.map((form, index) => (
@@ -357,99 +418,103 @@ export default function FormsPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-xl transition-all overflow-hidden"
             >
-              {/* Status Badge */}
-              <div className="absolute top-4 right-4 z-10">
-                <span
-                  className={cn(
-                    "px-3 py-1 rounded-full text-xs font-semibold border capitalize shadow-sm",
-                    getStatusColor(form.status)
-                  )}
-                >
-                  {form.status === "published" && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
-                  {form.status}
-                </span>
-              </div>
-
-              <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="block p-6">
-                {/* Header */}
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-1 mb-1 pr-20">
-                    {form.name}
-                  </h3>
-                  {form.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{form.description}</p>
-                  )}
+              <Card className="group relative hover:border-primary/50 overflow-hidden h-full flex flex-col">
+                {/* Status Badge */}
+                <div className="absolute top-4 right-4 z-10">
+                  <Badge
+                    variant={form.status === "published" ? "success" : form.status === "draft" ? "warning" : "secondary"}
+                    className="capitalize shadow-sm"
+                  >
+                    {form.status === "published" && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
+                    {form.status}
+                  </Badge>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/30 rounded-lg p-3 text-center">
-                    <EyeIcon className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-                    <p className="text-xs text-gray-600 dark:text-gray-400">Views</p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">{form.stats.views.toLocaleString()}</p>
+                <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="block p-6 flex-1">
+                  {/* Header */}
+                  <div className="mb-4">
+                    <h3 className="text-lg font-bold text-foreground line-clamp-1 mb-1 pr-20">
+                      {form.name}
+                    </h3>
+                    {form.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">{form.description}</p>
+                    )}
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/30 rounded-lg p-3 text-center">
-                    <CheckCircleIcon className="w-4 h-4 text-green-600 mx-auto mb-1" />
-                    <p className="text-xs text-gray-600 dark:text-gray-400">Submits</p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {form.stats.submissions.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/30 rounded-lg p-3 text-center">
-                    <ChartBarIcon className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-                    <p className="text-xs text-gray-600 dark:text-gray-400">Rate</p>
-                    <p className="text-lg font-bold text-gray-900 dark:text-white">
-                      {form.stats.conversionRate.toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
 
-                {/* Meta Info */}
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
-                  <span>{form.fields.length} field{form.fields.length !== 1 ? "s" : ""}</span>
-                  <span>{form.formType === "multi_step" ? "Multi-step" : "Single-step"}</span>
-                </div>
-              </Link>
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="bg-muted/50 rounded-lg p-3 text-center hover:bg-muted transition-colors">
+                      <EyeIcon className="w-4 h-4 text-info mx-auto mb-1" />
+                      <p className="text-xs text-muted-foreground">Views</p>
+                      <p className="text-lg font-bold text-foreground">{form.stats.views.toLocaleString()}</p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3 text-center hover:bg-muted transition-colors">
+                      <CheckCircleIcon className="w-4 h-4 text-success mx-auto mb-1" />
+                      <p className="text-xs text-muted-foreground">Submits</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {form.stats.submissions.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3 text-center hover:bg-muted transition-colors">
+                      <ChartBarIcon className="w-4 h-4 text-warning mx-auto mb-1" />
+                      <p className="text-xs text-muted-foreground">Rate</p>
+                      <p className="text-lg font-bold text-foreground">
+                        {form.stats.conversionRate.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Actions */}
-              <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-6 py-3 flex gap-2">
-                <Link
-                  href={`/projects/${workspaceId}/forms/${form._id}/edit`}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  <PencilIcon className="w-4 h-4" />
-                  Edit
+                  {/* Meta Info */}
+                  <div className="flex items-center gap-2 text-xs">
+                    <Badge variant="outline" className="font-normal">
+                      {form.fields.length} field{form.fields.length !== 1 ? "s" : ""}
+                    </Badge>
+                    <Badge variant="outline" className="font-normal">
+                      {form.formType === "multi_step" ? "Multi-step" : "Single-step"}
+                    </Badge>
+                  </div>
                 </Link>
-                <Link
-                  href={`/projects/${workspaceId}/forms/${form._id}/submissions`}
-                  className="flex items-center justify-center px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
-                  title="Submissions"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <ClipboardDocumentListIcon className="w-4 h-4" />
-                </Link>
-                {form.status === "published" && (
-                  <a
-                    href={`${process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"}/forms/${form._id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center px-3 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-                    title="View Public Form"
+
+                {/* Actions */}
+                <div className="border-t bg-muted/30 px-4 py-3 flex gap-2">
+                  <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="flex-1">
+                    <Button size="sm" className="w-full gap-1.5">
+                      <PencilIcon className="w-4 h-4" />
+                      Edit
+                    </Button>
+                  </Link>
+                  <Link
+                    href={`/projects/${workspaceId}/forms/${form._id}/submissions`}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <EyeIcon className="w-4 h-4" />
-                  </a>
-                )}
-                <button
-                  onClick={(e) => handleDelete(form._id, e)}
-                  className="flex items-center justify-center px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                  title="Delete"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                </button>
-              </div>
+                    <Button size="sm" variant="outline" title="Submissions">
+                      <ClipboardDocumentListIcon className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                  {form.status === "published" && (
+                    <a
+                      href={`${process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"}/forms/${form._id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button size="sm" variant="outline" title="View Public Form">
+                        <EyeIcon className="w-4 h-4" />
+                      </Button>
+                    </a>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => handleDelete(form._id, e)}
+                    title="Delete"
+                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              </Card>
             </motion.div>
           ))}
         </div>
@@ -462,64 +527,82 @@ export default function FormsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6"
             onClick={() => !creatingFromTemplate && setShowTemplates(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="p-6 border-b bg-muted/30">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                      <SparklesIcon className="w-7 h-7 text-purple-600" />
-                      Choose a Template
-                    </h2>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
-                      Start with a pre-built template and customize it to your needs
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-primary/10">
+                      <SparklesIcon className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-foreground">Choose a Template</h2>
+                      <p className="text-muted-foreground text-sm mt-0.5">
+                        Start with a pre-built template and customize it to your needs
+                      </p>
+                    </div>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setShowTemplates(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                     disabled={creatingFromTemplate}
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {/* Templates Grid */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {FORM_TEMPLATES.map((template) => {
                     const Icon = template.icon;
                     return (
-                      <button
+                      <Card
                         key={template.id}
-                        onClick={() => createFromTemplate(template)}
-                        disabled={creatingFromTemplate}
-                        className="group text-left p-6 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white dark:bg-gray-900"
+                        className={cn(
+                          "cursor-pointer group hover:border-primary/50 transition-all",
+                          creatingFromTemplate && "opacity-50 cursor-not-allowed"
+                        )}
+                        onClick={() => !creatingFromTemplate && createFromTemplate(template)}
                       >
-                        <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center mb-4", getTemplateColor(template.color))}>
-                          <Icon className="w-6 h-6 text-white" />
+                        <div className="p-6">
+                          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110", getTemplateColor(template.color))}>
+                            <Icon className="w-6 h-6 text-white" />
+                          </div>
+                          <h3 className="font-bold text-foreground mb-2 group-hover:text-primary transition-colors">{template.name}</h3>
+                          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{template.description}</p>
+                          <Badge variant="outline" className="font-normal">
+                            {template.fields.length} fields included
+                          </Badge>
                         </div>
-                        <h3 className="font-bold text-gray-900 dark:text-white mb-2">{template.name}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{template.description}</p>
-                        <div className="text-xs text-gray-500 dark:text-gray-500">
-                          {template.fields.length} fields included
-                        </div>
-                      </button>
+                      </Card>
                     );
                   })}
                 </div>
+
+                {creatingFromTemplate && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+                    <Card className="p-6">
+                      <div className="flex items-center gap-3">
+                        <ArrowPathIcon className="w-5 h-5 animate-spin text-primary" />
+                        <p className="text-foreground font-medium">Creating form from template...</p>
+                      </div>
+                    </Card>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

@@ -78,7 +78,8 @@
       "Bash(powershell:*)",
       "Bash(del \"C:\\\\Users\\\\imkum\\\\SDE\\\\Clianta\\\\mrmorris-build\\\\frontend\\\\components\\\\workflows\\\\config\\\\NotionNodeConfig.tsx\")",
       "Bash(npx terser:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

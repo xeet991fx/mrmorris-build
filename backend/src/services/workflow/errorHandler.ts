@@ -168,11 +168,7 @@ async function executeTryBlock(
                 enrollment.currentStepId = stepId;
 
                 // Execute the step
-                const result = await executeNextStep(enrollment, workflow, workspaceId);
-
-                if (!result.success) {
-                    throw new Error(result.error || 'Step execution failed');
-                }
+                await executeNextStep(enrollment, 0);
             }
 
             // Success - no more retries needed
@@ -211,11 +207,7 @@ async function executeCatchBlock(
     }
 
     enrollment.currentStepId = catchStepId;
-    const result = await executeNextStep(enrollment, workflow, workspaceId);
-
-    if (!result.success) {
-        throw new Error(`Catch block failed: ${result.error}`);
-    }
+    await executeNextStep(enrollment, 0);
 }
 
 /**
@@ -238,7 +230,7 @@ async function executeFinallyBlock(
     enrollment.currentStepId = finallyStepId;
 
     try {
-        await executeNextStep(enrollment, workflow, workspaceId);
+        await executeNextStep(enrollment, 0);
     } catch (error: any) {
         console.error(`Finally block error (non-fatal): ${error.message}`);
         // Finally block errors don't fail the workflow

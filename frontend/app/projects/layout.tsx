@@ -746,7 +746,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                             : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
                         )}
                       >
-                        <div className="w-5 h-5 bg-[#9ACD32] rounded flex items-center justify-center text-neutral-900 text-xs font-semibold flex-shrink-0">
+                        <div className="w-5 h-5 bg-primary rounded flex items-center justify-center text-primary-foreground text-xs font-semibold flex-shrink-0">
                           {workspace.name?.charAt(0).toUpperCase()}
                         </div>
                         <p className="text-sm font-normal truncate flex-1">
@@ -765,7 +765,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     className="w-full flex items-center gap-2 rounded-md transition-all text-left mt-2 px-2 py-1.5 text-muted-foreground hover:bg-muted/30 hover:text-foreground border-t border-border pt-3"
                   >
                     <PlusIcon className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm font-normal text-[#9ACD32]">
+                    <span className="text-sm font-normal text-primary">
                       New workspace
                     </span>
                   </button>

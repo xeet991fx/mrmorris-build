@@ -21,6 +21,11 @@ export interface ITrackingEvent extends Document {
   // Event properties
   properties: Record<string, any>;
 
+  // Additional fields for compatibility
+  timestamp?: Date;
+  source?: string;
+  metadata?: Record<string, any>;
+
   // Device info
   device: {
     userAgent: string;

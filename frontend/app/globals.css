@@ -4,52 +4,75 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Light Theme - Modern & Professional */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
+    --popover-foreground: 222 47% 11%;
+    --primary: 174 84% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 174 84% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 174 84% 40%;
+    --radius: 0.625rem;
     --surface: 0 0% 100%;
-    --surface-hover: 240 4.8% 95.9%;
+    --surface-hover: 210 40% 96%;
+
+    /* Additional Brand Colors */
+    --success: 142 76% 36%;
+    --success-foreground: 138 76% 97%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 20 14% 4%;
+    --info: 199 89% 48%;
+    --info-foreground: 204 94% 94%;
+    --teal: 174 84% 40%;
+    --teal-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --surface: 240 10% 3.9%;
-    --surface-hover: 240 3.7% 15.9%;
+    /* Dark Theme - Rich & Deep (Friday Cab style) */
+    --background: 220 16% 8%;
+    --foreground: 210 40% 98%;
+    --card: 220 14% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 220 14% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 174 84% 45%;
+    --primary-foreground: 220 16% 8%;
+    --secondary: 220 14% 16%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 220 14% 16%;
+    --muted-foreground: 215 20% 60%;
+    --accent: 174 84% 45%;
+    --accent-foreground: 220 16% 8%;
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 14% 20%;
+    --input: 220 14% 16%;
+    --ring: 174 84% 45%;
+    --surface: 220 14% 12%;
+    --surface-hover: 220 14% 16%;
+    --sidebar: 220 16% 6%;
+
+    /* Additional Brand Colors */
+    --success: 142 71% 45%;
+    --success-foreground: 138 76% 97%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 20 14% 4%;
+    --info: 199 89% 48%;
+    --info-foreground: 204 94% 94%;
+    --teal: 174 84% 45%;
+    --teal-foreground: 220 16% 8%;
   }
 }
 
@@ -59,10 +82,11 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Premium Typography */
+  /* Premium Typography - Enhanced sizing */
   h1,
   h2,
   h3,
@@ -70,22 +94,27 @@
   h5,
   h6 {
     @apply font-heading tracking-tight;
+    letter-spacing: -0.025em;
   }
 
   h1 {
-    @apply text-4xl font-bold lg:text-5xl;
+    @apply text-[2rem] font-bold lg:text-[2.5rem] leading-tight;
   }
 
   h2 {
-    @apply text-3xl font-semibold;
+    @apply text-[1.5rem] font-semibold leading-snug;
   }
 
   h3 {
-    @apply text-2xl font-semibold;
+    @apply text-[1.25rem] font-semibold;
   }
 
   h4 {
-    @apply text-xl font-semibold;
+    @apply text-[1.125rem] font-semibold;
+  }
+
+  p {
+    @apply text-[0.9375rem] leading-relaxed;
   }
 }
 
@@ -186,19 +215,56 @@
 }
 
 .premium-card {
-  @apply bg-card border border-border/50 shadow-sm rounded-xl transition-all duration-300 hover:shadow-md hover:border-primary/20;
+  @apply bg-card border border-border/50 rounded-xl transition-all duration-300 hover:border-primary/20;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.premium-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.dark .premium-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+}
+
+.dark .premium-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
 }
 
 .premium-shadow {
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 .dark .premium-shadow {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
 }
 
 .glass-panel {
-  @apply bg-background/80 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-lg;
+  @apply bg-background/80 backdrop-blur-xl border border-border shadow-lg;
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(217 91% 45%) 100%);
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, hsl(var(--success)) 0%, hsl(142 71% 28%) 100%);
+}
+
+.gradient-warning {
+  background: linear-gradient(135deg, hsl(var(--warning)) 0%, hsl(38 92% 40%) 100%);
+}
+
+.gradient-info {
+  background: linear-gradient(135deg, hsl(var(--info)) 0%, hsl(199 89% 38%) 100%);
+}
+
+.stat-card {
+  @apply premium-card p-6 transition-all duration-300;
+}
+
+.stat-card:hover {
+  @apply scale-[1.02];
 }
 
 /* ReactFlow Edge Animation - Smooth curved lines */

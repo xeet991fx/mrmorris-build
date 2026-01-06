@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                 className="mb-6 inline-block"
               >
-                <div className="w-20 h-20 bg-gradient-to-br from-[#9ACD32] to-[#8AB82E] rounded-full flex items-center justify-center mx-auto">
+                <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-10 h-10 text-white" />
                 </div>
               </motion.div>
@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
               </h2>
               <p className="text-muted-foreground mb-6">
                 If an account exists with{" "}
-                <span className="text-[#9ACD32] font-medium">
+                <span className="text-primary font-medium">
                   {getValues("email")}
                 </span>
                 , you will receive a password reset link shortly.
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
               </div>
 
               <Link href="/login">
-                <Button className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Login
                 </Button>
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
         {/* Animated background gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
+            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, 100, 0],
               y: [0, 50, 0],
@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
             }}
           />
           <motion.div
-            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
+            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-primary/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, -100, 0],
               y: [0, -50, 0],
@@ -170,7 +170,7 @@ export default function ForgotPasswordPage() {
                     id="email"
                     type="email"
                     placeholder="you@example.com"
-                    className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                    className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all"
                   />
                 </div>
                 {errors.email && (
@@ -193,7 +193,7 @@ export default function ForgotPasswordPage() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90 text-white font-semibold py-6 rounded-lg shadow-lg shadow-primary/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-lg shadow-lg shadow-primary/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {isLoading ? (
                     <>
@@ -218,7 +218,7 @@ export default function ForgotPasswordPage() {
                 Remember your password?{" "}
                 <Link
                   href="/login"
-                  className="text-[#9ACD32] hover:text-[#9ACD32]/80 font-medium transition-colors"
+                  className="text-primary hover:text-primary/80 font-medium transition-colors"
                 >
                   Sign in
                 </Link>

@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Building2, Users, Target, TrendingUp, AlertCircle } from "lucide-react";
+import { StatCard } from "@/components/ui/stat-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Building2, Users, Target, TrendingUp, AlertCircle, Crown } from "lucide-react";
 
 const ROLE_COLORS: any = {
   champion: "bg-yellow-100 text-yellow-800",
@@ -83,65 +85,49 @@ export default function ABMPage() {
   ];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Account-Based Marketing (ABM)</h1>
-        <p className="text-muted-foreground">
-          Track buying committees and account hierarchies for enterprise deals
-        </p>
-      </div>
+      <PageHeader
+        icon={Building2}
+        title="Account-Based Marketing (ABM)"
+        description="Track buying committees and account hierarchies for enterprise deals"
+      />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Target Accounts</CardDescription>
-            <CardTitle className="text-3xl">{mockAccounts.length}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Active enterprise accounts</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard
+          title="Target Accounts"
+          value={mockAccounts.length}
+          description="Active enterprise accounts"
+          icon={Building2}
+          variant="primary"
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Tier 1 Accounts</CardDescription>
-            <CardTitle className="text-3xl text-yellow-600">
-              {mockAccounts.filter((a) => a.tier === "tier1").length}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">High-value targets</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Tier 1 Accounts"
+          value={mockAccounts.filter((a) => a.tier === "tier1").length}
+          description="High-value targets"
+          icon={Crown}
+          variant="warning"
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Pipeline Value</CardDescription>
-            <CardTitle className="text-3xl text-green-600">
-              $
-              {mockAccounts
-                .reduce((sum, a) => sum + a.dealValue, 0)
-                .toLocaleString()}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Total opportunity value</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Pipeline Value"
+          value={`$${mockAccounts
+            .reduce((sum, a) => sum + a.dealValue, 0)
+            .toLocaleString()}`}
+          description="Total opportunity value"
+          icon={TrendingUp}
+          variant="success"
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Avg. Coverage</CardDescription>
-            <CardTitle className="text-3xl">
-              {Math.round(mockAccounts.reduce((sum, a) => sum + a.coverageScore, 0) / mockAccounts.length)}%
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Buying committee coverage</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Avg. Coverage"
+          value={`${Math.round(mockAccounts.reduce((sum, a) => sum + a.coverageScore, 0) / mockAccounts.length)}%`}
+          description="Buying committee coverage"
+          icon={Users}
+          variant="info"
+        />
       </div>
 
       {/* Target Accounts */}

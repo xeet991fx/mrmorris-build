@@ -12,7 +12,7 @@
  */
 
 import { google, sheets_v4 } from 'googleapis';
-import { WorkflowStep } from '../../../models/Workflow';
+import { IWorkflowStep } from '../../../models/Workflow';
 import IntegrationCredential from '../../../models/IntegrationCredential';
 import { logger } from '../../../utils/logger';
 import { BaseActionExecutor, ActionContext, ActionResult } from './types';
@@ -36,7 +36,7 @@ export interface GoogleSheetsActionConfig {
 export class GoogleSheetsActionExecutor extends BaseActionExecutor {
     async execute(context: ActionContext): Promise<ActionResult> {
         const { step, entity, enrollment } = context;
-        const config = step.config as GoogleSheetsActionConfig;
+        const config = step.config as any as GoogleSheetsActionConfig;
 
         if (!config.credentialId) {
             return this.error('Google Sheets credential not configured');

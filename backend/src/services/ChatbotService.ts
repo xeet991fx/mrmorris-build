@@ -487,7 +487,7 @@ class ChatbotService {
           events: [{ eventType: 'chatbot_action', points, reason }],
         });
       } else {
-        leadScore.events.push({
+        (leadScore as any).events.push({
           eventType: 'chatbot_action',
           points,
           reason,

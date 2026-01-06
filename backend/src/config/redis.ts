@@ -55,11 +55,11 @@ export const getRedisClient = (): Redis => {
     let errorLogged = false;
     redisClient.on('error', (err) => {
       // Only log the first error to avoid spam
-      if (!errorLogged && err.code === 'ECONNREFUSED') {
+      if (!errorLogged && (err as any).code === 'ECONNREFUSED') {
         console.error('⚠️  Redis connection failed - Queue features disabled');
         console.log('💡 To enable queues: Install Redis locally or use Upstash cloud Redis (see .env file)');
         errorLogged = true;
-      } else if (err.code !== 'ECONNREFUSED') {
+      } else if ((err as any).code !== 'ECONNREFUSED') {
         console.error('❌ Redis error:', err.message);
       }
     });

@@ -99,7 +99,7 @@ router.get('/slack/oauth/callback', async (req, res) => {
             }),
         });
 
-        const tokenData = await tokenResponse.json();
+        const tokenData: any = await tokenResponse.json();
 
         if (!tokenData.ok) {
             throw new Error(tokenData.error || 'Failed to exchange code for token');

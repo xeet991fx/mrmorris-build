@@ -240,31 +240,19 @@ async function executeBranch(
         branchEnrollment.currentStepId = branch.firstStepId;
 
         // Execute the first step of the branch
-        const result = await executeNextStep(branchEnrollment, workflow, workspaceId);
+        await executeNextStep(branchEnrollment, 0);
 
         const duration = Date.now() - startTime;
 
-        if (result.success) {
-            console.log(`✅ Branch ${branch.name} completed in ${duration}ms`);
+        console.log(`✅ Branch ${branch.name} completed in ${duration}ms`);
 
-            return {
-                branchId: branch.id,
-                branchName: branch.name,
-                success: true,
-                data: result.data,
-                duration,
-            };
-        } else {
-            console.error(`❌ Branch ${branch.name} failed: ${result.error}`);
-
-            return {
-                branchId: branch.id,
-                branchName: branch.name,
-                success: false,
-                error: result.error,
-                duration,
-            };
-        }
+        return {
+            branchId: branch.id,
+            branchName: branch.name,
+            success: true,
+            data: null,
+            duration,
+        };
 
     } catch (error: any) {
         const duration = Date.now() - startTime;

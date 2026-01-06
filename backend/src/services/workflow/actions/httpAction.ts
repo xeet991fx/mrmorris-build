@@ -198,7 +198,7 @@ export class HttpActionExecutor extends BaseActionExecutor {
 
     private buildHeaders(
         config: HttpActionConfig,
-        workspaceId: Types.ObjectId | string,
+        workspaceId: any | string,
         context: any
     ): Record<string, string> {
         const headers: Record<string, string> = {
@@ -231,7 +231,7 @@ export class HttpActionExecutor extends BaseActionExecutor {
     private addAuthHeaders(
         headers: Record<string, string>,
         auth: NonNullable<HttpActionConfig['authentication']>,
-        workspaceId: Types.ObjectId | string
+        workspaceId: any | string
     ): void {
         switch (auth.type) {
             case 'api_key':
@@ -327,7 +327,7 @@ export class HttpActionExecutor extends BaseActionExecutor {
     private async handleResponse(
         response: Response,
         responseHandling: HttpActionConfig['responseHandling'],
-        enrollment: IWorkflowEnrollment
+        enrollment: any
     ): Promise<any> {
         // Parse response
         let responseData: any;

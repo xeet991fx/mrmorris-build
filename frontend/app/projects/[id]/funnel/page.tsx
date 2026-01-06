@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowRight, TrendingUp, TrendingDown, Clock, AlertCircle, Users } from "lucide-react";
+import { StatCard } from "@/components/ui/stat-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { ArrowRight, TrendingUp, TrendingDown, Clock, AlertCircle, Users, Filter } from "lucide-react";
 
 interface StageCounts {
   [key: string]: number;
@@ -153,62 +155,51 @@ export default function FunnelPage() {
   );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Lead Lifecycle Funnel</h1>
-        <p className="text-muted-foreground">
-          Track contacts through your sales funnel from subscriber to customer
-        </p>
-      </div>
+      <PageHeader
+        icon={Filter}
+        title="Lead Lifecycle Funnel"
+        description="Track contacts through your sales funnel from subscriber to customer"
+      />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Contacts</CardDescription>
-            <CardTitle className="text-3xl">{totalContacts}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">All lifecycle stages</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Contacts"
+          value={totalContacts}
+          description="All lifecycle stages"
+          icon={Users}
+          variant="primary"
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>In Funnel</CardDescription>
-            <CardTitle className="text-3xl">{funnelContacts}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Active in sales process</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="In Funnel"
+          value={funnelContacts}
+          description="Active in sales process"
+          icon={TrendingUp}
+          variant="info"
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Customers</CardDescription>
-            <CardTitle className="text-3xl">{metrics.stageCounts.customer || 0}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              {funnelContacts > 0
-                ? `${((metrics.stageCounts.customer || 0) / funnelContacts * 100).toFixed(1)}% conversion`
-                : "0% conversion"}
-            </p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Customers"
+          value={metrics.stageCounts.customer || 0}
+          description={
+            funnelContacts > 0
+              ? `${((metrics.stageCounts.customer || 0) / funnelContacts * 100).toFixed(1)}% conversion`
+              : "0% conversion"
+          }
+          icon={Users}
+          variant="success"
+        />
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>SLA Breached</CardDescription>
-            <CardTitle className="text-3xl text-red-600">
-              {Object.values(metrics.slaMetrics).reduce((sum, m) => sum + m.breached, 0)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Requires immediate attention</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="SLA Breached"
+          value={Object.values(metrics.slaMetrics).reduce((sum, m) => sum + m.breached, 0)}
+          description="Requires immediate attention"
+          icon={AlertCircle}
+          variant="danger"
+        />
       </div>
 
       {/* Visual Funnel */}

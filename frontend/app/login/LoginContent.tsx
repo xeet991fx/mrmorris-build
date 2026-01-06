@@ -95,7 +95,7 @@ export default function LoginContent() {
             {/* Animated background gradient orbs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <motion.div
-                    className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
+                    className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl"
                     animate={{
                         x: [0, 100, 0],
                         y: [0, 50, 0],
@@ -108,7 +108,7 @@ export default function LoginContent() {
                     }}
                 />
                 <motion.div
-                    className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
+                    className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-primary/20 to-transparent rounded-full blur-3xl"
                     animate={{
                         x: [0, -100, 0],
                         y: [0, -50, 0],
@@ -167,7 +167,7 @@ export default function LoginContent() {
                                     id="email"
                                     type="email"
                                     placeholder="you@example.com"
-                                    className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                                    className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all"
                                 />
                             </div>
                             {errors.email && (
@@ -200,7 +200,7 @@ export default function LoginContent() {
                                     id="password"
                                     type={showPassword ? "text" : "password"}
                                     placeholder="Enter your password"
-                                    className="pl-10 pr-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                                    className="pl-10 pr-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all"
                                 />
                                 <button
                                     type="button"
@@ -234,7 +234,7 @@ export default function LoginContent() {
                         >
                             <Link
                                 href="/forgot-password"
-                                className="text-sm text-[#9ACD32] hover:text-[#9ACD32]/80 transition-colors"
+                                className="text-sm text-primary hover:text-primary/80 transition-colors"
                             >
                                 Forgot password?
                             </Link>
@@ -249,7 +249,7 @@ export default function LoginContent() {
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full bg-[#9ACD32] hover:bg-[#8AB82E]/90 text-white font-semibold py-6 rounded-lg shadow-lg shadow-primary/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-lg shadow-lg shadow-primary/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                             >
                                 {isLoading ? (
                                     <>
@@ -337,7 +337,7 @@ export default function LoginContent() {
                             Don&apos;t have an account?{" "}
                             <Link
                                 href="/register"
-                                className="text-[#9ACD32] hover:text-[#9ACD32]/80 font-medium transition-colors"
+                                className="text-primary hover:text-primary/80 font-medium transition-colors"
                             >
                                 Sign up
                             </Link>

@@ -94,7 +94,7 @@ function ResetPasswordContent() {
             This password reset link is invalid. Please request a new one.
           </p>
           <Link href="/forgot-password">
-            <Button className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90">
+            <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
               Request New Link
             </Button>
           </Link>
@@ -140,7 +140,7 @@ function ResetPasswordContent() {
                 Redirecting to dashboard...
               </p>
               <Link href="/dashboard">
-                <Button className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90">
+                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                   Go to Dashboard
                 </Button>
               </Link>
@@ -158,7 +158,7 @@ function ResetPasswordContent() {
         {/* Animated background gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
-            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
+            className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, 100, 0],
               y: [0, 50, 0],
@@ -171,7 +171,7 @@ function ResetPasswordContent() {
             }}
           />
           <motion.div
-            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-[#9ACD32]/20 to-transparent rounded-full blur-3xl"
+            className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-primary/20 to-transparent rounded-full blur-3xl"
             animate={{
               x: [0, -100, 0],
               y: [0, -50, 0],
@@ -230,7 +230,7 @@ function ResetPasswordContent() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Create a strong password"
-                    className="pl-10 pr-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                    className="pl-10 pr-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all"
                   />
                   <button
                     type="button"
@@ -298,7 +298,7 @@ function ResetPasswordContent() {
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm your password"
-                    className="pl-10 pr-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-[#9ACD32] focus:ring-[#9ACD32]/20 transition-all"
+                    className="pl-10 pr-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary/20 transition-all"
                   />
                   <button
                     type="button"
@@ -332,7 +332,7 @@ function ResetPasswordContent() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-[#9ACD32] to-[#8AB82E] hover:from-[#9ACD32]/90 hover:to-[#8AB82E]/90 text-white font-semibold py-6 rounded-lg shadow-lg shadow-primary/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-lg shadow-lg shadow-primary/25 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {isLoading ? (
                     <>
@@ -357,7 +357,7 @@ function ResetPasswordContent() {
                 Remember your password?{" "}
                 <Link
                   href="/login"
-                  className="text-[#9ACD32] hover:text-[#9ACD32]/80 font-medium transition-colors"
+                  className="text-primary hover:text-primary/80 font-medium transition-colors"
                 >
                   Sign in
                 </Link>
@@ -374,7 +374,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-neutral-950 to-black">
-        <Loader2 className="w-16 h-16 text-[#9ACD32] animate-spin" />
+        <Loader2 className="w-16 h-16 text-primary animate-spin" />
       </div>
     }>
       <ResetPasswordContent />

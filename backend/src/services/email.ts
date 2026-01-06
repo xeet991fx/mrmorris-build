@@ -5,6 +5,8 @@ interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  from?: string;
+  text?: string;
 }
 
 class EmailService {
@@ -65,7 +67,7 @@ class EmailService {
   /**
    * Send email
    */
-  private async sendEmail(options: EmailOptions): Promise<void> {
+  async sendEmail(options: EmailOptions): Promise<void> {
     try {
       if (this.useResend && this.resend) {
         // Use Resend for production/Railway
