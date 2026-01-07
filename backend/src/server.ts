@@ -66,7 +66,6 @@ import meetingSchedulerRoutes from "./routes/meetingScheduler";
 import companyVisitorsRoutes from "./routes/companyVisitors";
 import deliverabilityRoutes from "./routes/deliverability";
 import salesforceIntegrationRoutes from "./routes/salesforceIntegration";
-import mlScoringRoutes from "./routes/mlScoring";
 import lifecycleStageRoutes from "./routes/lifecycleStage";
 import leadRecyclingRoutes from "./routes/leadRecycling";
 import attributionRoutes from "./routes/attribution";
@@ -383,7 +382,6 @@ app.use("/api/workspaces", meetingSchedulerRoutes);
 app.use("/api/workspaces", companyVisitorsRoutes);
 app.use("/api", deliverabilityRoutes);
 app.use("/api", salesforceIntegrationRoutes); // Salesforce integration routes
-app.use("/api", mlScoringRoutes); // ML scoring routes (predictive analytics)
 app.use("/api/workspaces", callRecordingRoutes);
 app.use("/api/public", publicFormRoutes); // Public form routes (no auth, mounted at /api/public)
 app.use("/api/workspaces", formRoutes); // Authenticated workspace form routes
