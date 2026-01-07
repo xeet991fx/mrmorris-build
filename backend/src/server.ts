@@ -449,42 +449,47 @@ const startServer = async () => {
       console.log(`📋 Waitlist endpoints: ${backendUrl}/api/waitlist`);
       console.log(`📁 Project endpoints: ${backendUrl}/api/projects`);
 
+      // ⚠️ BACKGROUND JOBS TEMPORARILY DISABLED - Redis limit exceeded
+      // Uncomment these when Redis issue is resolved or using local Redis
+
       // Start workflow scheduler (runs every minute)
-      workflowScheduler.start();
-      console.log(`⚡ Workflow scheduler: Running`);
+      // workflowScheduler.start();
+      // console.log(`⚡ Workflow scheduler: Running`);
 
       // Start contact sync scheduler (runs daily at 2 AM)
-      startContactSyncScheduler();
-      console.log(`⚡ Contact sync scheduler: Running`);
+      // startContactSyncScheduler();
+      // console.log(`⚡ Contact sync scheduler: Running`);
 
       // Start email sync job (runs every 5 minutes)
-      startEmailSyncJob().catch((error) => {
-        console.error('❌ Failed to start email sync job:', error);
-      });
+      // startEmailSyncJob().catch((error) => {
+      //   console.error('❌ Failed to start email sync job:', error);
+      // });
 
       // Start intent score decay job (runs daily at 2 AM)
-      startIntentScoreDecayJob().catch((error) => {
-        console.error('❌ Failed to start intent score decay job:', error);
-      });
+      // startIntentScoreDecayJob().catch((error) => {
+      //   console.error('❌ Failed to start intent score decay job:', error);
+      // });
 
       // Start Salesforce sync job (runs every 15 minutes)
-      startSalesforceSyncJob().catch((error) => {
-        console.error('❌ Failed to start Salesforce sync job:', error);
-      });
+      // startSalesforceSyncJob().catch((error) => {
+      //   console.error('❌ Failed to start Salesforce sync job:', error);
+      // });
 
       // Start lifecycle progression job (runs every 2 hours)
-      startLifecycleProgressionJob();
-      console.log('⚡ Lifecycle progression job: Running');
+      // startLifecycleProgressionJob();
+      // console.log('⚡ Lifecycle progression job: Running');
 
       // Start lead recycling job (runs daily at 9 AM)
-      startLeadRecyclingJob();
-      console.log('⚡ Lead recycling job: Running');
+      // startLeadRecyclingJob();
+      // console.log('⚡ Lead recycling job: Running');
 
       // Start proactive AI jobs (meeting prep, stale deal alerts, daily insights)
-      initializeProactiveAIJobs().catch((error) => {
-        console.error('❌ Failed to start proactive AI jobs:', error);
-      });
-      console.log('🤖 Proactive AI jobs: Running');
+      // initializeProactiveAIJobs().catch((error) => {
+      //   console.error('❌ Failed to start proactive AI jobs:', error);
+      // });
+      // console.log('🤖 Proactive AI jobs: Running');
+
+      console.log('⚠️  Background jobs disabled to prevent Redis rate limit');
 
       // Initialize event consumers (NEW)
       (async () => {
