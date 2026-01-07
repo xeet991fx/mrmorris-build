@@ -1,85 +1,203 @@
-# MrMorris - Autonomous Marketing Copilot
+# MrMorris - AI-Native CRM Platform
 
-A professional landing page for MrMorris, an autonomous marketing copilot built with multi-agent AI architecture for marketing agencies.
+An intelligent CRM system where AI agents and humans work side-by-side with full business context to execute work autonomously.
 
 ## 🚀 Overview
 
-MrMorris is your AI Marketing Team That Never Sleeps. This landing page showcases a multi-agent autonomous marketing system that runs campaigns end-to-end, optimizes performance in real-time, and drives results 24/7.
+MrMorris is an AI-native CRM that understands your business, knows your customers, and works like your best employee. Built with Google Gemini 2.5 Pro and autonomous agent architecture, it provides deep context awareness and proactive execution across sales, support, and customer success.
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript 
-- **Styling**: Tailwind CSS
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + Custom CSS
 - **UI Components**: shadcn/ui
 - **Animations**: Framer Motion
 - **State Management**: Zustand
 - **HTTP Client**: Axios
 - **Form Validation**: React Hook Form + Zod
-- **Theme**: next-themes (Dark mode support)
+- **Real-time**: Socket.io (Chat, notifications)
 
 ### Backend
 - **Runtime**: Node.js with Express
 - **Language**: TypeScript
 - **Database**: MongoDB with Mongoose
+- **Cache**: Redis (sessions, rate limiting)
+- **Queue**: BullMQ (background jobs)
+- **AI Provider**: Google Gemini 2.5 Pro (via Vertex AI)
+- **AI Orchestration**: LangChain + @langchain/google-vertexai
+- **Authentication**: Passport.js (JWT, Local, Google OAuth)
 - **Validation**: Zod
-- **CORS**: Enabled for frontend
+- **File Upload**: Multer
+- **Email**: Nodemailer + Resend
+- **Real-time**: Socket.io
+
+### Integrations
+- **CRM**: Salesforce
+- **Email**: Gmail, Outlook
+- **Calendar**: Google Calendar
+- **Communication**: Slack, Twilio
+- **Productivity**: Notion, Google Sheets
+- **Payments**: Stripe (planned)
 
 ## 📁 Project Structure
 
 ```
-MrMorris/
-├── frontend/                      # Next.js Frontend
-│   ├── app/
-│   │   ├── globals.css           # Global styles
-│   │   ├── layout.tsx            # Root layout with theme provider
-│   │   └── page.tsx              # Main landing page
-│   ├── components/
-│   │   ├── landing/              # Landing page sections
-│   │   ├── providers/            # React context providers
-│   │   ├── shared/               # Shared components
-│   │   └── ui/                   # Reusable UI components (shadcn)
-│   ├── lib/
-│   │   ├── api/
-│   │   │   └── waitlist.ts       # API functions using Axios
-│   │   ├── validations/
-│   │   │   └── waitlist.ts       # Zod validation schemas
-│   │   ├── axios.ts              # Axios instance configuration
-│   │   └── utils.ts              # Utility functions
-│   ├── store/
-│   │   ├── useWaitlistStore.ts   # Waitlist state management
-│   │   └── useThemeStore.ts      # Theme state management
-│   ├── .env.local                # Frontend environment variables
-│   └── package.json              # Frontend dependencies
+mrmorris-build/
+├── frontend/                           # Next.js Frontend Application
+│   ├── app/                           # App Router pages
+│   │   ├── (auth)/                   # Authentication routes
+│   │   │   ├── login/
+│   │   │   └── register/
+│   │   ├── (workspace)/              # Main workspace routes
+│   │   │   ├── contacts/             # Contact management
+│   │   │   ├── companies/            # Company management
+│   │   │   ├── deals/                # Deal/opportunity pipeline
+│   │   │   ├── activities/           # Activity tracking
+│   │   │   ├── analytics/            # Analytics & reports
+│   │   │   ├── workflows/            # Workflow automation
+│   │   │   ├── campaigns/            # Email campaigns
+│   │   │   ├── forms/                # Form builder
+│   │   │   ├── chatbot/              # AI chatbot builder
+│   │   │   ├── tracking/             # Website tracking
+│   │   │   └── settings/             # Workspace settings
+│   │   ├── dashboard/                # Main dashboard
+│   │   ├── globals.css               # Global styles
+│   │   ├── layout.tsx                # Root layout
+│   │   └── page.tsx                  # Landing page
+│   ├── components/                    # React components
+│   │   ├── analytics/                # Analytics components
+│   │   ├── chatbot/                  # Chatbot UI
+│   │   ├── contacts/                 # Contact views
+│   │   ├── dashboard/                # Dashboard widgets
+│   │   ├── deals/                    # Deal kanban & views
+│   │   ├── forms/                    # Form builder
+│   │   ├── landing/                  # Landing page sections
+│   │   ├── layout/                   # Layout components
+│   │   ├── shared/                   # Shared components
+│   │   ├── ui/                       # shadcn/ui components
+│   │   └── workflows/                # Workflow builder
+│   ├── lib/                          # Utilities & configurations
+│   │   ├── api/                      # API client functions
+│   │   ├── validations/              # Zod validation schemas
+│   │   ├── axios.ts                  # Axios instance
+│   │   └── utils.ts                  # Utility functions
+│   ├── store/                        # Zustand state stores
+│   │   ├── useAuthStore.ts           # Auth state
+│   │   ├── useWorkspaceStore.ts      # Workspace state
+│   │   └── useThemeStore.ts          # Theme state
+│   ├── .env.local                    # Frontend environment variables
+│   └── package.json                  # Frontend dependencies
 │
-├── backend/                       # Express Backend
+├── backend/                           # Express Backend Application
 │   ├── src/
-│   │   ├── config/
-│   │   │   └── database.ts       # MongoDB connection
-│   │   ├── models/
-│   │   │   └── Waitlist.ts       # Mongoose models
-│   │   ├── routes/
-│   │   │   └── waitlist.ts       # Express routes
-│   │   ├── validations/
-│   │   │   └── waitlist.ts       # Zod validation schemas
-│   │   └── server.ts             # Express server setup
-│   ├── .env                      # Backend environment variables
-│   ├── tsconfig.json             # TypeScript config
-│   └── package.json              # Backend dependencies
+│   │   ├── config/                   # Configuration files
+│   │   │   ├── database.ts           # MongoDB connection
+│   │   │   ├── passport.ts           # Passport auth strategies
+│   │   │   └── redis.ts              # Redis connection
+│   │   ├── models/                   # Mongoose models
+│   │   │   ├── User.ts               # User model
+│   │   │   ├── Project.ts            # Workspace/project model
+│   │   │   ├── Contact.ts            # Contact model
+│   │   │   ├── Company.ts            # Company model
+│   │   │   ├── Opportunity.ts        # Deal/opportunity model
+│   │   │   ├── Activity.ts           # Activity model
+│   │   │   ├── Workflow.ts           # Workflow model
+│   │   │   ├── Campaign.ts           # Campaign model
+│   │   │   ├── Form.ts               # Form model
+│   │   │   ├── Chatbot.ts            # Chatbot model
+│   │   │   ├── AIMemory.ts           # AI memory/context model
+│   │   │   └── ...                   # Other models
+│   │   ├── routes/                   # Express routes
+│   │   │   ├── auth.ts               # Authentication
+│   │   │   ├── contact.ts            # Contacts CRUD
+│   │   │   ├── company.ts            # Companies CRUD
+│   │   │   ├── opportunity.ts        # Deals/opportunities
+│   │   │   ├── workflow.ts           # Workflows
+│   │   │   ├── campaign.ts           # Email campaigns
+│   │   │   ├── form.ts               # Forms
+│   │   │   ├── chatbot.ts            # Chatbot
+│   │   │   ├── analytics.ts          # Analytics
+│   │   │   ├── agent.ts              # AI agents
+│   │   │   ├── aiMemory.ts           # AI memory
+│   │   │   ├── aiContent.ts          # AI content generation
+│   │   │   └── integrations/         # Integration routes
+│   │   │       ├── googleSheets.ts
+│   │   │       ├── notion.ts
+│   │   │       └── slack.ts
+│   │   ├── services/                 # Business logic services
+│   │   │   ├── AIMemoryService.ts    # AI memory & context
+│   │   │   ├── AIContentService.ts   # AI content generation
+│   │   │   ├── IntentScoreService.ts # Intent scoring
+│   │   │   ├── EnrichmentService.ts  # Data enrichment
+│   │   │   ├── WorkflowScheduler.ts  # Workflow execution
+│   │   │   ├── EmailService.ts       # Email sending
+│   │   │   ├── SalesforceService.ts  # Salesforce sync
+│   │   │   └── ...                   # Other services
+│   │   ├── jobs/                     # Background jobs
+│   │   │   ├── emailSyncJob.ts       # Email sync
+│   │   │   ├── salesforceSyncJob.ts  # Salesforce sync
+│   │   │   ├── intentScoreDecayJob.ts
+│   │   │   ├── lifecycleProgressionJob.ts
+│   │   │   ├── leadRecyclingJob.ts
+│   │   │   ├── meetingPrepJob.ts     # AI meeting prep
+│   │   │   ├── dailyInsightJob.ts    # AI insights
+│   │   │   └── proactiveAI/          # Proactive AI jobs
+│   │   ├── middleware/               # Express middleware
+│   │   │   └── auth.ts               # Auth middleware
+│   │   ├── events/                   # Event-driven architecture
+│   │   │   ├── consumers/            # Event consumers
+│   │   │   ├── queue/                # Queue management
+│   │   │   └── types.ts              # Event types
+│   │   ├── socket/                   # Socket.io handlers
+│   │   │   └── chatSocket.ts         # Real-time chat
+│   │   ├── validations/              # Zod validation schemas
+│   │   ├── types/                    # TypeScript types
+│   │   └── server.ts                 # Express server setup
+│   ├── .env                          # Backend environment variables
+│   ├── vertex-key.json               # Google Cloud credentials (gitignored)
+│   ├── tsconfig.json                 # TypeScript config
+│   └── package.json                  # Backend dependencies
 │
-├── package.json                   # Root package for concurrent scripts
-└── README.md
+├── agent-os/                          # Agent OS framework
+│   ├── standards/                    # Development standards
+│   │   ├── frontend/                 # Frontend guidelines
+│   │   └── backend/                  # Backend guidelines
+│   └── workflows/                    # Workflow definitions
+│
+├── docs/                             # Documentation
+│   ├── API_DOCUMENTATION.md          # API docs
+│   ├── INTEGRATION_STATUS.md         # Integration status
+│   ├── WORKFLOW_DATA_FLOW.md         # Workflow architecture
+│   └── ...                           # Other docs
+│
+├── .env                              # Root environment variables
+├── package.json                      # Root package for concurrent scripts
+└── README.md                         # This file
 ```
 
 ## ⚙️ Setup Instructions
 
-### 1. Install Dependencies
+### 1. Prerequisites
 
-Install all dependencies for both frontend and backend:
+- **Node.js**: v18+ (LTS recommended)
+- **MongoDB**: Local installation or MongoDB Atlas account
+- **Redis**: Local installation or Redis Cloud account
+- **Google Cloud**: Vertex AI API enabled
+- **Git**: For version control
+
+### 2. Clone Repository
 
 ```bash
-# Install root dependencies (concurrently)
+git clone <repository-url>
+cd mrmorris-build
+```
+
+### 3. Install Dependencies
+
+```bash
+# Install root dependencies
 npm install
 
 # Install frontend dependencies
@@ -90,12 +208,11 @@ cd ../backend && npm install
 ```
 
 Or use the convenient script:
-
 ```bash
 npm run install:all
 ```
 
-### 2. Configure Environment Variables
+### 4. Configure Environment Variables
 
 #### Frontend (.env.local in frontend/)
 
@@ -110,48 +227,87 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 #### Backend (.env in backend/)
 
 ```env
+# Server
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/mrmorris
 NODE_ENV=development
 FRONTEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:5000
 
-# For MongoDB Atlas (Production):
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/mrmorris?retryWrites=true&w=majority
+# MongoDB
+MONGODB_URI=mongodb://localhost:27017/mrmorris
+# Or MongoDB Atlas:
+# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/mrmorris
+
+# Redis
+REDIS_URL=redis://localhost:6379
+# Or Redis Cloud:
+# REDIS_URL=redis://username:password@redis-host:port
+
+# JWT Secret
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+
+# Google Cloud / Vertex AI
+GOOGLE_PROJECT_ID=your-google-cloud-project-id
+GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_APPLICATION_CREDENTIALS=./vertex-key.json
+# Or base64 encoded (for production):
+# GOOGLE_CREDENTIALS_BASE64=<base64-encoded-service-account-json>
+
+# Email (Resend)
+RESEND_API_KEY=your-resend-api-key
+FROM_EMAIL=noreply@yourdomain.com
+
+# Sentry (Optional - Error tracking)
+SENTRY_DSN=your-sentry-dsn
+
+# OAuth (Optional)
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
 ```
 
-### 3. Set Up MongoDB
+### 5. Google Cloud Setup
 
-#### Option A: Local MongoDB
-Install MongoDB locally and start the service:
+#### For Vertex AI (Required for AI features):
+
+1. Create a Google Cloud project
+2. Enable Vertex AI API
+3. Create a service account with Vertex AI User role
+4. Download service account key as `vertex-key.json`
+5. Place in `backend/` directory (gitignored)
+
+### 6. Set Up Databases
+
+#### MongoDB
 ```bash
-# Windows
-net start MongoDB
+# Local MongoDB
+net start MongoDB  # Windows
+brew services start mongodb-community  # macOS
+sudo systemctl start mongod  # Linux
 
-# macOS (Homebrew)
-brew services start mongodb-community
-
-# Linux
-sudo systemctl start mongod
+# Or use MongoDB Atlas (recommended for production)
 ```
 
-#### Option B: MongoDB Atlas (Cloud)
-1. Create a free account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a new cluster
-3. Get your connection string
-4. Update `MONGODB_URI` in `backend/.env`
+#### Redis
+```bash
+# Local Redis
+redis-server  # All platforms
 
-### 4. Run Development Servers
+# Or use Redis Cloud (recommended for production)
+```
 
-#### Run both frontend and backend concurrently:
+### 7. Run Development Servers
+
+#### Run both frontend and backend:
 ```bash
 npm run dev
 ```
 
-This will start:
+This starts:
 - Frontend: http://localhost:3000
 - Backend: http://localhost:5000
+- Bull Board (Job Queue UI): http://localhost:5000/admin/queues
 
-#### Or run them separately:
+#### Or run separately:
 ```bash
 # Terminal 1 - Frontend
 npm run dev:frontend
@@ -160,7 +316,7 @@ npm run dev:frontend
 npm run dev:backend
 ```
 
-### 5. Available Scripts
+### 8. Available Scripts
 
 ```bash
 # Development
@@ -178,194 +334,169 @@ npm run start:backend    # Start only backend
 npm run install:all      # Install all dependencies
 ```
 
-## ✨ Features
+## ✨ Key Features
 
-### Landing Page Sections
-- **Hero Section**: Compelling headline with animated gradient background
-- **Problem Statement**: Four key pain points for marketing agencies
-- **Solution Overview**: Multi-agent architecture visualization
-- **Core Features**: Six detailed feature cards with capabilities
-- **How It Works**: Three-step process visualization
-- **Agency Benefits**: Six benefit cards with stats
-- **Platform Integrations**: 12+ integration showcases
-- **Social Proof**: Stats and testimonials
-- **FAQ Section**: Eight comprehensive FAQs
-- **Waitlist CTA**: Functional email capture form
-- **Footer**: Navigation and social links
+### Core CRM
+- **Contact Management**: Rich contact profiles with enrichment
+- **Company Management**: Account-based tracking and insights
+- **Deal Pipeline**: Visual kanban with AI-powered scoring
+- **Activity Tracking**: Emails, calls, meetings, notes
+- **Custom Fields**: Flexible data model for any business
 
-### Technical Features
-- ✅ Fully responsive design (mobile, tablet, desktop)
-- ✅ Dark mode support with toggle
-- ✅ Smooth scroll animations with Framer Motion
-- ✅ Form validation with Zod
-- ✅ MongoDB integration for waitlist
-- ✅ RESTful API with Express
-- ✅ TypeScript for type safety
-- ✅ Zustand for state management
-- ✅ Axios for HTTP requests
-- ✅ CORS enabled for cross-origin requests
-- ✅ SEO optimized with meta tags
-- ✅ Professional UI with shadcn/ui components
+### AI-Powered
+- **AI Assistant**: Natural language queries and actions
+- **AI Memory**: Context-aware knowledge base
+- **AI Content**: Generate forms, emails, landing pages
+- **Intent Scoring**: Behavioral analytics and lead scoring
+- **Proactive Insights**: Meeting prep, stale deal alerts, daily summaries
+
+### Automation
+- **Workflows**: Visual workflow builder with triggers and actions
+- **Sequences**: Automated email campaigns
+- **Lead Recycling**: Re-engage cold leads automatically
+- **Lifecycle Stages**: Automatic progression tracking
+
+### Integrations
+- **Email**: Gmail, Outlook sync
+- **Calendar**: Google Calendar integration
+- **Salesforce**: Bi-directional sync
+- **Slack**: Notifications and team collaboration
+- **Notion**: Knowledge base integration
+- **Google Sheets**: Data import/export
+
+### Lead Generation
+- **Form Builder**: AI-powered form creation with intelligence
+- **Landing Pages**: Embeddable landing page builder
+- **Chatbot**: AI chatbot with qualification logic
+- **Website Tracking**: Visitor identification and tracking
+
+### Analytics
+- **Dashboard**: Real-time metrics and KPIs
+- **Reports**: Custom report builder
+- **Forecasting**: AI-powered revenue forecasting
+- **Attribution**: Multi-touch attribution tracking
 
 ## 📡 API Documentation
 
 ### Base URL
 ```
-http://localhost:5000
+http://localhost:5000/api
 ```
 
-### Endpoints
+### Key Endpoints
 
-#### Health Check
-```http
-GET /health
-```
-Response:
-```json
-{
-  "status": "ok",
-  "message": "Server is running"
-}
-```
+#### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user
 
-#### Join Waitlist
-```http
-POST /api/waitlist
-Content-Type: application/json
+#### Contacts
+- `GET /api/workspaces/:id/contacts` - List contacts
+- `POST /api/workspaces/:id/contacts` - Create contact
+- `GET /api/workspaces/:id/contacts/:contactId` - Get contact
+- `PUT /api/workspaces/:id/contacts/:contactId` - Update contact
+- `DELETE /api/workspaces/:id/contacts/:contactId` - Delete contact
 
-{
-  "email": "user@example.com",
-  "companyName": "Acme Inc", // optional
-  "role": "Marketing Director", // optional
-  "teamSize": "6-20", // optional: "1-5" | "6-20" | "21-50" | "51-200" | "200+"
-  "source": "website" // optional
-}
-```
-Success Response (201):
-```json
-{
-  "message": "Successfully joined the waitlist!",
-  "data": {
-    "email": "user@example.com",
-    "createdAt": "2025-11-07T10:53:56.116Z"
-  }
-}
-```
+#### Opportunities
+- `GET /api/workspaces/:id/opportunities` - List deals
+- `POST /api/workspaces/:id/opportunities` - Create deal
+- `PUT /api/workspaces/:id/opportunities/:oppId` - Update deal
 
-#### Check Waitlist Status
-```http
-GET /api/waitlist?email=user@example.com
-```
-Response:
-```json
-{
-  "onWaitlist": true,
-  "joinedAt": "2025-11-07T10:53:56.116Z"
-}
-```
+#### AI Features
+- `POST /api/ai-content/generate-form` - Generate form with AI
+- `POST /api/ai-content/generate-email` - Generate email with AI
+- `GET /api/workspaces/:id/ai-memory` - View AI memory
+- `POST /api/workspaces/:id/agents` - Create AI agent
 
-## 🎨 Customization
+See `docs/API_DOCUMENTATION.md` for complete API reference.
 
-### Colors
-Edit `tailwind.config.ts` to customize the color scheme:
-```typescript
-colors: {
-  primary: "hsl(var(--primary))",
-  // ... other colors
-}
-```
+## 🧪 Testing
 
-### Content
-All content is in component files under `components/landing/`. Edit any section to update text, stats, or features.
+```bash
+# Frontend tests
+cd frontend && npm test
 
-### Dark/Light Theme
-The app defaults to dark mode. Change in `app/layout.tsx`:
-```typescript
-<ThemeProvider
-  attribute="class"
-  defaultTheme="dark"  // Change to "light" or "system"
-  enableSystem
->
-```
-
-## 🔒 Security Notes
-
-- Never commit `.env.local` to version control
-- Use strong MongoDB connection strings with authentication
-- Validate all user inputs (already implemented with Zod)
-- Consider rate limiting for production API endpoints
-
-## 📊 Database Schema
-
-### Waitlist Collection
-```typescript
-{
-  email: string (required, unique)
-  companyName: string (optional)
-  role: string (optional)
-  teamSize: "1-5" | "6-20" | "21-50" | "51-200" | "200+" (optional)
-  source: string (optional)
-  createdAt: Date
-  updatedAt: Date
-}
+# Backend tests
+cd backend && npm test
 ```
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
-1. Push your code to GitHub
-2. Import project to [Vercel](https://vercel.com)
-3. Add environment variables in Vercel dashboard
-4. Deploy!
+### Vercel (Frontend)
+1. Push code to GitHub
+2. Import to Vercel
+3. Add environment variables
+4. Deploy
+
+### Railway (Backend - Recommended)
+1. Connect GitHub repository
+2. Add environment variables
+3. Add MongoDB and Redis plugins
+4. Deploy
 
 ### Other Platforms
-- **Netlify**: Configure Next.js plugin
-- **AWS Amplify**: Follow Next.js deployment guide
-- **Railway**: Deploy with MongoDB addon
-- **Render**: Deploy with managed MongoDB
+- **Render**: Full-stack deployment
+- **AWS**: EC2 + RDS + ElastiCache
+- **Google Cloud**: Cloud Run + MongoDB Atlas
 
-## 🔮 Future Development
+## 🔒 Security
 
-This landing page is built with scalability in mind. You can extend it to build the full MrMorris product:
+- JWT-based authentication
+- Password hashing with bcrypt
+- Rate limiting on API endpoints
+- CORS protection
+- Input validation with Zod
+- MongoDB injection protection
+- XSS protection
 
-### Suggested Architecture
-```
-/app
-  /dashboard          # Main dashboard
-  /campaigns          # Campaign management
-  /analytics          # Analytics views
-  /agents             # Agent configuration
-  /settings           # User settings
-  /(auth)            # Authentication routes
-    /login
-    /register
-/lib
-  /agents            # AI agent implementations
-  /api-clients       # External API integrations
-  /hooks             # Custom React hooks
-```
+## 📊 Monitoring
 
-### Next Steps
-1. **Authentication**: Add NextAuth.js for user management
-2. **Dashboard**: Build the main application dashboard
-3. **Agent System**: Implement the multi-agent architecture
-4. **Integrations**: Connect to Google Ads, Meta, LinkedIn, etc.
-5. **Real-time Updates**: Add WebSocket for live campaign updates
-6. **Billing**: Integrate Stripe for subscription management
-7. **Admin Panel**: Build admin dashboard for user management
+- **Bull Board**: Job queue monitoring at `/admin/queues`
+- **Sentry**: Error tracking and performance monitoring
+- **Redis**: Cache and session management
+- **MongoDB**: Data persistence
 
-## 📝 License
+## 🗺️ Roadmap
 
-This project is proprietary software for MrMorris.
+### Phase 1: Core Architecture (In Progress)
+- ✅ Database schema design
+- ✅ Authentication system
+- ✅ Basic CRM features
+- ⏳ AI Assistant core
+
+### Phase 2: AI Assistant
+- ⏳ Natural language interface
+- ⏳ Context-aware actions
+- ⏳ Proactive notifications
+
+### Phase 3: Autonomous Agents
+- ⏳ Document-to-agent parser
+- ⏳ Agent execution engine
+- ⏳ Multi-agent orchestration
+
+### Phase 4: Advanced Features
+- ⏳ Custom object builder
+- ⏳ Data enrichment service
+- ⏳ Lead discovery engine
+- ⏳ Developer API
+
+## 📝 Documentation
+
+- [API Documentation](docs/API_DOCUMENTATION.md)
+- [Integration Status](docs/INTEGRATION_STATUS.md)
+- [Workflow Architecture](docs/WORKFLOW_DATA_FLOW.md)
+- [Lead Generation Guide](docs/LEAD_GENERATION_PLAN.md)
+- [Production Deployment](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)
 
 ## 🤝 Contributing
 
 This is a private project. For access or questions, contact the development team.
 
+## 📄 License
+
+Proprietary software for MrMorris.
+
 ---
 
-Built with ❤️ for marketing agencies worldwide
-#   M r - M o r r i s 
- 
- 
-# mrmorris-build
+Built with ❤️ using Google Gemini 2.5 Pro and Vertex AI
