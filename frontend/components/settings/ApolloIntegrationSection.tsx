@@ -132,7 +132,7 @@ export default function ApolloIntegrationSection({
         <h3 className="text-sm font-semibold text-foreground mb-3">
           API Connection
         </h3>
-        <div className="space-y-4 rounded-lg border border-border bg-background p-4">
+        <div className="premium-card p-4 space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
               API Key
@@ -142,7 +142,7 @@ export default function ApolloIntegrationSection({
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Enter your Apollo.io API key"
-              className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
             />
             <p className="mt-1 text-xs text-muted-foreground">
               Get your API key from{" "}
@@ -157,20 +157,20 @@ export default function ApolloIntegrationSection({
             </p>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-2 border-t border-border">
             <div className="flex items-center gap-2">
               {connectionStatus === true && (
                 <>
-                  <CheckCircleIcon className="w-5 h-5 text-green-600" />
-                  <span className="text-sm font-medium text-green-600">
+                  <div className="w-2 h-2 bg-primary rounded-full" />
+                  <span className="text-sm font-medium text-foreground">
                     Connected
                   </span>
                 </>
               )}
               {connectionStatus === false && (
                 <>
-                  <XCircleIcon className="w-5 h-5 text-red-600" />
-                  <span className="text-sm font-medium text-red-600">
+                  <div className="w-2 h-2 bg-red-500 rounded-full" />
+                  <span className="text-sm font-medium text-red-600 dark:text-red-400">
                     Not Connected
                   </span>
                 </>
@@ -183,10 +183,10 @@ export default function ApolloIntegrationSection({
             <button
               onClick={handleTestConnection}
               disabled={isTestingConnection || !apiKey}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isTestingConnection && (
-                <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                <ArrowPathIcon className="w-4 h-4 inline mr-2 animate-spin" />
               )}
               {isTestingConnection ? "Testing..." : "Test Connection"}
             </button>
@@ -212,14 +212,12 @@ export default function ApolloIntegrationSection({
               </div>
               <button
                 onClick={() => setAutoEnrichNew(!autoEnrichNew)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  autoEnrichNew ? "bg-primary" : "bg-muted"
-                }`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoEnrichNew ? "bg-primary" : "bg-muted"
+                  }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    autoEnrichNew ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoEnrichNew ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </button>
             </div>
@@ -235,14 +233,12 @@ export default function ApolloIntegrationSection({
               </div>
               <button
                 onClick={() => setAutoEnrichMissing(!autoEnrichMissing)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  autoEnrichMissing ? "bg-primary" : "bg-muted"
-                }`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoEnrichMissing ? "bg-primary" : "bg-muted"
+                  }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    autoEnrichMissing ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoEnrichMissing ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </button>
             </div>
@@ -258,14 +254,12 @@ export default function ApolloIntegrationSection({
               </div>
               <button
                 onClick={() => setAutoVerifyEmails(!autoVerifyEmails)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  autoVerifyEmails ? "bg-primary" : "bg-muted"
-                }`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoVerifyEmails ? "bg-primary" : "bg-muted"
+                  }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    autoVerifyEmails ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoVerifyEmails ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </button>
             </div>

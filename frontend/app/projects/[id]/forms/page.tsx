@@ -145,6 +145,12 @@ export default function FormsPage() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false);
 
+  // AI Form Generator state
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState<string | null>(null);
+
   const loadForms = async () => {
     setIsLoading(true);
     try {
@@ -229,6 +235,77 @@ export default function FormsPage() {
     }
   };
 
+  // AI Form Generation with Gemini 2.5 Pro
+  const generateWithAI = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Please describe what kind of form you need");
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    setAiReasoning(null);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/forms/generate-ai`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ formGoal: aiPrompt })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setAiReasoning(data.data.reasoning);
+
+        // Create the form with AI-generated fields
+        const newForm = {
+          name: data.data.name,
+          description: data.data.description,
+          status: "draft" as const,
+          formType: "single_step" as const,
+          fields: data.data.fields.map((field: any, index: number) => ({
+            ...field,
+            id: `field_${index}_${Date.now()}`,
+          })),
+          progressiveProfilingEnabled: false,
+          settings: {
+            submitButtonText: "Submit",
+            successMessage: data.data.successMessage || "Thank you for your submission!",
+            autoCreateContact: true,
+            theme: "light" as const,
+            layout: "vertical" as const,
+            labelPosition: "top" as const,
+            fieldSpacing: "normal" as const,
+            allowMultipleSubmissions: true,
+            requireCaptcha: false,
+            trackingEnabled: true,
+            cookieTracking: true,
+          },
+          followUpActions: [],
+          stats: { views: 0, submissions: 0, conversionRate: 0 },
+        };
+
+        const createResponse = await createForm(workspaceId, newForm);
+        if (createResponse.success) {
+          toast.success(`🎉 AI generated "${data.data.name}"!`);
+          setShowAIGenerator(false);
+          setAiPrompt("");
+          router.push(`/projects/${workspaceId}/forms/${createResponse.data._id}/edit`);
+        }
+      } else {
+        toast.error(data.error || "AI generation failed");
+      }
+    } catch (error) {
+      console.error("AI form generation error:", error);
+      toast.error("Failed to generate form with AI");
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "published":
@@ -281,24 +358,24 @@ export default function FormsPage() {
           >
             <ArrowPathIcon className={cn("w-5 h-5", isLoading && "animate-spin")} />
           </Button>
+          {/* AI Generate Button - NEW */}
+          <Button
+            onClick={() => setShowAIGenerator(true)}
+            className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+          >
+            <SparklesIcon className="w-5 h-5" />
+            Generate with AI
+          </Button>
           <Link href={`/projects/${workspaceId}/forms/templates`}>
-            <Button variant="default" className="gap-2">
-              <SparklesIcon className="w-5 h-5" />
-              Smart Templates
+            <Button variant="outline" className="gap-2">
+              <DocumentDuplicateIcon className="w-5 h-5" />
+              Templates
             </Button>
           </Link>
-          <Button
-            variant="outline"
-            onClick={() => setShowTemplates(true)}
-            className="gap-2"
-          >
-            <DocumentDuplicateIcon className="w-5 h-5" />
-            Quick Templates
-          </Button>
           <Link href={`/projects/${workspaceId}/forms/new`}>
-            <Button className="gap-2">
+            <Button variant="outline" className="gap-2">
               <PlusIcon className="w-5 h-5" />
-              Create Form
+              Create Blank
             </Button>
           </Link>
         </div>
@@ -419,7 +496,7 @@ export default function FormsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card className="group relative hover:border-primary/50 overflow-hidden h-full flex flex-col">
+              <Card className="premium-card group relative premium-hover overflow-hidden h-full flex flex-col">
                 {/* Status Badge */}
                 <div className="absolute top-4 right-4 z-10">
                   <Badge
@@ -603,6 +680,115 @@ export default function FormsPage() {
                     </Card>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Generator Modal */}
+      <AnimatePresence>
+        {showAIGenerator && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+            onClick={() => !isGeneratingAI && setShowAIGenerator(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-background rounded-2xl shadow-2xl max-w-2xl w-full border"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600">
+                    <SparklesIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">Generate Form with AI</h2>
+                    <p className="text-muted-foreground text-sm mt-0.5">
+                      Powered by Gemini 2.5 Pro - describe your form and watch the magic ✨
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Describe your form goal
+                  </label>
+                  <textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="Example: Lead capture form for a B2B SaaS company selling to enterprise HR teams. Should qualify leads by company size and use case."
+                    className="w-full h-32 px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
+                    disabled={isGeneratingAI}
+                  />
+                </div>
+
+                {/* Suggested prompts */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Lead capture for SaaS product",
+                    "Demo request form for enterprise",
+                    "Newsletter signup with interests",
+                    "Customer feedback survey",
+                  ].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setAiPrompt(suggestion)}
+                      className="px-3 py-1.5 text-sm rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                      disabled={isGeneratingAI}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+
+                {/* AI Reasoning Display */}
+                {aiReasoning && (
+                  <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">
+                      🧠 AI Reasoning
+                    </p>
+                    <p className="text-sm text-muted-foreground">{aiReasoning}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-6 border-t bg-muted/30 flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAIGenerator(false)}
+                  disabled={isGeneratingAI}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={generateWithAI}
+                  disabled={isGeneratingAI || !aiPrompt.trim()}
+                  className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                >
+                  {isGeneratingAI ? (
+                    <>
+                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <SparklesIcon className="w-4 h-4" />
+                      Generate Form
+                    </>
+                  )}
+                </Button>
               </div>
             </motion.div>
           </motion.div>

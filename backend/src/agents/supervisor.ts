@@ -15,6 +15,7 @@ import { StateGraph, END } from "@langchain/langgraph";
 import { ChatVertexAI } from "@langchain/google-vertexai";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { AgentState, AgentStateType, createInitialState, addToConversation } from "./state";
+import { aiMemoryService } from "../services/AIMemoryService";
 import {
     contactAgentNode,
     emailAgentNode,
@@ -429,7 +430,21 @@ export async function invokeAgent(
 }> {
     try {
         const start = Date.now();
-        const initialState = createInitialState(message, workspaceId, userId, sessionId);
+
+        // 🧠 MEMORY RECALL - Get learned context about contacts mentioned
+        let memoryContext = '';
+        const contactIdMatch = message.match(/contact[:\s]+([a-f0-9]{24})/i);
+        if (contactIdMatch) {
+            const memory = await aiMemoryService.recall(workspaceId, contactIdMatch[1]);
+            memoryContext = memory.contextString;
+        }
+
+        // Inject memory context into message if available
+        const enrichedMessage = memoryContext
+            ? `${message}\n${memoryContext}`
+            : message;
+
+        const initialState = createInitialState(enrichedMessage, workspaceId, userId, sessionId);
 
         console.log(`\n🚀 Agent request: "${message.substring(0, 50)}..." (timeout: ${timeoutMs}ms)`);
 
@@ -439,6 +454,17 @@ export async function invokeAgent(
         );
 
         console.log(`✅ Complete in ${Date.now() - start}ms\n`);
+
+        // 🧠 MEMORY LEARN - Extract facts from this interaction
+        if (contactIdMatch && result.finalResponse && !result.error) {
+            aiMemoryService.learn({
+                workspaceId,
+                contactId: contactIdMatch[1],
+                agentType: result.nextAgent || 'general',
+                query: message,
+                response: result.finalResponse,
+            }).catch(err => console.warn('Memory learning failed:', err));
+        }
 
         return {
             response: result.finalResponse || "Done.",

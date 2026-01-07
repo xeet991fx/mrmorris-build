@@ -187,34 +187,37 @@ export default function SalesforcePage() {
   if (!integration.connected) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Salesforce Integration</CardTitle>
-            <CardDescription>
-              Connect your Salesforce account to sync contacts, accounts, and opportunities bidirectionally.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center space-y-4">
-                <Database className="h-16 w-16 mx-auto text-blue-600" />
-                <h3 className="text-lg font-semibold">Connect to Salesforce</h3>
-                <p className="text-sm text-gray-600 max-w-md">
-                  Sync your CRM data with Salesforce automatically. Keep contacts, companies, and deals in sync across both platforms.
-                </p>
-                <Button onClick={handleConnect} size="lg" className="mt-4">
-                  Connect Salesforce
-                </Button>
-              </div>
+        <div className="glass-card p-8 animate-fadeInUp">
+          <div className="flex flex-col items-center text-center space-y-6 max-w-2xl mx-auto">
+            {/* Icon */}
+            <div className="w-16 h-16 flex items-center justify-center">
+              <Database className="h-16 w-16 text-foreground" />
             </div>
 
-            <Alert>
-              <AlertDescription>
-                <strong>What gets synced:</strong> Contacts ↔ Contacts, Companies ↔ Accounts, Opportunities ↔ Opportunities
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+            {/* Title & Description */}
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-foreground">Connect to Salesforce</h2>
+              <p className="text-muted-foreground">
+                Sync your CRM data with Salesforce automatically. Keep contacts, companies, and deals in sync across both platforms.
+              </p>
+            </div>
+
+            {/* CTA Button */}
+            <button
+              onClick={handleConnect}
+              className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 hover:scale-105 transition-all duration-300"
+            >
+              Connect Salesforce
+            </button>
+
+            {/* Info Alert */}
+            <div className="w-full pt-4 border-t border-border">
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">What gets synced:</strong> Contacts ↔ Contacts, Companies ↔ Accounts, Opportunities ↔ Opportunities
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -247,82 +250,74 @@ export default function SalesforcePage() {
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Sync Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  {integration.data?.syncStatus === "active" ? (
-                    <>
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      <span className="text-lg font-semibold">Active</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-5 w-5 text-red-600" />
-                      <span className="text-lg font-semibold">Error</span>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            {/* Sync Status Card */}
+            <div className="minimal-card p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Sync Status</p>
+              <div className="flex items-center gap-2">
+                {integration.data?.syncStatus === "active" ? (
+                  <>
+                    <div className="w-2 h-2 bg-primary rounded-full" />
+                    <span className="text-lg font-bold text-foreground">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full" />
+                    <span className="text-lg font-bold text-foreground">Error</span>
+                  </>
+                )}
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Total Synced</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{integration.data?.stats.totalSynced || 0}</div>
-                <p className="text-xs text-gray-600">records</p>
-              </CardContent>
-            </Card>
+            {/* Total Synced Card */}
+            <div className="minimal-card p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Total Synced</p>
+              <div className="text-3xl font-bold text-foreground">{integration.data?.stats.totalSynced || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">records</p>
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Next Sync</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm">
-                  {integration.data?.nextSyncAt
-                    ? new Date(integration.data.nextSyncAt).toLocaleString()
-                    : "Not scheduled"}
-                </div>
-              </CardContent>
-            </Card>
+            {/* Next Sync Card */}
+            <div className="minimal-card p-4">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Next Sync</p>
+              <div className="text-sm text-foreground">
+                {integration.data?.nextSyncAt
+                  ? new Date(integration.data.nextSyncAt).toLocaleString()
+                  : "Not scheduled"}
+              </div>
+            </div>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Sync Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Organization</span>
-                <span className="text-sm font-medium">{integration.data?.organizationName}</span>
+          {/* Sync Information */}
+          <div className="minimal-card p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Sync Information</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between border-b border-border pb-3">
+                <span className="text-sm text-muted-foreground">Organization</span>
+                <span className="text-sm font-medium text-foreground">{integration.data?.organizationName}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">User Email</span>
-                <span className="text-sm font-medium">{integration.data?.userEmail}</span>
+              <div className="flex justify-between border-b border-border pb-3">
+                <span className="text-sm text-muted-foreground">User Email</span>
+                <span className="text-sm font-medium text-foreground">{integration.data?.userEmail}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Last Sync</span>
-                <span className="text-sm font-medium">
+              <div className="flex justify-between border-b border-border pb-3">
+                <span className="text-sm text-muted-foreground">Last Sync</span>
+                <span className="text-sm font-medium text-foreground">
                   {integration.data?.lastSyncAt
                     ? new Date(integration.data.lastSyncAt).toLocaleString()
                     : "Never"}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Sync Direction</span>
-                <Badge variant="outline">{integration.data?.syncDirection?.replace("_", " ")}</Badge>
+              <div className="flex justify-between border-b border-border pb-3">
+                <span className="text-sm text-muted-foreground">Sync Direction</span>
+                <span className="text-sm font-medium text-foreground border border-border px-2 py-0.5 rounded">
+                  {integration.data?.syncDirection?.replace("_", " ")}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Sync Frequency</span>
-                <span className="text-sm font-medium">Every {integration.data?.syncFrequency} minutes</span>
+                <span className="text-sm text-muted-foreground">Sync Frequency</span>
+                <span className="text-sm font-medium text-foreground">Every {integration.data?.syncFrequency} minutes</span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-4">

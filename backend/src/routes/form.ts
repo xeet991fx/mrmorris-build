@@ -631,4 +631,53 @@ router.get(
     }
 );
 
+/**
+ * POST /api/workspaces/:workspaceId/forms/generate-ai
+ *
+ * Generate a form using AI (Gemini 2.5 Pro).
+ */
+router.post(
+    "/:workspaceId/forms/generate-ai",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const { formGoal } = req.body;
+
+            if (!formGoal || typeof formGoal !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    error: "Form goal description is required",
+                });
+            }
+
+            console.log(`\n🤖 AI Form Generation for workspace ${workspaceId}`);
+            console.log(`📝 Goal: ${formGoal.substring(0, 100)}...`);
+
+            // Import and use the AI form generator service
+            const { AIFormGeneratorService } = await import("../services/AIFormGeneratorService");
+
+            const generatedForm = await AIFormGeneratorService.generateFormWithContext(
+                workspaceId,
+                formGoal,
+                true // Use business profile context
+            );
+
+            console.log(`✅ AI generated form: ${generatedForm.name} with ${generatedForm.fields.length} fields`);
+
+            res.json({
+                success: true,
+                data: generatedForm,
+                message: `AI generated "${generatedForm.name}" with ${generatedForm.fields.length} optimized fields`,
+            });
+        } catch (error: any) {
+            console.error("Error generating AI form:", error);
+            res.status(500).json({
+                success: false,
+                error: error.message || "Failed to generate form with AI",
+            });
+        }
+    }
+);
+
 export default router;

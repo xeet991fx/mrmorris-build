@@ -31,7 +31,8 @@ interface GeneratedForm {
 
 export class AIFormGeneratorService {
   /**
-   * Generate form using business profile context
+   * Generate form using business profile context with Gemini 2.5 Pro
+   * Uses advanced prompt engineering for conversion-optimized forms
    */
   static async generateFormWithContext(
     workspaceId: string,
@@ -49,40 +50,83 @@ export class AIFormGeneratorService {
 
     const model = getProModel();
 
-    const prompt = `You are an expert form designer. Generate a lead capture form based on the following requirements.
+    // ENHANCED PROMPT with conversion psychology
+    const prompt = `You are an ELITE conversion rate optimization expert and form designer powered by Gemini 2.5 Pro.
+
+Your forms consistently achieve 40%+ conversion rates through psychological optimization.
 
 ${profileContext}
 
-**FORM GOAL**: ${formGoal}
+## FORM GOAL: "${formGoal}"
 
-Generate a JSON response with this EXACT structure:
+## YOUR EXPERTISE IN CONVERSION OPTIMIZATION:
+
+1. **FIELD ORDERING PSYCHOLOGY**
+   - Start with the EASIEST field (usually first name) - reduces cognitive load
+   - Place email AFTER name - they're already invested
+   - Put optional fields LAST - feels like bonus info, not requirement
+   - Never start with complex fields (company size, budget)
+
+2. **LABEL OPTIMIZATION**
+   - Use benefit-focused labels: "Work Email" → "Best Email to Reach You"
+   - Add subtle urgency: "Company" → "Company You're Representing"
+   - Reduce friction: "Phone Number" → "Phone (optional - for faster response)"
+
+3. **PSYCHOLOGICAL TRIGGERS TO INCLUDE**
+   - Social proof hint in description
+   - Scarcity if appropriate (limited spots, exclusive access)
+   - Commitment-consistency (small yes leads to big yes)
+
+4. **SMART VALIDATION**
+   - Email: Use "email" type, validate format
+   - Phone: Accept international formats
+   - Company: No strict validation (reduces friction)
+
+5. **CONVERSION BOOSTERS TO ADD**
+   - Placeholder text that SHOWS value (not "Enter your email")
+   - Help text for complex fields
+   - Smart defaults for select fields
+
+## GENERATE A JSON FORM:
+
 {
-  "name": "form name",
-  "description": "brief description",
+  "name": "Compelling form name that implies value",
+  "description": "Brief trust-building description with social proof hint",
   "fields": [
     {
-      "id": "unique_id",
-      "type": "text|email|phone|select|multiselect|textarea|number|date",
-      "label": "Field Label",
-      "placeholder": "optional placeholder",
-      "required": true,
-      "width": "full",
-      "options": ["only for select/multiselect"],
-      "mapToField": "firstName|lastName|email|phone|company|jobTitle"
+      "id": "unique_snake_case_id",
+      "type": "text|email|phone|select|multiselect|textarea|number|date|radio|checkbox|rating",
+      "label": "Conversion-optimized label",
+      "placeholder": "Value-showing placeholder example",
+      "required": true/false,
+      "width": "full|half",
+      "options": ["for select/radio - order by popularity"],
+      "mapToField": "firstName|lastName|email|phone|company|jobTitle",
+      "helpText": "Optional micro-copy to boost completion"
     }
   ],
-  "successMessage": "Thank you message",
-  "tags": ["relevant", "tags"],
-  "reasoning": "Why these fields were chosen"
+  "successMessage": "Exciting confirmation that sets expectations",
+  "redirectUrl": "optional thank you page",
+  "tags": ["relevant", "auto-tags"],
+  "reasoning": "Explain your conversion optimization choices",
+  "abVariants": [
+    {
+      "name": "Variant B - Shorter",
+      "description": "What changes and why it might convert better"
+    }
+  ]
 }
 
-**IMPORTANT RULES**:
-1. Always include: name (or firstName/lastName), email
-2. For B2B: include company, jobTitle
-3. Keep it SHORT - max 6-8 fields
-4. Use profile context to personalize field labels and options
-5. Match the industry and sales model
-6. Return ONLY valid JSON, no markdown`;
+## CRITICAL RULES:
+1. Maximum 6-8 fields (every extra field = -10% conversions)
+2. Required fields: name + email minimum
+3. B2B: Add company + job title
+4. Order from easiest to hardest
+5. Use half-width for name fields (looks smaller = less friction)
+6. Include reasoning for every design choice
+7. Suggest one A/B variant to test
+
+Return ONLY valid JSON. No markdown formatting.`;
 
     const result = await model.invoke(prompt);
     const content = typeof result.content === "string" ? result.content : String(result.content);
@@ -100,7 +144,7 @@ Generate a JSON response with this EXACT structure:
       name: generatedForm.name || "Lead Capture Form",
       description: generatedForm.description || "",
       fields: this.validateFields(generatedForm.fields || []),
-      successMessage: generatedForm.successMessage || "Thank you! We'll be in touch soon.",
+      successMessage: generatedForm.successMessage || "Thank you! We'll be in touch within 24 hours.",
       tags: generatedForm.tags || [],
       reasoning: generatedForm.reasoning || "",
     };
@@ -309,16 +353,25 @@ Generate a JSON response with this EXACT structure:
    * Validate and clean fields
    */
   private static validateFields(fields: any[]): FormField[] {
-    return fields.map((field) => ({
-      id: field.id || `field_${Date.now()}`,
-      type: field.type || "text",
-      label: field.label || "Untitled Field",
-      placeholder: field.placeholder,
-      required: field.required !== false,
-      width: field.width || "full",
-      options: field.options,
-      mapToField: field.mapToField,
-    }));
+    // Valid mapToField values from the Form model
+    const validMapToFields = ['firstName', 'lastName', 'email', 'phone', 'company', 'jobTitle', 'website'];
+
+    return fields.map((field) => {
+      // Only keep mapToField if it's a valid value
+      const mapToField = validMapToFields.includes(field.mapToField) ? field.mapToField : undefined;
+
+      return {
+        id: field.id || `field_${Date.now()}`,
+        type: field.type || "text",
+        label: field.label || "Untitled Field",
+        placeholder: field.placeholder,
+        required: field.required !== false,
+        width: field.width || "full",
+        options: field.options,
+        mapToField,
+        helpText: field.helpText,
+      };
+    });
   }
 
   /**

@@ -80,35 +80,35 @@ function DashboardContent() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.1, duration: 0.4 }}
             >
-              <Card className="bg-card border-border/50 p-6 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl">
+              <div className="glass-card p-6 h-full">
                 <div className="flex items-start gap-5">
-                  <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xl font-bold shadow-md">
+                  <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xl font-bold">
                     {user?.name?.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-[1.125rem] font-semibold text-foreground mb-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">
                       Account Information
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-center gap-3 text-foreground">
                         <User className="h-[18px] w-[18px] text-muted-foreground" />
                         <div>
-                          <p className="text-[0.75rem] text-muted-foreground uppercase tracking-wide">Full Name</p>
-                          <p className="text-[0.9375rem] font-medium">{user?.name}</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Full Name</p>
+                          <p className="text-sm font-medium">{user?.name}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-foreground">
                         <Mail className="h-[18px] w-[18px] text-muted-foreground" />
                         <div>
-                          <p className="text-[0.75rem] text-muted-foreground uppercase tracking-wide">Email</p>
-                          <p className="text-[0.9375rem] font-medium">{user?.email}</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Email</p>
+                          <p className="text-sm font-medium">{user?.email}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-foreground">
-                        <CheckCircle2 className="h-[18px] w-[18px] text-emerald-500" />
+                        <CheckCircle2 className="h-[18px] w-[18px] text-primary" />
                         <div>
-                          <p className="text-[0.75rem] text-muted-foreground uppercase tracking-wide">Status</p>
-                          <p className="text-[0.9375rem] font-medium text-emerald-500">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
+                          <p className="text-sm font-medium text-primary">
                             {user?.isVerified ? "Verified" : "Not Verified"}
                           </p>
                         </div>
@@ -117,10 +117,10 @@ function DashboardContent() {
                         <div className="flex items-center gap-3 text-foreground">
                           <Calendar className="h-[18px] w-[18px] text-muted-foreground" />
                           <div>
-                            <p className="text-[0.75rem] text-muted-foreground uppercase tracking-wide">
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">
                               Member Since
                             </p>
-                            <p className="text-[0.9375rem] font-medium">
+                            <p className="text-sm font-medium">
                               {new Date(user.createdAt).toLocaleDateString(
                                 "en-US",
                                 {
@@ -136,7 +136,7 @@ function DashboardContent() {
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
             </motion.div>
 
             <motion.div
@@ -144,29 +144,29 @@ function DashboardContent() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2, duration: 0.4 }}
             >
-              <Card className="bg-card border-border/50 p-6 h-full shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl">
-                <h3 className="text-[1.125rem] font-semibold text-foreground mb-4">
-                  You&apos;re All Set! ✨
+              <div className="glass-card p-6 h-full">
+                <h3 className="text-lg font-semibold text-foreground mb-4">
+                  You're All Set! ✨
                 </h3>
-                <p className="text-[0.9375rem] text-muted-foreground mb-5 leading-relaxed">
+                <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
                   Your account is fully configured and ready to use. Start
-                  exploring Clianta&apos;s autonomous marketing features.
+                  exploring Clianta's autonomous marketing features.
                 </p>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-foreground">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                    <span className="text-[0.9375rem]">Email verified</span>
+                    <div className="w-2 h-2 bg-primary rounded-full"></div>
+                    <span className="text-sm">Email verified</span>
                   </div>
                   <div className="flex items-center gap-3 text-foreground">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                    <span className="text-[0.9375rem]">Account active</span>
+                    <div className="w-2 h-2 bg-primary rounded-full"></div>
+                    <span className="text-sm">Account active</span>
                   </div>
                   <div className="flex items-center gap-3 text-foreground">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                    <span className="text-[0.9375rem]">Ready to automate</span>
+                    <div className="w-2 h-2 bg-primary rounded-full"></div>
+                    <span className="text-sm">Ready to automate</span>
                   </div>
                 </div>
-              </Card>
+              </div>
             </motion.div>
           </div>
 
@@ -183,62 +183,62 @@ function DashboardContent() {
               </h3>
             </div>
             <div className="grid md:grid-cols-3 gap-5">
-              <Card className="bg-card border-border/50 p-5 hover:border-primary/40 hover:bg-card/80 transition-all duration-300 cursor-pointer group shadow-md hover:shadow-lg rounded-xl">
+              <div onClick={() => router.push('/profile')} className="premium-card p-5 premium-hover cursor-pointer group">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="w-11 h-11 bg-secondary rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-300">
+                    <div className="w-11 h-11 bg-muted rounded-lg flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-200">
                       <User className="h-5 w-5 text-foreground group-hover:text-primary transition-colors" />
                     </div>
                     <div>
-                      <h4 className="text-[0.9375rem] font-semibold text-foreground mb-1">
+                      <h4 className="text-sm font-semibold text-foreground mb-1">
                         Edit Profile
                       </h4>
-                      <p className="text-[0.8125rem] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Update your account information
                       </p>
                     </div>
                   </div>
-                  <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300">→</span>
+                  <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200">→</span>
                 </div>
-              </Card>
+              </div>
 
-              <Card className="bg-card border-border/50 p-5 hover:border-primary/40 hover:bg-card/80 transition-all duration-300 cursor-pointer group shadow-md hover:shadow-lg rounded-xl">
+              <div onClick={() => router.push('/settings/email')} className="premium-card p-5 premium-hover cursor-pointer group">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="w-11 h-11 bg-secondary rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-300">
+                    <div className="w-11 h-11 bg-muted rounded-lg flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-200">
                       <Mail className="h-5 w-5 text-foreground group-hover:text-primary transition-colors" />
                     </div>
                     <div>
-                      <h4 className="text-[0.9375rem] font-semibold text-foreground mb-1">
+                      <h4 className="text-sm font-semibold text-foreground mb-1">
                         Email Settings
                       </h4>
-                      <p className="text-[0.8125rem] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Manage your email preferences
                       </p>
                     </div>
                   </div>
-                  <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300">→</span>
+                  <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200">→</span>
                 </div>
-              </Card>
+              </div>
 
-              <Card className="bg-card border-border/50 p-5 hover:border-primary/40 hover:bg-card/80 transition-all duration-300 cursor-pointer group shadow-md hover:shadow-lg rounded-xl">
+              <div onClick={() => router.push('/settings/security')} className="premium-card p-5 premium-hover cursor-pointer group">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className="w-11 h-11 bg-secondary rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-300">
+                    <div className="w-11 h-11 bg-muted rounded-lg flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-200">
                       <CheckCircle2 className="h-5 w-5 text-foreground group-hover:text-primary transition-colors" />
                     </div>
                     <div>
-                      <h4 className="text-[0.9375rem] font-semibold text-foreground mb-1">
+                      <h4 className="text-sm font-semibold text-foreground mb-1">
                         Security
                       </h4>
-                      <p className="text-[0.8125rem] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         Manage password and security
                       </p>
                     </div>
                   </div>
-                  <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-300">→</span>
+                  <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200">→</span>
                 </div>
-              </Card>
+              </div>
             </div>
           </motion.div>
         </motion.div>

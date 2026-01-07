@@ -57,7 +57,7 @@ export function StatCard({
   const styles = variantStyles[variant];
 
   return (
-    <Card className={cn("hover:scale-[1.02] transition-transform duration-200", className)}>
+    <Card className={cn("glass-card", className)}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -71,8 +71,8 @@ export function StatCard({
                     trend.value > 0
                       ? "bg-success/10 text-success"
                       : trend.value < 0
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-muted text-muted-foreground"
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-muted text-muted-foreground"
                   )}
                 >
                   {trend.value > 0 ? "+" : ""}

@@ -54,7 +54,76 @@ async function executeLandingPageTool(
                 };
             }
 
-            // Create the page with AI-customized content
+            // 🚀 NEW: Generate AI content for the page
+            let aiContent: any = null;
+            try {
+                const { AILandingPageContentGenerator } = await import("../../services/AILandingPageContentGenerator");
+                aiContent = await AILandingPageContentGenerator.generateContent(
+                    workspaceId,
+                    description || name || "Professional landing page",
+                    { tone: 'professional' }
+                );
+                console.log("✨ AI generated custom content for landing page");
+            } catch (contentError: any) {
+                console.warn("Could not generate AI content, using template defaults:", contentError.message);
+            }
+
+            // Merge AI content into template sections
+            const enhancedSections = templateData.sections.map((section, index) => {
+                const baseSection = {
+                    id: uuidv4(),
+                    type: section.type,
+                    order: index,
+                    settings: { ...section.settings },
+                };
+
+                // If AI content available, use it
+                if (aiContent) {
+                    switch (section.type) {
+                        case "hero":
+                            baseSection.settings = {
+                                ...baseSection.settings,
+                                heading: aiContent.hero.headline,
+                                subheading: aiContent.hero.subheadline,
+                                buttonText: aiContent.hero.ctaText,
+                                buttonSecondary: aiContent.hero.ctaSecondary,
+                            };
+                            break;
+                        case "features":
+                            baseSection.settings = {
+                                ...baseSection.settings,
+                                heading: aiContent.features.sectionTitle,
+                                features: aiContent.features.items.map((f: any) => ({
+                                    title: f.title,
+                                    description: f.description,
+                                    icon: f.icon || "star",
+                                })),
+                            };
+                            break;
+                        case "testimonials":
+                            if (aiContent.socialProof?.testimonials) {
+                                baseSection.settings = {
+                                    ...baseSection.settings,
+                                    heading: aiContent.socialProof.headline,
+                                    testimonials: aiContent.socialProof.testimonials,
+                                };
+                            }
+                            break;
+                        case "cta":
+                            baseSection.settings = {
+                                ...baseSection.settings,
+                                heading: aiContent.cta.headline,
+                                subheading: aiContent.cta.subheadline,
+                                buttonText: aiContent.cta.buttonText,
+                            };
+                            break;
+                    }
+                }
+
+                return baseSection;
+            });
+
+            // Create the page with AI-enhanced content
             const page = await LandingPage.create({
                 workspaceId,
                 userId,
@@ -62,13 +131,8 @@ async function executeLandingPageTool(
                 slug,
                 description: description || `AI-generated landing page`,
                 status: "draft",
-                sections: templateData.sections.map((section, index) => ({
-                    id: uuidv4(),
-                    type: section.type,
-                    order: index,
-                    settings: section.settings,
-                })),
-                seo: {
+                sections: enhancedSections,
+                seo: aiContent?.seo || {
                     title: name || "My Landing Page",
                     description: description || "Welcome to our landing page",
                 },
@@ -95,9 +159,10 @@ async function executeLandingPageTool(
                 name: page.name,
                 template: templateKey,
                 sections: page.sections.length,
+                aiGenerated: !!aiContent,
                 editUrl: `${frontendUrl}/projects/${workspaceId}/pages/${page._id}/edit`,
                 previewUrl: `${frontendUrl}/p/${page.slug}`,
-                message: `Created "${page.name}" with ${page.sections.length} sections using ${templateData.name} template. Preview: /p/${page.slug}`,
+                message: `Created "${page.name}" with ${page.sections.length} sections using ${templateData.name} template${aiContent ? ' with AI-generated copy' : ''}. Preview: /p/${page.slug}`,
             };
         }
 

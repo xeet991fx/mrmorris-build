@@ -81,6 +81,8 @@ import { startIntentScoreDecayJob } from "./jobs/intentScoreDecayJob";
 import { startSalesforceSyncJob } from "./jobs/salesforceSyncJob";
 import { startLifecycleProgressionJob } from "./jobs/lifecycleProgressionJob";
 import { startLeadRecyclingJob } from "./jobs/leadRecyclingJob";
+import { initializeProactiveAIJobs } from "./jobs/proactiveAI";
+import aiNotificationsRoutes from "./routes/aiNotifications";
 
 import fs from "fs";
 
@@ -398,6 +400,11 @@ app.use("/api/referrals", referralRoutes); // Referral program with viral growth
 app.use("/api/lead-magnets", leadMagnetRoutes); // Gated content library
 app.use("/api/voice-drops", voiceDropRoutes); // Ringless voicemail campaigns
 app.use("/api/form-templates", formTemplateRoutes); // Smart form templates with conversion optimization
+app.use("/api", aiNotificationsRoutes); // AI proactive notifications and insights
+
+// AI Memory routes for viewing/managing learned knowledge
+import aiMemoryRoutes from "./routes/aiMemory";
+app.use("/api", aiMemoryRoutes);
 
 // AI Content Generation with Business Profile Context
 import aiContentRoutes from "./routes/aiContent";
@@ -474,6 +481,12 @@ const startServer = async () => {
       // Start lead recycling job (runs daily at 9 AM)
       startLeadRecyclingJob();
       console.log('⚡ Lead recycling job: Running');
+
+      // Start proactive AI jobs (meeting prep, stale deal alerts, daily insights)
+      initializeProactiveAIJobs().catch((error) => {
+        console.error('❌ Failed to start proactive AI jobs:', error);
+      });
+      console.log('🤖 Proactive AI jobs: Running');
 
       // Initialize event consumers (NEW)
       (async () => {
