@@ -208,6 +208,8 @@ export default function PipelineKanbanView({
                 onDelete={onDeleteOpportunity}
                 onAddOpportunity={() => onAddOpportunity(stageData.stage._id)}
                 onCardClick={setDetailPanelOpportunity}
+                isFirst={index === 0}
+                isLast={index === kanbanData.stages.length - 1}
               />
             </motion.div>
           ))}

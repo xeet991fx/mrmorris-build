@@ -8,6 +8,7 @@ import {
   TrashIcon,
   Cog6ToothIcon,
   CheckCircleIcon,
+  ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,7 +23,8 @@ import {
 import { usePipelineStore } from "@/store/usePipelineStore";
 import { Pipeline } from "@/lib/api/pipeline";
 import PipelineForm from "./PipelineForm";
-import StageManager from "./StageManager";
+import StageEditor from "./StageEditor";
+import { cn } from "@/lib/utils";
 
 interface ManagePipelinesModalProps {
   isOpen: boolean;
@@ -55,15 +57,9 @@ export default function ManagePipelinesModal({
   // Auto-switch to create view when opening with no pipelines
   useEffect(() => {
     if (isOpen && pipelines.length === 0 && currentView === "list") {
-      console.log("No pipelines, switching to create view");
       setCurrentView("create");
     }
   }, [isOpen, pipelines.length, currentView]);
-
-  // Log when modal opens/closes
-  useEffect(() => {
-    console.log("ManagePipelinesModal isOpen:", isOpen, "currentView:", currentView, "pipelines:", pipelines.length);
-  }, [isOpen, currentView, pipelines.length]);
 
   // Create form
   const createForm = useForm<CreatePipelineInput>({
@@ -88,13 +84,11 @@ export default function ManagePipelinesModal({
 
   const handleCreatePipeline = async (data: CreatePipelineInput) => {
     try {
-      console.log("Creating pipeline with data:", data);
       await createPipeline(workspaceId, data);
       toast.success("Pipeline created successfully!");
       createForm.reset();
       setCurrentView("list");
     } catch (error: any) {
-      console.error("Create pipeline error:", error);
       toast.error(error.response?.data?.error || "Failed to create pipeline");
     }
   };
@@ -151,9 +145,8 @@ export default function ManagePipelinesModal({
     if (!selectedPipeline) return;
 
     try {
-      // Extract stage IDs in new order
       const stageOrder = updatedStages
-        .filter((s) => s._id) // Only existing stages
+        .filter((s) => s._id)
         .map((s) => s._id);
 
       await reorderStages(workspaceId, selectedPipeline._id, stageOrder);
@@ -164,15 +157,12 @@ export default function ManagePipelinesModal({
   };
 
   const handleClose = () => {
-    console.log("Closing modal, resetting to list view");
     setCurrentView("list");
     setSelectedPipeline(null);
     createForm.reset();
     editForm.reset();
     onClose();
   };
-
-  console.log("ManagePipelinesModal render - isOpen:", isOpen, "pipelines.length:", pipelines.length);
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -186,11 +176,11 @@ export default function ManagePipelinesModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className="flex min-h-full items-center justify-center p-4">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -200,82 +190,93 @@ export default function ManagePipelinesModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-3xl transform overflow-hidden rounded-lg bg-card border border-border text-left align-middle shadow-xl transition-all">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                    <Dialog.Title className="text-lg font-semibold text-foreground">
-                      {currentView === "list" && "Manage Pipelines"}
-                      {currentView === "create" && "Create Pipeline"}
-                      {currentView === "edit" && "Edit Pipeline"}
-                      {currentView === "manageStages" && "Manage Stages"}
-                    </Dialog.Title>
-                    <button
-                      type="button"
-                      onClick={handleClose}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <XMarkIcon className="w-5 h-5" />
-                    </button>
-                  </div>
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl transition-all">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+                  <Dialog.Title className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                    {currentView === "list" && "Manage Pipelines"}
+                    {currentView === "create" && "Create Pipeline"}
+                    {currentView === "edit" && "Edit Pipeline"}
+                    {currentView === "manageStages" && `Manage Stages — ${selectedPipeline?.name}`}
+                  </Dialog.Title>
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                  </button>
+                </div>
 
-                  {/* Content */}
-                  <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
-                    <AnimatePresence mode="wait">
-                      {/* List View */}
-                      {currentView === "list" && (
-                        <motion.div
-                          key="list"
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          className="space-y-3"
-                        >
-                          {pipelines.length === 0 ? (
-                            <div className="text-center py-8">
-                              <p className="text-sm text-neutral-400 mb-4">
-                                No pipelines yet
-                              </p>
-                              <button
-                                onClick={() => setCurrentView("create")}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white text-neutral-900 rounded-lg text-sm font-medium transition-colors"
-                              >
-                                <PlusIcon className="w-4 h-4" />
-                                Create Your First Pipeline
-                              </button>
+                {/* Content */}
+                <div className="px-6 py-5 max-h-[65vh] overflow-y-auto">
+                  <AnimatePresence mode="wait">
+                    {/* List View */}
+                    {currentView === "list" && (
+                      <motion.div
+                        key="list"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-3"
+                      >
+                        {pipelines.length === 0 ? (
+                          <div className="text-center py-12">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                              <Cog6ToothIcon className="w-8 h-8 text-zinc-400" />
                             </div>
-                          ) : (
-                            pipelines.map((pipeline) => (
-                              <div
-                                key={pipeline._id}
-                                className="flex items-start justify-between gap-4 p-4 bg-neutral-800 border border-neutral-700 rounded-lg"
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="text-sm font-semibold text-white">
-                                      {pipeline.name}
-                                    </h3>
-                                    {pipeline.isDefault && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-black/20 text-black text-xs rounded-full">
-                                        <CheckCircleIcon className="w-3 h-3" />
-                                        Default
-                                      </span>
-                                    )}
-                                  </div>
-                                  {pipeline.description && (
-                                    <p className="text-xs text-neutral-400 mb-2">
-                                      {pipeline.description}
-                                    </p>
+                            <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+                              No pipelines yet
+                            </h3>
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                              Create your first pipeline to start tracking deals
+                            </p>
+                            <button
+                              onClick={() => setCurrentView("create")}
+                              className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                            >
+                              <PlusIcon className="w-4 h-4" />
+                              Create Pipeline
+                            </button>
+                          </div>
+                        ) : (
+                          pipelines.map((pipeline) => (
+                            <div
+                              key={pipeline._id}
+                              className={cn(
+                                "flex items-start justify-between gap-4 p-4 rounded-xl border transition-colors",
+                                "bg-zinc-50 dark:bg-zinc-800/50",
+                                "border-zinc-200 dark:border-zinc-700",
+                                "hover:border-zinc-300 dark:hover:border-zinc-600"
+                              )}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                    {pipeline.name}
+                                  </h3>
+                                  {pipeline.isDefault && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-medium rounded-full">
+                                      <CheckCircleIcon className="w-3 h-3" />
+                                      Default
+                                    </span>
                                   )}
-                                  <div className="flex items-center gap-2">
-                                    {pipeline.stages.map((stage) => (
+                                </div>
+                                {pipeline.description && (
+                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2.5 line-clamp-1">
+                                    {pipeline.description}
+                                  </p>
+                                )}
+                                {/* Stages Flow */}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {pipeline.stages.map((stage, index) => (
+                                    <div key={stage._id} className="flex items-center">
                                       <div
-                                        key={stage._id}
-                                        className="flex items-center gap-1 text-xs text-neutral-400"
+                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
+                                        style={{
+                                          backgroundColor: `${stage.color}15`,
+                                          color: stage.color,
+                                        }}
                                       >
                                         <div
                                           className="w-2 h-2 rounded-full"
@@ -283,155 +284,163 @@ export default function ManagePipelinesModal({
                                         />
                                         {stage.name}
                                       </div>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  {!pipeline.isDefault && (
-                                    <button
-                                      onClick={() => handleSetDefault(pipeline)}
-                                      className="p-2 text-neutral-400 hover:text-black transition-colors"
-                                      title="Set as default"
-                                    >
-                                      <CheckCircleIcon className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={() => openManageStages(pipeline)}
-                                    className="p-2 text-neutral-400 hover:text-white transition-colors"
-                                    title="Manage stages"
-                                  >
-                                    <Cog6ToothIcon className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => openEdit(pipeline)}
-                                    className="p-2 text-neutral-400 hover:text-white transition-colors"
-                                    title="Edit pipeline"
-                                  >
-                                    <PencilIcon className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeletePipeline(pipeline._id)}
-                                    className="p-2 text-neutral-400 hover:text-red-400 transition-colors"
-                                    title="Delete pipeline"
-                                  >
-                                    <TrashIcon className="w-4 h-4" />
-                                  </button>
+                                      {index < pipeline.stages.length - 1 && (
+                                        <span className="mx-1 text-zinc-300 dark:text-zinc-600">→</span>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
-                            ))
-                          )}
-                        </motion.div>
-                      )}
 
-                      {/* Create View */}
-                      {currentView === "create" && (
-                        <motion.div
-                          key="create"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                        >
-                          <PipelineForm form={createForm as any} />
-                        </motion.div>
-                      )}
+                              {/* Actions */}
+                              <div className="flex items-center gap-1">
+                                {!pipeline.isDefault && (
+                                  <button
+                                    onClick={() => handleSetDefault(pipeline)}
+                                    className="p-2 rounded-lg text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                                    title="Set as default"
+                                  >
+                                    <CheckCircleIcon className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => openManageStages(pipeline)}
+                                  className="p-2 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                                  title="Manage stages"
+                                >
+                                  <Cog6ToothIcon className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => openEdit(pipeline)}
+                                  className="p-2 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                                  title="Edit pipeline"
+                                >
+                                  <PencilIcon className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePipeline(pipeline._id)}
+                                  className="p-2 rounded-lg text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                                  title="Delete pipeline"
+                                >
+                                  <TrashIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </motion.div>
+                    )}
 
-                      {/* Edit View */}
-                      {currentView === "edit" && (
-                        <motion.div
-                          key="edit"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                        >
-                          <PipelineForm form={editForm as any} isEdit />
-                        </motion.div>
-                      )}
+                    {/* Create View */}
+                    {currentView === "create" && (
+                      <motion.div
+                        key="create"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        <PipelineForm form={createForm as any} />
+                      </motion.div>
+                    )}
 
-                      {/* Manage Stages View */}
-                      {currentView === "manageStages" && selectedPipeline && (
-                        <motion.div
-                          key="manageStages"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                        >
-                          <p className="text-sm text-neutral-400 mb-4">
-                            Managing stages for <strong>{selectedPipeline.name}</strong>
-                          </p>
-                          <StageManager
-                            stages={selectedPipeline.stages}
-                            onChange={handleStagesUpdate}
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                    {/* Edit View */}
+                    {currentView === "edit" && (
+                      <motion.div
+                        key="edit"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        <PipelineForm form={editForm as any} isEdit />
+                      </motion.div>
+                    )}
 
-                  {/* Footer */}
-                  <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/30">
-                    <div>
-                      {currentView !== "list" && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCurrentView("list");
-                            setSelectedPipeline(null);
+                    {/* Manage Stages View */}
+                    {currentView === "manageStages" && selectedPipeline && (
+                      <motion.div
+                        key="manageStages"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        <StageEditor
+                          pipelineId={selectedPipeline._id}
+                          workspaceId={workspaceId}
+                          stages={selectedPipeline.stages}
+                          onStagesUpdated={() => {
+                            // Update selectedPipeline with fresh data from store
+                            const updated = pipelines.find(p => p._id === selectedPipeline._id);
+                            if (updated) setSelectedPipeline(updated);
                           }}
-                          className="text-sm text-neutral-400 hover:text-white transition-colors"
-                        >
-                          ← Back to list
-                        </button>
-                      )}
-                    </div>
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
-                    <div className="flex items-center gap-3">
-                      {currentView === "list" && (
-                        <button
-                          type="button"
-                          onClick={() => setCurrentView("create")}
-                          className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white text-neutral-900 rounded-md transition-colors"
-                        >
-                          <PlusIcon className="w-4 h-4 inline mr-2" />
-                          Create Pipeline
-                        </button>
-                      )}
-
-                      {currentView === "create" && (
-                        <button
-                          type="button"
-                          disabled={isLoading}
-                          onClick={createForm.handleSubmit(handleCreatePipeline)}
-                          className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
-                        >
-                          {isLoading ? "Creating..." : "Create Pipeline"}
-                        </button>
-                      )}
-
-                      {currentView === "edit" && (
-                        <button
-                          type="button"
-                          disabled={isLoading}
-                          onClick={editForm.handleSubmit(handleEditPipeline)}
-                          className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed text-neutral-900 rounded-md transition-colors"
-                        >
-                          {isLoading ? "Saving..." : "Save Changes"}
-                        </button>
-                      )}
-
-                      {currentView === "manageStages" && (
-                        <button
-                          type="button"
-                          onClick={() => setCurrentView("list")}
-                          className="px-4 py-2 text-sm font-medium bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white text-neutral-900 rounded-md transition-colors"
-                        >
-                          Done
-                        </button>
-                      )}
-                    </div>
+                {/* Footer */}
+                <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+                  <div>
+                    {currentView !== "list" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentView("list");
+                          setSelectedPipeline(null);
+                        }}
+                        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+                      >
+                        <ArrowLeftIcon className="w-4 h-4" />
+                        Back
+                      </button>
+                    )}
                   </div>
-                </motion.div>
+
+                  <div className="flex items-center gap-3">
+                    {currentView === "list" && (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentView("create")}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                      >
+                        <PlusIcon className="w-4 h-4" />
+                        Create Pipeline
+                      </button>
+                    )}
+
+                    {currentView === "create" && (
+                      <button
+                        type="button"
+                        disabled={isLoading}
+                        onClick={createForm.handleSubmit(handleCreatePipeline)}
+                        className="px-4 py-2 text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isLoading ? "Creating..." : "Create Pipeline"}
+                      </button>
+                    )}
+
+                    {currentView === "edit" && (
+                      <button
+                        type="button"
+                        disabled={isLoading}
+                        onClick={editForm.handleSubmit(handleEditPipeline)}
+                        className="px-4 py-2 text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isLoading ? "Saving..." : "Save Changes"}
+                      </button>
+                    )}
+
+                    {currentView === "manageStages" && (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentView("list")}
+                        className="px-4 py-2 text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                      >
+                        Done
+                      </button>
+                    )}
+                  </div>
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>
