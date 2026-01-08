@@ -84,15 +84,15 @@ export default function CompaniesPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-card/95 flex flex-col">
-        {/* Page Header with Dividing Line */}
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Page Header - Minimal */}
         <div className="h-12 px-6 border-b border-border flex items-center flex-shrink-0">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex items-center gap-3"
           >
-            <h1 className="text-lg font-semibold text-foreground font-heading">Companies</h1>
+            <h1 className="text-lg font-semibold text-foreground">Companies</h1>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <FontAwesomeIcon icon={faCircleInfo} className="w-4 h-4" />
               <span>Manage your business relationships</span>
@@ -116,13 +116,6 @@ export default function CompaniesPage() {
             />
           </motion.div>
         ) : null}
-
-        {/* AI Account Intelligence */}
-        {companies.length > 0 && (
-          <div className="px-6 py-4">
-            <CompanyIntelligencePanel workspaceId={workspaceId} companies={companies} />
-          </div>
-        )}
 
         {/* Main Content - Scrollable Table */}
         <div className="flex-1 overflow-x-auto overflow-y-auto">

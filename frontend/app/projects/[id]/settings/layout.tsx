@@ -47,8 +47,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   return (
     <div className="min-h-screen bg-background">
       <div className="flex">
-        {/* Settings Sidebar */}
-        <aside className="w-64 min-h-screen border-r border-border bg-card/50">
+        {/* Settings Sidebar - Fixed */}
+        <aside className="w-64 border-r border-border bg-card/50 sticky top-0 h-screen overflow-y-auto">
           <div className="p-6">
             {/* Header */}
             <motion.div

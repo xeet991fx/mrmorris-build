@@ -96,10 +96,10 @@ export default function DashboardPage() {
     ];
 
     const aiModules = [
-        { label: "Data Quality", icon: <CpuChipIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/data-quality`, color: "text-blue-400" },
-        { label: "Lead Scoring", icon: <ArrowTrendingUpIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/lead-scores`, color: "text-green-400" },
-        { label: "Analytics", icon: <ChartBarIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/analytics`, color: "text-purple-400" },
-        { label: "Tickets", icon: <TicketIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/tickets`, color: "text-orange-400" },
+        { label: "Data Quality", icon: <CpuChipIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/data-quality` },
+        { label: "Lead Scoring", icon: <ArrowTrendingUpIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/lead-scores` },
+        { label: "Analytics", icon: <ChartBarIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/analytics` },
+        { label: "Tickets", icon: <TicketIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/tickets` },
     ];
 
     if (isLoading) {
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                                             transition={{ delay: 0.3 + idx * 0.05 }}
                                             className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-all cursor-pointer group"
                                         >
-                                            <div className={cn("p-2 rounded-lg bg-muted/50 group-hover:bg-muted", module.color)}>
+                                            <div className="text-muted-foreground">
                                                 {module.icon}
                                             </div>
                                             <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">

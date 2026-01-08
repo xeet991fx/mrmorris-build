@@ -8,8 +8,17 @@ import {
   SparklesIcon,
   CodeBracketIcon,
   RocketLaunchIcon,
+  GlobeAltIcon,
+  DocumentTextIcon,
+  ShoppingBagIcon,
+  BoltIcon,
+  Square2StackIcon,
+  PaintBrushIcon,
+  BeakerIcon,
+  CircleStackIcon,
 } from "@heroicons/react/24/outline";
 import TrackingTestFile from "./TrackingTestFile";
+import { cn } from "@/lib/utils";
 
 interface UniversalTrackingInstallerProps {
   workspaceId: string;
@@ -96,7 +105,11 @@ export default function UniversalTrackingInstaller({
   const platforms = [
     {
       name: "HTML / Static Sites",
-      icon: "🌐",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.18L18.09 7 12 10.82 5.91 7 12 4.18zM5 8.09l6 3.27v6.55l-6-3.27V8.09zm8 9.82v-6.55l6-3.27v6.55l-6 3.27z" />
+        </svg>
+      ),
       instructions: "Paste before closing </head> tag",
       code: simpleCode,
       detailedSteps: [
@@ -110,7 +123,11 @@ export default function UniversalTrackingInstaller({
     },
     {
       name: "WordPress",
-      icon: "📝",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M12.158 12.786L9.46 20.625c.806.237 1.657.366 2.54.366 1.047 0 2.051-.18 2.986-.51-.024-.038-.046-.078-.065-.123l-2.76-7.57zM3.009 12c0 3.559 2.068 6.634 5.067 8.092L3.788 8.341C3.289 9.459 3.009 10.696 3.009 12zm15.54.31c0-1.112-.399-1.881-.742-2.48-.456-.742-.883-1.37-.883-2.11 0-.826.627-1.596 1.51-1.596.04 0 .078.005.116.007-1.598-1.464-3.73-2.36-6.05-2.36-3.131 0-5.891 1.61-7.5 4.049.211.007.41.011.579.011.94 0 2.395-.114 2.395-.114.484-.028.54.684.057.74 0 0-.487.058-1.029.086l3.274 9.739 1.968-5.901-1.401-3.838c-.484-.028-.943-.086-.943-.086-.484-.056-.428-.768.056-.74 0 0 1.484.114 2.368.114.94 0 2.397-.114 2.397-.114.486-.028.543.684.058.74 0 0-.488.058-1.03.086l3.25 9.665.897-2.996c.456-1.17.684-2.137.684-2.907z" />
+        </svg>
+      ),
       instructions: "Appearance → Theme Editor → header.php (before </head>)",
       code: simpleCode,
       detailedSteps: [
@@ -127,7 +144,11 @@ export default function UniversalTrackingInstaller({
     },
     {
       name: "Shopify",
-      icon: "🛍️",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M15.337 2.126c-.034-.018-.063-.018-.086 0-.022.017-.166.086-.359.189-.107-1.001-.524-1.909-1.245-2.702-.048-.052-.1-.052-.149 0C13.464-.36 13.39-.343 13.316-.308c-.03.017-.06.035-.089.052-.036.017-.071.035-.107.069-.834.499-1.439 1.252-1.786 2.237-.277.776-.396 1.716-.368 2.701-.63.193-1.067.33-1.108.347-.623.189-1.263.381-1.902.577-.015.005-.03.012-.044.02-.521.155-.788.241-.853 1.502-.044.897-1.191 9.148-1.191 9.148l10.14 1.912 4.632-1.035S16.034 2.471 15.948 2.299c-.034-.086-.121-.155-.611-.173zm-1.245.604c-.193.06-.412.121-.659.19-.013-.435-.052-.861-.115-1.27.354.19.629.556.774 1.08zm-1.174-1.08c.074.382.119.782.135 1.197-.372.114-.774.237-1.194.363.229-.946.64-1.367 1.059-1.56zm-.504 3.943l-.659 1.964s-.574-.261-1.263-.261c-1.02 0-1.073.646-1.073.808 0 .888 2.301 1.227 2.301 3.303 0 1.633-.904 2.683-2.127 2.683-1.467 0-2.214-1.167-2.214-1.167l.395-1.313s.76.647 1.401.647c.425 0 .599-.339 .599-.604 0-1.054-1.887-1.105-1.887-3.114 0-1.601.951-3.152 2.877-3.152.741 0 1.105.213 1.105.213l-.455 1.993z" />
+        </svg>
+      ),
       instructions: "Online Store → Themes → Edit Code → theme.liquid (before </head>)",
       code: simpleCode,
       detailedSteps: [
@@ -143,7 +164,11 @@ export default function UniversalTrackingInstaller({
     },
     {
       name: "Webflow",
-      icon: "⚡",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M14.4 10.8s1.6-4.8 1.6-4.9c.8-2.4 2.4-3.5 4.8-3.3 0 0-2.4 11.3-2.4 11.5-.8 3.7-3.2 5.6-6.4 5.6-2.4 0-3.2-.8-3.2-2.4 0-.8.8-4.8.8-4.8S7.2 18 7.2 18.3C6.4 21.1 4 22.7 1.6 22.7 1.6 22.7 4 11.3 4 11.1c.8-3.7 3.2-5.6 6.4-5.6 2.4 0 3.2.8 3.2 2.4 0 .8-.8 2.9-.8 2.9z" />
+        </svg>
+      ),
       instructions: "Project Settings → Custom Code → Head Code",
       code: simpleCode,
       detailedSteps: [
@@ -159,7 +184,11 @@ export default function UniversalTrackingInstaller({
     },
     {
       name: "Squarespace",
-      icon: "▪️",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M20.1 11.3l-3.5-3.5c-.5-.5-1.2-.5-1.7 0-.5.5-.5 1.2 0 1.7l3.5 3.5c.5.5 1.2.5 1.7 0 .5-.5.5-1.2 0-1.7zm-4.2-4.2l-3.5-3.5c-.5-.5-1.2-.5-1.7 0-.5.5-.5 1.2 0 1.7l3.5 3.5c.5.5 1.2.5 1.7 0 .5-.5.5-1.2 0-1.7zM11.7 11.3l-3.5-3.5c-.5-.5-1.2-.5-1.7 0-.5.5-.5 1.2 0 1.7l3.5 3.5c.5.5 1.2.5 1.7 0 .5-.5.5-1.2 0-1.7zm-4.2 4.2l-3.5-3.5c-.5-.5-1.2-.5-1.7 0-.5.5-.5 1.2 0 1.7l3.5 3.5c.5.5 1.2.5 1.7 0 .5-.5.5-1.2 0-1.7zm12.6.9l-3.5 3.5c-.5.5-.5 1.2 0 1.7.5.5 1.2.5 1.7 0l3.5-3.5c.5-.5.5-1.2 0-1.7-.5-.5-1.2-.5-1.7 0z" />
+        </svg>
+      ),
       instructions: "Settings → Advanced → Code Injection → Header",
       code: simpleCode,
       detailedSteps: [
@@ -173,7 +202,11 @@ export default function UniversalTrackingInstaller({
     },
     {
       name: "Wix",
-      icon: "🎨",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M13.444 8.256c-.4.212-.544.562-.544 1.036 0 .504-.03.9-.096 1.272-.636-.24-1.256-.648-1.736-1.14.044-.432.12-.892.28-1.368.256-.78.696-1.456 1.244-2.056h-.004c-.12.132-.24.276-.352.428-.576.752-.972 1.604-1.196 2.52-.232-1.024-.616-1.956-1.176-2.72-.128-.176-.268-.344-.42-.508.548.6.988 1.276 1.244 2.056.16.476.236.936.28 1.368-.48.492-1.1.9-1.736 1.14-.064-.372-.096-.768-.096-1.272 0-.474-.144-.824-.544-1.036-.4 1.224-1.212 1.888-1.852 2.188.64.3 1.452.964 1.852 2.188.4-.212.544-.562.544-1.036 0-.504.028-.9.096-1.272.636.24 1.256.648 1.736 1.14-.044.432-.12.892-.28 1.368-.256.78-.696 1.456-1.244 2.056.12-.132.24-.276.352-.428.576-.752.972-1.604 1.196-2.52.232 1.024.616 1.956 1.176 2.72.128.176.268.344.42.508-.548-.6-.988-1.276-1.244-2.056-.16-.476-.236-.936-.28-1.368.48-.492 1.1-.9 1.736-1.14.064.372.096.768.096 1.272 0 .474.144.824.544 1.036.4-1.224 1.212-1.888 1.852-2.188-.64-.3-1.452-.964-1.852-2.188zm7.04 0c-.4.212-.544.562-.544 1.036 0 .504-.03.9-.096 1.272-.636-.24-1.256-.648-1.736-1.14.044-.432.12-.892.28-1.368.256-.78.696-1.456 1.244-2.056h-.004c-.12.132-.24.276-.352.428-.576.752-.972 1.604-1.196 2.52-.232-1.024-.616-1.956-1.176-2.72-.128-.176-.268-.344-.42-.508.548.6.988 1.276 1.244 2.056.16.476.236.936.28 1.368-.48.492-1.1.9-1.736 1.14-.064-.372-.096-.768-.096-1.272 0-.474-.144-.824-.544-1.036-.4 1.224-1.212 1.888-1.852 2.188.64.3 1.452.964 1.852 2.188.4-.212.544-.562.544-1.036 0-.504.028-.9.096-1.272.636.24 1.256.648 1.736 1.14-.044.432-.12.892-.28 1.368-.256.78-.696 1.456-1.244 2.056.12-.132.24-.276.352-.428.576-.752.972-1.604 1.196-2.52.232 1.024.616 1.956 1.176 2.72.128.176.268.344.42.508-.548-.6-.988-1.276-1.244-2.056-.16-.476-.236-.936-.28-1.368.48-.492 1.1-.9 1.736-1.14.064.372.096.768.096 1.272 0 .474.144.824.544 1.036.4-1.224 1.212-1.888 1.852-2.188-.64-.3-1.452-.964-1.852-2.188z" />
+        </svg>
+      ),
       instructions: "Settings → Custom Code → Head Code",
       code: simpleCode,
       detailedSteps: [
@@ -191,7 +224,11 @@ export default function UniversalTrackingInstaller({
     },
     {
       name: "Next.js (App Router)",
-      icon: "⚛️",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M11.214 0c-.3 0-.61.023-.91.065A12.046 12.046 0 002.5 3.278 11.955 11.955 0 00.136 10.5c-.045.3-.068.61-.068.91 0 .3.023.61.068.91.386 2.735 1.772 5.25 3.864 7.028a12.048 12.048 0 007.214 3.218c.3.045.61.068.91.068.3 0 .61-.023.91-.068a12.046 12.046 0 007.214-3.218 11.953 11.953 0 003.864-7.028c.045-.3.068-.61.068-.91 0-.3-.023-.61-.068-.91a11.955 11.955 0 00-3.864-7.028A12.048 12.048 0 0012.124.136c-.3-.045-.61-.068-.91-.068zm-.137 1.636l.007.006c4.654 0 8.682 3.136 9.896 7.636.136.518.228 1.05.273 1.59-.546-.86-1.182-1.682-1.909-2.454L12.87 1.636H11.03zm-2.318.546c-.682.341-1.319.763-1.909 1.227-.227.182-.455.364-.659.568-.136.136-.272.273-.386.41-.159.113-.272.25-.409.386L17.17 16.546c.454-.955.773-1.978.954-3.046.046-.25-.136-.477-.386-.477H8.636c-.386 0-.682-.296-.682-.682s.296-.682.682-.682h7.727c.432 0 .774-.341.774-.773s-.342-.774-.774-.774h-5.681c-.386 0-.682-.295-.682-.681s.296-.682.682-.682h4.09c.41 0 .751-.341.751-.773 0-.409-.34-.773-.75-.773h-2.727c-.409 0-.75-.341-.75-.773 0-.409.341-.773.75-.773h.659c.409 0 .75-.341.75-.773 0-.41-.341-.773-.75-.773h-.819c-.159 0-.318.023-.477.068zM5.716 4.648a10.31 10.31 0 00-2.637 4.477 9.966 9.966 0 00-.386 2.727c0 .796.091 1.59.273 2.363.886 3.773 3.954 6.796 7.773 7.636l8.136-10.272c-.841-1.046-1.864-1.955-3.023-2.705L5.716 4.648z" />
+        </svg>
+      ),
       instructions: "Add Script component to app/layout.tsx",
       code: `// app/layout.tsx
 import Script from 'next/script'
@@ -230,7 +267,11 @@ export default function RootLayout({ children }) {
     },
     {
       name: "Next.js (Pages Router)",
-      icon: "⚛️",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M11.214 0c-.3 0-.61.023-.91.065A12.046 12.046 0 002.5 3.278 11.955 11.955 0 00.136 10.5c-.045.3-.068.61-.068.91 0 .3.023.61.068.91.386 2.735 1.772 5.25 3.864 7.028a12.048 12.048 0 007.214 3.218c.3.045.61.068.91.068.3 0 .61-.023.91-.068a12.046 12.046 0 007.214-3.218 11.953 11.953 0 003.864-7.028c.045-.3.068-.61.068-.91 0-.3-.023-.61-.068-.91a11.955 11.955 0 00-3.864-7.028A12.048 12.048 0 0012.124.136c-.3-.045-.61-.068-.91-.068zm-.137 1.636l.007.006c4.654 0 8.682 3.136 9.896 7.636.136.518.228 1.05.273 1.59-.546-.86-1.182-1.682-1.909-2.454L12.87 1.636H11.03zm-2.318.546c-.682.341-1.319.763-1.909 1.227-.227.182-.455.364-.659.568-.136.136-.272.273-.386.41-.159.113-.272.25-.409.386L17.17 16.546c.454-.955.773-1.978.954-3.046.046-.25-.136-.477-.386-.477H8.636c-.386 0-.682-.296-.682-.682s.296-.682.682-.682h7.727c.432 0 .774-.341.774-.773s-.342-.774-.774-.774h-5.681c-.386 0-.682-.295-.682-.681s.296-.682.682-.682h4.09c.41 0 .751-.341.751-.773 0-.409-.34-.773-.75-.773h-2.727c-.409 0-.75-.341-.75-.773 0-.409.341-.773.75-.773h.659c.409 0 .75-.341.75-.773 0-.41-.341-.773-.75-.773h-.819c-.159 0-.318.023-.477.068zM5.716 4.648a10.31 10.31 0 00-2.637 4.477 9.966 9.966 0 00-.386 2.727c0 .796.091 1.59.273 2.363.886 3.773 3.954 6.796 7.773 7.636l8.136-10.272c-.841-1.046-1.864-1.955-3.023-2.705L5.716 4.648z" />
+        </svg>
+      ),
       instructions: "Add Script component to pages/_app.tsx",
       code: `// pages/_app.tsx
 import type { AppProps } from 'next/app'
@@ -268,7 +309,12 @@ export default function App({ Component, pageProps }: AppProps) {
     },
     {
       name: "React (Vite)",
-      icon: "⚡",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <circle cx="12" cy="12" r="2.2" />
+          <path d="M12 4.15c1.88 0 3.63.38 5.13 1.03C18.69 5.88 20 6.84 20 8c0 1.16-1.31 2.12-2.87 2.82-1.5.65-3.25 1.03-5.13 1.03s-3.63-.38-5.13-1.03C5.31 10.12 4 9.16 4 8c0-1.16 1.31-2.12 2.87-2.82C8.37 4.53 10.12 4.15 12 4.15m0-1.15c-4.4 0-8 1.79-8 4s3.6 4 8 4 8-1.79 8-4-3.6-4-8-4zm-6 8.15c.94 1.63 2.91 3.39 5.29 4.72 1.63.91 3.24 1.49 4.58 1.49.74 0 1.43-.16 2.03-.51 1.16-.67 1.79-1.88 1.79-3.4 0-1.88-.76-4.09-2.03-5.91-.63-.91-1.33-1.73-2.06-2.42C14.19 3.82 12.94 3 12 3c-.94 0-2.19.82-3.6 2.17-.73.69-1.43 1.51-2.06 2.42C5.07 9.41 4.31 11.62 4.31 13.5c0 1.52.63 2.73 1.79 3.4.6.35 1.29.51 2.03.51 1.34 0 2.95-.58 4.58-1.49 2.38-1.33 4.35-3.09 5.29-4.72m-6 16c-4.4 0-8-1.79-8-4s3.6-4 8-4 8 1.79 8 4-3.6 4-8 4z" />
+        </svg>
+      ),
       instructions: "Add to index.html in the <head> section",
       code: `<!-- index.html -->
 <!DOCTYPE html>
@@ -307,7 +353,12 @@ export default function App({ Component, pageProps }: AppProps) {
     },
     {
       name: "Create React App",
-      icon: "⚛️",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <circle cx="12" cy="12" r="2.2" />
+          <path d="M12 4.15c1.88 0 3.63.38 5.13 1.03C18.69 5.88 20 6.84 20 8c0 1.16-1.31 2.12-2.87 2.82-1.5.65-3.25 1.03-5.13 1.03s-3.63-.38-5.13-1.03C5.31 10.12 4 9.16 4 8c0-1.16 1.31-2.12 2.87-2.82C8.37 4.53 10.12 4.15 12 4.15m0-1.15c-4.4 0-8 1.79-8 4s3.6 4 8 4 8-1.79 8-4-3.6-4-8-4zm-6 8.15c.94 1.63 2.91 3.39 5.29 4.72 1.63.91 3.24 1.49 4.58 1.49.74 0 1.43-.16 2.03-.51 1.16-.67 1.79-1.88 1.79-3.4 0-1.88-.76-4.09-2.03-5.91-.63-.91-1.33-1.73-2.06-2.42C14.19 3.82 12.94 3 12 3c-.94 0-2.19.82-3.6 2.17-.73.69-1.43 1.51-2.06 2.42C5.07 9.41 4.31 11.62 4.31 13.5c0 1.52.63 2.73 1.79 3.4.6.35 1.29.51 2.03.51 1.34 0 2.95-.58 4.58-1.49 2.38-1.33 4.35-3.09 5.29-4.72m-6 16c-4.4 0-8-1.79-8-4s3.6-4 8-4 8 1.79 8 4-3.6 4-8 4z" />
+        </svg>
+      ),
       instructions: "Add to public/index.html",
       code: `<!-- public/index.html -->
 <!DOCTYPE html>
@@ -345,7 +396,11 @@ export default function App({ Component, pageProps }: AppProps) {
     },
     {
       name: "Vue / Nuxt",
-      icon: "💚",
+      icon: ({ className }: { className?: string }) => (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+          <path d="M2 3h3.5L12 15l6.5-12H22L12 21L2 3m4.5 0h3L12 7.58L14.5 3h3L12 13.08L6.5 3z" />
+        </svg>
+      ),
       instructions: "Add to nuxt.config.js or main template",
       code: simpleCode,
       detailedSteps: [
@@ -380,72 +435,88 @@ export default {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-        <div className="flex items-center gap-3 mb-4">
-          <SparklesIcon className="w-8 h-8" />
-          <h2 className="text-3xl font-bold">Advanced Lead Tracking Script v2.0</h2>
-        </div>
-        <p className="text-blue-100 text-lg mb-4">
-          One powerful code snippet that automatically captures visitor behavior, engagement signals, and converts anonymous visitors into qualified leads.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-lg px-3 py-2">
-            <span className="text-2xl">🎯</span>
-            <span className="text-sm font-medium">9 Core Lead Gen Features</span>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Hero Section - Compact Design */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary/90 to-primary rounded-2xl p-6 text-white shadow-xl">
+        <div className="absolute inset-0 bg-grid-white/5 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))]" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2.5 bg-white/10 backdrop-blur-sm rounded-xl">
+              <SparklesIcon className="w-8 h-8" />
+            </div>
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold mb-2">Website Tracking Script</h1>
+              <p className="text-white/90 text-base leading-relaxed">
+                One powerful snippet that automatically captures visitor behavior, engagement signals, and converts anonymous visitors into qualified leads.
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-lg px-3 py-2">
-            <span className="text-2xl">📝</span>
-            <span className="text-sm font-medium">Auto Form Identification</span>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+              <div className="text-2xl mb-1.5">🎯</div>
+              <div className="font-semibold text-base mb-0.5">9 Core Features</div>
+              <div className="text-white/80 text-xs">Automatic lead generation</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+              <div className="text-2xl mb-1.5">📝</div>
+              <div className="font-semibold text-base mb-0.5">Smart Forms</div>
+              <div className="text-white/80 text-xs">Auto-detect & identify</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
+              <div className="text-2xl mb-1.5">🌐</div>
+              <div className="font-semibold text-base mb-0.5">Universal</div>
+              <div className="text-white/80 text-xs">Works on any platform</div>
+            </div>
           </div>
-          <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-lg px-3 py-2">
-            <span className="text-2xl">⚙️</span>
-            <span className="text-sm font-medium">Optional Advanced Features</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-lg px-4 py-3">
-          <RocketLaunchIcon className="w-5 h-5" />
-          <span className="font-medium">Works on: WordPress, Shopify, Next.js, React (Vite/CRA), Vue, Webflow, Wix, and more!</span>
         </div>
       </div>
 
-      {/* Tab Selection */}
-      <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg w-fit">
-        <button
-          onClick={() => setSelectedTab("simple")}
-          className={`px-6 py-2 rounded-md font-medium transition-all ${
-            selectedTab === "simple"
-              ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-          }`}
-        >
-          Simple (Recommended)
-        </button>
-        <button
-          onClick={() => setSelectedTab("advanced")}
-          className={`px-6 py-2 rounded-md font-medium transition-all ${
-            selectedTab === "advanced"
-              ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-          }`}
-        >
-          Advanced
-        </button>
+      {/* Tab Selection - Modern Design */}
+      <div className="flex items-center justify-center">
+        <div className="inline-flex gap-2 p-1.5 bg-muted rounded-xl shadow-inner">
+          <button
+            onClick={() => setSelectedTab("simple")}
+            className={cn(
+              "px-8 py-3 rounded-lg font-semibold transition-all duration-200",
+              selectedTab === "simple"
+                ? "bg-primary text-white shadow-lg shadow-primary/30"
+                : "text-muted-foreground hover:text-foreground hover:bg-background"
+            )}
+          >
+            Simple (Recommended)
+          </button>
+          <button
+            onClick={() => setSelectedTab("advanced")}
+            className={cn(
+              "px-8 py-3 rounded-lg font-semibold transition-all duration-200",
+              selectedTab === "advanced"
+                ? "bg-primary text-white shadow-lg shadow-primary/30"
+                : "text-muted-foreground hover:text-foreground hover:bg-background"
+            )}
+          >
+            Advanced
+          </button>
+        </div>
       </div>
 
-      {/* Code Display */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-        <div className="bg-gray-900 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CodeBracketIcon className="w-5 h-5 text-green-400" />
-            <span className="text-white font-medium">
-              {selectedTab === "simple" ? "Universal Tracking Code" : "Advanced Tracking Code"}
-            </span>
+      {/* Code Display - Redesigned */}
+      <div className="bg-card rounded-2xl shadow-xl overflow-hidden border border-border">
+        <div className="bg-gradient-to-r from-primary/90 to-primary px-8 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CodeBracketIcon className="w-6 h-6 text-white" />
+            <div>
+              <div className="text-white font-bold text-lg">
+                {selectedTab === "simple" ? "Universal Tracking Code" : "Advanced Configuration"}
+              </div>
+              <div className="text-white/70 text-sm">
+                {selectedTab === "simple" ? "Copy & paste anywhere" : "With optional features"}
+              </div>
+            </div>
           </div>
           <button
             onClick={() => copyToClipboard(selectedTab === "simple" ? simpleCode : advancedCode)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-6 py-3 bg-white text-primary rounded-xl font-semibold hover:bg-white/90 transition-all shadow-lg"
           >
             {copied ? (
               <>
@@ -462,20 +533,20 @@ export default {
         </div>
 
         <div className="p-6">
-          <pre className="bg-gray-950 text-green-400 p-4 rounded-lg overflow-x-auto text-sm font-mono">
+          <pre className="bg-gray-950 text-gray-400 p-4 rounded-lg overflow-x-auto text-sm font-mono">
             {selectedTab === "simple" ? simpleCode : advancedCode}
           </pre>
 
           {selectedTab === "simple" && (
             <div className="mt-4 space-y-3">
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700">
                 <div className="flex items-start gap-3">
-                  <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <CheckCircleIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-semibold text-green-900 dark:text-green-100 mb-1">
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
                       Complete Lead Intelligence - All Automatic!
                     </h4>
-                    <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                       This code automatically captures powerful visitor behavior data without any manual setup.
                     </p>
                   </div>
@@ -523,9 +594,9 @@ export default {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <h5 className="font-semibold text-green-900 dark:text-green-100 text-sm mb-1">✅ Core Features (Always On)</h5>
-                  <p className="text-xs text-green-700 dark:text-green-300">Forms, scroll, time, engagement, downloads, exit intent, CTAs, UTM</p>
+                <div className="p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700">
+                  <h5 className="font-semibold text-gray-900 dark:text-gray-100 text-sm mb-1">✅ Core Features (Always On)</h5>
+                  <p className="text-xs text-gray-700 dark:text-gray-300">Forms, scroll, time, engagement, downloads, exit intent, CTAs, UTM</p>
                 </div>
 
                 <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
@@ -553,81 +624,85 @@ export default {
           Click on your platform below for detailed step-by-step instructions
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {platforms.map((platform) => (
-            <div key={platform.name} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-              <button
-                onClick={() => setExpandedPlatform(expandedPlatform === platform.name ? null : platform.name)}
-                className="w-full p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{platform.icon}</span>
-                    <h4 className="font-semibold text-gray-900 dark:text-white">
-                      {platform.name}
-                    </h4>
+          {platforms.map((platform) => {
+            const Icon = platform.icon;
+            return (
+              <div key={platform.name} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedPlatform(expandedPlatform === platform.name ? null : platform.name)}
+                  className="w-full p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-5 h-5 text-primary" />
+                      </div>
+                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                        {platform.name}
+                      </h4>
+                    </div>
+                    <svg
+                      className={`w-5 h-5 text-gray-500 transition-transform ${expandedPlatform === platform.name ? 'rotate-180' : ''
+                        }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </div>
-                  <svg
-                    className={`w-5 h-5 text-gray-500 transition-transform ${
-                      expandedPlatform === platform.name ? 'rotate-180' : ''
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  {platform.instructions}
-                </p>
-              </button>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    {platform.instructions}
+                  </p>
+                </button>
 
-              {expandedPlatform === platform.name && (
-                <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-                  <h5 className="font-semibold text-gray-900 dark:text-white mb-3">
-                    Step-by-Step Instructions:
-                  </h5>
-                  <ol className="space-y-2 mb-4">
-                    {platform.detailedSteps.map((step, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                          {index + 1}
-                        </span>
-                        <span className="text-sm text-gray-700 dark:text-gray-300 pt-0.5">
-                          {step}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
+                {expandedPlatform === platform.name && (
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+                    <h5 className="font-semibold text-gray-900 dark:text-white mb-3">
+                      Step-by-Step Instructions:
+                    </h5>
+                    <ol className="space-y-2 mb-4">
+                      {platform.detailedSteps.map((step, index) => (
+                        <li key={index} className="flex items-start gap-3">
+                          <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300 pt-0.5">
+                            {step}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
 
-                  {platform.notes && (
-                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-3">
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        <strong>💡 Note:</strong> {platform.notes}
-                      </p>
-                    </div>
-                  )}
+                    {platform.notes && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-3">
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          <strong>💡 Note:</strong> {platform.notes}
+                        </p>
+                      </div>
+                    )}
 
-                  {platform.alternativeMethod && (
-                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg mb-3">
-                      <p className="text-xs text-amber-700 dark:text-amber-300">
-                        <strong>🔄 Alternative:</strong> {platform.alternativeMethod}
-                      </p>
-                    </div>
-                  )}
+                    {platform.alternativeMethod && (
+                      <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg mb-3">
+                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                          <strong>🔄 Alternative:</strong> {platform.alternativeMethod}
+                        </p>
+                      </div>
+                    )}
 
-                  {platform.codeExample && (
-                    <div className="mt-3">
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Code Example:</p>
-                      <pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">
-                        {platform.codeExample}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                    {platform.codeExample && (
+                      <div className="mt-3">
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Code Example:</p>
+                        <pre className="bg-gray-900 text-gray-400 p-3 rounded text-xs overflow-x-auto">
+                          {platform.codeExample}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

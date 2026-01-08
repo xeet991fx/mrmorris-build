@@ -267,21 +267,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
                     {isExpanded && <span className="text-sm">Pipelines</span>}
                   </Link>
 
-                  {/* Proposals */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/proposals`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/proposals')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Proposals" : ""}
-                  >
-                    <DocumentTextIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Proposals</span>}
-                  </Link>
+
                 </>
               )}
 

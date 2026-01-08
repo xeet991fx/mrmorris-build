@@ -361,7 +361,7 @@ export default function FormsPage() {
           {/* AI Generate Button - NEW */}
           <Button
             onClick={() => setShowAIGenerator(true)}
-            className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+            className="gap-2 bg-gray-600 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500 text-white shadow-sm"
           >
             <SparklesIcon className="w-5 h-5" />
             Generate with AI
@@ -704,15 +704,15 @@ export default function FormsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="p-6 border-b bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+              <div className="p-6 border-b border-border bg-gradient-to-br from-gray-100/40 to-gray-200/20 dark:from-gray-800/40 dark:to-gray-700/20">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600">
+                  <div className="p-3 rounded-xl bg-gray-600 dark:bg-gray-600 shadow-lg shadow-gray-900/20">
                     <SparklesIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-foreground">Generate Form with AI</h2>
-                    <p className="text-muted-foreground text-sm mt-0.5">
-                      Powered by Gemini 2.5 Pro - describe your form and watch the magic ✨
+                    <p className="text-muted-foreground text-sm mt-1">
+                      Powered by Gemini 2.5 Pro • Describe your goals and let AI create the perfect form
                     </p>
                   </div>
                 </div>
@@ -727,8 +727,8 @@ export default function FormsPage() {
                   <textarea
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Example: Lead capture form for a B2B SaaS company selling to enterprise HR teams. Should qualify leads by company size and use case."
-                    className="w-full h-32 px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
+                    placeholder="Example: Lead capture form for a B2B SaaS company selling to enterprise HR teams. Should qualify leads by company size, budget, and use case..."
+                    className="w-full h-36 px-4 py-3 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500 focus:border-gray-400 dark:focus:border-gray-500 resize-none transition-all shadow-sm"
                     disabled={isGeneratingAI}
                   />
                 </div>
@@ -754,11 +754,11 @@ export default function FormsPage() {
 
                 {/* AI Reasoning Display */}
                 {aiReasoning && (
-                  <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                    <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">
-                      🧠 AI Reasoning
+                  <div className="p-4 rounded-xl bg-gray-100/20 dark:bg-gray-800/20 border border-gray-300/30 dark:border-gray-700/30">
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-400 mb-1 flex items-center gap-2">
+                      <span>🧠</span> AI Reasoning
                     </p>
-                    <p className="text-sm text-muted-foreground">{aiReasoning}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{aiReasoning}</p>
                   </div>
                 )}
               </div>
@@ -775,7 +775,7 @@ export default function FormsPage() {
                 <Button
                   onClick={generateWithAI}
                   disabled={isGeneratingAI || !aiPrompt.trim()}
-                  className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  className="gap-2 bg-gray-600 hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500 text-white shadow-sm min-w-[140px]"
                 >
                   {isGeneratingAI ? (
                     <>

@@ -73,3 +73,10 @@ export { generalAgentNode } from "./generalAgent";
 
 // Landing page creation and management
 export { landingPageAgentNode } from "./landingPageAgent";
+
+// ============================================
+// DYNAMIC AGENT - Self-Healing Fallback
+// ============================================
+
+// Dynamic agent - handles ANY request by discovering tools on-the-fly
+export { dynamicAgentNode } from "./dynamicAgent";

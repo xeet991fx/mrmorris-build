@@ -39,6 +39,7 @@ import {
     dataEntryAgentNode,
     schedulingAgentNode,
     generalAgentNode,
+    dynamicAgentNode,
 } from "./workers";
 
 // ⚡ FAST model for routing and verification (lazy initialization)
@@ -178,7 +179,7 @@ Reply with ONLY ONE word - the agent name.`),
                 "pipeline", "ticket", "sequence", "leadscore", "reports",
                 // New agents
                 "briefing", "transcription", "scheduling", "hygiene", "forecast",
-                "proposal", "competitor", "dataentry", "general"
+                "proposal", "competitor", "dataentry", "general", "dynamic"
             ];
             for (const agentName of allAgents) {
                 if (responseText.includes(agentName)) {
@@ -189,7 +190,7 @@ Reply with ONLY ONE word - the agent name.`),
         }
     }
 
-    nextAgent = nextAgent || "contact"; // Default fallback
+    nextAgent = nextAgent || "dynamic"; // Fallback to dynamic agent
     console.log(`⚡ Routed to: ${nextAgent} (${Date.now() - start}ms)`);
 
     return { nextAgent };
@@ -309,8 +310,18 @@ function routeToAgent(state: AgentStateType): string {
         competitor: "competitor_agent",
         dataentry: "dataentry_agent",
         general: "general_agent",
+        dynamic: "dynamic_agent",
     };
-    return agentMap[state.nextAgent] || "general_agent";
+
+    const mappedAgent = agentMap[state.nextAgent];
+
+    // If no mapping exists, fall back to dynamic agent
+    if (!mappedAgent) {
+        console.log(`⚠️  Unknown agent "${state.nextAgent}", falling back to dynamic_agent`);
+        return "dynamic_agent";
+    }
+
+    return mappedAgent;
 }
 
 /**
@@ -342,6 +353,7 @@ export function buildAgentGraph() {
         .addNode("competitor_agent", competitorAgentNode)
         .addNode("dataentry_agent", dataEntryAgentNode)
         .addNode("general_agent", generalAgentNode)
+        .addNode("dynamic_agent", dynamicAgentNode)
         .addNode("verifier", verifierNode)
         // Entry
         .setEntryPoint("supervisor")
@@ -369,6 +381,7 @@ export function buildAgentGraph() {
             competitor_agent: "competitor_agent",
             dataentry_agent: "dataentry_agent",
             general_agent: "general_agent",
+            dynamic_agent: "dynamic_agent",
         })
         // All workers go to verifier - Original
         .addEdge("contact_agent", "verifier")
@@ -393,6 +406,7 @@ export function buildAgentGraph() {
         .addEdge("competitor_agent", "verifier")
         .addEdge("dataentry_agent", "verifier")
         .addEdge("general_agent", "verifier")
+        .addEdge("dynamic_agent", "verifier")
         // Verifier to END
         .addEdge("verifier", END);
 

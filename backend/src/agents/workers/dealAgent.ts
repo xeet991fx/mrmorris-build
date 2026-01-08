@@ -253,17 +253,20 @@ export async function dealAgentNode(
         const lastMessage = state.messages[state.messages.length - 1];
         const userRequest = lastMessage.content as string;
 
-        // PHASE 1: AUTONOMOUS CONTEXT GATHERING
+        // PHASE 1: AUTONOMOUS CONTEXT GATHERING (with error recovery)
         console.log("🧠 Gathering deal pipeline context...");
 
-        const [existingDeals, Deal] = await Promise.all([
-            (await import("../../models/Deal")).default.find({ workspaceId: state.workspaceId })
-                .select("title value stage status contactId createdAt")
+        let existingDeals: any[] = [];
+        try {
+            existingDeals = await Opportunity.find({ workspaceId: state.workspaceId })
+                .select("title value stageId status contactId createdAt")
                 .sort({ createdAt: -1 })
                 .limit(10)
-                .lean(),
-            (await import("../../models/Deal")).default
-        ]);
+                .lean();
+        } catch (error) {
+            console.log("⚠️  Context gathering failed, continuing without history");
+            // Continue anyway - AI can still create deals without context
+        }
 
         const getTimeAgo = (date: any): string => {
             if (!date) return "unknown";
@@ -279,8 +282,8 @@ export async function dealAgentNode(
             ? `EXISTING DEALS (sorted NEWEST first):\n${existingDeals.map((d: any, i: number) => {
                 const timeAgo = getTimeAgo(d.createdAt);
                 const isNewest = i === 0 ? " 🆕 LATEST" : "";
-                return `${i + 1}. "${d.title}" - $${d.value} (${d.stage || "unknown stage"}) - Created ${timeAgo}${isNewest}`;
-              }).join('\n')}`
+                return `${i + 1}. "${d.title}" - $${d.value} (${d.stageId || "unknown stage"}) - Created ${timeAgo}${isNewest}`;
+            }).join('\n')}`
             : "No deals found. This will be the first deal.";
 
         const totalValue = existingDeals.reduce((sum: number, d: any) => sum + (d.value || 0), 0);
