@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     DndContext,
     closestCenter,
@@ -7,6 +7,8 @@ import {
     useSensor,
     useSensors,
     DragEndEvent,
+    DragOverEvent,
+    DragStartEvent,
 } from "@dnd-kit/core";
 import {
     arrayMove,
@@ -146,18 +148,52 @@ export default function StageEditor({ pipelineId, workspaceId, stages, onStagesU
     const [newStageName, setNewStageName] = useState("");
     const [newStageColor, setNewStageColor] = useState(COLOR_PALETTE[0]);
 
+    // Local state for optimistic drag-and-drop updates
+    const [localStages, setLocalStages] = useState<Stage[]>(stages);
+
+    // Ref to store original order before drag starts (for error recovery)
+    const originalStagesRef = useRef<Stage[]>(stages);
+
+    // Sync local state when prop changes (e.g., after adding/deleting stages)
+    useEffect(() => {
+        setLocalStages(stages);
+        originalStagesRef.current = stages;
+    }, [stages]);
+
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    const handleDragEnd = async (event: DragEndEvent) => {
+    // Called when drag starts - save current order for potential revert
+    const handleDragStart = (event: DragStartEvent) => {
+        originalStagesRef.current = localStages;
+    };
+
+    // Called during drag - update list position in real-time for visual feedback
+    const handleDragOver = (event: DragOverEvent) => {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
-        const oldIndex = stages.findIndex((s) => s._id === active.id);
-        const newIndex = stages.findIndex((s) => s._id === over.id);
-        const newOrder = arrayMove(stages, oldIndex, newIndex).map((s) => s._id);
+        const oldIndex = localStages.findIndex((s) => s._id === active.id);
+        const newIndex = localStages.findIndex((s) => s._id === over.id);
+
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+            setLocalStages(arrayMove(localStages, oldIndex, newIndex));
+        }
+    };
+
+    // Called when drag ends - save to backend
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        // If dropped outside or in same position, no need to save
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        // Get the final order from local state (already updated by handleDragOver)
+        const newOrder = localStages.map((s) => s._id);
 
         setIsUpdating(true);
         try {
@@ -165,6 +201,8 @@ export default function StageEditor({ pipelineId, workspaceId, stages, onStagesU
             await fetchPipelines(workspaceId);
             onStagesUpdated?.();
         } catch (error) {
+            // Revert to original order on error
+            setLocalStages(originalStagesRef.current);
             toast.error("Failed to reorder stages");
         } finally {
             setIsUpdating(false);
@@ -182,11 +220,11 @@ export default function StageEditor({ pipelineId, workspaceId, stages, onStagesU
             await addStage(workspaceId, pipelineId, {
                 name: newStageName.trim(),
                 color: newStageColor,
-                order: stages.length,
+                order: localStages.length,
             });
             await fetchPipelines(workspaceId);
             setNewStageName("");
-            setNewStageColor(COLOR_PALETTE[(stages.length + 1) % COLOR_PALETTE.length]);
+            setNewStageColor(COLOR_PALETTE[(localStages.length + 1) % COLOR_PALETTE.length]);
             toast.success("Stage added!");
             onStagesUpdated?.();
         } catch (error) {
@@ -211,7 +249,7 @@ export default function StageEditor({ pipelineId, workspaceId, stages, onStagesU
     };
 
     const handleDeleteStage = async (stageId: string) => {
-        if (stages.length <= 1) {
+        if (localStages.length <= 1) {
             toast.error("Pipeline must have at least one stage");
             return;
         }
@@ -239,7 +277,7 @@ export default function StageEditor({ pipelineId, workspaceId, stages, onStagesU
                     Pipeline Stages
                 </span>
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Drag to reorder • {stages.length} stages
+                    Drag to reorder • {localStages.length} stages
                 </span>
             </div>
 
@@ -263,10 +301,16 @@ export default function StageEditor({ pipelineId, workspaceId, stages, onStagesU
             </div>
 
             {/* Stages List */}
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={stages.map((s) => s._id)} strategy={verticalListSortingStrategy}>
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+            >
+                <SortableContext items={localStages.map((s) => s._id)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-2">
-                        {stages.map((stage) => (
+                        {localStages.map((stage) => (
                             <SortableStageItem
                                 key={stage._id}
                                 stage={stage}

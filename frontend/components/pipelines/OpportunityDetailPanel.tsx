@@ -108,161 +108,156 @@ export default function OpportunityDetailPanel({
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop */}
+            {/* Backdrop - no blur */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={onClose}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/40 z-40"
             />
 
-            {/* Panel */}
+            {/* Panel - narrower width */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed top-0 right-0 h-full w-full md:w-[600px] lg:w-[700px] bg-neutral-900 border-l border-neutral-700 shadow-xl z-50 flex flex-col"
+              className="fixed top-0 right-0 h-full w-full md:w-[420px] lg:w-[480px] bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-xl z-50 flex flex-col"
             >
               {/* Header */}
-              <div className="flex-shrink-0 border-b border-neutral-700">
+              <div className="flex-shrink-0 border-b border-zinc-200 dark:border-zinc-800">
                 {/* Top Bar */}
-                <div className="flex items-center justify-between p-6">
-                  <div className="flex items-center gap-2">
-                    <span className={cn('text-2xl', temperatureColor)} title={temperature}>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn('text-xl flex-shrink-0', temperatureColor)} title={temperature}>
                       {temperatureIcon}
                     </span>
-                    <h2 className="text-xl font-semibold text-white">{opportunity.title}</h2>
+                    <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                      {opportunity.title}
+                    </h2>
                   </div>
                   <button
                     onClick={onClose}
-                    className="p-2 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors"
+                    className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors flex-shrink-0"
                   >
                     <XMarkIcon className="w-5 h-5" />
                   </button>
                 </div>
 
-                {/* Key Metrics */}
-                <div className="px-6 pb-4 grid grid-cols-2 gap-4">
-                  {/* Value */}
+                {/* Key Metrics - Flat design */}
+                <div className="px-4 pb-3 grid grid-cols-4 gap-2 text-center">
                   <div>
-                    <p className="text-xs text-neutral-500 mb-1">Deal Value</p>
-                    <p className="text-lg font-bold text-[#84cc16]">
+                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Value</p>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
                       {formatCurrency(opportunity.value, opportunity.currency, false)}
                     </p>
                   </div>
-
-                  {/* Probability */}
-                  {opportunity.probability && (
-                    <div>
-                      <p className="text-xs text-neutral-500 mb-1">Close Probability</p>
-                      <p className="text-lg font-bold text-white">{opportunity.probability}%</p>
-                    </div>
-                  )}
-
-                  {/* Days in Stage */}
                   <div>
-                    <p className="text-xs text-neutral-500 mb-1">Days in Stage</p>
-                    <p className="text-lg font-bold text-white">{daysInStage} days</p>
+                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Probability</p>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {opportunity.probability || 0}%
+                    </p>
                   </div>
-
-                  {/* Last Activity */}
                   <div>
-                    <p className="text-xs text-neutral-500 mb-1">Last Activity</p>
-                    <p className="text-lg font-bold text-white">
+                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Days</p>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{daysInStage}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Activity</p>
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                       {formatRelativeTime(opportunity.lastActivityAt)}
                     </p>
                   </div>
                 </div>
 
-                {/* Contact & Company Info */}
+                {/* Contact & Company Info - inline text */}
                 {(contactName || companyName) && (
-                  <div className="px-6 pb-4 space-y-2">
+                  <div className="px-4 pb-3 flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
                     {contactName && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <UserCircleIcon className="w-4 h-4 text-neutral-500" />
-                        <span className="text-neutral-300">{contactName}</span>
+                      <div className="flex items-center gap-1.5">
+                        <UserCircleIcon className="w-4 h-4" />
+                        <span>{contactName}</span>
                       </div>
                     )}
                     {companyName && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <BuildingOfficeIcon className="w-4 h-4 text-neutral-500" />
-                        <span className="text-neutral-300">{companyName}</span>
+                      <div className="flex items-center gap-1.5">
+                        <BuildingOfficeIcon className="w-4 h-4" />
+                        <span>{companyName}</span>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Quick Actions */}
-                <div className="px-6 pb-4 flex gap-2">
+                {/* Quick Actions - Flat design */}
+                <div className="px-4 pb-3 flex gap-2">
                   <button
                     onClick={() => setShowLogEmail(true)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors text-sm"
                   >
                     <EnvelopeIcon className="w-4 h-4" />
-                    Log Email
+                    Email
                   </button>
                   <button
                     onClick={() => setShowLogCall(true)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors text-sm"
                   >
                     <PhoneIcon className="w-4 h-4" />
-                    Log Call
+                    Call
                   </button>
                   {onEdit && (
                     <button
                       onClick={() => onEdit(opportunity)}
-                      className="px-4 py-2 bg-[#84cc16] text-black font-medium rounded-lg hover:bg-black transition-colors"
+                      className="px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-sm"
                     >
                       Edit
                     </button>
                   )}
                 </div>
 
-                {/* Tabs */}
-                <div className="px-6 flex gap-4 border-t border-neutral-800">
+                {/* Tabs - Simple underline style */}
+                <div className="px-4 flex gap-4 border-t border-zinc-200 dark:border-zinc-800">
                   <button
                     onClick={() => setActiveTab('activity')}
                     className={cn(
-                      'px-4 py-3 text-sm font-medium border-b-2 transition-colors',
+                      'flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
                       activeTab === 'activity'
-                        ? 'border-[#84cc16] text-[#84cc16]'
-                        : 'border-transparent text-neutral-400 hover:text-white'
+                        ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100'
+                        : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
                     )}
                   >
-                    <ClockIcon className="w-4 h-4 inline mr-2" />
-                    Activity Timeline
+                    <ClockIcon className="w-4 h-4" />
+                    Activity
                   </button>
                   <button
                     onClick={() => setActiveTab('files')}
                     className={cn(
-                      'px-4 py-3 text-sm font-medium border-b-2 transition-colors',
+                      'flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
                       activeTab === 'files'
-                        ? 'border-[#84cc16] text-[#84cc16]'
-                        : 'border-transparent text-neutral-400 hover:text-white'
+                        ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100'
+                        : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
                     )}
                   >
-                    <PaperClipIcon className="w-4 h-4 inline mr-2" />
+                    <PaperClipIcon className="w-4 h-4" />
                     Files
                   </button>
                   <button
                     onClick={() => setActiveTab('ai')}
                     className={cn(
-                      'px-4 py-3 text-sm font-medium border-b-2 transition-colors',
+                      'flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
                       activeTab === 'ai'
-                        ? 'border-[#84cc16] text-[#84cc16]'
-                        : 'border-transparent text-neutral-400 hover:text-white'
+                        ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100'
+                        : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
                     )}
                   >
-                    <SparklesIcon className="w-4 h-4 inline mr-2" />
-                    AI Insights
+                    <SparklesIcon className="w-4 h-4" />
+                    AI
                   </button>
                 </div>
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-4">
                 {activeTab === 'activity' && (
                   <ActivityTimeline
                     workspaceId={workspaceId}
@@ -278,40 +273,39 @@ export default function OpportunityDetailPanel({
                 )}
 
                 {activeTab === 'ai' && (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {/* Analyze Button */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
                       <div>
-                        <h3 className="text-lg font-semibold text-white">AI Analysis</h3>
-                        <p className="text-sm text-neutral-400">Get AI-powered insights for this deal</p>
+                        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI Analysis</h3>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Get AI-powered insights</p>
                       </div>
                       <button
                         onClick={handleAnalyze}
                         disabled={isAnalyzing}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-medium rounded-lg hover:from-violet-500 hover:to-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isAnalyzing ? (
-                          <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                          <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <SparklesIcon className="w-4 h-4" />
+                          <SparklesIcon className="w-3.5 h-3.5" />
                         )}
-                        {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
+                        {isAnalyzing ? 'Analyzing...' : 'Analyze'}
                       </button>
                     </div>
 
                     {/* AI Score Card */}
                     {aiInsights && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gradient-to-br from-violet-500/20 to-purple-500/20 border border-violet-500/30 rounded-lg p-4">
-                          <p className="text-sm text-violet-300 mb-1">Deal Score</p>
-                          <p className="text-3xl font-bold text-white">
-                            {aiInsights.dealScore}
-                            <span className="text-lg text-neutral-400">/100</span>
+                      <div className="grid grid-cols-2 gap-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Deal Score</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                            {aiInsights.dealScore}<span className="text-sm text-zinc-400">/100</span>
                           </p>
                         </div>
-                        <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-lg p-4">
-                          <p className="text-sm text-emerald-300 mb-1">Close Probability</p>
-                          <p className="text-3xl font-bold text-white">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Win Probability</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                             {aiInsights.closeProbability}%
                           </p>
                         </div>
@@ -320,15 +314,15 @@ export default function OpportunityDetailPanel({
 
                     {/* Risk Factors */}
                     {aiInsights?.riskFactors && aiInsights.riskFactors.length > 0 && (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                        <h4 className="flex items-center gap-2 text-sm font-semibold text-red-400 mb-3">
-                          <ExclamationTriangleIcon className="w-4 h-4" />
+                      <div className="py-3 border-b border-zinc-200 dark:border-zinc-800">
+                        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 mb-2 uppercase tracking-wide">
+                          <ExclamationTriangleIcon className="w-3.5 h-3.5" />
                           Risk Factors
                         </h4>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1.5">
                           {aiInsights.riskFactors.map((risk, i) => (
-                            <li key={i} className="text-sm text-neutral-300 flex items-start gap-2">
-                              <span className="text-red-400 mt-0.5">•</span>
+                            <li key={i} className="text-sm text-zinc-700 dark:text-zinc-300 flex items-start gap-2">
+                              <span className="text-red-500 mt-0.5">•</span>
                               {risk}
                             </li>
                           ))}
@@ -338,15 +332,15 @@ export default function OpportunityDetailPanel({
 
                     {/* Recommended Actions */}
                     {aiInsights?.recommendedActions && aiInsights.recommendedActions.length > 0 && (
-                      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
-                        <h4 className="flex items-center gap-2 text-sm font-semibold text-emerald-400 mb-3">
-                          <CheckCircleIcon className="w-4 h-4" />
+                      <div className="py-3 border-b border-zinc-200 dark:border-zinc-800">
+                        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-2 uppercase tracking-wide">
+                          <CheckCircleIcon className="w-3.5 h-3.5" />
                           Recommended Actions
                         </h4>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1.5">
                           {aiInsights.recommendedActions.map((action, i) => (
-                            <li key={i} className="text-sm text-neutral-300 flex items-start gap-2">
-                              <span className="text-emerald-400 mt-0.5">{i + 1}.</span>
+                            <li key={i} className="text-sm text-zinc-700 dark:text-zinc-300 flex items-start gap-2">
+                              <span className="text-emerald-500 font-semibold">{i + 1}.</span>
                               {action}
                             </li>
                           ))}
@@ -356,26 +350,26 @@ export default function OpportunityDetailPanel({
 
                     {/* Next Action Suggestions */}
                     {suggestions.length > 0 && (
-                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                        <h4 className="flex items-center gap-2 text-sm font-semibold text-blue-400 mb-3">
-                          <SparklesIcon className="w-4 h-4" />
-                          Suggested Next Actions
+                      <div className="py-3">
+                        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-2 uppercase tracking-wide">
+                          <SparklesIcon className="w-3.5 h-3.5" />
+                          Next Steps
                         </h4>
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           {suggestions.map((suggestion, i) => (
-                            <div key={i} className="bg-neutral-800/50 rounded-lg p-3">
+                            <div key={i} className="py-2 border-l-2 border-zinc-300 dark:border-zinc-600 pl-3">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-sm font-medium text-white">{suggestion.action}</p>
+                                <p className="text-sm text-zinc-900 dark:text-zinc-100">{suggestion.action}</p>
                                 <span className={cn(
-                                  'text-xs px-2 py-0.5 rounded-full font-medium',
-                                  suggestion.urgency === 'high' && 'bg-red-500/20 text-red-400',
-                                  suggestion.urgency === 'medium' && 'bg-yellow-500/20 text-yellow-400',
-                                  suggestion.urgency === 'low' && 'bg-blue-500/20 text-blue-400'
+                                  'text-[10px] uppercase tracking-wide font-medium shrink-0',
+                                  suggestion.urgency === 'high' && 'text-red-500',
+                                  suggestion.urgency === 'medium' && 'text-amber-500',
+                                  suggestion.urgency === 'low' && 'text-blue-500'
                                 )}>
                                   {suggestion.urgency}
                                 </span>
                               </div>
-                              <p className="text-xs text-neutral-400 mt-1">{suggestion.reason}</p>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{suggestion.reason}</p>
                             </div>
                           ))}
                         </div>
@@ -384,18 +378,18 @@ export default function OpportunityDetailPanel({
 
                     {/* No Analysis Yet */}
                     {!aiInsights && !isAnalyzing && (
-                      <div className="text-center py-8 text-neutral-500">
-                        <SparklesIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>No AI analysis yet</p>
-                        <p className="text-sm mt-1">Click &quot;Analyze with AI&quot; to get started</p>
+                      <div className="text-center py-8">
+                        <SparklesIcon className="w-8 h-8 mx-auto mb-2 text-zinc-300 dark:text-zinc-600" />
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">No analysis yet</p>
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">Click Analyze to get started</p>
                       </div>
                     )}
 
                     {/* Confidence indicator */}
                     {aiInsights?.confidenceLevel && (
-                      <p className="text-xs text-neutral-500 text-center">
-                        AI Confidence: {aiInsights.confidenceLevel}% •
-                        Last analyzed: {aiInsights.lastAnalyzedAt ? new Date(aiInsights.lastAnalyzedAt).toLocaleString() : 'Unknown'}
+                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center uppercase tracking-wide">
+                        Confidence: {aiInsights.confidenceLevel}% •
+                        {aiInsights.lastAnalyzedAt ? new Date(aiInsights.lastAnalyzedAt).toLocaleDateString() : 'Unknown'}
                       </p>
                     )}
                   </div>
