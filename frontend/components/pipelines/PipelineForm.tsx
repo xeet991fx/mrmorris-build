@@ -22,11 +22,11 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
   const stages = (formValues as any)?.stages || [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Pipeline Name */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1.5">
-          Pipeline Name <span className="text-red-400">*</span>
+        <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1.5">
+          Pipeline Name <span className="text-rose-500">*</span>
         </label>
         <TextInput
           placeholder="e.g., Sales Pipeline, Recruitment Pipeline"
@@ -34,13 +34,13 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
           {...(register as any)("name")}
         />
         {errors.name && (
-          <p className="mt-1 text-xs text-red-400">{errors.name.message as any}</p>
+          <p className="mt-1.5 text-xs text-rose-500">{errors.name.message as any}</p>
         )}
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-1.5">
+        <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-1.5">
           Description
         </label>
         <Textarea
@@ -50,7 +50,7 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
           {...(register as any)("description")}
         />
         {errors.description && (
-          <p className="mt-1 text-xs text-red-400">{errors.description.message as any}</p>
+          <p className="mt-1.5 text-xs text-rose-500">{errors.description.message as any}</p>
         )}
       </div>
 
@@ -64,20 +64,20 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
       )}
 
       {/* Is Default */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         <input
           type="checkbox"
           id="isDefault"
-          className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-black focus:ring-2 focus:ring-primary focus:ring-offset-0"
+          className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-emerald-600 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
           {...(register as any)("isDefault")}
         />
-        <label htmlFor="isDefault" className="text-sm text-foreground cursor-pointer">
+        <label htmlFor="isDefault" className="text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
           Set as default pipeline
         </label>
       </div>
 
       {isEdit && (
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-2 rounded-lg">
           Note: To manage stages, use the stage management options after saving.
         </p>
       )}
