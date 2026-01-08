@@ -789,10 +789,10 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="min-h-screen">
+        {/* Main Content - h-screen to contain children */}
+        <main className="h-screen overflow-hidden">
           <div
-            className="min-h-screen bg-card transition-all duration-200 ease-out"
+            className="h-full bg-card transition-all duration-200 ease-out overflow-hidden"
             style={{
               marginLeft: isSidebarExpanded ? `${EXPANDED_WIDTH}px` : `${COLLAPSED_WIDTH}px`,
             }}

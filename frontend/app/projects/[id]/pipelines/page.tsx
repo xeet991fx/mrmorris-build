@@ -151,12 +151,12 @@ export default function PipelinesPage() {
       {!isLoading && pipelines.length === 0 ? (
         renderEmptyState()
       ) : (
-        <div className="min-h-screen bg-card/95 px-8 pt-14 pb-8">
+        <div className="h-full bg-card/95 px-8 pt-14 pb-4 flex flex-col overflow-hidden">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            className="mb-4 flex-shrink-0"
           >
             <h1 className="text-2xl font-bold text-foreground mb-1 font-heading">Pipelines</h1>
             <p className="text-sm text-muted-foreground">
@@ -169,7 +169,7 @@ export default function PipelinesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mb-6 flex items-center justify-between gap-4"
+            className="mb-4 flex items-center justify-between gap-4 flex-shrink-0"
           >
             {/* Pipeline Selector & View Toggle */}
             <div className="flex items-center gap-3">
@@ -223,19 +223,20 @@ export default function PipelinesPage() {
               <button
                 onClick={() => handleAddOpportunity()}
                 disabled={!currentPipeline}
-                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
               >
-                <FontAwesomeIcon icon={faPlus} className="w-5 h-5" />
+                <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
                 Add Opportunity
               </button>
             </div>
           </motion.div>
 
-          {/* View Content */}
+          {/* View Content - Flex-1 to fill remaining space */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
+            className="flex-1 min-h-0"
           >
             {viewMode === "kanban" ? (
               // Kanban View
@@ -282,6 +283,10 @@ export default function PipelinesPage() {
         onClose={() => {
           console.log("Modal onClose called");
           setIsManagePipelinesModalOpen(false);
+          // Refresh kanban data to reflect any stage reordering changes
+          if (currentPipeline) {
+            fetchOpportunitiesByPipeline(workspaceId, currentPipeline._id);
+          }
         }}
         workspaceId={workspaceId}
       />
