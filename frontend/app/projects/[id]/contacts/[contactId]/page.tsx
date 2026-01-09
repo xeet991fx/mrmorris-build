@@ -427,7 +427,7 @@ export default function ContactDetailsPage() {
                                 </h3>
                                 <InfoItem icon={EnvelopeIcon} label="Email" value={currentContact.email || ""} copyable />
                                 <InfoItem icon={PhoneIcon} label="Phone" value={currentContact.phone || ""} copyable />
-                                <InfoItem icon={BuildingOffice2Icon} label="Company" value={currentContact.companyName || ""} />
+                                <InfoItem icon={BuildingOffice2Icon} label="Company" value={currentContact.company || ""} />
                                 <InfoItem icon={BriefcaseIcon} label="Job Title" value={currentContact.jobTitle || ""} />
                                 <InfoItem icon={TagIcon} label="Source" value={currentContact.source || ""} />
                             </motion.div>
@@ -471,7 +471,7 @@ export default function ContactDetailsPage() {
                                     <div className="p-4 space-y-4">
                                         <InfoItem icon={EnvelopeIcon} label="Email" value={currentContact.email || ""} copyable />
                                         <InfoItem icon={PhoneIcon} label="Phone" value={currentContact.phone || ""} copyable />
-                                        <InfoItem icon={BuildingOffice2Icon} label="Company" value={currentContact.companyName || ""} />
+                                        <InfoItem icon={BuildingOffice2Icon} label="Company" value={currentContact.company || ""} />
                                     </div>
                                 </motion.div>
                             )}
