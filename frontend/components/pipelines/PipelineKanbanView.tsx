@@ -190,16 +190,16 @@ export default function PipelineKanbanView({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      {/* Horizontal scrollable container - scrollbar at bottom */}
-      <div className="h-full flex flex-col -mx-8">
-        <div className="flex-1 overflow-x-auto overflow-y-hidden px-8">
-          <div className="flex gap-4 min-w-max h-full">
+      {/* Horizontal scrollable container */}
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2">
+          <div className="flex gap-4 min-w-max h-full px-1 py-1">
             {kanbanData.stages.map((stageData, index) => (
               <motion.div
                 key={stageData.stage._id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ delay: index * 0.05 }}
                 className="h-full flex-shrink-0"
               >
                 <KanbanColumn

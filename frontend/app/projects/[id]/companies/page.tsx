@@ -2,35 +2,42 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBuilding, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  BuildingOffice2Icon,
+  PlusIcon,
+  ArrowDownTrayIcon,
+  Cog6ToothIcon,
+  SparklesIcon,
+} from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { useCompanyStore } from "@/store/useCompanyStore";
 import { Company } from "@/lib/api/company";
 import CompaniesTableHeader from "@/components/companies/CompaniesTableHeader";
 import CompaniesTable from "@/components/companies/CompaniesTable";
-import AddCompanyModal from "@/components/companies/AddCompanyModal";
-import EditCompanyModal from "@/components/companies/EditCompanyModal";
+import AddCompanySlideOver from "@/components/companies/AddCompanySlideOver";
+import EditCompanySlideOver from "@/components/companies/EditCompanySlideOver";
 import CompanyColumnManager from "@/components/companies/CompanyColumnManager";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ImportModal from "@/components/import/ImportModal";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
 import { CompanyIntelligencePanel } from "@/components/companies/CompanyIntelligencePanel";
+import { cn } from "@/lib/utils";
 
 export default function CompaniesPage() {
   const params = useParams();
   const workspaceId = params.id as string;
 
-  const { companies, isLoading, fetchCompanies, deleteCompany, fetchCustomColumns } = useCompanyStore();
+  const { companies, isLoading, fetchCompanies, deleteCompany, fetchCustomColumns, selectedCompanies } = useCompanyStore();
 
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddSlideOverOpen, setIsAddSlideOverOpen] = useState(false);
+  const [isEditSlideOverOpen, setIsEditSlideOverOpen] = useState(false);
   const [isColumnManagerOpen, setIsColumnManagerOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
+  const [showAIPanel, setShowAIPanel] = useState(false);
 
   const { track } = useInsightTracking({
     workspaceId,
@@ -49,7 +56,7 @@ export default function CompaniesPage() {
 
   const handleEdit = (company: Company) => {
     setSelectedCompany(company);
-    setIsEditModalOpen(true);
+    setIsEditSlideOverOpen(true);
   };
 
   const handleDelete = (companyId: string) => {
@@ -71,12 +78,10 @@ export default function CompaniesPage() {
 
   if (isLoading && companies.length === 0) {
     return (
-      <div className="min-h-screen bg-background px-8 pt-6 pb-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Loading companies...</p>
-          </div>
+      <div className="h-full flex items-center justify-center">
+        <div className="flex items-center gap-3 text-zinc-400">
+          <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Loading companies...</span>
         </div>
       </div>
     );
@@ -84,106 +89,153 @@ export default function CompaniesPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-card/95 flex flex-col">
-        {/* Page Header with Dividing Line */}
-        <div className="h-12 px-6 border-b border-border flex items-center flex-shrink-0">
+      <div className="h-full flex flex-col overflow-hidden">
+        <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4 flex-shrink-0">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
           >
-            <h1 className="text-lg font-semibold text-foreground font-heading">Companies</h1>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <FontAwesomeIcon icon={faCircleInfo} className="w-4 h-4" />
-              <span>Manage your business relationships</span>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                Companies
+              </h1>
+              {companies.length > 0 && (
+                <span className="px-2.5 py-1 text-sm font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded-full">
+                  {companies.length}
+                </span>
+              )}
+              {selectedCompanies.length > 0 && (
+                <span className="px-2.5 py-1 text-sm font-medium text-blue-600 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                  {selectedCompanies.length} selected
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => setShowAIPanel(!showAIPanel)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 text-sm rounded-full transition-colors",
+                  showAIPanel
+                    ? "bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                )}
+              >
+                <SparklesIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">AI Insights</span>
+              </button>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Import</span>
+              </button>
+              <button
+                onClick={() => setIsColumnManagerOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <Cog6ToothIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Columns</span>
+              </button>
+              <button
+                onClick={() => setIsAddSlideOverOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm"
+              >
+                <PlusIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Company</span>
+              </button>
             </div>
           </motion.div>
         </div>
 
-        {/* Table Header with Search and Actions - Fixed */}
-        {companies.length > 0 || isLoading ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex-shrink-0"
-          >
-            <CompaniesTableHeader
-              onAddCompany={() => setIsAddModalOpen(true)}
-              onImportCompanies={() => setIsImportModalOpen(true)}
-              onToggleColumnManager={() => setIsColumnManagerOpen(true)}
-              workspaceId={workspaceId}
-            />
-          </motion.div>
-        ) : null}
+        {/* Divider */}
+        <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
 
-        {/* AI Account Intelligence */}
-        {companies.length > 0 && (
-          <div className="px-6 py-4">
-            <CompanyIntelligencePanel workspaceId={workspaceId} companies={companies} />
-          </div>
-        )}
-
-        {/* Main Content - Scrollable Table */}
-        <div className="flex-1 overflow-x-auto overflow-y-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            {companies.length === 0 && !isLoading ? (
-              /* Empty State */
-              <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center max-w-md">
-                  <div className="w-16 h-16 bg-neutral-800/50 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <FontAwesomeIcon icon={faBuilding} className="w-8 h-8 text-neutral-500" />
-                  </div>
-                  <h2 className="text-xl font-semibold text-foreground mb-2 font-heading">
-                    No companies yet
-                  </h2>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Start building your business network by adding your first company. Track
-                    partnerships, manage accounts, and grow your B2B relationships.
-                  </p>
-                  <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-800 text-black dark:text-white font-medium text-sm rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all shadow-sm hover:shadow"
-                  >
-                    Add Your First Company
-                  </button>
+        {/* AI Intelligence Panel (Collapsible) */}
+        <AnimatePresence>
+          {showAIPanel && companies.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="px-4 sm:px-6 lg:px-8 overflow-hidden"
+            >
+              <div className="py-4">
+                <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                  <CompanyIntelligencePanel workspaceId={workspaceId} companies={companies} />
                 </div>
               </div>
-            ) : (
-              /* Table Only */
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Table Header with Search */}
+        {(companies.length > 0 || isLoading) && (
+          <CompaniesTableHeader
+            onAddCompany={() => setIsAddSlideOverOpen(true)}
+            onImportCompanies={() => setIsImportModalOpen(true)}
+            onToggleColumnManager={() => setIsColumnManagerOpen(true)}
+            workspaceId={workspaceId}
+          />
+        )}
+        {/* Main Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {companies.length === 0 && !isLoading ? (
+            /* Empty State */
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center justify-center py-16 px-4"
+            >
+              <div className="text-center max-w-md">
+                <BuildingOffice2Icon className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-4" />
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+                  No companies yet
+                </h2>
+                <p className="text-sm text-zinc-500 mb-6">
+                  Start building your business network by adding your first company. Track
+                  partnerships, manage accounts, and grow your B2B relationships.
+                </p>
+                <button
+                  onClick={() => setIsAddSlideOverOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm"
+                >
+                  <PlusIcon className="w-4 h-4" />
+                  Add Your First Company
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            /* Table */
+            <div className="px-4 sm:px-6 lg:px-8 h-full">
               <CompaniesTable
                 companies={companies}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 workspaceId={workspaceId}
               />
-            )}
-          </motion.div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Modals */}
-      <AddCompanyModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+      {/* Slide-over Forms */}
+      <AddCompanySlideOver
+        isOpen={isAddSlideOverOpen}
+        onClose={() => setIsAddSlideOverOpen(false)}
         workspaceId={workspaceId}
       />
 
-      {selectedCompany && (
-        <EditCompanyModal
-          isOpen={isEditModalOpen}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setSelectedCompany(null);
-          }}
-          workspaceId={workspaceId}
-          company={selectedCompany}
-        />
-      )}
+      <EditCompanySlideOver
+        isOpen={isEditSlideOverOpen}
+        onClose={() => {
+          setIsEditSlideOverOpen(false);
+          setSelectedCompany(null);
+        }}
+        workspaceId={workspaceId}
+        company={selectedCompany}
+      />
 
       <CompanyColumnManager
         isOpen={isColumnManagerOpen}

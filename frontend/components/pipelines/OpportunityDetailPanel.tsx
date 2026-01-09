@@ -128,18 +128,18 @@ export default function OpportunityDetailPanel({
               {/* Header */}
               <div className="flex-shrink-0 border-b border-zinc-200 dark:border-zinc-800">
                 {/* Top Bar */}
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <span className={cn('text-xl flex-shrink-0', temperatureColor)} title={temperature}>
                       {temperatureIcon}
                     </span>
-                    <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                    <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                       {opportunity.title}
                     </h2>
                   </div>
                   <button
                     onClick={onClose}
-                    className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors flex-shrink-0"
+                    className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors flex-shrink-0"
                   >
                     <XMarkIcon className="w-5 h-5" />
                   </button>
@@ -189,18 +189,18 @@ export default function OpportunityDetailPanel({
                   </div>
                 )}
 
-                {/* Quick Actions - Flat design */}
-                <div className="px-4 pb-3 flex gap-2">
+                {/* Quick Actions - Rounded buttons */}
+                <div className="px-5 pb-4 flex gap-2">
                   <button
                     onClick={() => setShowLogEmail(true)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors text-sm"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full transition-colors text-sm font-medium"
                   >
                     <EnvelopeIcon className="w-4 h-4" />
                     Email
                   </button>
                   <button
                     onClick={() => setShowLogCall(true)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors text-sm"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full transition-colors text-sm font-medium"
                   >
                     <PhoneIcon className="w-4 h-4" />
                     Call
@@ -208,22 +208,22 @@ export default function OpportunityDetailPanel({
                   {onEdit && (
                     <button
                       onClick={() => onEdit(opportunity)}
-                      className="px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-sm"
+                      className="px-5 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 rounded-full transition-colors text-sm shadow-sm"
                     >
                       Edit
                     </button>
                   )}
                 </div>
 
-                {/* Tabs - Simple underline style */}
-                <div className="px-4 flex gap-4 border-t border-zinc-200 dark:border-zinc-800">
+                {/* Tabs - Pill style */}
+                <div className="px-5 pt-2 flex gap-1 bg-zinc-50 dark:bg-zinc-800/50">
                   <button
                     onClick={() => setActiveTab('activity')}
                     className={cn(
-                      'flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                      'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full transition-colors',
                       activeTab === 'activity'
-                        ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100'
-                        : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
                     )}
                   >
                     <ClockIcon className="w-4 h-4" />
@@ -232,10 +232,10 @@ export default function OpportunityDetailPanel({
                   <button
                     onClick={() => setActiveTab('files')}
                     className={cn(
-                      'flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                      'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full transition-colors',
                       activeTab === 'files'
-                        ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100'
-                        : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
                     )}
                   >
                     <PaperClipIcon className="w-4 h-4" />
@@ -244,10 +244,10 @@ export default function OpportunityDetailPanel({
                   <button
                     onClick={() => setActiveTab('ai')}
                     className={cn(
-                      'flex items-center gap-1.5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+                      'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full transition-colors',
                       activeTab === 'ai'
-                        ? 'border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100'
-                        : 'border-transparent text-zinc-500 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
                     )}
                   >
                     <SparklesIcon className="w-4 h-4" />
@@ -283,7 +283,7 @@ export default function OpportunityDetailPanel({
                       <button
                         onClick={handleAnalyze}
                         disabled={isAnalyzing}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                       >
                         {isAnalyzing ? (
                           <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />

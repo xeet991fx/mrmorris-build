@@ -11,30 +11,20 @@ import {
   PencilIcon,
   EyeIcon,
   ChartBarIcon,
-  CodeBracketIcon,
-  CheckCircleIcon,
   SparklesIcon,
   DocumentDuplicateIcon,
-  CursorArrowRaysIcon,
   ClipboardDocumentListIcon,
   UserGroupIcon,
-  PhoneIcon,
-  BriefcaseIcon,
   CalendarIcon,
   ChatBubbleLeftRightIcon,
-  ShoppingCartIcon,
-  HeartIcon,
-  AcademicCapIcon,
+  BriefcaseIcon,
+  EnvelopeIcon,
+  CheckCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { ClipboardList, Eye, FileText, Users } from "lucide-react";
 import { getForms, deleteForm, createForm, Form } from "@/lib/api/form";
 import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/ui/page-header";
-import { StatCard } from "@/components/ui/stat-card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -45,7 +35,7 @@ const FORM_TEMPLATES = [
     name: "Contact Us Form",
     description: "Simple contact form for inquiries",
     icon: ChatBubbleLeftRightIcon,
-    color: "blue",
+    color: "from-blue-400 to-blue-600",
     fields: [
       { id: "name", type: "text" as const, label: "Full Name", required: true, mapToField: "firstName" as const },
       { id: "email", type: "email" as const, label: "Email Address", required: true, mapToField: "email" as const },
@@ -59,7 +49,7 @@ const FORM_TEMPLATES = [
     name: "Lead Capture Form",
     description: "Capture qualified leads with business info",
     icon: UserGroupIcon,
-    color: "green",
+    color: "from-emerald-400 to-emerald-600",
     fields: [
       { id: "firstName", type: "text" as const, label: "First Name", required: true, width: "half" as const, mapToField: "firstName" as const },
       { id: "lastName", type: "text" as const, label: "Last Name", required: true, width: "half" as const, mapToField: "lastName" as const },
@@ -76,7 +66,7 @@ const FORM_TEMPLATES = [
     name: "Demo Request Form",
     description: "Schedule product demos with prospects",
     icon: CalendarIcon,
-    color: "purple",
+    color: "from-purple-400 to-purple-600",
     fields: [
       { id: "firstName", type: "text" as const, label: "First Name", required: true, width: "half" as const, mapToField: "firstName" as const },
       { id: "lastName", type: "text" as const, label: "Last Name", required: true, width: "half" as const, mapToField: "lastName" as const },
@@ -93,7 +83,7 @@ const FORM_TEMPLATES = [
     name: "Customer Survey",
     description: "Gather feedback from customers",
     icon: ClipboardDocumentListIcon,
-    color: "yellow",
+    color: "from-amber-400 to-amber-600",
     fields: [
       { id: "email", type: "email" as const, label: "Email (Optional)", required: false, mapToField: "email" as const },
       { id: "satisfaction", type: "rating" as const, label: "How satisfied are you with our product?", required: true },
@@ -107,7 +97,7 @@ const FORM_TEMPLATES = [
     name: "Newsletter Signup",
     description: "Grow your email list",
     icon: EnvelopeIcon,
-    color: "indigo",
+    color: "from-indigo-400 to-indigo-600",
     fields: [
       { id: "email", type: "email" as const, label: "Email Address", required: true, mapToField: "email" as const },
       { id: "firstName", type: "text" as const, label: "First Name", required: false, mapToField: "firstName" as const },
@@ -120,7 +110,7 @@ const FORM_TEMPLATES = [
     name: "Job Application",
     description: "Accept job applications online",
     icon: BriefcaseIcon,
-    color: "red",
+    color: "from-rose-400 to-rose-600",
     fields: [
       { id: "firstName", type: "text" as const, label: "First Name", required: true, width: "half" as const, mapToField: "firstName" as const },
       { id: "lastName", type: "text" as const, label: "Last Name", required: true, width: "half" as const, mapToField: "lastName" as const },
@@ -134,6 +124,141 @@ const FORM_TEMPLATES = [
   },
 ];
 
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+};
+
+// Stat Card Component
+function StatCard({ icon: Icon, label, value, color }: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number;
+  color: string;
+}) {
+  return (
+    <motion.div
+      variants={itemVariants}
+      className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800"
+    >
+      <div className="flex items-center gap-3">
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", color)}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{label}</p>
+          <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// Form Card Component
+function FormCard({ form, workspaceId, onDelete }: {
+  form: Form;
+  workspaceId: string;
+  onDelete: (id: string, e: React.MouseEvent) => void;
+}) {
+  return (
+    <motion.div
+      variants={itemVariants}
+      className="group rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 overflow-hidden hover:shadow-lg hover:border-zinc-200 dark:hover:border-zinc-700 transition-all"
+    >
+      <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="block p-5">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1 min-w-0 pr-4">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              {form.name}
+            </h3>
+            {form.description && (
+              <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{form.description}</p>
+            )}
+          </div>
+          <span className={cn(
+            "px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0",
+            form.status === "published" && "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
+            form.status === "draft" && "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
+            form.status === "archived" && "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+          )}>
+            {form.status === "published" && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
+            {form.status}
+          </span>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+            <EyeIcon className="w-4 h-4 text-blue-500 mx-auto mb-1" />
+            <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{form.stats.views.toLocaleString()}</p>
+            <p className="text-xs text-zinc-500">Views</p>
+          </div>
+          <div className="text-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+            <CheckCircleIcon className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+            <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{form.stats.submissions.toLocaleString()}</p>
+            <p className="text-xs text-zinc-500">Submits</p>
+          </div>
+          <div className="text-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+            <ChartBarIcon className="w-4 h-4 text-amber-500 mx-auto mb-1" />
+            <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{form.stats.conversionRate.toFixed(1)}%</p>
+            <p className="text-xs text-zinc-500">Rate</p>
+          </div>
+        </div>
+
+        {/* Meta */}
+        <div className="flex items-center gap-2 mt-4">
+          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            {form.fields.length} fields
+          </span>
+          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            {form.formType === "multi_step" ? "Multi-step" : "Single-step"}
+          </span>
+        </div>
+      </Link>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 p-4 pt-0">
+        <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="flex-1">
+          <button className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-full transition-colors">
+            <PencilIcon className="w-4 h-4" />
+            Edit
+          </button>
+        </Link>
+        <Link href={`/projects/${workspaceId}/forms/${form._id}/submissions`}>
+          <button className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors" title="Submissions">
+            <ClipboardDocumentListIcon className="w-4 h-4" />
+          </button>
+        </Link>
+        {form.status === "published" && (
+          <a
+            href={`${process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"}/forms/${form._id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <button className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors" title="View">
+              <EyeIcon className="w-4 h-4" />
+            </button>
+          </a>
+        )}
+        <button
+          onClick={(e) => onDelete(form._id, e)}
+          className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-500 hover:text-red-600 transition-colors"
+          title="Delete"
+        >
+          <TrashIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function FormsPage() {
   const params = useParams();
   const router = useRouter();
@@ -144,8 +269,6 @@ export default function FormsPage() {
   const [selectedStatus, setSelectedStatus] = useState<"all" | "draft" | "published" | "archived">("all");
   const [showTemplates, setShowTemplates] = useState(false);
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false);
-
-  // AI Form Generator state
   const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
@@ -215,11 +338,7 @@ export default function FormsPage() {
           cookieTracking: true,
         },
         followUpActions: [],
-        stats: {
-          views: 0,
-          submissions: 0,
-          conversionRate: 0,
-        },
+        stats: { views: 0, submissions: 0, conversionRate: 0 },
       };
 
       const response = await createForm(workspaceId, newForm);
@@ -235,7 +354,6 @@ export default function FormsPage() {
     }
   };
 
-  // AI Form Generation with Gemini 2.5 Pro
   const generateWithAI = async () => {
     if (!aiPrompt.trim()) {
       toast.error("Please describe what kind of form you need");
@@ -260,7 +378,6 @@ export default function FormsPage() {
       if (data.success && data.data) {
         setAiReasoning(data.data.reasoning);
 
-        // Create the form with AI-generated fields
         const newForm = {
           name: data.data.name,
           description: data.data.description,
@@ -306,34 +423,7 @@ export default function FormsPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "published":
-        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800";
-      case "draft":
-        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800";
-      case "archived":
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700";
-      default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
-    }
-  };
-
-  const getTemplateColor = (color: string) => {
-    const colors: Record<string, string> = {
-      blue: "bg-blue-500",
-      green: "bg-green-500",
-      purple: "bg-purple-500",
-      yellow: "bg-yellow-500",
-      indigo: "bg-indigo-500",
-      red: "bg-red-500",
-    };
-    return colors[color] || "bg-blue-500";
-  };
-
   const filteredForms = selectedStatus === "all" ? forms : forms.filter((f) => f.status === selectedStatus);
-
-  // Calculate stats
   const totalViews = forms.reduce((sum, f) => sum + (f.stats?.views || 0), 0);
   const totalSubmissions = forms.reduce((sum, f) => sum + (f.stats?.submissions || 0), 0);
   const avgConversionRate = forms.length > 0
@@ -341,261 +431,156 @@ export default function FormsPage() {
     : 0;
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <PageHeader
-        icon={ClipboardList}
-        title="Forms"
-        description="Create beautiful forms to capture leads and grow your business"
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0"
       >
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+            <ClipboardList className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Forms</h1>
+            <p className="text-sm text-zinc-500">Create beautiful forms to capture leads</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
             onClick={loadForms}
             disabled={isLoading}
-            title="Refresh"
+            className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
           >
             <ArrowPathIcon className={cn("w-5 h-5", isLoading && "animate-spin")} />
-          </Button>
-          {/* AI Generate Button - NEW */}
-          <Button
+          </button>
+          <button
             onClick={() => setShowAIGenerator(true)}
-            className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-full transition-all"
           >
-            <SparklesIcon className="w-5 h-5" />
-            Generate with AI
-          </Button>
+            <SparklesIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Generate with AI</span>
+          </button>
           <Link href={`/projects/${workspaceId}/forms/templates`}>
-            <Button variant="outline" className="gap-2">
-              <DocumentDuplicateIcon className="w-5 h-5" />
-              Templates
-            </Button>
+            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-colors">
+              <DocumentDuplicateIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Templates</span>
+            </button>
           </Link>
           <Link href={`/projects/${workspaceId}/forms/new`}>
-            <Button variant="outline" className="gap-2">
-              <PlusIcon className="w-5 h-5" />
-              Create Blank
-            </Button>
+            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-full transition-colors">
+              <PlusIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Create</span>
+            </button>
           </Link>
         </div>
-      </PageHeader>
+      </motion.div>
 
-      {/* Stats */}
-      {forms.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <StatCard
-            title="Total Forms"
-            value={forms.length}
-            description={`${forms.filter(f => f.status === 'published').length} published`}
-            icon={FileText}
-            variant="primary"
-          />
-          <StatCard
-            title="Total Views"
-            value={totalViews.toLocaleString()}
-            description="Across all forms"
-            icon={Eye}
-            variant="info"
-          />
-          <StatCard
-            title="Submissions"
-            value={totalSubmissions.toLocaleString()}
-            description="Total form fills"
-            icon={Users}
-            variant="success"
-          />
-          <StatCard
-            title="Avg. Conversion"
-            value={`${avgConversionRate.toFixed(1)}%`}
-            description="Views to submissions"
-            icon={ChartBarIcon}
-            variant="warning"
-          />
-        </div>
-      )}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        {/* Stats */}
+        {forms.length > 0 && (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          >
+            <StatCard icon={FileText} label="Total Forms" value={forms.length} color="bg-gradient-to-br from-blue-400 to-blue-600" />
+            <StatCard icon={Eye} label="Total Views" value={totalViews.toLocaleString()} color="bg-gradient-to-br from-cyan-400 to-cyan-600" />
+            <StatCard icon={Users} label="Submissions" value={totalSubmissions.toLocaleString()} color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
+            <StatCard icon={ChartBarIcon} label="Avg. Rate" value={`${avgConversionRate.toFixed(1)}%`} color="bg-gradient-to-br from-amber-400 to-amber-600" />
+          </motion.div>
+        )}
 
-      {/* Status Filter */}
-      <div className="flex gap-3 flex-wrap items-center">
-        <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
-        {(["all", "published", "draft", "archived"] as const).map((status) => {
-          const count = status === "all" ? forms.length : forms.filter((f) => f.status === status).length;
-          const isActive = selectedStatus === status;
-
-          return (
-            <Button
-              key={status}
-              onClick={() => setSelectedStatus(status)}
-              variant={isActive ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "capitalize gap-2 transition-all",
-                !isActive && "hover:border-primary"
-              )}
-            >
-              {status}
-              <Badge
-                variant={isActive ? "secondary" : "outline"}
-                className="ml-1 px-1.5 py-0 min-w-[20px] justify-center"
-              >
-                {count}
-              </Badge>
-            </Button>
-          );
-        })}
-      </div>
-
-      {/* Forms Grid */}
-      {isLoading ? (
-        <Card className="flex items-center justify-center py-16">
-          <div className="text-center">
-            <ArrowPathIcon className="w-12 h-12 animate-spin text-primary mx-auto mb-3" />
-            <p className="text-muted-foreground">Loading forms...</p>
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-zinc-500 mr-2">Filter:</span>
+          <div className="inline-flex p-1 rounded-full bg-zinc-100 dark:bg-zinc-800/50">
+            {(["all", "published", "draft", "archived"] as const).map((status) => {
+              const count = status === "all" ? forms.length : forms.filter((f) => f.status === status).length;
+              return (
+                <button
+                  key={status}
+                  onClick={() => setSelectedStatus(status)}
+                  className={cn(
+                    "px-4 py-1.5 text-sm font-medium rounded-full transition-all capitalize flex items-center gap-2",
+                    selectedStatus === status
+                      ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  )}
+                >
+                  {status}
+                  <span className={cn(
+                    "px-1.5 py-0.5 text-xs rounded-full",
+                    selectedStatus === status
+                      ? "bg-zinc-100 dark:bg-zinc-600 text-zinc-600 dark:text-zinc-300"
+                      : "bg-zinc-200 dark:bg-zinc-700 text-zinc-500"
+                  )}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </Card>
-      ) : filteredForms.length === 0 ? (
-        <Card className="border-2 border-dashed">
-          <EmptyState
-            icon={DocumentTextIcon}
-            title={selectedStatus === "all" ? "No forms yet" : `No ${selectedStatus} forms`}
-            description={
-              selectedStatus === "all"
+        </div>
+
+        {/* Forms Grid */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <div className="w-10 h-10 border-2 border-zinc-200 dark:border-zinc-700 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm text-zinc-500">Loading forms...</p>
+            </div>
+          </div>
+        ) : filteredForms.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+              <DocumentTextIcon className="w-8 h-8 text-zinc-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+              {selectedStatus === "all" ? "No forms yet" : `No ${selectedStatus} forms`}
+            </h3>
+            <p className="text-sm text-zinc-500 max-w-md mb-6">
+              {selectedStatus === "all"
                 ? "Get started by creating your first form from a template or build one from scratch"
-                : `Create a new form to see it here`
-            }
-            action={{
-              label: selectedStatus === "all" ? "Use a Template" : "Create Form",
-              onClick: () => selectedStatus === "all" ? setShowTemplates(true) : router.push(`/projects/${workspaceId}/forms/new`)
-            }}
-          />
-          {selectedStatus === "all" && (
-            <div className="flex justify-center pb-8 gap-3">
-              <Button
-                variant="outline"
+                : "Create a new form to see it here"}
+            </p>
+            <div className="flex gap-3">
+              <button
                 onClick={() => setShowTemplates(true)}
-                className="gap-2"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-colors"
               >
-                <SparklesIcon className="w-5 h-5" />
+                <SparklesIcon className="w-4 h-4" />
                 Use a Template
-              </Button>
+              </button>
               <Link href={`/projects/${workspaceId}/forms/new`}>
-                <Button className="gap-2">
-                  <PlusIcon className="w-5 h-5" />
+                <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-full transition-colors">
+                  <PlusIcon className="w-4 h-4" />
                   Create Blank Form
-                </Button>
+                </button>
               </Link>
             </div>
-          )}
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredForms.map((form, index) => (
-            <motion.div
-              key={form._id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Card className="premium-card group relative premium-hover overflow-hidden h-full flex flex-col">
-                {/* Status Badge */}
-                <div className="absolute top-4 right-4 z-10">
-                  <Badge
-                    variant={form.status === "published" ? "success" : form.status === "draft" ? "warning" : "secondary"}
-                    className="capitalize shadow-sm"
-                  >
-                    {form.status === "published" && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
-                    {form.status}
-                  </Badge>
-                </div>
-
-                <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="block p-6 flex-1">
-                  {/* Header */}
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold text-foreground line-clamp-1 mb-1 pr-20">
-                      {form.name}
-                    </h3>
-                    {form.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">{form.description}</p>
-                    )}
-                  </div>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    <div className="bg-muted/50 rounded-lg p-3 text-center hover:bg-muted transition-colors">
-                      <EyeIcon className="w-4 h-4 text-info mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">Views</p>
-                      <p className="text-lg font-bold text-foreground">{form.stats.views.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-3 text-center hover:bg-muted transition-colors">
-                      <CheckCircleIcon className="w-4 h-4 text-success mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">Submits</p>
-                      <p className="text-lg font-bold text-foreground">
-                        {form.stats.submissions.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-3 text-center hover:bg-muted transition-colors">
-                      <ChartBarIcon className="w-4 h-4 text-warning mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">Rate</p>
-                      <p className="text-lg font-bold text-foreground">
-                        {form.stats.conversionRate.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Meta Info */}
-                  <div className="flex items-center gap-2 text-xs">
-                    <Badge variant="outline" className="font-normal">
-                      {form.fields.length} field{form.fields.length !== 1 ? "s" : ""}
-                    </Badge>
-                    <Badge variant="outline" className="font-normal">
-                      {form.formType === "multi_step" ? "Multi-step" : "Single-step"}
-                    </Badge>
-                  </div>
-                </Link>
-
-                {/* Actions */}
-                <div className="border-t bg-muted/30 px-4 py-3 flex gap-2">
-                  <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="flex-1">
-                    <Button size="sm" className="w-full gap-1.5">
-                      <PencilIcon className="w-4 h-4" />
-                      Edit
-                    </Button>
-                  </Link>
-                  <Link
-                    href={`/projects/${workspaceId}/forms/${form._id}/submissions`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button size="sm" variant="outline" title="Submissions">
-                      <ClipboardDocumentListIcon className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                  {form.status === "published" && (
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"}/forms/${form._id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button size="sm" variant="outline" title="View Public Form">
-                        <EyeIcon className="w-4 h-4" />
-                      </Button>
-                    </a>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => handleDelete(form._id, e)}
-                    title="Delete"
-                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      )}
+          </motion.div>
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {filteredForms.map((form) => (
+              <FormCard key={form._id} form={form} workspaceId={workspaceId} onDelete={handleDelete} />
+            ))}
+          </motion.div>
+        )}
+      </div>
 
       {/* Template Modal */}
       <AnimatePresence>
@@ -604,82 +589,63 @@ export default function FormsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => !creatingFromTemplate && setShowTemplates(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-background rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border"
+              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="p-6 border-b bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-primary/10">
-                      <SparklesIcon className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-foreground">Choose a Template</h2>
-                      <p className="text-muted-foreground text-sm mt-0.5">
-                        Start with a pre-built template and customize it to your needs
-                      </p>
-                    </div>
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-600 flex items-center justify-center">
+                    <SparklesIcon className="w-5 h-5 text-white" />
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowTemplates(false)}
-                    disabled={creatingFromTemplate}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </Button>
+                  <div>
+                    <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Choose a Template</h2>
+                    <p className="text-sm text-zinc-500">Start with a pre-built template</p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => setShowTemplates(false)}
+                  disabled={creatingFromTemplate}
+                  className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
               </div>
 
               {/* Templates Grid */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {FORM_TEMPLATES.map((template) => {
                     const Icon = template.icon;
                     return (
-                      <Card
+                      <motion.div
                         key={template.id}
+                        whileHover={{ scale: 1.02 }}
                         className={cn(
-                          "cursor-pointer group hover:border-primary/50 transition-all",
+                          "p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 transition-all",
                           creatingFromTemplate && "opacity-50 cursor-not-allowed"
                         )}
                         onClick={() => !creatingFromTemplate && createFromTemplate(template)}
                       >
-                        <div className="p-6">
-                          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110", getTemplateColor(template.color))}>
-                            <Icon className="w-6 h-6 text-white" />
-                          </div>
-                          <h3 className="font-bold text-foreground mb-2 group-hover:text-primary transition-colors">{template.name}</h3>
-                          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{template.description}</p>
-                          <Badge variant="outline" className="font-normal">
-                            {template.fields.length} fields included
-                          </Badge>
+                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br", template.color)}>
+                          <Icon className="w-6 h-6 text-white" />
                         </div>
-                      </Card>
+                        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{template.name}</h3>
+                        <p className="text-sm text-zinc-500 mb-3 line-clamp-2">{template.description}</p>
+                        <span className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                          {template.fields.length} fields
+                        </span>
+                      </motion.div>
                     );
                   })}
                 </div>
-
-                {creatingFromTemplate && (
-                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
-                    <Card className="p-6">
-                      <div className="flex items-center gap-3">
-                        <ArrowPathIcon className="w-5 h-5 animate-spin text-primary" />
-                        <p className="text-foreground font-medium">Creating form from template...</p>
-                      </div>
-                    </Card>
-                  </div>
-                )}
               </div>
             </motion.div>
           </motion.div>
@@ -693,27 +659,25 @@ export default function FormsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => !isGeneratingAI && setShowAIGenerator(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-background rounded-2xl shadow-2xl max-w-2xl w-full border"
+              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-xl w-full"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="p-6 border-b bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
                     <SparklesIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-foreground">Generate Form with AI</h2>
-                    <p className="text-muted-foreground text-sm mt-0.5">
-                      Powered by Gemini 2.5 Pro - describe your form and watch the magic ✨
-                    </p>
+                    <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Generate with AI</h2>
+                    <p className="text-sm text-zinc-500">Powered by Gemini 2.5 Pro ✨</p>
                   </div>
                 </div>
               </div>
@@ -721,30 +685,30 @@ export default function FormsPage() {
               {/* Modal Content */}
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Describe your form goal
                   </label>
                   <textarea
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Example: Lead capture form for a B2B SaaS company selling to enterprise HR teams. Should qualify leads by company size and use case."
-                    className="w-full h-32 px-4 py-3 rounded-xl border bg-background text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-none"
+                    placeholder="Example: Lead capture form for a B2B SaaS company selling to enterprise HR teams..."
+                    className="w-full h-32 px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
                     disabled={isGeneratingAI}
                   />
                 </div>
 
-                {/* Suggested prompts */}
+                {/* Suggestions */}
                 <div className="flex flex-wrap gap-2">
                   {[
-                    "Lead capture for SaaS product",
-                    "Demo request form for enterprise",
-                    "Newsletter signup with interests",
+                    "Lead capture for SaaS",
+                    "Demo request form",
+                    "Newsletter signup",
                     "Customer feedback survey",
                   ].map((suggestion) => (
                     <button
                       key={suggestion}
                       onClick={() => setAiPrompt(suggestion)}
-                      className="px-3 py-1.5 text-sm rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                      className="px-3 py-1.5 text-sm rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
                       disabled={isGeneratingAI}
                     >
                       {suggestion}
@@ -752,30 +716,28 @@ export default function FormsPage() {
                   ))}
                 </div>
 
-                {/* AI Reasoning Display */}
+                {/* AI Reasoning */}
                 {aiReasoning && (
-                  <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                    <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">
-                      🧠 AI Reasoning
-                    </p>
-                    <p className="text-sm text-muted-foreground">{aiReasoning}</p>
+                  <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+                    <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">🧠 AI Reasoning</p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">{aiReasoning}</p>
                   </div>
                 )}
               </div>
 
               {/* Modal Footer */}
-              <div className="p-6 border-t bg-muted/30 flex justify-end gap-3">
-                <Button
-                  variant="outline"
+              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3">
+                <button
                   onClick={() => setShowAIGenerator(false)}
                   disabled={isGeneratingAI}
+                  className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
                 >
                   Cancel
-                </Button>
-                <Button
+                </button>
+                <button
                   onClick={generateWithAI}
                   disabled={isGeneratingAI || !aiPrompt.trim()}
-                  className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                  className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-full transition-all disabled:opacity-50"
                 >
                   {isGeneratingAI ? (
                     <>
@@ -788,7 +750,7 @@ export default function FormsPage() {
                       Generate Form
                     </>
                   )}
-                </Button>
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -797,6 +759,3 @@ export default function FormsPage() {
     </div>
   );
 }
-
-// Missing icon import
-import { EnvelopeIcon } from "@heroicons/react/24/outline";

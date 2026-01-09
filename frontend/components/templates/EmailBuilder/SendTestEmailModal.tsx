@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { XMarkIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { Send } from "lucide-react";
 import { useEmailTemplateStore } from "@/store/useEmailTemplateStore";
-
-// ============================================
-// TYPES
-// ============================================
+import { cn } from "@/lib/utils";
 
 interface SendTestEmailModalProps {
     isOpen: boolean;
@@ -16,10 +14,6 @@ interface SendTestEmailModalProps {
     templateId: string;
     onGetHtml: () => Promise<string>;
 }
-
-// ============================================
-// COMPONENT
-// ============================================
 
 export default function SendTestEmailModal({
     isOpen,
@@ -40,13 +34,8 @@ export default function SendTestEmailModal({
 
         setIsSending(true);
         try {
-            // Get HTML from editor
             const html = await onGetHtml();
-
-            // Send test email
             await sendTestEmail(workspaceId, templateId, email, html);
-
-            // Close modal
             onClose();
             setEmail("");
         } catch (error) {
@@ -59,93 +48,87 @@ export default function SendTestEmailModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-            {/* Modal */}
+        <AnimatePresence>
             <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="relative w-full max-w-md bg-card border border-border rounded-xl shadow-2xl mx-4 z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                onClick={onClose}
             >
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-border">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-[#9ACD32]/10 flex items-center justify-center">
-                            <PaperAirplaneIcon className="w-5 h-5 text-[#9ACD32]" />
+                <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl mx-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-5 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-3">
+                            <Send className="w-5 h-5 text-emerald-500" />
+                            <div>
+                                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Send Test Email</h2>
+                                <p className="text-xs text-zinc-500">Preview how your email looks</p>
+                            </div>
                         </div>
+                        <button onClick={onClose} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                            <XMarkIcon className="w-5 h-5 text-zinc-500" />
+                        </button>
+                    </div>
+
+                    {/* Body */}
+                    <div className="p-5 space-y-4">
                         <div>
-                            <h2 className="text-lg font-semibold text-foreground">Send Test Email</h2>
-                            <p className="text-sm text-muted-foreground">
-                                Preview how your email looks in an inbox
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                Recipient Email
+                            </label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="you@example.com"
+                                className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                autoFocus
+                                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                            />
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50">
+                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                                <strong>Note:</strong> Variables like <code className="px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-xs">{"{{firstName}}"}</code> will be replaced with sample data.
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-muted rounded-lg transition-colors"
-                    >
-                        <XMarkIcon className="w-5 h-5" />
-                    </button>
-                </div>
 
-                {/* Body */}
-                <div className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                            Recipient Email Address
-                        </label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="you@example.com"
-                            className="w-full px-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/20 focus:border-[#9ACD32]"
-                            autoFocus
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    handleSend();
-                                }
-                            }}
-                        />
+                    {/* Footer */}
+                    <div className="flex items-center justify-end gap-3 p-5 border-t border-zinc-100 dark:border-zinc-800">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleSend}
+                            disabled={isSending || !email}
+                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-all disabled:opacity-50"
+                        >
+                            {isSending ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Sending...
+                                </>
+                            ) : (
+                                <>
+                                    <Send className="w-4 h-4" />
+                                    Send Test
+                                </>
+                            )}
+                        </button>
                     </div>
-
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                        <p className="text-sm text-blue-900 dark:text-blue-200">
-                            <strong>Note:</strong> Variables like <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-xs">{"{" + "{firstName}}"}</code> will be replaced with sample data (e.g., "John").
-                        </p>
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-end gap-3 p-6 border-t border-border">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSend}
-                        disabled={isSending || !email}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSending ? (
-                            <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Sending...
-                            </>
-                        ) : (
-                            <>
-                                <PaperAirplaneIcon className="w-4 h-4" />
-                                Send Test Email
-                            </>
-                        )}
-                    </button>
-                </div>
+                </motion.div>
             </motion.div>
-        </div>
+        </AnimatePresence>
     );
 }

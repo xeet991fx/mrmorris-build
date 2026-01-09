@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     PlusIcon,
     BoltIcon,
@@ -10,14 +10,14 @@ import {
     PauseIcon,
     TrashIcon,
     MagnifyingGlassIcon,
-    FunnelIcon,
     QuestionMarkCircleIcon,
     DocumentDuplicateIcon,
     SparklesIcon,
     XMarkIcon,
+    ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
-import { Workflow, WorkflowStatus, STATUS_COLORS } from "@/lib/workflow/types";
+import { Workflow, WorkflowStatus } from "@/lib/workflow/types";
 import { instantiateTemplate, WorkflowTemplate } from "@/lib/workflow/templates";
 import { cn } from "@/lib/utils";
 import TemplateSelector from "@/components/workflows/TemplateSelector";
@@ -26,24 +26,16 @@ import { AutomationSuggestionsCard } from "@/components/workflows/AutomationSugg
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
 
-// Status badge component
-function StatusBadge({ status }: { status: WorkflowStatus }) {
-    const colors: Record<WorkflowStatus, string> = {
-        draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-        active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-        paused: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-        archived: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    };
+// Status indicator colors
+const STATUS_COLORS: Record<WorkflowStatus, string> = {
+    draft: "bg-zinc-400",
+    active: "bg-emerald-500",
+    paused: "bg-amber-500",
+    archived: "bg-zinc-300",
+};
 
-    return (
-        <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium capitalize", colors[status])}>
-            {status}
-        </span>
-    );
-}
-
-// Workflow card component
-function WorkflowCard({
+// Workflow row component
+function WorkflowRow({
     workflow,
     onEdit,
     onActivate,
@@ -59,124 +51,87 @@ function WorkflowCard({
     onDelete: () => void;
 }) {
     const triggerStep = workflow.steps.find((s) => s.type === "trigger");
-    const actionCount = workflow.steps.filter((s) => s.type === "action").length;
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 hover:shadow-lg transition-all cursor-pointer"
+            className="group flex items-center gap-4 py-4 border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors -mx-4 px-4 cursor-pointer"
             onClick={onEdit}
         >
-            {/* Header */}
-            <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                        <BoltIcon className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                            {workflow.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground capitalize">
-                            {workflow.triggerEntityType}-based workflow
-                        </p>
-                    </div>
-                </div>
-                <StatusBadge status={workflow.status} />
-            </div>
+            {/* Status indicator */}
+            <div className={cn("w-2 h-2 rounded-full flex-shrink-0", STATUS_COLORS[workflow.status])} />
 
-            {/* Description */}
-            {workflow.description && (
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {workflow.description}
-                </p>
-            )}
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                        {workflow.name}
+                    </p>
+                    <span className="text-xs text-zinc-400 capitalize">{workflow.status}</span>
+                </div>
+                <div className="flex items-center gap-4 mt-1">
+                    {triggerStep && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                            Triggers on: {triggerStep.config.triggerType?.replace(/_/g, " ")}
+                        </p>
+                    )}
+                </div>
+            </div>
 
             {/* Stats */}
-            <div className="flex items-center gap-4 mb-4 text-sm">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <span className="font-medium text-foreground">{workflow.steps.length}</span>
-                    <span>steps</span>
+            <div className="flex items-center gap-6 text-xs text-zinc-500">
+                <div className="text-center">
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">{workflow.steps.length}</p>
+                    <p>steps</p>
                 </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <span className="font-medium text-foreground">{workflow.stats.totalEnrolled}</span>
-                    <span>enrolled</span>
+                <div className="text-center">
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">{workflow.stats.totalEnrolled}</p>
+                    <p>enrolled</p>
                 </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <span className="font-medium text-foreground">{workflow.stats.currentlyActive}</span>
-                    <span>active</span>
+                <div className="text-center">
+                    <p className="font-semibold text-emerald-500">{workflow.stats.currentlyActive}</p>
+                    <p>active</p>
                 </div>
             </div>
 
-            {/* Trigger info */}
-            {triggerStep && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-2 py-1.5 mb-4">
-                    <span className="text-violet-500">⚡</span>
-                    <span>Triggers when: {triggerStep.config.triggerType?.replace(/_/g, " ")}</span>
-                </div>
-            )}
-
             {/* Actions */}
-            <div
-                className="flex items-center gap-2 pt-3 border-t border-border"
-                onClick={(e) => e.stopPropagation()}
-            >
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                 {workflow.status === "active" ? (
                     <button
                         onClick={onPause}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+                        className="p-1.5 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                        title="Pause"
                     >
                         <PauseIcon className="w-4 h-4" />
-                        Pause
                     </button>
                 ) : workflow.status === "draft" || workflow.status === "paused" ? (
                     <button
                         onClick={onActivate}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                        className="p-1.5 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                        title="Activate"
                     >
                         <PlayIcon className="w-4 h-4" />
-                        Activate
                     </button>
                 ) : null}
                 <button
                     onClick={onClone}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                    title="Clone workflow"
+                    className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="Clone"
                 >
                     <DocumentDuplicateIcon className="w-4 h-4" />
                 </button>
                 <button
                     onClick={onDelete}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ml-auto"
+                    className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    title="Delete"
                 >
                     <TrashIcon className="w-4 h-4" />
                 </button>
             </div>
-        </motion.div>
-    );
-}
 
-// Empty state
-function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
-    return (
-        <div className="flex flex-col items-center justify-center py-16 px-4">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center mb-6">
-                <BoltIcon className="w-10 h-10 text-violet-500" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">No workflows yet</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6">
-                Create automated workflows to nurture leads, follow up on deals, and save time on repetitive
-                tasks.
-            </p>
-            <button
-                onClick={onCreateNew}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
-            >
-                <PlusIcon className="w-5 h-5" />
-                Create Your First Workflow
-            </button>
-        </div>
+            <ChevronRightIcon className="w-4 h-4 text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+        </motion.div>
     );
 }
 
@@ -217,9 +172,7 @@ export default function WorkflowsPage() {
         }
     }, [workspaceId, fetchWorkflows]);
 
-    const handleCreateNew = () => {
-        setShowTemplateSelector(true);
-    };
+    const handleCreateNew = () => setShowTemplateSelector(true);
 
     const handleCreateBlank = async () => {
         setIsCreating(true);
@@ -230,7 +183,6 @@ export default function WorkflowsPage() {
             steps: [],
         });
         setIsCreating(false);
-
         if (workflow) {
             router.push(`/projects/${workspaceId}/workflows/${workflow._id}`);
         }
@@ -239,7 +191,6 @@ export default function WorkflowsPage() {
     const handleSelectTemplate = async (template: WorkflowTemplate) => {
         setIsCreating(true);
         const instantiated = instantiateTemplate(template);
-
         const workflow = await createWorkflow(workspaceId, {
             name: instantiated.name,
             description: instantiated.description,
@@ -247,7 +198,6 @@ export default function WorkflowsPage() {
             steps: instantiated.steps,
         });
         setIsCreating(false);
-
         if (workflow) {
             router.push(`/projects/${workspaceId}/workflows/${workflow._id}`);
         }
@@ -280,7 +230,6 @@ export default function WorkflowsPage() {
         await cloneWorkflow(workspaceId, workflowId);
     };
 
-    // Filter workflows
     const filteredWorkflows = workflows.filter((w) => {
         const matchesSearch =
             searchQuery === "" ||
@@ -290,8 +239,13 @@ export default function WorkflowsPage() {
         return matchesSearch && matchesStatus;
     });
 
+    // Stats
+    const activeCount = workflows.filter(w => w.status === "active").length;
+    const draftCount = workflows.filter(w => w.status === "draft").length;
+    const pausedCount = workflows.filter(w => w.status === "paused").length;
+
     return (
-        <div className="min-h-screen bg-card/95">
+        <div className="h-full overflow-y-auto">
             {/* Template Selector Modal */}
             <TemplateSelector
                 isOpen={showTemplateSelector}
@@ -300,133 +254,170 @@ export default function WorkflowsPage() {
                 onCreateBlank={handleCreateBlank}
             />
 
-            {/* Header */}
-            <div className="px-6 py-3 border-b border-border flex items-center justify-between sticky top-0 z-20 bg-background/95 backdrop-blur-sm">
+            {/* Hero Section */}
+            <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-4 sm:pb-6">
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center gap-3"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
                 >
-                    <h1 className="text-lg font-semibold text-foreground">Workflows</h1>
-                    <p className="text-xs text-muted-foreground">
-                        Automate your sales process
-                    </p>
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                            Workflows
+                        </h1>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                            Automate your sales and marketing processes
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                            onClick={() => router.push(`/projects/${workspaceId}/workflows/guide`)}
+                            className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                        >
+                            <QuestionMarkCircleIcon className="w-4 h-4" />
+                            Guide
+                        </button>
+                        <button
+                            onClick={() => setShowAISidebar(true)}
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-full transition-colors"
+                        >
+                            <SparklesIcon className="w-4 h-4" />
+                            <span className="hidden sm:inline">AI Suggestions</span>
+                        </button>
+                        <button
+                            onClick={handleCreateNew}
+                            disabled={isCreating}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm disabled:opacity-50"
+                        >
+                            {isCreating ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span className="hidden sm:inline">Creating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <PlusIcon className="w-4 h-4" />
+                                    <span className="hidden sm:inline">New Workflow</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </motion.div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => router.push(`/projects/${workspaceId}/workflows/guide`)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-foreground font-medium hover:bg-muted transition-all"
-                    >
-                        <QuestionMarkCircleIcon className="w-5 h-5" />
-                        Help & Guide
-                    </button>
-                    <button
-                        onClick={() => setShowAISidebar(true)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500 text-purple-500 font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all"
-                    >
-                        <SparklesIcon className="w-5 h-5" />
-                        AI Suggestions
-                    </button>
-                    <button
-                        onClick={handleCreateNew}
-                        disabled={isCreating}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all disabled:opacity-50"
-                    >
-                        {isCreating ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
-                                Creating...
-                            </>
-                        ) : (
-                            <>
-                                <PlusIcon className="w-5 h-5" />
-                                New Workflow
-                            </>
-                        )}
-                    </button>
-                </div>
+
+                {/* Stats Row */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="mt-6 sm:mt-8 grid grid-cols-2 sm:flex sm:items-center gap-4 sm:gap-8"
+                >
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{workflows.length}</span>
+                        <span className="text-sm text-zinc-500">total</span>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-2xl font-bold text-emerald-500">{activeCount}</span>
+                        <span className="text-sm text-zinc-500">active</span>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-zinc-400" />
+                        <span className="text-2xl font-bold text-zinc-500">{draftCount}</span>
+                        <span className="text-sm text-zinc-500">draft</span>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span className="text-2xl font-bold text-amber-500">{pausedCount}</span>
+                        <span className="text-sm text-zinc-500">paused</span>
+                    </div>
+                </motion.div>
             </div>
 
-            {/* Filters */}
-            <div className="max-w-7xl mx-auto px-6 py-4">
-                <div className="flex items-center gap-4">
+            {/* Divider */}
+            <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
+
+            {/* Search & Filter */}
+            <div className="px-4 sm:px-6 lg:px-8 py-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4"
+                >
                     {/* Search */}
-                    <div className="relative flex-1 max-w-md">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <div className="relative flex-1 max-w-sm">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                         <input
                             type="text"
                             placeholder="Search workflows..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
+                            className="w-full pl-10 pr-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-0 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                         />
                     </div>
 
-                    {/* Status Filter */}
+                    {/* Filter Pills */}
                     <div className="flex items-center gap-2">
-                        <FunnelIcon className="w-4 h-4 text-muted-foreground" />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as WorkflowStatus | "all")}
-                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32] focus:border-[#9ACD32] transition-all"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="active">Active</option>
-                            <option value="paused">Paused</option>
-                            <option value="archived">Archived</option>
-                        </select>
+                        {(["all", "active", "draft", "paused", "archived"] as const).map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={cn(
+                                    "px-3 py-1.5 text-sm font-medium rounded-full transition-all",
+                                    statusFilter === status
+                                        ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                                )}
+                            >
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </button>
+                        ))}
                     </div>
-                </div>
+                </motion.div>
             </div>
 
-            {/* Content - Workflow Cards */}
-            <div className="max-w-7xl mx-auto px-6 pb-8">
+            {/* Workflow List */}
+            <div className="px-8 pb-8">
                 {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-4 py-8">
                         {[1, 2, 3].map((i) => (
-                            <div
-                                key={i}
-                                className="h-56 rounded-xl bg-card border border-border animate-pulse"
-                            />
+                            <div key={i} className="h-16 bg-zinc-100 dark:bg-zinc-800 rounded-lg animate-pulse" />
                         ))}
                     </div>
                 ) : filteredWorkflows.length === 0 ? (
                     workflows.length === 0 ? (
-                        <TemplateGallery
-                            title="Start Automating"
-                            description="Choose a template to get started quickly or build from scratch."
-                            onCreateBlank={handleCreateBlank}
-                            onSelect={(id) => {
-                                // Find template and instantiate
-                                // In a real app we'd have a look up
-                                const template = [
-                                    { id: "nurture", title: "Nurture Sequence", description: "Send a series of emails to warm up leads.", icon: "🌱", tags: ["Popular"] },
-                                    { id: "onboarding", title: "Onboarding Flow", description: "Welcome new users and guide them to activation.", icon: "👋" },
-                                    { id: "reengagement", title: "Re-engagement", description: "Win back inactive users with special offers.", icon: "🎣" }
-                                ].find(t => t.id === id);
-
-                                if (template) {
-                                    // Mock template instantiation for now as we don't have the full template list imported here yet
-                                    // In real impl, we'd import { WORKFLOW_TEMPLATES }
-                                    handleCreateBlank();
-                                }
-                            }}
-                            templates={[
-                                { id: "nurture", title: "Nurture Sequence", description: "Send a series of emails to warm up leads.", icon: "🌱", tags: ["Popular"] },
-                                { id: "onboarding", title: "Onboarding Flow", description: "Welcome new users and guide them to activation.", icon: "👋" },
-                                { id: "reengagement", title: "Re-engagement", description: "Win back inactive users with special offers.", icon: "🎣" }
-                            ]}
-                        />
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="text-center py-16"
+                        >
+                            <BoltIcon className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-4" />
+                            <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">No workflows yet</h3>
+                            <p className="text-sm text-zinc-500 mb-6">Create your first workflow to automate your processes</p>
+                            <button
+                                onClick={handleCreateNew}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                                Create Workflow
+                            </button>
+                        </motion.div>
                     ) : (
-                        <div className="text-center py-12">
-                            <p className="text-muted-foreground">No workflows match your search.</p>
+                        <div className="text-center py-12 text-zinc-500">
+                            No workflows match your search.
                         </div>
                     )
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
                         {filteredWorkflows.map((workflow) => (
-                            <WorkflowCard
+                            <WorkflowRow
                                 key={workflow._id}
                                 workflow={workflow}
                                 onEdit={() => handleEdit(workflow._id)}
@@ -436,7 +427,7 @@ export default function WorkflowsPage() {
                                 onDelete={() => openDeleteConfirm(workflow._id)}
                             />
                         ))}
-                    </div>
+                    </motion.div>
                 )}
             </div>
 
@@ -456,39 +447,42 @@ export default function WorkflowsPage() {
             />
 
             {/* AI Suggestions Sidebar */}
-            {showAISidebar && (
-                <>
-                    {/* Overlay */}
-                    <div
-                        className="fixed inset-0 bg-black/50 z-40"
-                        onClick={() => setShowAISidebar(false)}
-                    />
-                    {/* Sidebar Panel */}
-                    <motion.div
-                        initial={{ x: "100%" }}
-                        animate={{ x: 0 }}
-                        exit={{ x: "100%" }}
-                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 h-full w-96 bg-card border-l border-border shadow-xl z-50 overflow-y-auto"
-                    >
-                        <div className="p-4">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <SparklesIcon className="w-5 h-5 text-purple-500" />
-                                    <h2 className="text-lg font-semibold text-foreground">AI Suggestions</h2>
+            <AnimatePresence>
+                {showAISidebar && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/30 z-40"
+                            onClick={() => setShowAISidebar(false)}
+                        />
+                        <motion.div
+                            initial={{ x: "100%" }}
+                            animate={{ x: 0 }}
+                            exit={{ x: "100%" }}
+                            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 z-50 overflow-y-auto"
+                        >
+                            <div className="p-6">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-2">
+                                        <SparklesIcon className="w-5 h-5 text-violet-500" />
+                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">AI Suggestions</h2>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowAISidebar(false)}
+                                        className="p-2 -m-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                                    >
+                                        <XMarkIcon className="w-5 h-5" />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setShowAISidebar(false)}
-                                    className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-                                >
-                                    <XMarkIcon className="w-5 h-5 text-muted-foreground" />
-                                </button>
+                                <AutomationSuggestionsCard workspaceId={workspaceId} />
                             </div>
-                            <AutomationSuggestionsCard workspaceId={workspaceId} />
-                        </div>
-                    </motion.div>
-                </>
-            )}
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

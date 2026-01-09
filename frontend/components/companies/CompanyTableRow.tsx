@@ -201,8 +201,8 @@ export default function CompanyTableRow({
       transition={transition}
       onClick={handleRowClick}
       className={cn(
-        "border-b border-border hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors cursor-pointer",
-        isSelected && "bg-muted/20"
+        "border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer",
+        isSelected && "bg-zinc-100/50 dark:bg-zinc-800/30"
       )}
     >
       {/* Checkbox */}
@@ -211,75 +211,66 @@ export default function CompanyTableRow({
           type="checkbox"
           checked={isSelected}
           onChange={() => toggleCompanySelection(company._id)}
-          className="w-4 h-4 rounded border-border bg-input text-black focus:ring-primary focus:ring-offset-0"
+          className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 checked:bg-emerald-500 checked:border-emerald-500 accent-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
         />
       </td>
 
       {/* Dynamic Columns */}
-      {orderedColumns.map((column) => (
+      {orderedColumns.map((column, index) => (
         <td
           key={column}
-          className="px-4 py-1 h-8 text-sm text-foreground border-r border-border"
+          className="px-4 py-1 h-8 text-sm text-zinc-700 dark:text-zinc-300 border-r border-zinc-200 dark:border-zinc-800 last:border-r-0"
         >
-          <EditableCompanyCell
-            company={company}
-            column={column}
-            value={getCellContent(column)}
-          />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0 truncate">
+              <EditableCompanyCell
+                company={company}
+                column={column}
+                value={getCellContent(column)}
+              />
+            </div>
+            {/* Actions menu in last column */}
+            {index === orderedColumns.length - 1 && (
+              <Menu as="div" className="relative flex-shrink-0" data-actions>
+                <Menu.Button className="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                  <EllipsisVerticalIcon className="w-4 h-4" />
+                </Menu.Button>
+
+                <Menu.Items className="absolute right-0 mt-1 w-36 origin-top-right bg-white dark:bg-zinc-900 rounded-lg shadow-lg ring-1 ring-zinc-200 dark:ring-zinc-800 overflow-hidden z-10">
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => onEdit(company)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
+                          active ? "bg-zinc-100 dark:bg-zinc-800" : ""
+                        )}
+                      >
+                        <PencilIcon className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => onDelete(company._id)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors text-red-600 dark:text-red-400",
+                          active ? "bg-red-50 dark:bg-red-900/20" : ""
+                        )}
+                      >
+                        <TrashIcon className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    )}
+                  </Menu.Item>
+                </Menu.Items>
+              </Menu>
+            )}
+          </div>
         </td>
       ))}
-
-      {/* Actions */}
-      <td className="px-4 py-1 h-8" data-actions>
-        <div className="flex items-center gap-1">
-          {/* Edit Button - Always visible */}
-          <button
-            onClick={() => onEdit(company)}
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Edit company"
-          >
-            <PencilIcon className="w-4 h-4" />
-          </button>
-
-          {/* More Actions Menu */}
-          <Menu as="div" className="relative inline-block text-left">
-            <Menu.Button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-              <EllipsisVerticalIcon className="w-4 h-4" />
-            </Menu.Button>
-
-            <Menu.Items className="absolute right-0 mt-1 w-36 origin-top-right bg-card border border-border rounded-lg shadow-xl overflow-hidden z-10">
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    onClick={() => onEdit(company)}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
-                      active ? "bg-muted text-foreground" : "text-foreground"
-                    )}
-                  >
-                    <PencilIcon className="w-3.5 h-3.5" />
-                    Edit
-                  </button>
-                )}
-              </Menu.Item>
-              <Menu.Item>
-                {({ active }) => (
-                  <button
-                    onClick={() => onDelete(company._id)}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
-                      active ? "bg-red-500/20 text-red-400" : "text-red-400"
-                    )}
-                  >
-                    <TrashIcon className="w-3.5 h-3.5" />
-                    Delete
-                  </button>
-                )}
-              </Menu.Item>
-            </Menu.Items>
-          </Menu>
-        </div>
-      </td>
     </motion.tr>
   );
 }

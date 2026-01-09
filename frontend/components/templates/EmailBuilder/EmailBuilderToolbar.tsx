@@ -8,13 +8,11 @@ import {
     PaperAirplaneIcon,
     Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
+import { Mail, Save } from "lucide-react";
 import { useEmailTemplateStore } from "@/store/useEmailTemplateStore";
 import DevicePreviewToggle from "./DevicePreviewToggle";
 import { EmailBuilderEditorRef } from "./EmailBuilderEditor";
-
-// ============================================
-// TYPES
-// ============================================
+import { cn } from "@/lib/utils";
 
 interface EmailBuilderToolbarProps {
     workspaceId: string;
@@ -24,10 +22,6 @@ interface EmailBuilderToolbarProps {
     onValidate: () => void;
     onSettings: () => void;
 }
-
-// ============================================
-// COMPONENT
-// ============================================
 
 export default function EmailBuilderToolbar({
     workspaceId,
@@ -40,7 +34,6 @@ export default function EmailBuilderToolbar({
     const router = useRouter();
     const { currentTemplate, isSaving, hasUnsavedChanges, saveTemplate } = useEmailTemplateStore();
 
-    // Handle save
     const handleSave = () => {
         editorRef.current?.exportHtml((data) => {
             const { design, html } = data;
@@ -51,7 +44,6 @@ export default function EmailBuilderToolbar({
         });
     };
 
-    // Handle exit
     const handleExit = () => {
         if (hasUnsavedChanges) {
             if (confirm("You have unsaved changes. Discard them and exit?")) {
@@ -62,9 +54,7 @@ export default function EmailBuilderToolbar({
         }
     };
 
-    // Handle keyboard shortcuts
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        // Ctrl+S or Cmd+S to save
         if ((e.ctrlKey || e.metaKey) && e.key === "s") {
             e.preventDefault();
             handleSave();
@@ -73,27 +63,33 @@ export default function EmailBuilderToolbar({
 
     return (
         <div
-            className="flex-shrink-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm"
+            className="flex-shrink-0 z-50 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800"
             onKeyDown={handleKeyDown}
             tabIndex={0}
         >
-            <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center justify-between px-4 py-3">
                 {/* Left: Back button and template name */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                     <button
                         onClick={handleExit}
-                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                        className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
                         title="Back to templates"
                     >
                         <ArrowLeftIcon className="w-5 h-5" />
                     </button>
-                    <div>
-                        <h1 className="text-lg font-semibold text-foreground">
-                            {currentTemplate?.name || "Untitled Template"}
-                        </h1>
-                        {hasUnsavedChanges && (
-                            <span className="text-xs text-orange-600">• Unsaved changes</span>
-                        )}
+                    <div className="flex items-center gap-2">
+                        <Mail className="w-5 h-5 text-violet-500" />
+                        <div>
+                            <h1 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                                {currentTemplate?.name || "Untitled Template"}
+                            </h1>
+                            {hasUnsavedChanges && (
+                                <span className="text-xs text-amber-500 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    Unsaved changes
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -101,39 +97,45 @@ export default function EmailBuilderToolbar({
                 <DevicePreviewToggle />
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={onSettings}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 rounded-full text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                         title="Template settings"
                     >
-                        <Cog6ToothIcon className="w-5 h-5" />
-                        <span className="hidden md:inline">Settings</span>
+                        <Cog6ToothIcon className="w-4 h-4" />
+                        <span className="hidden lg:inline">Settings</span>
                     </button>
 
                     <button
                         onClick={onValidate}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 rounded-full text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                         title="Validate links and images"
                     >
-                        <CheckCircleIcon className="w-5 h-5" />
-                        <span className="hidden md:inline">Validate</span>
+                        <CheckCircleIcon className="w-4 h-4" />
+                        <span className="hidden lg:inline">Validate</span>
                     </button>
 
                     <button
                         onClick={onSendTest}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 rounded-full text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                         title="Send test email"
                     >
-                        <PaperAirplaneIcon className="w-5 h-5" />
-                        <span className="hidden md:inline">Send Test</span>
+                        <PaperAirplaneIcon className="w-4 h-4" />
+                        <span className="hidden lg:inline">Test</span>
                     </button>
 
                     <button
                         onClick={handleSave}
                         disabled={isSaving || !hasUnsavedChanges}
-                        className="px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                            hasUnsavedChanges
+                                ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed"
+                        )}
                     >
+                        <Save className="w-4 h-4" />
                         {isSaving ? "Saving..." : "Save"}
                     </button>
                 </div>

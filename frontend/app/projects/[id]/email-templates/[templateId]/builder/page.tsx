@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
 import { useEmailTemplateStore } from "@/store/useEmailTemplateStore";
 import EmailBuilderEditor, {
     EmailBuilderEditorRef,
@@ -10,10 +11,7 @@ import EmailBuilderToolbar from "@/components/templates/EmailBuilder/EmailBuilde
 import SendTestEmailModal from "@/components/templates/EmailBuilder/SendTestEmailModal";
 import ValidationPanel from "@/components/templates/EmailBuilder/ValidationPanel";
 import TemplateSettingsModal from "@/components/templates/EmailBuilder/TemplateSettingsModal";
-
-// ============================================
-// MAIN BUILDER PAGE
-// ============================================
+import { Mail } from "lucide-react";
 
 export default function EmailBuilderPage() {
     const params = useParams();
@@ -27,14 +25,12 @@ export default function EmailBuilderPage() {
     const [showValidationPanel, setShowValidationPanel] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
 
-    // Load template on mount
     useEffect(() => {
         if (workspaceId && templateId) {
             loadTemplate(workspaceId, templateId);
         }
     }, [workspaceId, templateId, loadTemplate]);
 
-    // Warn user before leaving if there are unsaved changes
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
             if (hasUnsavedChanges) {
@@ -47,7 +43,6 @@ export default function EmailBuilderPage() {
         return () => window.removeEventListener("beforeunload", handleBeforeUnload);
     }, [hasUnsavedChanges]);
 
-    // Helper to get HTML from editor
     const getHtmlFromEditor = (): Promise<string> => {
         return new Promise((resolve) => {
             editorRef.current?.exportHtml((data) => {
@@ -58,17 +53,24 @@ export default function EmailBuilderPage() {
 
     if (isLoading) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#9ACD32] mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">Loading email builder...</p>
-                </div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-zinc-900">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-center"
+                >
+                    <div className="w-12 h-12 border-2 border-zinc-200 dark:border-zinc-700 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4" />
+                    <div className="flex items-center gap-2 justify-center text-zinc-500">
+                        <Mail className="w-4 h-4" />
+                        <p className="text-sm">Loading email builder...</p>
+                    </div>
+                </motion.div>
             </div>
         );
     }
 
     return (
-        <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-gray-900">
+        <div className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-zinc-900">
             {/* Toolbar */}
             <EmailBuilderToolbar
                 workspaceId={workspaceId}

@@ -2,36 +2,38 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     PlusIcon,
     CheckCircleIcon,
     ClockIcon,
     ExclamationTriangleIcon,
     MagnifyingGlassIcon,
-    FunnelIcon,
     TrashIcon,
     PencilIcon,
+    XMarkIcon,
+    CalendarDaysIcon,
+    FlagIcon,
 } from "@heroicons/react/24/outline";
-import { CheckCircleIcon as CheckCircleSolidIcon } from "@heroicons/react/24/solid";
+import { CheckIcon } from "@heroicons/react/24/solid";
 import { useTaskStore } from "@/store/useTaskStore";
-import { Task, CreateTaskData, UpdateTaskData } from "@/lib/api/task";
+import { Task, CreateTaskData } from "@/lib/api/task";
 import { cn } from "@/lib/utils";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
 import { TaskIntelligencePanel } from "@/components/tasks/TaskIntelligencePanel";
 
 // ============================================
-// TASK MODAL COMPONENT
+// SLIDE-OVER MODAL COMPONENT
 // ============================================
 
-interface TaskModalProps {
+interface TaskSlideOverProps {
     isOpen: boolean;
     onClose: () => void;
     task?: Task | null;
     workspaceId: string;
 }
 
-function TaskModal({ isOpen, onClose, task, workspaceId }: TaskModalProps) {
+function TaskSlideOver({ isOpen, onClose, task, workspaceId }: TaskSlideOverProps) {
     const { createTask, updateTask } = useTaskStore();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState<CreateTaskData>({
@@ -79,113 +81,165 @@ function TaskModal({ isOpen, onClose, task, workspaceId }: TaskModalProps) {
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl p-6"
-            >
-                <h2 className="text-xl font-bold text-foreground mb-4">
-                    {task ? "Edit Task" : "Create Task"}
-                </h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                            Title *
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-muted/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            placeholder="Enter task title..."
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
-                            Description
-                        </label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-muted/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                            placeholder="Add description..."
-                            rows={3}
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">
-                                Priority
-                            </label>
-                            <select
-                                value={formData.priority}
-                                onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                                className="w-full px-3 py-2 rounded-lg border border-border bg-muted/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                                <option value="urgent">Urgent</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">
-                                Due Date
-                            </label>
-                            <input
-                                type="date"
-                                value={formData.dueDate}
-                                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                                className="w-full px-3 py-2 rounded-lg border border-border bg-muted/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex gap-3 justify-end pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting || !formData.title.trim()}
-                            className="px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-colors disabled:opacity-50"
-                        >
-                            {isSubmitting ? "Saving..." : task ? "Update" : "Create"}
-                        </button>
-                    </div>
-                </form>
-            </motion.div>
-        </div>
+        <AnimatePresence>
+            {isOpen && (
+                <>
+                    {/* Backdrop */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="fixed inset-0 bg-black/30 z-40"
+                    />
+                    {/* Slide-over panel */}
+                    <motion.div
+                        initial={{ x: "100%" }}
+                        animate={{ x: 0 }}
+                        exit={{ x: "100%" }}
+                        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                        className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white dark:bg-zinc-900 z-50 shadow-2xl"
+                    >
+                        <form onSubmit={handleSubmit} className="h-full flex flex-col">
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
+                                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                                    {task ? "Edit Task" : "New Task"}
+                                </h2>
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="p-2 -m-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                                >
+                                    <XMarkIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Form Body */}
+                            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+                                {/* Title */}
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={formData.title}
+                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        className="w-full text-xl font-medium bg-transparent border-0 border-b-2 border-zinc-200 dark:border-zinc-700 focus:border-emerald-500 dark:focus:border-emerald-400 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-0 pb-2 transition-colors"
+                                        placeholder="Task title..."
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {/* Description */}
+                                <div>
+                                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-2 block">
+                                        Description
+                                    </label>
+                                    <textarea
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        className="w-full px-0 py-2 bg-transparent border-0 border-b border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 focus:outline-none focus:ring-0 focus:border-zinc-300 dark:focus:border-zinc-700 resize-none transition-colors"
+                                        placeholder="Add description..."
+                                        rows={3}
+                                    />
+                                </div>
+
+                                {/* Priority & Status */}
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-3 block">
+                                            Priority
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(["low", "medium", "high", "urgent"] as const).map((p) => (
+                                                <button
+                                                    key={p}
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, priority: p })}
+                                                    className={cn(
+                                                        "px-3 py-1.5 text-sm font-medium rounded-full transition-all",
+                                                        formData.priority === p
+                                                            ? p === "urgent" ? "bg-red-500 text-white"
+                                                                : p === "high" ? "bg-orange-500 text-white"
+                                                                    : p === "medium" ? "bg-blue-500 text-white"
+                                                                        : "bg-zinc-500 text-white"
+                                                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                    )}
+                                                >
+                                                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-3 block">
+                                            Status
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(["todo", "in_progress", "completed"] as const).map((s) => (
+                                                <button
+                                                    key={s}
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, status: s })}
+                                                    className={cn(
+                                                        "px-3 py-1.5 text-sm font-medium rounded-full transition-all",
+                                                        formData.status === s
+                                                            ? "bg-emerald-500 text-white"
+                                                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                    )}
+                                                >
+                                                    {s === "in_progress" ? "In Progress" : s === "todo" ? "To Do" : "Completed"}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Due Date */}
+                                <div>
+                                    <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-2 block">
+                                        Due Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.dueDate}
+                                        onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                                        className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 py-2.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting || !formData.title.trim()}
+                                    className="flex-1 py-2.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
+                                >
+                                    {isSubmitting ? "Saving..." : task ? "Update" : "Create"}
+                                </button>
+                            </div>
+                        </form>
+                    </motion.div>
+                </>
+            )}
+        </AnimatePresence>
     );
 }
 
 // ============================================
-// TASK CARD COMPONENT
+// TASK ROW COMPONENT
 // ============================================
 
-const PRIORITY_COLORS = {
-    low: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-    medium: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-    high: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-    urgent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-};
-
-const STATUS_ICONS = {
-    todo: ClockIcon,
-    in_progress: ClockIcon,
-    completed: CheckCircleSolidIcon,
-    cancelled: ExclamationTriangleIcon,
-};
-
-function TaskCard({
+function TaskRow({
     task,
     onComplete,
     onEdit,
@@ -198,71 +252,80 @@ function TaskCard({
 }) {
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "completed";
     const isCompleted = task.status === "completed";
-    const StatusIcon = STATUS_ICONS[task.status];
+
+    const priorityColors = {
+        low: "text-zinc-400",
+        medium: "text-blue-500",
+        high: "text-orange-500",
+        urgent: "text-red-500",
+    };
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className={cn(
-                "group bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-all",
-                isCompleted && "opacity-60"
+                "group flex items-center gap-4 py-4 border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors -mx-4 px-4 cursor-pointer",
+                isCompleted && "opacity-50"
             )}
+            onClick={onEdit}
         >
-            <div className="flex items-start gap-3">
+            {/* Checkbox */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onComplete();
+                }}
+                disabled={isCompleted}
+                className={cn(
+                    "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0",
+                    isCompleted
+                        ? "border-emerald-500 bg-emerald-500"
+                        : "border-zinc-300 dark:border-zinc-600 hover:border-emerald-500"
+                )}
+            >
+                {isCompleted && <CheckIcon className="w-3 h-3 text-white" />}
+            </button>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+                <p className={cn(
+                    "text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate",
+                    isCompleted && "line-through text-zinc-500 dark:text-zinc-500"
+                )}>
+                    {task.title}
+                </p>
+                {task.description && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                        {task.description}
+                    </p>
+                )}
+            </div>
+
+            {/* Priority indicator */}
+            <FlagIcon className={cn("w-4 h-4 flex-shrink-0", priorityColors[task.priority])} />
+
+            {/* Due date */}
+            {task.dueDate && (
+                <span className={cn(
+                    "text-xs flex-shrink-0",
+                    isOverdue ? "text-red-500" : "text-zinc-400"
+                )}>
+                    {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
-                    onClick={onComplete}
-                    disabled={isCompleted}
-                    className={cn(
-                        "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
-                        isCompleted
-                            ? "border-green-500 bg-green-500"
-                            : "border-muted-foreground hover:border-green-500"
-                    )}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete();
+                    }}
+                    className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"
                 >
-                    {isCompleted && <CheckCircleIcon className="w-3 h-3 text-white" />}
+                    <TrashIcon className="w-4 h-4" />
                 </button>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <h3 className={cn(
-                            "font-medium text-foreground truncate",
-                            isCompleted && "line-through"
-                        )}>
-                            {task.title}
-                        </h3>
-                        <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", PRIORITY_COLORS[task.priority])}>
-                            {task.priority}
-                        </span>
-                    </div>
-                    {task.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                            {task.description}
-                        </p>
-                    )}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        {task.dueDate && (
-                            <span className={cn("flex items-center gap-1", isOverdue && "text-red-500")}>
-                                <ClockIcon className="w-3 h-3" />
-                                {new Date(task.dueDate).toLocaleDateString()}
-                            </span>
-                        )}
-                        <span className="capitalize">{task.status.replace("_", " ")}</span>
-                    </div>
-                </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                        onClick={onEdit}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                        <PencilIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={onDelete}
-                        className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                        <TrashIcon className="w-4 h-4" />
-                    </button>
-                </div>
             </div>
         </motion.div>
     );
@@ -276,7 +339,6 @@ export default function TasksPage() {
     const params = useParams();
     const workspaceId = params.id as string;
 
-    // Track actions for AI insights
     const { track } = useInsightTracking({
         workspaceId,
         page: 'tasks',
@@ -299,7 +361,7 @@ export default function TasksPage() {
         setSearchQuery,
     } = useTaskStore();
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
 
     useEffect(() => {
@@ -311,20 +373,19 @@ export default function TasksPage() {
 
     const handleEdit = (task: Task) => {
         setEditingTask(task);
-        setIsModalOpen(true);
+        setIsSlideOverOpen(true);
     };
 
     const handleCreate = () => {
         setEditingTask(null);
-        setIsModalOpen(true);
+        setIsSlideOverOpen(true);
     };
 
     const handleClose = () => {
-        setIsModalOpen(false);
+        setIsSlideOverOpen(false);
         setEditingTask(null);
     };
 
-    // Filter tasks locally for search
     const filteredTasks = tasks.filter((task) => {
         if (!searchQuery) return true;
         return (
@@ -333,133 +394,151 @@ export default function TasksPage() {
         );
     });
 
+    // Group tasks by status for display
+    const todoTasks = filteredTasks.filter(t => t.status === 'todo');
+    const inProgressTasks = filteredTasks.filter(t => t.status === 'in_progress');
+    const completedTasks = filteredTasks.filter(t => t.status === 'completed');
+
     return (
-        <div className="min-h-screen bg-card/95">
-            <TaskModal
-                isOpen={isModalOpen}
+        <div className="h-full overflow-y-auto">
+            <TaskSlideOver
+                isOpen={isSlideOverOpen}
                 onClose={handleClose}
                 task={editingTask}
                 workspaceId={workspaceId}
             />
 
-            {/* Header */}
-            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10 bg-card">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-lg font-semibold text-foreground">Tasks</h1>
-                    <p className="text-xs text-muted-foreground">
-                        Manage your to-dos and follow-ups
-                    </p>
-                </div>
-                <button
-                    onClick={handleCreate}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+            {/* Hero Section */}
+            <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-4 sm:pb-6">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
                 >
-                    <PlusIcon className="w-5 h-5" />
-                    New Task
-                </button>
-            </div>
-
-            {/* Stats */}
-            {stats && (
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="bg-card border border-border rounded-xl p-4">
-                            <p className="text-2xl font-bold text-foreground">{stats.byStatus.todo || 0}</p>
-                            <p className="text-sm text-muted-foreground">To Do</p>
-                        </div>
-                        <div className="bg-card border border-border rounded-xl p-4">
-                            <p className="text-2xl font-bold text-blue-500">{stats.byStatus.in_progress || 0}</p>
-                            <p className="text-sm text-muted-foreground">In Progress</p>
-                        </div>
-                        <div className="bg-card border border-border rounded-xl p-4">
-                            <p className="text-2xl font-bold text-red-500">{stats.overdue || 0}</p>
-                            <p className="text-sm text-muted-foreground">Overdue</p>
-                        </div>
-                        <div className="bg-card border border-border rounded-xl p-4">
-                            <p className="text-2xl font-bold text-green-500">{stats.byStatus.completed || 0}</p>
-                            <p className="text-sm text-muted-foreground">Completed</p>
-                        </div>
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                            Tasks
+                        </h1>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                            Track and manage your work
+                        </p>
                     </div>
-                </div>
-            )}
+                    <button
+                        onClick={handleCreate}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm"
+                    >
+                        <PlusIcon className="w-4 h-4" />
+                        New Task
+                    </button>
+                </motion.div>
 
-            {/* AI Task Intelligence */}
-            <div className="max-w-7xl mx-auto px-6 py-4">
-                <TaskIntelligencePanel
-                    workspaceId={workspaceId}
-                    tasks={tasks}
-                    onTaskAction={(taskId, action) => {
-                        track(action, 'task', taskId);
-                        // Handle action execution
-                    }}
-                />
+                {/* Stats Row */}
+                {stats && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="mt-6 sm:mt-8 grid grid-cols-2 sm:flex sm:items-center gap-4 sm:gap-8"
+                    >
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{stats.byStatus.todo || 0}</span>
+                            <span className="text-sm text-zinc-500">to do</span>
+                        </div>
+                        <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-blue-500">{stats.byStatus.in_progress || 0}</span>
+                            <span className="text-sm text-zinc-500">in progress</span>
+                        </div>
+                        <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-red-500">{stats.overdue || 0}</span>
+                            <span className="text-sm text-zinc-500">overdue</span>
+                        </div>
+                        <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-emerald-500">{stats.byStatus.completed || 0}</span>
+                            <span className="text-sm text-zinc-500">completed</span>
+                        </div>
+                    </motion.div>
+                )}
             </div>
 
-            {/* Filters */}
-            <div className="max-w-7xl mx-auto px-6 py-2">
-                <div className="flex items-center gap-4">
-                    <div className="relative flex-1 max-w-md">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            {/* Divider */}
+            <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
+
+            {/* Search & Filter Bar */}
+            <div className="px-4 sm:px-6 lg:px-8 py-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4"
+                >
+                    {/* Search */}
+                    <div className="relative flex-1 max-w-sm">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                         <input
                             type="text"
                             placeholder="Search tasks..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full pl-10 pr-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-0 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <FunnelIcon className="w-4 h-4 text-muted-foreground" />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                            <option value="all">All Status</option>
-                            <option value="todo">To Do</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                        </select>
-                        <select
-                            value={priorityFilter}
-                            onChange={(e) => setPriorityFilter(e.target.value)}
-                            className="px-3 py-2 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                            <option value="all">All Priority</option>
-                            <option value="urgent">Urgent</option>
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                        </select>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 sm:pb-0">
+                        {(["all", "todo", "in_progress", "completed"] as const).map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={cn(
+                                    "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-full transition-all whitespace-nowrap",
+                                    statusFilter === status
+                                        ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 sm:bg-transparent dark:sm:bg-transparent"
+                                )}
+                            >
+                                {status === "all" ? "All" : status === "in_progress" ? "In Progress" : status === "todo" ? "To Do" : "Done"}
+                            </button>
+                        ))}
                     </div>
-                </div>
+                </motion.div>
             </div>
 
             {/* Task List */}
-            <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="px-8 pb-8">
                 {isLoading ? (
-                    <div className="space-y-3">
+                    <div className="space-y-4 py-8">
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-20 rounded-xl bg-card border border-border animate-pulse" />
+                            <div key={i} className="h-14 bg-zinc-100 dark:bg-zinc-800 rounded-lg animate-pulse" />
                         ))}
                     </div>
                 ) : filteredTasks.length === 0 ? (
-                    <div className="text-center py-16">
-                        <CheckCircleIcon className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">No tasks yet</h3>
-                        <p className="text-muted-foreground mb-4">Create your first task to get started</p>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-center py-16"
+                    >
+                        <CheckCircleIcon className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-4" />
+                        <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">No tasks</h3>
+                        <p className="text-sm text-zinc-500 mb-6">Create your first task to get started</p>
                         <button
                             onClick={handleCreate}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
                         >
-                            <PlusIcon className="w-5 h-5" />
-                            Create Task
+                            <PlusIcon className="w-4 h-4" />
+                            New Task
                         </button>
-                    </div>
+                    </motion.div>
                 ) : (
-                    <div className="space-y-3">
-                        {filteredTasks.map((task) => (
-                            <TaskCard
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        {filteredTasks.map((task, index) => (
+                            <TaskRow
                                 key={task._id}
                                 task={task}
                                 onComplete={() => completeTask(workspaceId, task._id)}
@@ -467,7 +546,7 @@ export default function TasksPage() {
                                 onDelete={() => deleteTask(workspaceId, task._id)}
                             />
                         ))}
-                    </div>
+                    </motion.div>
                 )}
             </div>
         </div>

@@ -133,15 +133,15 @@ export default function ContactTableRow({
           return (
             <span
               className={cn(
-                "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
                 contact.status === "customer" &&
-                "bg-green-500/10 text-green-400 border border-green-500/20",
+                "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
                 contact.status === "prospect" &&
-                "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+                "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
                 contact.status === "lead" &&
-                "bg-amber-500/10 text-amber-400 border border-amber-500/20",
+                "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
                 contact.status === "inactive" &&
-                "bg-muted text-muted-foreground border border-border"
+                "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
               )}
             >
               {contact.status || "lead"}
@@ -156,7 +156,7 @@ export default function ContactTableRow({
               showScore={true}
             />
           ) : (
-            <span className="text-xs text-gray-500">No score</span>
+            <span className="text-xs text-zinc-400">No score</span>
           );
         case "createdAt":
           return format(new Date(contact.createdAt), "MMM d, yyyy");
@@ -179,7 +179,7 @@ export default function ContactTableRow({
         return new Intl.NumberFormat().format(Number(customValue));
       case "select":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
             {customValue}
           </span>
         );
@@ -196,8 +196,8 @@ export default function ContactTableRow({
       transition={transition}
       onClick={handleRowClick}
       className={cn(
-        "border-b border-border hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors cursor-pointer",
-        isSelected && "bg-muted/20"
+        "border-b border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer",
+        isSelected && "bg-zinc-100/50 dark:bg-zinc-800/30"
       )}
     >
       {/* Checkbox */}
@@ -206,93 +206,96 @@ export default function ContactTableRow({
           type="checkbox"
           checked={isSelected}
           onChange={() => toggleContactSelection(contact._id)}
-          className="w-4 h-4 rounded border-border bg-input text-black focus:ring-primary focus:ring-offset-0"
+          className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 checked:bg-emerald-500 checked:border-emerald-500 accent-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
         />
       </td>
 
       {/* Dynamic Columns */}
-      {orderedColumns.map((column) => (
+      {orderedColumns.map((column, index) => (
         <td
           key={column}
-          className="px-4 py-1 h-8 text-sm text-foreground border-r border-border"
+          className="px-4 py-1 h-8 text-sm text-zinc-700 dark:text-zinc-300 border-r border-zinc-200 dark:border-zinc-800 last:border-r-0"
         >
-          <EditableCell
-            contact={contact}
-            column={column}
-            value={getCellContent(column)}
-          />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0 truncate">
+              <EditableCell
+                contact={contact}
+                column={column}
+                value={getCellContent(column)}
+              />
+            </div>
+            {/* Actions menu in last column */}
+            {index === orderedColumns.length - 1 && (
+              <Menu as="div" className="relative flex-shrink-0" data-actions>
+                <Menu.Button className="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                  <EllipsisVerticalIcon className="w-4 h-4" />
+                </Menu.Button>
+
+                <Menu.Items className="absolute right-0 mt-1 w-44 origin-top-right bg-white dark:bg-zinc-900 rounded-lg shadow-lg ring-1 ring-zinc-200 dark:ring-zinc-800 overflow-hidden z-10">
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => onEdit(contact)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
+                          active ? "bg-zinc-100 dark:bg-zinc-800" : ""
+                        )}
+                      >
+                        <PencilIcon className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => setShowWorkflowModal(true)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
+                          active ? "bg-zinc-100 dark:bg-zinc-800" : ""
+                        )}
+                      >
+                        <BoltIcon className="w-3.5 h-3.5" />
+                        Add to Workflow
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={handleEnrich}
+                        disabled={isEnriching}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors text-violet-600 dark:text-violet-400",
+                          active ? "bg-violet-50 dark:bg-violet-900/20" : "",
+                          isEnriching && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {isEnriching ? "Enriching..." : "Enrich with Apollo"}
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => onDelete(contact._id)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors text-red-600 dark:text-red-400",
+                          active ? "bg-red-50 dark:bg-red-900/20" : ""
+                        )}
+                      >
+                        <TrashIcon className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    )}
+                  </Menu.Item>
+                </Menu.Items>
+              </Menu>
+            )}
+          </div>
         </td>
       ))}
-
-      {/* Actions */}
-      <td className="px-4 py-1 h-8" data-actions>
-        <Menu as="div" className="relative inline-block text-left">
-          <Menu.Button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-            <EllipsisVerticalIcon className="w-4 h-4" />
-          </Menu.Button>
-
-          <Menu.Items className="absolute right-0 mt-1 w-44 origin-top-right bg-card border border-border rounded-lg shadow-xl overflow-hidden z-10">
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => onEdit(contact)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
-                    active ? "bg-muted text-foreground" : "text-foreground"
-                  )}
-                >
-                  <PencilIcon className="w-3.5 h-3.5" />
-                  Edit
-                </button>
-              )}
-            </Menu.Item>
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => setShowWorkflowModal(true)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
-                    active ? "bg-muted text-foreground" : "text-foreground"
-                  )}
-                >
-                  <BoltIcon className="w-3.5 h-3.5" />
-                  Add to Workflow
-                </button>
-              )}
-            </Menu.Item>
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={handleEnrich}
-                  disabled={isEnriching}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
-                    active ? "bg-purple-500/20 text-purple-400" : "text-purple-400",
-                    isEnriching && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {isEnriching ? "Enriching..." : "Enrich with Apollo"}
-                </button>
-              )}
-            </Menu.Item>
-            <Menu.Item>
-              {({ active }) => (
-                <button
-                  onClick={() => onDelete(contact._id)}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors",
-                    active ? "bg-red-500/20 text-red-400" : "text-red-400"
-                  )}
-                >
-                  <TrashIcon className="w-3.5 h-3.5" />
-                  Delete
-                </button>
-              )}
-            </Menu.Item>
-          </Menu.Items>
-        </Menu>
-      </td>
 
       {/* Workflow Enrollment Modal */}
       <EnrollInWorkflowModal

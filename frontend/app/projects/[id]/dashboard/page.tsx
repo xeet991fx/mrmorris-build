@@ -14,21 +14,18 @@ import {
     TicketIcon,
     SparklesIcon,
     ArrowTrendingUpIcon,
-    ClockIcon,
     BoltIcon,
     RocketLaunchIcon,
     CpuChipIcon,
+    ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface QuickAction {
     label: string;
-    description: string;
     icon: React.ReactNode;
     href: string;
-    gradient: string;
-    hoverGradient: string;
 }
 
 export default function DashboardPage() {
@@ -44,186 +41,185 @@ export default function DashboardPage() {
         }
     }, [workspaceId, fetchWorkspace]);
 
+    const getGreeting = () => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Good morning";
+        if (hour < 18) return "Good afternoon";
+        return "Good evening";
+    };
+
     const quickActions: QuickAction[] = [
-        {
-            label: "Contacts",
-            description: "Manage your leads & customers",
-            icon: <UserGroupIcon className="w-6 h-6" />,
-            href: `/projects/${workspaceId}/contacts`,
-            gradient: "from-blue-500/20 to-blue-600/10",
-            hoverGradient: "hover:from-blue-500/30 hover:to-blue-600/20",
-        },
-        {
-            label: "Inbox",
-            description: "View emails & conversations",
-            icon: <EnvelopeIcon className="w-6 h-6" />,
-            href: `/projects/${workspaceId}/inbox`,
-            gradient: "from-emerald-500/20 to-emerald-600/10",
-            hoverGradient: "hover:from-emerald-500/30 hover:to-emerald-600/20",
-        },
-        {
-            label: "Meetings",
-            description: "Calendar & scheduling",
-            icon: <CalendarDaysIcon className="w-6 h-6" />,
-            href: `/projects/${workspaceId}/meetings`,
-            gradient: "from-purple-500/20 to-purple-600/10",
-            hoverGradient: "hover:from-purple-500/30 hover:to-purple-600/20",
-        },
-        {
-            label: "Pipelines",
-            description: "Track deals & opportunities",
-            icon: <BriefcaseIcon className="w-6 h-6" />,
-            href: `/projects/${workspaceId}/pipelines`,
-            gradient: "from-orange-500/20 to-orange-600/10",
-            hoverGradient: "hover:from-orange-500/30 hover:to-orange-600/20",
-        },
-        {
-            label: "Workflows",
-            description: "Automate your processes",
-            icon: <BoltIcon className="w-6 h-6" />,
-            href: `/projects/${workspaceId}/workflows`,
-            gradient: "from-cyan-500/20 to-cyan-600/10",
-            hoverGradient: "hover:from-cyan-500/30 hover:to-cyan-600/20",
-        },
-        {
-            label: "Campaigns",
-            description: "Email marketing campaigns",
-            icon: <RocketLaunchIcon className="w-6 h-6" />,
-            href: `/projects/${workspaceId}/campaigns`,
-            gradient: "from-pink-500/20 to-pink-600/10",
-            hoverGradient: "hover:from-pink-500/30 hover:to-pink-600/20",
-        },
+        { label: "Contacts", icon: <UserGroupIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/contacts` },
+        { label: "Inbox", icon: <EnvelopeIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/inbox` },
+        { label: "Meetings", icon: <CalendarDaysIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/meetings` },
+        { label: "Pipelines", icon: <BriefcaseIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/pipelines` },
+        { label: "Workflows", icon: <BoltIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/workflows` },
+        { label: "Campaigns", icon: <RocketLaunchIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/campaigns` },
     ];
 
     const aiModules = [
-        { label: "Data Quality", icon: <CpuChipIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/data-quality`, color: "text-blue-400" },
-        { label: "Lead Scoring", icon: <ArrowTrendingUpIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/lead-scores`, color: "text-green-400" },
-        { label: "Analytics", icon: <ChartBarIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/analytics`, color: "text-purple-400" },
-        { label: "Tickets", icon: <TicketIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/tickets`, color: "text-orange-400" },
+        { label: "Data Quality", icon: <CpuChipIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/data-quality` },
+        { label: "Lead Scoring", icon: <ArrowTrendingUpIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/lead-scores` },
+        { label: "Analytics", icon: <ChartBarIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/analytics` },
+        { label: "Tickets", icon: <TicketIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/tickets` },
     ];
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-center">
-                    <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-                    <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+            <div className="h-full flex items-center justify-center">
+                <div className="flex items-center gap-3 text-zinc-400">
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading...</span>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
-            {/* Header */}
-            <div className="h-14 px-6 border-b border-border/50 flex items-center justify-between sticky top-0 z-10 bg-background/80 backdrop-blur-md">
+        <div className="h-full overflow-y-auto">
+            {/* Hero Section - Clean Greeting */}
+            <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-6 sm:pb-8">
                 <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-4"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
                 >
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                            <SparklesIcon className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-bold text-foreground">Dashboard</h1>
-                            {currentWorkspace && (
-                                <p className="text-xs text-muted-foreground">{currentWorkspace.name}</p>
-                            )}
-                        </div>
-                    </div>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">
+                        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                    </p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                        {getGreeting()}, <span className="text-emerald-600 dark:text-emerald-400">{currentWorkspace?.name?.split(' ')[0] || 'there'}</span>
+                    </h1>
                 </motion.div>
+
+                {/* Quick Actions - Horizontal Pills */}
                 <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="mt-6 sm:mt-8 flex flex-wrap gap-2"
                 >
-                    <ClockIcon className="w-4 h-4" />
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    {quickActions.map((action, idx) => (
+                        <Link key={action.label} href={action.href}>
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.15 + idx * 0.03 }}
+                                className={cn(
+                                    "flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2",
+                                    "bg-zinc-100 dark:bg-zinc-800/50",
+                                    "hover:bg-emerald-100 dark:hover:bg-emerald-900/30",
+                                    "text-zinc-700 dark:text-zinc-300",
+                                    "hover:text-emerald-700 dark:hover:text-emerald-400",
+                                    "rounded-full transition-all duration-200 cursor-pointer",
+                                    "border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800"
+                                )}
+                            >
+                                <span className="opacity-70">{action.icon}</span>
+                                <span className="text-sm font-medium">{action.label}</span>
+                            </motion.div>
+                        </Link>
+                    ))}
                 </motion.div>
             </div>
 
-            {/* Main Content - Full Width */}
-            <div className="p-6">
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    {/* Left Column - AI Briefing (Takes 2 columns on XL) */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="xl:col-span-2"
-                    >
-                        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 shadow-xl shadow-black/5">
-                            <DailyBriefingPanel
-                                workspaceId={workspaceId}
-                                userName={currentWorkspace?.name?.split(' ')[0] || 'there'}
-                            />
-                        </div>
-                    </motion.div>
+            {/* Divider */}
+            <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
 
-                    {/* Right Column - Quick Actions & AI Modules */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="space-y-6"
-                    >
-                        {/* Quick Actions */}
-                        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-xl shadow-black/5">
-                            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Quick Actions</h2>
-                            <div className="grid grid-cols-2 gap-3">
-                                {quickActions.map((action, idx) => (
-                                    <Link key={action.label} href={action.href}>
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.95 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            transition={{ delay: 0.15 + idx * 0.05 }}
-                                            className={cn(
-                                                "p-4 rounded-xl bg-gradient-to-br border border-border/30 transition-all duration-300 cursor-pointer group",
-                                                action.gradient,
-                                                action.hoverGradient,
-                                                "hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5"
-                                            )}
-                                        >
-                                            <div className="text-foreground mb-2 group-hover:scale-110 transition-transform">
-                                                {action.icon}
-                                            </div>
-                                            <p className="text-sm font-medium text-foreground">{action.label}</p>
-                                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{action.description}</p>
-                                        </motion.div>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
+            {/* Main Content Grid */}
+            <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+                {/* AI Briefing - Full Width or 2 Cols */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="xl:col-span-2"
+                >
+                    <div className="flex items-center gap-2 mb-4">
+                        <SparklesIcon className="w-5 h-5 text-emerald-500" />
+                        <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                            Daily Briefing
+                        </h2>
+                    </div>
+                    <DailyBriefingPanel
+                        workspaceId={workspaceId}
+                        userName={currentWorkspace?.name?.split(' ')[0] || 'there'}
+                    />
+                </motion.div>
 
-                        {/* AI Modules */}
-                        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 shadow-xl shadow-black/5">
-                            <div className="flex items-center gap-2 mb-4">
-                                <SparklesIcon className="w-4 h-4 text-primary" />
-                                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">AI Modules</h2>
-                            </div>
-                            <div className="space-y-2">
-                                {aiModules.map((module, idx) => (
-                                    <Link key={module.label} href={module.href}>
-                                        <motion.div
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.3 + idx * 0.05 }}
-                                            className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-all cursor-pointer group"
-                                        >
-                                            <div className={cn("p-2 rounded-lg bg-muted/50 group-hover:bg-muted", module.color)}>
-                                                {module.icon}
-                                            </div>
-                                            <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                                                {module.label}
-                                            </span>
-                                        </motion.div>
-                                    </Link>
-                                ))}
-                            </div>
+                {/* AI Modules Sidebar */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                    <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
+                        AI Tools
+                    </h2>
+                    <div className="space-y-1">
+                        {aiModules.map((module, idx) => (
+                            <Link key={module.label} href={module.href}>
+                                <motion.div
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 0.35 + idx * 0.05 }}
+                                    className={cn(
+                                        "flex items-center justify-between py-3 px-4 -mx-4",
+                                        "hover:bg-zinc-50 dark:hover:bg-zinc-800/50",
+                                        "text-zinc-700 dark:text-zinc-300",
+                                        "group cursor-pointer transition-colors rounded-lg"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-zinc-400 group-hover:text-emerald-500 transition-colors">
+                                            {module.icon}
+                                        </span>
+                                        <span className="text-sm font-medium group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
+                                            {module.label}
+                                        </span>
+                                    </div>
+                                    <ArrowRightIcon className="w-4 h-4 text-zinc-300 dark:text-zinc-600 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+                                </motion.div>
+                            </Link>
+                        ))}
+                    </div>
+
+                    {/* Stats Section */}
+                    <div className="mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                        <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
+                            Quick Stats
+                        </h2>
+                        <div className="space-y-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5 }}
+                                className="flex items-center justify-between"
+                            >
+                                <span className="text-sm text-zinc-500 dark:text-zinc-400">Active deals</span>
+                                <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">—</span>
+                            </motion.div>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.55 }}
+                                className="flex items-center justify-between"
+                            >
+                                <span className="text-sm text-zinc-500 dark:text-zinc-400">Pending tasks</span>
+                                <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">—</span>
+                            </motion.div>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.6 }}
+                                className="flex items-center justify-between"
+                            >
+                                <span className="text-sm text-zinc-500 dark:text-zinc-400">This month</span>
+                                <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">—</span>
+                            </motion.div>
                         </div>
-                    </motion.div>
-                </div>
+                    </div>
+                </motion.div>
             </div>
         </div>
     );

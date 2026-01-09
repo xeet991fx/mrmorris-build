@@ -3,16 +3,16 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-    SparklesIcon,
-    ArrowPathIcon,
-    EnvelopeIcon,
-    ExclamationTriangleIcon,
-    BellAlertIcon,
-    ChatBubbleLeftRightIcon,
-    FaceSmileIcon,
-    FaceFrownIcon,
-    MinusIcon,
-} from "@heroicons/react/24/outline";
+    Sparkles,
+    RefreshCw,
+    Mail,
+    AlertTriangle,
+    Bell,
+    MessageSquare,
+    Smile,
+    Frown,
+    Minus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     Insight,
@@ -26,19 +26,19 @@ interface EmailInsightsPanelProps {
 }
 
 const categoryColors: Record<string, string> = {
-    inquiry: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-    complaint: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    followup: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-    opportunity: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    fyi: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
-    spam: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    inquiry: "bg-blue-500/10 text-blue-500",
+    complaint: "bg-rose-500/10 text-rose-500",
+    followup: "bg-amber-500/10 text-amber-500",
+    opportunity: "bg-emerald-500/10 text-emerald-500",
+    fyi: "bg-zinc-500/10 text-zinc-500",
+    spam: "bg-rose-500/10 text-rose-500",
 };
 
 const urgencyColors: Record<string, string> = {
-    immediate: "bg-red-500 text-white",
-    today: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-    this_week: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-    no_rush: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
+    immediate: "bg-rose-500 text-white",
+    today: "bg-amber-500/10 text-amber-500",
+    this_week: "bg-blue-500/10 text-blue-500",
+    no_rush: "bg-zinc-500/10 text-zinc-500",
 };
 
 export const EmailInsightsPanel: React.FC<EmailInsightsPanelProps> = ({
@@ -91,34 +91,34 @@ export const EmailInsightsPanel: React.FC<EmailInsightsPanelProps> = ({
     const getSentimentIcon = () => {
         switch (sentiment) {
             case "positive":
-                return <FaceSmileIcon className="w-4 h-4 text-green-500" />;
+                return <Smile className="w-3.5 h-3.5 text-emerald-500" />;
             case "negative":
-                return <FaceFrownIcon className="w-4 h-4 text-red-500" />;
+                return <Frown className="w-3.5 h-3.5 text-rose-500" />;
             default:
-                return <MinusIcon className="w-4 h-4 text-gray-500" />;
+                return <Minus className="w-3.5 h-3.5 text-zinc-500" />;
         }
     };
 
     return (
-        <div className="rounded-lg border border-border bg-card p-3">
+        <div className="rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
             {/* Header */}
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1.5">
-                    <SparklesIcon className="w-4 h-4 text-purple-500" />
-                    <span className="text-sm font-medium text-foreground">Email Intelligence</span>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-500" />
+                    <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Email Intelligence</span>
                 </div>
                 <button
                     onClick={handleGenerate}
                     disabled={isGenerating}
-                    className="text-muted-foreground hover:text-foreground"
+                    className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
                 >
-                    <ArrowPathIcon className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} />
+                    <RefreshCw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} />
                 </button>
             </div>
 
             {isLoading && (
-                <div className="flex items-center justify-center py-4">
-                    <ArrowPathIcon className="w-4 h-4 animate-spin text-purple-400" />
+                <div className="flex items-center justify-center py-6">
+                    <RefreshCw className="w-4 h-4 animate-spin text-violet-500" />
                 </div>
             )}
 
@@ -126,23 +126,23 @@ export const EmailInsightsPanel: React.FC<EmailInsightsPanelProps> = ({
                 <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-3"
+                    className="space-y-4"
                 >
                     {/* Badges Row */}
                     <div className="flex flex-wrap gap-1.5">
                         {category && (
-                            <span className={cn("px-2 py-0.5 rounded text-xs font-medium capitalize", categoryColors[category] || categoryColors.fyi)}>
+                            <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium capitalize", categoryColors[category] || categoryColors.fyi)}>
                                 {category}
                             </span>
                         )}
                         {urgency && (
-                            <span className={cn("px-2 py-0.5 rounded text-xs font-medium", urgencyColors[urgency] || urgencyColors.no_rush)}>
-                                {urgency === 'immediate' && <BellAlertIcon className="w-3 h-3 inline mr-1" />}
+                            <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1", urgencyColors[urgency] || urgencyColors.no_rush)}>
+                                {urgency === 'immediate' && <Bell className="w-3 h-3" />}
                                 {urgency.replace('_', ' ')}
                             </span>
                         )}
                         {sentiment && (
-                            <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-muted">
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
                                 {getSentimentIcon()}
                                 <span className="capitalize">{sentiment}</span>
                             </span>
@@ -151,23 +151,23 @@ export const EmailInsightsPanel: React.FC<EmailInsightsPanelProps> = ({
 
                     {/* Urgent Alert */}
                     {urgency === 'immediate' && (
-                        <div className="flex items-center gap-2 p-2 rounded bg-red-500/10 text-red-500 text-xs">
-                            <ExclamationTriangleIcon className="w-4 h-4" />
-                            <span>Requires immediate attention</span>
+                        <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 text-xs">
+                            <AlertTriangle className="w-4 h-4" />
+                            <span className="font-medium">Requires immediate attention</span>
                         </div>
                     )}
 
                     {/* Action Items */}
                     {actionItems.length > 0 && (
-                        <div>
-                            <span className="text-xs text-muted-foreground mb-1 block">Action Items</span>
-                            <div className="space-y-1">
+                        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+                            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2 block">Action Items</span>
+                            <div className="space-y-2">
                                 {actionItems.map((item: any, idx: number) => (
                                     <div key={idx} className="flex items-start gap-2 text-xs">
-                                        <input type="checkbox" className="mt-0.5 rounded" />
-                                        <span className="text-foreground">{item.action}</span>
+                                        <input type="checkbox" className="mt-0.5 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500" />
+                                        <span className="text-zinc-700 dark:text-zinc-300 flex-1">{item.action}</span>
                                         {item.deadline && (
-                                            <span className="text-muted-foreground ml-auto">by {item.deadline}</span>
+                                            <span className="text-zinc-400 whitespace-nowrap">by {item.deadline}</span>
                                         )}
                                     </div>
                                 ))}
@@ -177,22 +177,22 @@ export const EmailInsightsPanel: React.FC<EmailInsightsPanelProps> = ({
 
                     {/* Suggested Response */}
                     {suggestedResponse && (
-                        <div className="border-t border-border pt-3">
-                            <div className="flex items-center gap-1.5 mb-2">
-                                <ChatBubbleLeftRightIcon className="w-4 h-4 text-blue-500" />
-                                <span className="text-xs font-medium text-muted-foreground">Suggested Reply</span>
-                                <span className="ml-auto text-[10px] text-muted-foreground">
+                        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center gap-2 mb-3">
+                                <MessageSquare className="w-4 h-4 text-blue-500" />
+                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Suggested Reply</span>
+                                <span className="ml-auto text-[10px] text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-full">
                                     {Math.round((suggestedResponse.confidence || 0.8) * 100)}% match
                                 </span>
                             </div>
-                            <div className="p-2 rounded bg-muted/50 text-xs text-foreground mb-2">
+                            <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 text-xs text-zinc-600 dark:text-zinc-400 mb-3">
                                 {suggestedResponse.template?.substring(0, 150)}...
                             </div>
                             <div className="flex gap-2">
-                                <button className="flex-1 px-2 py-1.5 text-xs font-medium bg-purple-600 text-white rounded hover:bg-purple-700">
+                                <button className="flex-1 px-3 py-2 text-xs font-medium bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-colors">
                                     Use Reply
                                 </button>
-                                <button className="px-2 py-1.5 text-xs font-medium border border-border rounded hover:bg-muted">
+                                <button className="px-3 py-2 text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
                                     Edit
                                 </button>
                             </div>
@@ -203,13 +203,13 @@ export const EmailInsightsPanel: React.FC<EmailInsightsPanelProps> = ({
 
             {/* Empty State */}
             {!isLoading && !insight && (
-                <div className="text-center py-4">
-                    <EnvelopeIcon className="w-6 h-6 text-muted-foreground mx-auto mb-1" />
-                    <p className="text-xs text-muted-foreground">No analysis yet</p>
+                <div className="text-center py-6">
+                    <Mail className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mx-auto mb-2" />
+                    <p className="text-xs text-zinc-500 mb-3">No analysis yet</p>
                     <button
                         onClick={handleGenerate}
                         disabled={isGenerating}
-                        className="mt-2 px-2 py-1 text-xs font-medium bg-purple-600 text-white rounded hover:bg-purple-700"
+                        className="px-4 py-2 text-xs font-medium bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-colors"
                     >
                         Analyze Email
                     </button>

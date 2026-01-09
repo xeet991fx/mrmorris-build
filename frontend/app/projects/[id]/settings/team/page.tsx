@@ -34,22 +34,22 @@ import { cn } from "@/lib/utils";
 const ROLE_BADGES: Record<Role, { label: string; color: string; icon: any }> = {
     owner: {
         label: "Owner",
-        color: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+        color: "bg-purple-500/10 text-purple-400",
         icon: ShieldCheckIcon,
     },
     admin: {
         label: "Admin",
-        color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+        color: "bg-blue-500/10 text-blue-400",
         icon: ShieldCheckIcon,
     },
     member: {
         label: "Member",
-        color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+        color: "bg-emerald-500/10 text-emerald-400",
         icon: UserIcon,
     },
     viewer: {
         label: "Viewer",
-        color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+        color: "bg-zinc-500/10 text-zinc-400",
         icon: EyeIcon,
     },
 };
@@ -86,40 +86,52 @@ function InviteModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        >
             <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl p-6"
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="w-full max-w-md bg-gradient-to-br from-card to-card/95 rounded-2xl shadow-2xl p-6 mx-4"
             >
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-foreground">Invite Team Member</h2>
-                    <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted">
+                    <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={onClose}
+                        className="p-2 rounded-xl hover:bg-muted/50 transition-colors"
+                    >
                         <XMarkIcon className="w-5 h-5 text-muted-foreground" />
-                    </button>
+                    </motion.button>
                 </div>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                        <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">
                             Email Address
                         </label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-muted/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-4 py-3 rounded-xl bg-background/60 backdrop-blur-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300 placeholder:text-muted-foreground"
                             placeholder="colleague@company.com"
                             required
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-1">
+                    <div className="space-y-2">
+                        <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide">
                             Role
                         </label>
                         <select
                             value={role}
                             onChange={(e) => setRole(e.target.value as any)}
-                            className="w-full px-3 py-2 rounded-lg border border-border bg-muted/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full px-4 py-3 rounded-xl bg-background/60 backdrop-blur-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300"
                         >
                             <option value="admin">Admin - Full access, can manage team</option>
                             <option value="member">Member - Create and edit records</option>
@@ -127,24 +139,28 @@ function InviteModal({
                         </select>
                     </div>
                     <div className="flex gap-3 justify-end pt-4">
-                        <button
+                        <motion.button
                             type="button"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={onClose}
-                            className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
+                            className="px-5 py-2.5 rounded-xl bg-muted/50 text-foreground font-medium hover:bg-muted transition-all duration-300"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </motion.button>
+                        <motion.button
                             type="submit"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                             disabled={isSubmitting || !email.trim()}
-                            className="px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-colors disabled:opacity-50"
+                            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-medium hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 disabled:opacity-50"
                         >
                             {isSubmitting ? "Sending..." : "Send Invite"}
-                        </button>
+                        </motion.button>
                     </div>
                 </form>
             </motion.div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -159,6 +175,7 @@ function TeamMemberCard({
     onUpdateRole,
     onRemove,
     onResend,
+    index,
 }: {
     member: TeamMember | TeamOwner;
     isOwner: boolean;
@@ -166,29 +183,32 @@ function TeamMemberCard({
     onUpdateRole: (memberId: string, role: "admin" | "member" | "viewer") => void;
     onRemove: (memberId: string) => void;
     onResend: (memberId: string) => void;
+    index: number;
 }) {
     const role = member.role;
     const badge = ROLE_BADGES[role];
     const BadgeIcon = badge.icon;
-    // Owner doesn't have userId property - they ARE the user directly
     const isTeamMember = role !== "owner" && "_id" in member;
-    // Get user info - for owner, it's the member itself; for team members, it's the populated userId
     const userInfo = isTeamMember
         ? (member as TeamMember).userId
         : (member as TeamOwner);
     const canManage = currentUserRole === "owner" || (currentUserRole === "admin" && role !== "admin" && role !== "owner");
     const isPending = isTeamMember && (member as TeamMember).status === "pending";
 
-    // Get display values
     const displayName = userInfo?.name || (role === "owner" ? userInfo?.email : null);
     const displayEmail = userInfo?.email || (member as TeamMember).inviteEmail;
     const avatarLetter = (displayName || displayEmail)?.charAt(0).toUpperCase();
 
     return (
-        <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#9ACD32]/20 flex items-center justify-center">
-                    <span className="text-[#9ACD32] font-semibold">
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05, type: "spring", stiffness: 300, damping: 30 }}
+            className="group flex items-center justify-between p-4 rounded-2xl bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm hover:shadow-md transition-all duration-500"
+        >
+            <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center">
+                    <span className="text-lg font-bold text-primary">
                         {avatarLetter}
                     </span>
                 </div>
@@ -196,23 +216,28 @@ function TeamMemberCard({
                     <p className="font-medium text-foreground">
                         {displayName || "Pending"}
                     </p>
-                    <p className="text-sm text-muted-foreground">{displayEmail}</p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <EnvelopeIcon className="w-3.5 h-3.5" />
+                        {displayEmail}
+                    </p>
                 </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
                 {isPending && (
                     <>
-                        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-amber-500/10 text-amber-400">
                             Pending
                         </span>
                         {canManage && (
-                            <button
+                            <motion.button
+                                whileHover={{ scale: 1.1, rotate: 180 }}
+                                whileTap={{ scale: 0.9 }}
                                 onClick={() => onResend((member as TeamMember)._id)}
-                                className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-300"
                                 title="Resend invite"
                             >
                                 <ArrowPathIcon className="w-4 h-4" />
-                            </button>
+                            </motion.button>
                         )}
                     </>
                 )}
@@ -220,29 +245,31 @@ function TeamMemberCard({
                     <select
                         value={role}
                         onChange={(e) => onUpdateRole((member as TeamMember)._id, e.target.value as any)}
-                        className="px-2 py-1 text-xs rounded-lg border border-border bg-muted/50 text-foreground"
+                        className="px-3 py-1.5 text-xs font-medium rounded-xl bg-background/60 backdrop-blur-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300"
                     >
                         <option value="admin">Admin</option>
                         <option value="member">Member</option>
                         <option value="viewer">Viewer</option>
                     </select>
                 ) : !isPending && (
-                    <span className={cn("px-2 py-1 text-xs rounded-full flex items-center gap-1", badge.color)}>
-                        <BadgeIcon className="w-3 h-3" />
+                    <span className={cn("px-3 py-1.5 text-xs font-medium rounded-full flex items-center gap-1.5", badge.color)}>
+                        <BadgeIcon className="w-3.5 h-3.5" />
                         {badge.label}
                     </span>
                 )}
                 {canManage && role !== "owner" && isTeamMember && (
-                    <button
+                    <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
                         onClick={() => onRemove((member as TeamMember)._id)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        className="p-2 rounded-xl text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all duration-300"
                         title="Remove member"
                     >
                         <TrashIcon className="w-4 h-4" />
-                    </button>
+                    </motion.button>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -339,36 +366,60 @@ export default function TeamSettingsPage() {
     const canInvite = currentUserRole === "owner" || currentUserRole === "admin";
 
     return (
-        <div className="min-h-screen bg-card/95">
-            <InviteModal
-                isOpen={showInviteModal}
-                onClose={() => setShowInviteModal(false)}
-                onInvite={handleInvite}
-            />
+        <div className="min-h-screen">
+            <AnimatePresence>
+                {showInviteModal && (
+                    <InviteModal
+                        isOpen={showInviteModal}
+                        onClose={() => setShowInviteModal(false)}
+                        onInvite={handleInvite}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* Header */}
-            <div className="h-12 px-6 border-b border-border flex items-center justify-between sticky top-0 z-10 bg-card">
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="px-8 pt-8 pb-6 flex items-center justify-between"
+            >
                 <div className="flex items-center gap-3">
-                    <UserGroupIcon className="w-5 h-5 text-muted-foreground" />
-                    <h1 className="text-lg font-semibold text-foreground">Team</h1>
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
+                        <UserGroupIcon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-semibold text-foreground">Team</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Manage team members and permissions
+                        </p>
+                    </div>
                 </div>
                 {canInvite && (
-                    <button
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setShowInviteModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-medium hover:shadow-lg hover:shadow-primary/20 transition-all duration-300"
                     >
                         <PlusIcon className="w-5 h-5" />
                         Invite Member
-                    </button>
+                    </motion.button>
                 )}
-            </div>
+            </motion.div>
 
             {/* Content */}
-            <div className="max-w-3xl mx-auto px-6 py-8">
+            <div className="max-w-3xl px-8 pb-8">
                 {isLoading ? (
                     <div className="space-y-3">
                         {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-16 rounded-xl bg-card border border-border animate-pulse" />
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: i * 0.1 }}
+                                className="h-20 rounded-2xl bg-gradient-to-br from-card/80 to-card/40 animate-pulse"
+                            />
                         ))}
                     </div>
                 ) : (
@@ -382,11 +433,12 @@ export default function TeamSettingsPage() {
                                 onUpdateRole={handleUpdateRole}
                                 onRemove={handleRemove}
                                 onResend={handleResend}
+                                index={0}
                             />
                         )}
 
                         {/* Team Members */}
-                        {members.map((member) => (
+                        {members.map((member, index) => (
                             <TeamMemberCard
                                 key={member._id}
                                 member={member}
@@ -395,38 +447,65 @@ export default function TeamSettingsPage() {
                                 onUpdateRole={handleUpdateRole}
                                 onRemove={handleRemove}
                                 onResend={handleResend}
+                                index={index + 1}
                             />
                         ))}
 
                         {members.length === 0 && (
-                            <div className="text-center py-16">
-                                <UserGroupIcon className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                className="text-center py-16 rounded-2xl bg-gradient-to-br from-card/80 to-card/40"
+                            >
+                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center mx-auto mb-4">
+                                    <UserGroupIcon className="w-8 h-8 text-muted-foreground" />
+                                </div>
                                 <h3 className="text-lg font-medium text-foreground mb-2">No team members yet</h3>
-                                <p className="text-muted-foreground mb-4">Invite colleagues to collaborate</p>
+                                <p className="text-muted-foreground mb-6">Invite colleagues to collaborate</p>
                                 {canInvite && (
-                                    <button
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
                                         onClick={() => setShowInviteModal(true)}
-                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#9ACD32] text-background font-medium hover:bg-[#8AB82E] transition-all"
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground font-medium hover:shadow-lg hover:shadow-primary/20 transition-all duration-300"
                                     >
                                         <PlusIcon className="w-5 h-5" />
                                         Invite Member
-                                    </button>
+                                    </motion.button>
                                 )}
-                            </div>
+                            </motion.div>
                         )}
                     </div>
                 )}
 
                 {/* Permissions Info */}
-                <div className="mt-8 p-4 bg-muted/50 rounded-xl border border-border">
-                    <h3 className="font-medium text-foreground mb-3">Role Permissions</h3>
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                        <p><strong className="text-foreground">Owner:</strong> Full access, billing, can delete workspace</p>
-                        <p><strong className="text-foreground">Admin:</strong> Manage team, all CRM features, integrations</p>
-                        <p><strong className="text-foreground">Member:</strong> Create and edit contacts, deals, tasks</p>
-                        <p><strong className="text-foreground">Viewer:</strong> View only access to all data</p>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, type: "spring", stiffness: 300, damping: 30 }}
+                    className="mt-8 p-6 rounded-2xl bg-gradient-to-br from-muted/30 to-muted/10"
+                >
+                    <h3 className="font-semibold text-foreground mb-4">Role Permissions</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="flex items-start gap-2">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-500/10 text-purple-400">Owner</span>
+                            <span className="text-muted-foreground">Full access, billing, delete workspace</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-500/10 text-blue-400">Admin</span>
+                            <span className="text-muted-foreground">Manage team, all CRM features</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-400">Member</span>
+                            <span className="text-muted-foreground">Create and edit records</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-zinc-500/10 text-zinc-400">Viewer</span>
+                            <span className="text-muted-foreground">View only access</span>
+                        </div>
                     </div>
-                </div>
+                </motion.div>
             </div>
         </div>
     );

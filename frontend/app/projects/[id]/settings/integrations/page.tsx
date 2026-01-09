@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { EnvelopeIcon, CalendarDaysIcon } from "@heroicons/react/24/outline";
+import { EnvelopeIcon, CalendarDaysIcon, Cog6ToothIcon } from "@heroicons/react/24/outline";
 import IntegrationCard from "@/components/settings/IntegrationCard";
 import EmailIntegrationSection from "@/components/settings/EmailIntegrationSection";
 import ApolloIntegrationSection from "@/components/settings/ApolloIntegrationSection";
@@ -11,7 +11,7 @@ import CalendarIntegrationSection from "@/components/settings/CalendarIntegratio
 
 // Apollo.io Logo Component
 const ApolloLogo = () => (
-  <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-7 h-7">
+  <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-6 h-6">
     <path
       d="M100 20L180 60V140L100 180L20 140V60L100 20Z"
       fill="white"
@@ -57,73 +57,106 @@ export default function IntegrationsPage() {
     }));
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { type: "spring", stiffness: 300, damping: 30 }
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background px-8 pt-14 pb-8">
+    <div className="min-h-screen">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="px-8 pt-8 pb-6"
       >
-        <h1 className="text-2xl font-bold text-foreground mb-1">Integrations</h1>
-        <p className="text-sm text-muted-foreground">
-          Connect and manage your third-party integrations
-        </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
+            <Cog6ToothIcon className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Integrations</h1>
+            <p className="text-sm text-muted-foreground">
+              Connect and manage your third-party services
+            </p>
+          </div>
+        </div>
       </motion.div>
 
       {/* Integration Cards */}
-      <div className="space-y-4 max-w-5xl">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="px-8 pb-8 space-y-4 max-w-4xl"
+      >
         {/* Email Integration Card */}
-        <IntegrationCard
-          title="Email Integration"
-          description="Connect your Gmail to automatically sync emails and track conversations with contacts"
-          icon={
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-              <EnvelopeIcon className="w-7 h-7 text-white" />
-            </div>
-          }
-          status="not-connected"
-          isExpanded={expandedSections.email}
-          onToggle={() => toggleSection("email")}
-          delay={0.1}
-        >
-          <EmailIntegrationSection workspaceId={workspaceId} />
-        </IntegrationCard>
+        <motion.div variants={itemVariants}>
+          <IntegrationCard
+            title="Email Integration"
+            description="Connect your Gmail to sync emails and track conversations"
+            icon={
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <EnvelopeIcon className="w-6 h-6 text-white" />
+              </div>
+            }
+            status="not-connected"
+            isExpanded={expandedSections.email}
+            onToggle={() => toggleSection("email")}
+          >
+            <EmailIntegrationSection workspaceId={workspaceId} />
+          </IntegrationCard>
+        </motion.div>
 
         {/* Calendar Integration Card */}
-        <IntegrationCard
-          title="Google Calendar"
-          description="Sync your calendar to track meetings, schedule events, and prepare for calls"
-          icon={
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-              <CalendarDaysIcon className="w-7 h-7 text-white" />
-            </div>
-          }
-          status="not-connected"
-          isExpanded={expandedSections.calendar}
-          onToggle={() => toggleSection("calendar")}
-          delay={0.15}
-        >
-          <CalendarIntegrationSection workspaceId={workspaceId} />
-        </IntegrationCard>
+        <motion.div variants={itemVariants}>
+          <IntegrationCard
+            title="Google Calendar"
+            description="Sync your calendar to track meetings and schedule events"
+            icon={
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <CalendarDaysIcon className="w-6 h-6 text-white" />
+              </div>
+            }
+            status="not-connected"
+            isExpanded={expandedSections.calendar}
+            onToggle={() => toggleSection("calendar")}
+          >
+            <CalendarIntegrationSection workspaceId={workspaceId} />
+          </IntegrationCard>
+        </motion.div>
 
         {/* Apollo.io Integration Card */}
-        <IntegrationCard
-          title="Apollo.io"
-          description="Enrich contacts with business emails, verify email addresses, and access 250M+ contacts"
-          icon={
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
-              <ApolloLogo />
-            </div>
-          }
-          status="not-connected"
-          isExpanded={expandedSections.apollo}
-          onToggle={() => toggleSection("apollo")}
-          delay={0.2}
-        >
-          <ApolloIntegrationSection workspaceId={workspaceId} />
-        </IntegrationCard>
-      </div>
+        <motion.div variants={itemVariants}>
+          <IntegrationCard
+            title="Apollo.io"
+            description="Enrich contacts with business data and 250M+ verified emails"
+            icon={
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <ApolloLogo />
+              </div>
+            }
+            status="not-connected"
+            isExpanded={expandedSections.apollo}
+            onToggle={() => toggleSection("apollo")}
+          >
+            <ApolloIntegrationSection workspaceId={workspaceId} />
+          </IntegrationCard>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

@@ -54,302 +54,278 @@ export default function ForecastingPage() {
         loadData();
     }, [workspaceId, selectedPeriod, selectedMetric]);
 
+    if (isLoading) {
+        return (
+            <div className="h-full flex items-center justify-center">
+                <div className="flex items-center gap-3 text-zinc-400">
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading forecast...</span>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Revenue Forecasting</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        AI-powered revenue predictions and deal risk analysis
-                    </p>
-                </div>
-                <button
-                    onClick={loadData}
-                    disabled={isLoading}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+        <div className="h-full overflow-y-auto">
+            {/* Hero Section */}
+            <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-4 sm:pb-6">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
                 >
-                    <ArrowPathIcon className={cn("w-4 h-4", isLoading && "animate-spin")} />
-                    Refresh
-                </button>
-            </div>
-
-            {/* Period Selector */}
-            <div className="flex gap-2">
-                {(['month', 'quarter', 'year'] as const).map(period => (
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                            Revenue Forecasting
+                        </h1>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                            AI-powered predictions and risk analysis
+                        </p>
+                    </div>
                     <button
-                        key={period}
-                        onClick={() => setSelectedPeriod(period)}
-                        className={cn(
-                            "px-4 py-2 rounded-lg font-medium transition-colors",
-                            selectedPeriod === period
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:bg-muted/70"
-                        )}
+                        onClick={loadData}
+                        disabled={isLoading}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm disabled:opacity-50"
                     >
-                        {period.charAt(0).toUpperCase() + period.slice(1)}
+                        <ArrowPathIcon className={cn("w-4 h-4", isLoading && "animate-spin")} />
+                        <span className="hidden sm:inline">Refresh</span>
                     </button>
-                ))}
+                </motion.div>
+
+                {/* Period Pills */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="mt-6 flex items-center gap-2"
+                >
+                    {(['month', 'quarter', 'year'] as const).map(period => (
+                        <button
+                            key={period}
+                            onClick={() => setSelectedPeriod(period)}
+                            className={cn(
+                                "px-3 py-1.5 text-sm font-medium rounded-full transition-all",
+                                selectedPeriod === period
+                                    ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                            )}
+                        >
+                            {period.charAt(0).toUpperCase() + period.slice(1)}
+                        </button>
+                    ))}
+                </motion.div>
+
+                {/* Forecast Stats Row */}
+                {forecast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="mt-6 sm:mt-8 grid grid-cols-3 gap-4 sm:gap-8"
+                    >
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 hidden sm:block" />
+                            <span className="text-xl sm:text-2xl font-bold text-emerald-500">
+                                ${(forecast.forecast.committed / 1000).toFixed(0)}k
+                            </span>
+                            <span className="text-xs sm:text-sm text-zinc-500">committed</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 hidden sm:block" />
+                            <span className="text-xl sm:text-2xl font-bold text-blue-500">
+                                ${(forecast.forecast.weightedPipeline / 1000).toFixed(0)}k
+                            </span>
+                            <span className="text-xs sm:text-sm text-zinc-500">weighted</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <div className="w-2 h-2 rounded-full bg-violet-500 hidden sm:block" />
+                            <span className="text-xl sm:text-2xl font-bold text-violet-500">
+                                ${(forecast.forecast.bestCase / 1000).toFixed(0)}k
+                            </span>
+                            <span className="text-xs sm:text-sm text-zinc-500">best case</span>
+                        </div>
+                    </motion.div>
+                )}
             </div>
 
-            {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                    <ArrowPathIcon className="w-8 h-8 animate-spin text-primary" />
-                </div>
-            ) : (
-                <>
-                    {/* Forecast Summary Cards */}
-                    {forecast && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="p-6 rounded-lg border border-border bg-card"
-                            >
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="p-2 rounded-lg bg-green-500/10">
-                                        <CurrencyDollarIcon className="w-6 h-6 text-green-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Committed</p>
-                                        <p className="text-xs text-muted-foreground">High confidence ({forecast.forecast.dealCount} deals)</p>
-                                    </div>
-                                </div>
-                                <p className="text-3xl font-bold text-foreground">
-                                    ${forecast.forecast.committed.toLocaleString()}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-2">{forecast.period}</p>
-                            </motion.div>
+            {/* Divider */}
+            <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
 
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="p-6 rounded-lg border border-border bg-card"
-                            >
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="p-2 rounded-lg bg-blue-500/10">
-                                        <ChartPieIcon className="w-6 h-6 text-blue-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Weighted Pipeline</p>
-                                        <p className="text-xs text-muted-foreground">Probability-adjusted</p>
-                                    </div>
-                                </div>
-                                <p className="text-3xl font-bold text-foreground">
-                                    ${forecast.forecast.weightedPipeline.toLocaleString()}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-2">{forecast.period}</p>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="p-6 rounded-lg border border-border bg-card"
-                            >
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="p-2 rounded-lg bg-purple-500/10">
-                                        <ArrowTrendingUpIcon className="w-6 h-6 text-purple-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Best Case</p>
-                                        <p className="text-xs text-muted-foreground">If all deals close</p>
-                                    </div>
-                                </div>
-                                <p className="text-3xl font-bold text-foreground">
-                                    ${forecast.forecast.bestCase.toLocaleString()}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-2">{forecast.period}</p>
-                            </motion.div>
+            {/* Main Content */}
+            <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+                {/* Weekly Summary */}
+                {summary && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <div className="flex items-center gap-2 mb-4">
+                            <CalendarIcon className="w-4 h-4 text-emerald-500" />
+                            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                Weekly Summary
+                            </h3>
+                            <span className="text-xs text-zinc-400 ml-auto">{summary.period}</span>
                         </div>
-                    )}
-
-                    {/* Summary Metrics */}
-                    {summary && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="p-6 rounded-lg border border-border bg-card"
-                        >
-                            <div className="flex items-center gap-2 mb-4">
-                                <CalendarIcon className="w-5 h-5 text-primary" />
-                                <h2 className="text-lg font-semibold text-foreground">Weekly Summary</h2>
-                                <span className="text-sm text-muted-foreground ml-auto">{summary.period}</span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+                            <div>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{summary.metrics.newDeals}</p>
+                                <p className="text-sm text-zinc-500">New Deals</p>
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">New Deals</p>
-                                    <p className="text-2xl font-bold text-foreground">{summary.metrics.newDeals}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Won</p>
-                                    <p className="text-2xl font-bold text-green-500">{summary.metrics.dealsWon}</p>
-                                    <p className="text-xs text-muted-foreground">${summary.metrics.wonValue.toLocaleString()}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Win Rate</p>
-                                    <p className="text-2xl font-bold text-foreground">{summary.metrics.winRate}%</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Pipeline Value</p>
-                                    <p className="text-2xl font-bold text-foreground">
-                                        ${summary.metrics.pipelineValue.toLocaleString()}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">{summary.metrics.openPipeline} deals</p>
-                                </div>
+                            <div>
+                                <p className="text-2xl font-bold text-emerald-500">{summary.metrics.dealsWon}</p>
+                                <p className="text-sm text-zinc-500">Won</p>
+                                <p className="text-xs text-zinc-400">${summary.metrics.wonValue.toLocaleString()}</p>
                             </div>
-                        </motion.div>
-                    )}
-
-                    {/* Trend Chart */}
-                    {trends && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
-                            className="p-6 rounded-lg border border-border bg-card"
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <ChartBarIcon className="w-5 h-5 text-primary" />
-                                    <h2 className="text-lg font-semibold text-foreground">Trend Analysis</h2>
-                                </div>
-                                <div className="flex gap-2">
-                                    {(['revenue', 'deals_won', 'win_rate', 'avg_deal_size'] as const).map(metric => (
-                                        <button
-                                            key={metric}
-                                            onClick={() => setSelectedMetric(metric)}
-                                            className={cn(
-                                                "px-3 py-1 rounded text-sm font-medium transition-colors",
-                                                selectedMetric === metric
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "bg-muted text-muted-foreground hover:bg-muted/70"
-                                            )}
-                                        >
-                                            {metric.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                                        </button>
-                                    ))}
-                                </div>
+                            <div>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{summary.metrics.winRate}%</p>
+                                <p className="text-sm text-zinc-500">Win Rate</p>
                             </div>
+                            <div>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                                    ${(summary.metrics.pipelineValue / 1000).toFixed(0)}k
+                                </p>
+                                <p className="text-sm text-zinc-500">Pipeline</p>
+                                <p className="text-xs text-zinc-400">{summary.metrics.openPipeline} deals</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
 
-                            <div className="flex items-center gap-2 mb-4">
+                {/* Trend Chart */}
+                {trends && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 }}
+                    >
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-2">
+                                <ChartBarIcon className="w-4 h-4 text-emerald-500" />
+                                <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                    Trend Analysis
+                                </h3>
                                 {trends.trend.direction === 'up' && (
-                                    <>
-                                        <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />
-                                        <span className="text-sm text-green-500 font-medium">
-                                            +{trends.trend.percentChange}% trend
-                                        </span>
-                                    </>
+                                    <span className="flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                                        <ArrowTrendingUpIcon className="w-3 h-3" />
+                                        +{trends.trend.percentChange}%
+                                    </span>
                                 )}
                                 {trends.trend.direction === 'down' && (
-                                    <>
-                                        <ArrowTrendingDownIcon className="w-5 h-5 text-red-500" />
-                                        <span className="text-sm text-red-500 font-medium">
-                                            {trends.trend.percentChange}% trend
-                                        </span>
-                                    </>
-                                )}
-                                {trends.trend.direction === 'stable' && (
-                                    <span className="text-sm text-muted-foreground font-medium">Stable trend</span>
+                                    <span className="flex items-center gap-1 text-xs text-red-500 font-medium">
+                                        <ArrowTrendingDownIcon className="w-3 h-3" />
+                                        {trends.trend.percentChange}%
+                                    </span>
                                 )}
                             </div>
+                            <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                                {(['revenue', 'deals_won', 'win_rate', 'avg_deal_size'] as const).map(metric => (
+                                    <button
+                                        key={metric}
+                                        onClick={() => setSelectedMetric(metric)}
+                                        className={cn(
+                                            "px-2.5 py-1 text-xs font-medium rounded-full transition-all whitespace-nowrap",
+                                            selectedMetric === metric
+                                                ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                                                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                                        )}
+                                    >
+                                        {metric.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                            <ResponsiveContainer width="100%" height={300}>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={trends.periods}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                    <XAxis
-                                        dataKey="period"
-                                        stroke="hsl(var(--muted-foreground))"
-                                        style={{ fontSize: '12px' }}
-                                    />
-                                    <YAxis
-                                        stroke="hsl(var(--muted-foreground))"
-                                        style={{ fontSize: '12px' }}
-                                    />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+                                    <XAxis dataKey="period" stroke="#a1a1aa" fontSize={12} />
+                                    <YAxis stroke="#a1a1aa" fontSize={12} />
                                     <Tooltip
                                         contentStyle={{
-                                            backgroundColor: 'hsl(var(--card))',
-                                            border: '1px solid hsl(var(--border))',
-                                            borderRadius: '8px'
+                                            backgroundColor: '#fff',
+                                            border: '1px solid #e4e4e7',
+                                            borderRadius: '8px',
+                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                                         }}
                                     />
                                     <Line
                                         type="monotone"
                                         dataKey="value"
-                                        stroke="hsl(var(--primary))"
+                                        stroke="#10b981"
                                         strokeWidth={2}
-                                        dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                                        dot={{ fill: '#10b981', r: 4 }}
                                     />
                                 </LineChart>
                             </ResponsiveContainer>
-                        </motion.div>
-                    )}
+                        </div>
+                    </motion.div>
+                )}
 
-                    {/* At-Risk Deals */}
-                    {risks && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5 }}
-                            className="p-6 rounded-lg border border-border bg-card"
-                        >
-                            <div className="flex items-center gap-2 mb-4">
-                                <ExclamationTriangleIcon className="w-5 h-5 text-orange-500" />
-                                <h2 className="text-lg font-semibold text-foreground">At-Risk Deals</h2>
-                                <span className="ml-auto text-sm text-muted-foreground">
-                                    {risks.totalAtRisk} deals at risk ($
-{risks.totalValueAtRisk.toLocaleString()})
-                                </span>
+                {/* At-Risk Deals */}
+                {risks && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <div className="flex items-center gap-2 mb-4">
+                            <ExclamationTriangleIcon className="w-4 h-4 text-amber-500" />
+                            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                At-Risk Deals
+                            </h3>
+                            <span className="text-xs text-zinc-400 ml-auto">
+                                {risks.totalAtRisk} deals · ${risks.totalValueAtRisk.toLocaleString()}
+                            </span>
+                        </div>
+
+                        {risks.deals.length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-sm text-zinc-400">No high-risk deals found. Pipeline looks healthy!</p>
                             </div>
-
-                            {risks.deals.length === 0 ? (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    <p className="text-sm">No high-risk deals found. Pipeline looks healthy!</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {risks.deals.map((deal) => (
-                                        <div
-                                            key={deal.id}
-                                            className="p-4 rounded-lg border border-border bg-muted/30"
-                                        >
-                                            <div className="flex items-start justify-between mb-2">
-                                                <div className="flex-1">
-                                                    <h3 className="font-semibold text-foreground">{deal.title}</h3>
-                                                    <p className="text-sm text-muted-foreground">{deal.contact}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-semibold text-foreground">
-                                                        ${deal.value?.toLocaleString() || 0}
-                                                    </p>
-                                                    <div className={cn(
-                                                        "inline-block px-2 py-0.5 rounded text-xs font-medium",
-                                                        deal.riskScore > 60 ? "bg-red-500/20 text-red-500" :
-                                                        deal.riskScore > 40 ? "bg-orange-500/20 text-orange-500" :
-                                                        "bg-yellow-500/20 text-yellow-500"
-                                                    )}>
-                                                        Risk: {deal.riskScore}
-                                                    </div>
-                                                </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {risks.deals.map((deal) => (
+                                    <div
+                                        key={deal.id}
+                                        className="group py-4 border-b border-zinc-100 dark:border-zinc-800 last:border-0"
+                                    >
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div>
+                                                <p className="font-medium text-zinc-900 dark:text-zinc-100">{deal.title}</p>
+                                                <p className="text-sm text-zinc-500">{deal.contact}</p>
                                             </div>
-                                            <div className="space-y-1 mb-2">
-                                                {deal.risks.map((risk, idx) => (
-                                                    <p key={idx} className="text-xs text-muted-foreground">• {risk}</p>
-                                                ))}
-                                            </div>
-                                            <div className="p-2 rounded bg-muted text-xs text-foreground">
-                                                <strong>Recommendation:</strong> {deal.recommendation}
+                                            <div className="text-right">
+                                                <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                                                    ${deal.value?.toLocaleString() || 0}
+                                                </p>
+                                                <span className={cn(
+                                                    "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
+                                                    deal.riskScore > 60 ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" :
+                                                        deal.riskScore > 40 ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" :
+                                                            "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400"
+                                                )}>
+                                                    Risk: {deal.riskScore}
+                                                </span>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </motion.div>
-                    )}
-                </>
-            )}
+                                        <div className="space-y-1 mb-2">
+                                            {deal.risks.map((risk, idx) => (
+                                                <p key={idx} className="text-xs text-zinc-500">• {risk}</p>
+                                            ))}
+                                        </div>
+                                        <div className="flex items-start gap-2 p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
+                                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Recommendation:</span>
+                                            <p className="text-xs text-zinc-600 dark:text-zinc-400">{deal.recommendation}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </div>
         </div>
     );
 }

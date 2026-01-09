@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { motion } from "framer-motion";
 import {
     ChartBarIcon,
     CurrencyDollarIcon,
     EnvelopeIcon,
     UserGroupIcon,
+    ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import {
     BarChart,
@@ -25,8 +27,9 @@ import {
 } from "recharts";
 import axios from "@/lib/axios";
 import toast from "react-hot-toast";
+import { cn } from "@/lib/utils";
 
-const COLORS = ["#9ACD32", "#8AB82E", "#7BA329", "#6C8F24", "#5D7A1F"];
+const COLORS = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ef4444"];
 
 export default function AnalyticsPage() {
     const params = useParams();
@@ -38,10 +41,6 @@ export default function AnalyticsPage() {
     const [emailPerf, setEmailPerf] = useState<any>(null);
     const [leadSources, setLeadSources] = useState<any[]>([]);
     const [topPerformers, setTopPerformers] = useState<any[]>([]);
-
-    useEffect(() => {
-        fetchAnalytics();
-    }, [workspaceId]);
 
     const fetchAnalytics = async () => {
         try {
@@ -75,246 +74,270 @@ export default function AnalyticsPage() {
         }
     };
 
+    useEffect(() => {
+        fetchAnalytics();
+    }, [workspaceId]);
+
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="w-12 h-12 border-2 border-[#9ACD32] border-t-transparent rounded-full animate-spin" />
+            <div className="h-full flex items-center justify-center">
+                <div className="flex items-center gap-3 text-zinc-400">
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading analytics...</span>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background p-6">
-            <div className="max-w-7xl mx-auto">
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-foreground">Analytics & Reports</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Track performance and insights
-                    </p>
-                </div>
-
-                {/* KPI Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-card border border-border rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-[#9ACD32]/20 rounded-lg">
-                                <CurrencyDollarIcon className="w-6 h-6 text-[#9ACD32]" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Pipeline</p>
-                                <p className="text-2xl font-bold text-foreground">
-                                    ${(pipelineData?.totalValue || 0).toLocaleString()}
-                                </p>
-                            </div>
-                        </div>
+        <div className="h-full overflow-y-auto">
+            {/* Hero Section */}
+            <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-4 sm:pb-6">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+                >
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                            Analytics
+                        </h1>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                            Track performance and insights
+                        </p>
                     </div>
+                    <button
+                        onClick={fetchAnalytics}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm"
+                    >
+                        <ArrowPathIcon className="w-4 h-4" />
+                        <span className="hidden sm:inline">Refresh</span>
+                    </button>
+                </motion.div>
 
-                    <div className="bg-card border border-border rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/20 rounded-lg">
-                                <ChartBarIcon className="w-6 h-6 text-blue-400" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Win Rate</p>
-                                <p className="text-2xl font-bold text-foreground">
-                                    {pipelineData?.winRate || 0}%
-                                </p>
-                            </div>
-                        </div>
+                {/* Stats Row */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="mt-6 sm:mt-8 grid grid-cols-2 sm:flex sm:items-center gap-4 sm:gap-8"
+                >
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-2xl font-bold text-emerald-500">
+                            ${((pipelineData?.totalValue || 0) / 1000).toFixed(0)}k
+                        </span>
+                        <span className="text-sm text-zinc-500">pipeline</span>
                     </div>
-
-                    <div className="bg-card border border-border rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-500/20 rounded-lg">
-                                <EnvelopeIcon className="w-6 h-6 text-purple-400" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Email Open Rate</p>
-                                <p className="text-2xl font-bold text-foreground">
-                                    {emailPerf?.openRate || 0}%
-                                </p>
-                            </div>
-                        </div>
+                    <div className="hidden sm:block w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-blue-500">{pipelineData?.winRate || 0}%</span>
+                        <span className="text-sm text-zinc-500">win rate</span>
                     </div>
-
-                    <div className="bg-card border border-border rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-500/20 rounded-lg">
-                                <UserGroupIcon className="w-6 h-6 text-green-400" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Total Deals</p>
-                                <p className="text-2xl font-bold text-foreground">
-                                    {pipelineData?.totalDeals || 0}
-                                </p>
-                            </div>
-                        </div>
+                    <div className="hidden sm:block w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-violet-500">{emailPerf?.openRate || 0}%</span>
+                        <span className="text-sm text-zinc-500">email opens</span>
                     </div>
-                </div>
+                    <div className="hidden sm:block w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{pipelineData?.totalDeals || 0}</span>
+                        <span className="text-sm text-zinc-500">deals</span>
+                    </div>
+                </motion.div>
+            </div>
 
-                {/* Charts Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Divider */}
+            <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
+
+            {/* Charts Grid */}
+            <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                     {/* Revenue Trend */}
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-foreground mb-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
                             Revenue Trend
                         </h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={revenueTrend}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                                <XAxis dataKey="month" stroke="#888" />
-                                <YAxis stroke="#888" />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: "#1a1a1a",
-                                        border: "1px solid #333",
-                                        borderRadius: "8px",
-                                    }}
-                                />
-                                <Legend />
-                                <Line
-                                    type="monotone"
-                                    dataKey="revenue"
-                                    stroke="#9ACD32"
-                                    strokeWidth={2}
-                                    name="Revenue ($)"
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={revenueTrend}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+                                    <XAxis dataKey="month" stroke="#a1a1aa" fontSize={12} />
+                                    <YAxis stroke="#a1a1aa" fontSize={12} />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: "#fff",
+                                            border: "1px solid #e4e4e7",
+                                            borderRadius: "8px",
+                                            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                                        }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="revenue"
+                                        stroke="#10b981"
+                                        strokeWidth={2}
+                                        dot={{ fill: "#10b981", r: 4 }}
+                                        name="Revenue ($)"
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </motion.div>
 
                     {/* Pipeline by Stage */}
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-foreground mb-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.25 }}
+                    >
+                        <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
                             Pipeline by Stage
                         </h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={pipelineData?.dealsByStage || []}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                                <XAxis dataKey="_id" stroke="#888" />
-                                <YAxis stroke="#888" />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: "#1a1a1a",
-                                        border: "1px solid #333",
-                                        borderRadius: "8px",
-                                    }}
-                                />
-                                <Legend />
-                                <Bar dataKey="totalValue" fill="#9ACD32" name="Total Value ($)" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={pipelineData?.dealsByStage || []}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+                                    <XAxis dataKey="_id" stroke="#a1a1aa" fontSize={12} />
+                                    <YAxis stroke="#a1a1aa" fontSize={12} />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: "#fff",
+                                            border: "1px solid #e4e4e7",
+                                            borderRadius: "8px",
+                                        }}
+                                    />
+                                    <Bar dataKey="totalValue" fill="#10b981" radius={[4, 4, 0, 0]} name="Total Value ($)" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </motion.div>
 
                     {/* Lead Sources */}
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-foreground mb-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
                             Lead Sources
                         </h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={leadSources}
-                                    dataKey="count"
-                                    nameKey="_id"
-                                    cx="50%"
-                                    cy="50%"
-                                    outerRadius={100}
-                                    label
-                                >
-                                    {leadSources.map((entry, index) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={COLORS[index % COLORS.length]}
-                                        />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: "#1a1a1a",
-                                        border: "1px solid #333",
-                                        borderRadius: "8px",
-                                    }}
-                                />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={leadSources}
+                                        dataKey="count"
+                                        nameKey="_id"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={80}
+                                        label={({ _id, percent }) => `${_id} ${(percent * 100).toFixed(0)}%`}
+                                        labelLine={false}
+                                    >
+                                        {leadSources.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: "#fff",
+                                            border: "1px solid #e4e4e7",
+                                            borderRadius: "8px",
+                                        }}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </motion.div>
 
                     {/* Top Performers */}
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-foreground mb-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.35 }}
+                    >
+                        <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
                             Top Performers
                         </h3>
                         <div className="space-y-3">
                             {topPerformers.slice(0, 5).map((performer, index) => (
                                 <div
                                     key={index}
-                                    className="flex items-center justify-between p-3 bg-background rounded-lg"
+                                    className="flex items-center justify-between py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-[#9ACD32]/20 flex items-center justify-center text-[#9ACD32] font-semibold">
+                                        <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
                                             #{index + 1}
                                         </div>
                                         <div>
-                                            <p className="font-medium text-foreground">
+                                            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                                 {performer.user?.name || "Unknown"}
                                             </p>
-                                            <p className="text-xs text-muted-foreground">
+                                            <p className="text-xs text-zinc-500">
                                                 {performer.dealsWon} deals won
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="font-semibold text-[#9ACD32]">
-                                            ${performer.revenue.toLocaleString()}
-                                        </p>
-                                    </div>
+                                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                                        ${performer.revenue.toLocaleString()}
+                                    </p>
                                 </div>
                             ))}
+                            {topPerformers.length === 0 && (
+                                <p className="text-sm text-zinc-400 py-4 text-center">No data available</p>
+                            )}
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
 
                 {/* Email Performance */}
                 {emailPerf && (
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <h3 className="text-lg font-semibold text-foreground mb-4">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                    >
+                        <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
                             Email Performance
                         </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                            <div className="text-center">
-                                <p className="text-3xl font-bold text-foreground">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                            <div className="text-center py-4">
+                                <p className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
                                     {emailPerf.totalSent}
                                 </p>
-                                <p className="text-sm text-muted-foreground mt-1">Sent</p>
+                                <p className="text-sm text-zinc-500 mt-1">Sent</p>
                             </div>
-                            <div className="text-center">
-                                <p className="text-3xl font-bold text-blue-400">
+                            <div className="text-center py-4">
+                                <p className="text-2xl sm:text-3xl font-bold text-blue-500">
                                     {emailPerf.openRate}%
                                 </p>
-                                <p className="text-sm text-muted-foreground mt-1">Open Rate</p>
+                                <p className="text-sm text-zinc-500 mt-1">Open Rate</p>
                             </div>
-                            <div className="text-center">
-                                <p className="text-3xl font-bold text-purple-400">
+                            <div className="text-center py-4">
+                                <p className="text-2xl sm:text-3xl font-bold text-violet-500">
                                     {emailPerf.clickRate}%
                                 </p>
-                                <p className="text-sm text-muted-foreground mt-1">Click Rate</p>
+                                <p className="text-sm text-zinc-500 mt-1">Click Rate</p>
                             </div>
-                            <div className="text-center">
-                                <p className="text-3xl font-bold text-green-400">
+                            <div className="text-center py-4">
+                                <p className="text-2xl sm:text-3xl font-bold text-emerald-500">
                                     {emailPerf.replyRate}%
                                 </p>
-                                <p className="text-sm text-muted-foreground mt-1">Reply Rate</p>
+                                <p className="text-sm text-zinc-500 mt-1">Reply Rate</p>
                             </div>
-                            <div className="text-center">
-                                <p className="text-3xl font-bold text-red-400">
+                            <div className="text-center py-4">
+                                <p className="text-2xl sm:text-3xl font-bold text-red-500">
                                     {emailPerf.bounceRate}%
                                 </p>
-                                <p className="text-sm text-muted-foreground mt-1">Bounce Rate</p>
+                                <p className="text-sm text-zinc-500 mt-1">Bounce Rate</p>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
             </div>
         </div>

@@ -41,9 +41,9 @@ export default function DraggableColumnHeader({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "px-4 py-2 h-8 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide relative",
-        "border-r border-border last:border-r-0",
-        isDragging && "opacity-50 bg-muted/50"
+        "px-4 py-2 h-8 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider relative",
+        "border-r border-zinc-200 dark:border-zinc-800 last:border-r-0",
+        isDragging && "opacity-50 bg-zinc-100 dark:bg-zinc-800"
       )}
     >
       <div
@@ -52,16 +52,14 @@ export default function DraggableColumnHeader({
         className="flex items-center gap-1 cursor-grab active:cursor-grabbing select-none"
         onClick={() => onSort(column)}
       >
-
-
         {/* Column label */}
-        <span className="hover:text-foreground transition-colors truncate">
+        <span className="hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors truncate">
           {label}
         </span>
 
         {/* Sort indicator */}
         {sortColumn === column && (
-          <span className="text-black flex-shrink-0">
+          <span className="text-zinc-700 dark:text-zinc-300 flex-shrink-0">
             {sortDirection === "asc" ? "↑" : "↓"}
           </span>
         )}
