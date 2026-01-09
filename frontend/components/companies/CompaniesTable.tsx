@@ -140,14 +140,7 @@ export default function CompaniesTable({
       <div className="h-full flex flex-col">
         {/* Table Container - scrollable */}
         <div className="flex-1 overflow-auto">
-          <table className="w-full min-w-max" style={{ tableLayout: 'fixed' }}>
-            {/* Checkbox | Dynamic columns */}
-            <colgroup>
-              <col style={{ width: '36px' }} />
-              {orderedVisibleColumns.map((column) => (
-                <col key={column} style={{ width: `${columnWidths[column]}px` }} />
-              ))}
-            </colgroup>
+          <table className="w-full table-auto">
             <thead className="sticky top-0 bg-white dark:bg-zinc-900 z-10">
               <tr className="border-b border-zinc-200 dark:border-zinc-700 group">
                 {/* Checkbox Header */}
