@@ -26,7 +26,7 @@ async function executeDealTool(
 ): Promise<any> {
     switch (toolName) {
         case "create_deal": {
-            const { title, value, contactName, stage, notes } = args;
+            const { title, value, contactName, stage, notes, probability, priority } = args;
 
             // Find the default pipeline
             let pipeline = await Pipeline.findOne({ workspaceId, isDefault: true });
@@ -61,6 +61,8 @@ async function executeDealTool(
                 contactId,
                 status: "open",
                 notes: notes || "",
+                probability: probability || undefined,
+                priority: priority || undefined,
             });
 
             await eventPublisher.publish("deal.created", {
@@ -324,7 +326,7 @@ STEP 3: SMART INSIGHTS
 
 🔧 AVAILABLE TOOLS:
 
-1. create_deal - { title, value, contactName?, stage? }
+1. create_deal - { title, value, contactName?, stage?, probability?, priority? }
 2. search_deals - { query?, status? }
 3. update_deal - { dealId, updates }
 4. move_deal_stage - { dealId, newStage }

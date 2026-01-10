@@ -41,6 +41,7 @@ import {
     generalAgentNode,
     dynamicAgentNode,
 } from "./workers";
+import { withIntelligentExtraction } from "./enhancers/intelligentWrapper";
 
 // ⚡ FAST model for routing and verification (lazy initialization)
 let _flashModel: ChatVertexAI | null = null;
@@ -329,32 +330,37 @@ function routeToAgent(state: AgentStateType): string {
  */
 export function buildAgentGraph() {
     const graph = new StateGraph(AgentState)
-        // Nodes - Original agents
+        // Nodes - Supervisor and Verifier (not wrapped)
         .addNode("supervisor", supervisorNode)
-        .addNode("contact_agent", contactAgentNode)
-        .addNode("email_agent", emailAgentNode)
-        .addNode("deal_agent", dealAgentNode)
-        .addNode("workflow_agent", workflowAgentNode)
-        .addNode("task_agent", taskAgentNode)
-        .addNode("company_agent", companyAgentNode)
-        .addNode("campaign_agent", campaignAgentNode)
-        .addNode("pipeline_agent", pipelineAgentNode)
-        .addNode("ticket_agent", ticketAgentNode)
-        .addNode("sequence_agent", sequenceAgentNode)
-        .addNode("leadscore_agent", leadScoreAgentNode)
-        .addNode("reports_agent", reportsAgentNode)
-        // New AI Agents
-        .addNode("briefing_agent", briefingAgentNode)
-        .addNode("transcription_agent", transcriptionAgentNode)
-        .addNode("scheduling_agent", schedulingAgentNode)
-        .addNode("hygiene_agent", hygieneAgentNode)
-        .addNode("forecast_agent", forecastAgentNode)
-        .addNode("proposal_agent", proposalAgentNode)
-        .addNode("competitor_agent", competitorAgentNode)
-        .addNode("dataentry_agent", dataEntryAgentNode)
-        .addNode("general_agent", generalAgentNode)
-        .addNode("dynamic_agent", dynamicAgentNode)
         .addNode("verifier", verifierNode)
+
+        // ALL worker agents wrapped with intelligent extraction
+        .addNode("contact_agent", withIntelligentExtraction(contactAgentNode, "Contact"))
+        .addNode("email_agent", withIntelligentExtraction(emailAgentNode, "Email"))
+        .addNode("deal_agent", withIntelligentExtraction(dealAgentNode, "Deal"))
+        .addNode("workflow_agent", withIntelligentExtraction(workflowAgentNode, "Workflow"))
+        .addNode("task_agent", withIntelligentExtraction(taskAgentNode, "Task"))
+        .addNode("company_agent", withIntelligentExtraction(companyAgentNode, "Company"))
+        .addNode("campaign_agent", withIntelligentExtraction(campaignAgentNode, "Campaign"))
+        .addNode("pipeline_agent", withIntelligentExtraction(pipelineAgentNode, "Pipeline"))
+        .addNode("ticket_agent", withIntelligentExtraction(ticketAgentNode, "Ticket"))
+        .addNode("sequence_agent", withIntelligentExtraction(sequenceAgentNode, "Sequence"))
+        .addNode("leadscore_agent", withIntelligentExtraction(leadScoreAgentNode, "LeadScore"))
+        .addNode("reports_agent", withIntelligentExtraction(reportsAgentNode, "Reports"))
+
+        // New AI Agents - also wrapped
+        .addNode("briefing_agent", withIntelligentExtraction(briefingAgentNode, "Briefing"))
+        .addNode("transcription_agent", withIntelligentExtraction(transcriptionAgentNode, "Transcription"))
+        .addNode("scheduling_agent", withIntelligentExtraction(schedulingAgentNode, "Scheduling"))
+        .addNode("hygiene_agent", withIntelligentExtraction(hygieneAgentNode, "Hygiene"))
+        .addNode("forecast_agent", withIntelligentExtraction(forecastAgentNode, "Forecast"))
+        .addNode("proposal_agent", withIntelligentExtraction(proposalAgentNode, "Proposal"))
+        .addNode("competitor_agent", withIntelligentExtraction(competitorAgentNode, "Competitor"))
+        .addNode("dataentry_agent", withIntelligentExtraction(dataEntryAgentNode, "DataEntry"))
+        .addNode("general_agent", withIntelligentExtraction(generalAgentNode, "General"))
+
+        // Dynamic agent (fallback) - NOT wrapped to avoid infinite loops
+        .addNode("dynamic_agent", dynamicAgentNode)
         // Entry
         .setEntryPoint("supervisor")
         // Conditional routing from supervisor
