@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckIcon,
   RocketLaunchIcon,
@@ -23,11 +23,12 @@ export default function TrackingSettingsPage() {
       badge: "Recommended",
       description: "One code that works on ANY platform",
       icon: CodeBracketIcon,
-      gradient: "from-blue-500/20 to-cyan-500/10",
-      iconColor: "text-blue-400",
+      gradient: "from-blue-500/10 via-indigo-500/5 to-transparent",
+      iconColor: "text-blue-500",
+      badgeBg: "bg-blue-500/10",
+      badgeText: "text-blue-600",
       difficulty: "Easy",
       setup: "2 minutes",
-      bestFor: "All websites",
     },
     {
       id: "landing-pages",
@@ -35,11 +36,12 @@ export default function TrackingSettingsPage() {
       badge: "Automatic",
       description: "Create pages in MorrisB - tracking included!",
       icon: RocketLaunchIcon,
-      gradient: "from-emerald-500/20 to-green-500/10",
-      iconColor: "text-emerald-400",
+      gradient: "from-purple-500/10 via-pink-500/5 to-transparent",
+      iconColor: "text-purple-500",
+      badgeBg: "bg-purple-500/10",
+      badgeText: "text-purple-600",
       difficulty: "Easy",
       setup: "No setup",
-      bestFor: "New campaigns",
     },
     {
       id: "wordpress",
@@ -47,61 +49,42 @@ export default function TrackingSettingsPage() {
       badge: "One-Click",
       description: "Install our WordPress plugin",
       icon: CubeIcon,
-      gradient: "from-purple-500/20 to-violet-500/10",
-      iconColor: "text-purple-400",
+      gradient: "from-amber-500/10 via-orange-500/5 to-transparent",
+      iconColor: "text-amber-500",
+      badgeBg: "bg-amber-500/10",
+      badgeText: "text-amber-600",
       difficulty: "Easy",
       setup: "2 minutes",
-      bestFor: "WordPress sites",
     },
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.08 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { type: "spring", stiffness: 300, damping: 30 }
-    }
-  };
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="px-8 pt-8 pb-6"
+        transition={{ duration: 0.3 }}
+        className="px-6 pt-6 pb-4"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
-            <CodeBracketIcon className="w-5 h-5 text-primary" />
+          <div className="p-2 rounded-lg bg-muted/50">
+            <CodeBracketIcon className="w-5 h-5 text-muted-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-foreground">Website Tracking</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-lg font-semibold text-foreground">
+              Website Tracking
+            </h1>
+            <p className="text-xs text-muted-foreground">
               Choose how to track visitors and generate leads
             </p>
           </div>
         </div>
       </motion.div>
 
-      <div className="px-8 pb-8 max-w-4xl">
+      <div className="px-6 pb-6 max-w-5xl mx-auto">
         {/* Method Selection */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           {methods.map((method) => {
             const Icon = method.icon;
             const isSelected = selectedMethod === method.id;
@@ -109,53 +92,39 @@ export default function TrackingSettingsPage() {
             return (
               <motion.button
                 key={method.id}
-                variants={itemVariants}
-                whileHover={{ y: -4 }}
+                whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedMethod(method.id)}
-                className={`relative p-5 rounded-2xl text-left transition-all duration-500 ${isSelected
-                    ? "shadow-lg"
-                    : "hover:shadow-md"
+                className={`relative p-4 rounded-lg text-left transition-all duration-200 border ${isSelected
+                    ? "bg-card border-border shadow-sm"
+                    : "bg-card/40 border-border/40 hover:border-border/60"
                   }`}
               >
                 {/* Background gradient */}
-                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${method.gradient} transition-opacity duration-300 ${isSelected ? "opacity-100" : "opacity-50"
+                <div className={`absolute inset-0 rounded-lg bg-gradient-to-br ${method.gradient} ${isSelected ? "opacity-100" : "opacity-50"
                   }`} />
 
-                {/* Selection indicator */}
-                {isSelected && (
-                  <motion.div
-                    layoutId="selectedMethod"
-                    className="absolute inset-0 rounded-2xl ring-2 ring-primary/50"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-
-                <div className="relative z-10">
+                {/* Content */}
+                <div className="relative">
                   {/* Badge */}
-                  <span className={`inline-block px-2.5 py-1 text-[10px] font-semibold rounded-full mb-4 ${method.badge === "Recommended"
-                      ? "bg-blue-500/20 text-blue-400"
-                      : method.badge === "Automatic"
-                        ? "bg-emerald-500/20 text-emerald-400"
-                        : "bg-purple-500/20 text-purple-400"
-                    }`}>
+                  <span className={`inline-block px-2 py-0.5 text-[10px] font-semibold rounded mb-2 ${method.badgeBg} ${method.badgeText}`}>
                     {method.badge}
                   </span>
 
                   {/* Icon */}
-                  <Icon className={`w-7 h-7 mb-3 ${method.iconColor}`} />
+                  <Icon className={`w-7 h-7 mb-2 ${method.iconColor}`} />
 
-                  <h3 className="text-base font-semibold text-foreground mb-1">
+                  <h3 className="text-sm font-semibold text-foreground mb-1">
                     {method.title}
                   </h3>
 
-                  <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
+                  <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
                     {method.description}
                   </p>
 
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-[10px]">
                     <span className="text-muted-foreground">{method.setup}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">
+                    <span className="px-2 py-0.5 rounded bg-muted/50 text-muted-foreground font-medium">
                       {method.difficulty}
                     </span>
                   </div>
@@ -163,154 +132,168 @@ export default function TrackingSettingsPage() {
               </motion.button>
             );
           })}
-        </motion.div>
+        </div>
 
         {/* Selected Method Details */}
-        {selectedMethod === "universal" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            <UniversalTrackingInstaller workspaceId={workspaceId} />
-          </motion.div>
-        )}
+        <AnimatePresence mode="wait">
+          {selectedMethod === "universal" && (
+            <motion.div
+              key="universal"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <UniversalTrackingInstaller workspaceId={workspaceId} />
+            </motion.div>
+          )}
 
-        {selectedMethod === "landing-pages" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="rounded-2xl bg-gradient-to-br from-emerald-500/10 to-green-500/5 p-8"
-          >
-            <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 rounded-xl bg-emerald-500/20">
-                <CheckIcon className="w-6 h-6 text-emerald-400" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-foreground">
-                  Tracking is Automatic!
-                </h2>
-                <p className="text-muted-foreground">
-                  Landing pages built in MorrisB track visitors automatically
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4 mb-8">
-              <h3 className="font-semibold text-foreground">How it works:</h3>
-              <div className="space-y-3">
-                {[
-                  { step: 1, title: "Create a landing page", desc: "Marketing → Pages → Create New" },
-                  { step: 2, title: "Add a form", desc: "Drag a form section onto your page" },
-                  { step: 3, title: "Publish & share", desc: "Share the link and tracking starts!" },
-                ].map((item) => (
-                  <div key={item.step} className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-emerald-500 text-white rounded-full text-sm font-semibold">
-                      {item.step}
-                    </span>
-                    <div>
-                      <p className="font-medium text-foreground">{item.title}</p>
-                      <p className="text-sm text-muted-foreground">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <motion.a
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                href={`/projects/${workspaceId}/pages/new`}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-medium hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300"
-              >
-                Create Landing Page
-              </motion.a>
-              <motion.a
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                href={`/projects/${workspaceId}/visitors`}
-                className="px-6 py-3 rounded-xl bg-muted/50 text-foreground font-medium hover:bg-muted transition-all duration-300"
-              >
-                View Visitors
-              </motion.a>
-            </div>
-          </motion.div>
-        )}
-
-        {selectedMethod === "wordpress" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="rounded-2xl bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm p-8"
-          >
-            <h2 className="text-xl font-bold text-foreground mb-6">
-              WordPress Plugin - One-Click Setup
-            </h2>
-
-            <div className="space-y-6">
-              <div className="p-4 rounded-xl bg-blue-500/10 text-sm text-foreground">
-                <strong>✨ Automatic Installation:</strong> Install our WordPress plugin and tracking starts immediately!
+          {selectedMethod === "landing-pages" && (
+            <motion.div
+              key="landing-pages"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="rounded-xl bg-card border border-border/50 p-5"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-purple-500/10">
+                  <CheckIcon className="w-5 h-5 text-purple-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-foreground">
+                    Tracking is Automatic!
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Landing pages built in MorrisB track visitors automatically
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="font-semibold text-foreground">Installation Steps:</h3>
-                <div className="space-y-3">
+              <div className="space-y-2 mb-4">
+                <h3 className="font-medium text-foreground text-sm">How it works:</h3>
+                <div className="space-y-2">
                   {[
-                    { step: 1, title: "Download the plugin", link: true },
-                    { step: 2, title: "Upload to WordPress", desc: "Plugins → Add New → Upload Plugin" },
-                    { step: 3, title: "Activate & configure", desc: "Settings → MorrisB Tracking → Enter Workspace ID" },
+                    { step: 1, title: "Create a landing page", desc: "Marketing → Pages → Create New" },
+                    { step: 2, title: "Add a form", desc: "Drag a form section onto your page" },
+                    { step: 3, title: "Publish & share", desc: "Share the link and tracking starts!" },
                   ].map((item) => (
-                    <div key={item.step} className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-purple-500 text-white rounded-full text-sm font-semibold">
+                    <div
+                      key={item.step}
+                      className="flex items-start gap-2 p-2 rounded-lg bg-muted/30"
+                    >
+                      <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center bg-purple-500 text-white rounded text-[10px] font-bold">
                         {item.step}
                       </span>
                       <div>
-                        <p className="font-medium text-foreground">{item.title}</p>
-                        {item.link && (
-                          <a
-                            href="/morrisb-tracking.zip"
-                            download="morrisb-tracking.zip"
-                            className="text-sm text-primary hover:underline"
-                          >
-                            Download morrisb-tracking.zip
-                          </a>
-                        )}
-                        {item.desc && (
-                          <p className="text-sm text-muted-foreground">{item.desc}</p>
-                        )}
+                        <p className="text-xs font-medium text-foreground">{item.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{item.desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-muted/30">
-                <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                  Your Workspace ID
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={workspaceId}
-                    readOnly
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-background/60 backdrop-blur-sm font-mono text-sm text-foreground"
-                  />
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => navigator.clipboard.writeText(workspaceId)}
-                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-violet-500 text-white font-medium hover:shadow-lg hover:shadow-purple-500/20 transition-all duration-300"
-                  >
-                    Copy
-                  </motion.button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <motion.a
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  href={`/projects/${workspaceId}/pages/new`}
+                  className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+                >
+                  Create Landing Page
+                </motion.a>
+                <motion.a
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  href={`/projects/${workspaceId}/visitors`}
+                  className="px-4 py-2 rounded-lg bg-muted/50 text-foreground text-xs font-medium hover:bg-muted transition-colors"
+                >
+                  View Visitors
+                </motion.a>
+              </div>
+            </motion.div>
+          )}
+
+          {selectedMethod === "wordpress" && (
+            <motion.div
+              key="wordpress"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="rounded-xl bg-card border border-border/50 p-5"
+            >
+              <h2 className="text-base font-semibold text-foreground mb-4">
+                WordPress Plugin - One-Click Setup
+              </h2>
+
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-amber-500/10 text-xs text-foreground border border-amber-500/20">
+                  <strong>✨ Automatic Installation:</strong> Install our WordPress plugin and tracking starts immediately!
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-medium text-foreground text-sm">Installation Steps:</h3>
+                  <div className="space-y-2">
+                    {[
+                      { step: 1, title: "Download the plugin", link: true },
+                      { step: 2, title: "Upload to WordPress", desc: "Plugins → Add New → Upload Plugin" },
+                      { step: 3, title: "Activate & configure", desc: "Settings → MorrisB Tracking → Enter Workspace ID" },
+                    ].map((item) => (
+                      <div
+                        key={item.step}
+                        className="flex items-start gap-2 p-2 rounded-lg bg-muted/30"
+                      >
+                        <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center bg-amber-500 text-white rounded text-[10px] font-bold">
+                          {item.step}
+                        </span>
+                        <div>
+                          <p className="text-xs font-medium text-foreground">{item.title}</p>
+                          {item.link && (
+                            <a
+                              href="/morrisb-tracking.zip"
+                              download="morrisb-tracking.zip"
+                              className="text-[10px] text-primary hover:underline"
+                            >
+                              Download morrisb-tracking.zip
+                            </a>
+                          )}
+                          {item.desc && (
+                            <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-muted/30 border border-border/30">
+                  <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    Your Workspace ID
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={workspaceId}
+                      readOnly
+                      className="flex-1 px-3 py-2 rounded-lg bg-background font-mono text-xs text-foreground border border-border"
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => navigator.clipboard.writeText(workspaceId)}
+                      className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      Copy
+                    </motion.button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

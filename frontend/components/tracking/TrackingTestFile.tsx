@@ -4,14 +4,14 @@ import React from "react";
 import { DocumentArrowDownIcon } from "@heroicons/react/24/outline";
 
 interface TrackingTestFileProps {
-  workspaceId: string;
+    workspaceId: string;
 }
 
 export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps) {
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
-  const generateTestHTML = () => {
-    return `<!DOCTYPE html>
+    const generateTestHTML = () => {
+        return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -252,28 +252,28 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
     </script>
 </body>
 </html>`;
-  };
+    };
 
-  const downloadTestFile = () => {
-    const htmlContent = generateTestHTML();
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `morrisb-tracking-test-${workspaceId.slice(0, 8)}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+    const downloadTestFile = () => {
+        const htmlContent = generateTestHTML();
+        const blob = new Blob([htmlContent], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `morrisb-tracking-test-${workspaceId.slice(0, 8)}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
 
-  return (
-    <button
-      onClick={downloadTestFile}
-      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-all"
-    >
-      <DocumentArrowDownIcon className="w-5 h-5" />
-      Download Test Page
-    </button>
-  );
+    return (
+        <button
+            onClick={downloadTestFile}
+            className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors"
+        >
+            <DocumentArrowDownIcon className="w-4 h-4" />
+            Download Test Page
+        </button>
+    );
 }
