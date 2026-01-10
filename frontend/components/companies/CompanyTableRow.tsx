@@ -109,7 +109,7 @@ export default function CompanyTableRow({
               href={company.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="text-muted-foreground hover:text-foreground hover:underline transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               {company.website}
@@ -121,7 +121,7 @@ export default function CompanyTableRow({
           return company.phone || "—";
         case "companySize":
           return company.companySize ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border border-border">
               {company.companySize}
             </span>
           ) : (
@@ -150,14 +150,7 @@ export default function CompanyTableRow({
             <span
               className={cn(
                 "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                company.status === "customer" &&
-                "bg-green-500/10 text-green-400 border border-green-500/20",
-                company.status === "prospect" &&
-                "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-                company.status === "lead" &&
-                "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-                company.status === "churned" &&
-                "bg-red-500/10 text-red-400 border border-red-500/20"
+                "bg-muted text-muted-foreground border border-border"
               )}
             >
               {company.status || "lead"}
@@ -184,7 +177,7 @@ export default function CompanyTableRow({
         return new Intl.NumberFormat().format(Number(customValue));
       case "select":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border border-border">
             {customValue}
           </span>
         );

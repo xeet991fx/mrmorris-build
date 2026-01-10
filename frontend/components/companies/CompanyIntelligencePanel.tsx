@@ -130,7 +130,7 @@ export const CompanyIntelligencePanel: React.FC<CompanyIntelligencePanelProps> =
 
     const getHealthColor = (status: string) => {
         switch (status) {
-            case 'excellent': return 'text-green-500 bg-green-500/10';
+            case 'excellent': return 'text-gray-600 bg-gray-500/10';
             case 'good': return 'text-blue-500 bg-blue-500/10';
             case 'at-risk': return 'text-orange-500 bg-orange-500/10';
             case 'critical': return 'text-red-500 bg-red-500/10';
@@ -142,14 +142,14 @@ export const CompanyIntelligencePanel: React.FC<CompanyIntelligencePanelProps> =
         switch (level) {
             case 'high': return 'border-red-500 bg-red-500/10';
             case 'medium': return 'border-orange-500 bg-orange-500/10';
-            case 'low': return 'border-green-500 bg-green-500/10';
+            case 'low': return 'border-gray-500 bg-gray-500/10';
             default: return 'border-gray-500 bg-gray-500/10';
         }
     };
 
     const getOpportunityIcon = (type: string) => {
         switch (type) {
-            case 'upsell': return <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />;
+            case 'upsell': return <ArrowTrendingUpIcon className="w-5 h-5 text-gray-600" />;
             case 'cross-sell': return <CurrencyDollarIcon className="w-5 h-5 text-blue-500" />;
             case 'renewal': return <ShieldCheckIcon className="w-5 h-5 text-purple-500" />;
             case 'referral': return <UserGroupIcon className="w-5 h-5 text-yellow-500" />;
@@ -170,19 +170,9 @@ export const CompanyIntelligencePanel: React.FC<CompanyIntelligencePanelProps> =
     return (
         <div className="space-y-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <SparklesIcon className="w-5 h-5 text-purple-500" />
-                    <h3 className="text-lg font-semibold text-foreground">Account Intelligence</h3>
-                </div>
-                <button
-                    onClick={handleGenerate}
-                    disabled={isGenerating}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                >
-                    <ArrowPathIcon className={cn("w-4 h-4", isGenerating && "animate-spin")} />
-                    {isGenerating ? "Analyzing..." : "Refresh"}
-                </button>
+            <div className="flex items-center gap-2">
+                <SparklesIcon className="w-5 h-5 text-purple-500" />
+                <h3 className="text-lg font-semibold text-foreground">Account Intelligence</h3>
             </div>
 
             {isLoading && (
@@ -224,7 +214,7 @@ export const CompanyIntelligencePanel: React.FC<CompanyIntelligencePanelProps> =
                                                         {account.status}
                                                     </span>
                                                     {account.trend === 'improving' && (
-                                                        <span className="text-xs text-green-500 flex items-center gap-1">
+                                                        <span className="text-xs text-gray-600 flex items-center gap-1">
                                                             <ArrowTrendingUpIcon className="w-3 h-3" />
                                                             Improving
                                                         </span>
@@ -298,7 +288,7 @@ export const CompanyIntelligencePanel: React.FC<CompanyIntelligencePanelProps> =
                                                         "px-2 py-0.5 rounded text-xs font-medium uppercase",
                                                         risk.riskLevel === 'high' ? 'bg-red-500/20 text-red-500' :
                                                             risk.riskLevel === 'medium' ? 'bg-orange-500/20 text-orange-500' :
-                                                                'bg-green-500/20 text-green-500'
+                                                                'bg-gray-500/20 text-gray-600'
                                                     )}>
                                                         {risk.riskLevel} risk
                                                     </span>
@@ -341,7 +331,7 @@ export const CompanyIntelligencePanel: React.FC<CompanyIntelligencePanelProps> =
                             className="rounded-lg border border-border bg-card p-4"
                         >
                             <div className="flex items-center gap-2 mb-4">
-                                <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />
+                                <ArrowTrendingUpIcon className="w-5 h-5 text-gray-600" />
                                 <span className="font-semibold text-foreground">Expansion Opportunities</span>
                             </div>
                             <div className="space-y-3">
@@ -351,7 +341,7 @@ export const CompanyIntelligencePanel: React.FC<CompanyIntelligencePanelProps> =
                                         initial={{ opacity: 0, x: -10 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: idx * 0.05 }}
-                                        className="p-3 rounded border border-border/50 bg-gradient-to-r from-green-500/5 to-transparent"
+                                        className="p-3 rounded border border-border/50 bg-gradient-to-r from-gray-500/5 to-transparent"
                                     >
                                         <div className="flex items-start gap-3">
                                             {getOpportunityIcon(opp.opportunityType)}
@@ -362,7 +352,7 @@ export const CompanyIntelligencePanel: React.FC<CompanyIntelligencePanelProps> =
                                                         <p className="text-xs text-muted-foreground capitalize">{opp.opportunityType}</p>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-lg font-bold text-green-500">
+                                                        <p className="text-lg font-bold text-gray-700 dark:text-gray-400">
                                                             ${(opp.potential / 1000).toFixed(0)}K
                                                         </p>
                                                         <p className="text-xs text-muted-foreground">{opp.readiness}% ready</p>
