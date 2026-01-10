@@ -1,8 +1,9 @@
 "use client";
 
 import { ReactNode } from "react";
-import { motion } from "framer-motion";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { cn } from "@/lib/utils";
 
 interface IntegrationCardProps {
   title: string;
@@ -28,11 +29,11 @@ export default function IntegrationCard({
   const statusConfig = {
     connected: {
       badge: "Connected",
-      className: "bg-green-500/10 text-green-400",
+      className: "bg-emerald-500/10 text-emerald-400",
     },
     "not-connected": {
       badge: "Not Connected",
-      className: "bg-muted text-muted-foreground",
+      className: "bg-zinc-500/10 text-zinc-400",
     },
     "coming-soon": {
       badge: "Coming Soon",
@@ -46,13 +47,13 @@ export default function IntegrationCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className="rounded-lg border border-border bg-card/50 overflow-hidden"
+      transition={{ delay, type: "spring", stiffness: 300, damping: 30 }}
+      className="group rounded-2xl bg-gradient-to-br from-card/80 to-card/40 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md transition-all duration-500"
     >
       {/* Card Header - Clickable */}
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-6 hover:bg-card/70 transition-colors text-left"
+        className="w-full flex items-center justify-between p-5 hover:bg-card/30 transition-all duration-300 text-left"
       >
         <div className="flex items-center gap-4 flex-1 min-w-0">
           {/* Icon */}
@@ -60,10 +61,13 @@ export default function IntegrationCard({
 
           {/* Title & Description */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-base font-semibold text-foreground">{title}</h2>
               <span
-                className={`px-2 py-0.5 text-[10px] font-medium rounded ${currentStatus.className}`}
+                className={cn(
+                  "px-2.5 py-0.5 text-[10px] font-medium rounded-full",
+                  currentStatus.className
+                )}
               >
                 {currentStatus.badge}
               </span>
@@ -71,32 +75,34 @@ export default function IntegrationCard({
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
 
-          {/* Chevron Icon */}
-          <div className="flex-shrink-0">
-            {isExpanded ? (
-              <ChevronDownIcon className="w-5 h-5 text-muted-foreground transition-transform" />
-            ) : (
-              <ChevronRightIcon className="w-5 h-5 text-muted-foreground transition-transform" />
-            )}
-          </div>
+          {/* Chevron Icon with rotation animation */}
+          <motion.div
+            animate={{ rotate: isExpanded ? 180 : 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="flex-shrink-0 p-2 rounded-xl hover:bg-muted/50 transition-colors"
+          >
+            <ChevronDownIcon className="w-5 h-5 text-muted-foreground" />
+          </motion.div>
         </div>
       </button>
 
       {/* Expandable Content */}
-      <motion.div
-        initial={false}
-        animate={{
-          height: isExpanded ? "auto" : 0,
-          opacity: isExpanded ? 1 : 0,
-        }}
-        transition={{
-          height: { duration: 0.3, ease: "easeInOut" },
-          opacity: { duration: 0.2, ease: "easeInOut" },
-        }}
-        className="overflow-hidden"
-      >
-        <div className="px-6 pb-6 pt-2 border-t border-border">{children}</div>
-      </motion.div>
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 pt-2">
+              <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent mb-5" />
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

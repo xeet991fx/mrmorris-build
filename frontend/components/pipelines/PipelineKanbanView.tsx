@@ -190,29 +190,31 @@ export default function PipelineKanbanView({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      {/* Horizontal scrollable container - Full height */}
-      <div className="overflow-x-auto h-[calc(100vh-200px)] -mx-8 px-8">
-        <div className="flex gap-4 min-w-max h-full">
-          {kanbanData.stages.map((stageData, index) => (
-            <motion.div
-              key={stageData.stage._id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="h-full"
-            >
-              <KanbanColumn
-                stage={stageData.stage}
-                opportunities={stageData.opportunities}
-                onEdit={onEditOpportunity}
-                onDelete={onDeleteOpportunity}
-                onAddOpportunity={() => onAddOpportunity(stageData.stage._id)}
-                onCardClick={setDetailPanelOpportunity}
-                isFirst={index === 0}
-                isLast={index === kanbanData.stages.length - 1}
-              />
-            </motion.div>
-          ))}
+      {/* Horizontal scrollable container */}
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-x-auto overflow-y-hidden pb-2">
+          <div className="flex gap-4 min-w-max h-full px-1 py-1">
+            {kanbanData.stages.map((stageData, index) => (
+              <motion.div
+                key={stageData.stage._id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="h-full flex-shrink-0"
+              >
+                <KanbanColumn
+                  stage={stageData.stage}
+                  opportunities={stageData.opportunities}
+                  onEdit={onEditOpportunity}
+                  onDelete={onDeleteOpportunity}
+                  onAddOpportunity={() => onAddOpportunity(stageData.stage._id)}
+                  onCardClick={setDetailPanelOpportunity}
+                  isFirst={index === 0}
+                  isLast={index === kanbanData.stages.length - 1}
+                />
+              </motion.div>
+            ))}
+          </div>
         </div>
       </div>
 

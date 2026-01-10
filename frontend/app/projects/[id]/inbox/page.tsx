@@ -2,19 +2,27 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-    ArrowPathIcon,
-    FunnelIcon,
-    MagnifyingGlassIcon,
-    CheckCircleIcon,
-    ExclamationCircleIcon,
-    FaceSmileIcon,
-    FaceFrownIcon,
-    MinusCircleIcon,
-    UserIcon,
-    EnvelopeOpenIcon,
-} from "@heroicons/react/24/outline";
+    Inbox,
+    RefreshCw,
+    Search,
+    Mail,
+    MailOpen,
+    Sparkles,
+    Send,
+    Smile,
+    Frown,
+    Meh,
+    Calendar,
+    Ban,
+    Workflow,
+    Target,
+    ChevronRight,
+    ArrowLeft,
+    Filter,
+    X,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import {
     getInboxMessages,
@@ -28,8 +36,8 @@ import { getCampaigns } from "@/lib/api/campaign";
 import { getWorkflows } from "@/lib/api/workflow";
 import { EmailInsightsPanel } from "@/components/inbox/EmailInsightsPanel";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
+import { cn } from "@/lib/utils";
 
-// Local type for inbox messages with extended properties
 interface LocalInboxMessage {
     _id: string;
     workspaceId: string;
@@ -52,38 +60,24 @@ interface LocalInboxMessage {
     receivedAt: string;
     createdAt: string;
     updatedAt: string;
-    // Extended fields for replies
     replySubject?: string;
     replyBody?: string;
     replySentiment?: "positive" | "negative" | "neutral" | "out_of_office" | "unsubscribe";
     repliedAt?: string;
-    metadata?: {
-        isRead?: boolean;
-        assignedTo?: string;
-        labels?: string[];
-    };
-    contact?: {
-        firstName: string;
-        lastName: string;
-        email: string;
-    };
+    metadata?: { isRead?: boolean; assignedTo?: string; labels?: string[] };
+    contact?: { firstName: string; lastName: string; email: string };
 }
 
 export default function InboxPage() {
     const params = useParams();
     const workspaceId = params.id as string;
-
-    // Track actions for AI insights
-    const { track } = useInsightTracking({
-        workspaceId,
-        page: 'inbox',
-        enabled: !!workspaceId,
-    });
+    const { track } = useInsightTracking({ workspaceId, page: 'inbox', enabled: !!workspaceId });
 
     const [messages, setMessages] = useState<LocalInboxMessage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedMessage, setSelectedMessage] = useState<LocalInboxMessage | null>(null);
+    const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
         source: "all" as 'all' | 'campaign' | 'workflow' | 'direct',
         campaign: "",
@@ -110,17 +104,14 @@ export default function InboxPage() {
                 search: filters.search || undefined,
             });
             if (response.success) {
-                // Messages can be at top level or in data object depending on API version
                 const msgs = (response as any).messages || response.data?.messages || [];
                 setMessages(msgs as LocalInboxMessage[]);
-                console.log("Inbox messages loaded:", msgs.length);
             } else {
                 setError(response.error || "Failed to load messages");
             }
         } catch (err: any) {
             console.error("Failed to fetch inbox messages:", err);
             setError(err.message || "Failed to load inbox");
-            toast.error("Failed to load inbox");
         } finally {
             setIsLoading(false);
         }
@@ -129,12 +120,8 @@ export default function InboxPage() {
     const fetchStats = useCallback(async () => {
         try {
             const response = await getInboxStats(workspaceId);
-            if (response.success) {
-                setStats(response.data);
-            }
-        } catch (err) {
-            console.error('Failed to fetch stats:', err);
-        }
+            if (response.success) setStats(response.data);
+        } catch (err) { console.error('Failed to fetch stats:', err); }
     }, [workspaceId]);
 
     const fetchCampaignsData = useCallback(async () => {
@@ -144,9 +131,7 @@ export default function InboxPage() {
                 const campaignList = response.campaigns || response.data?.campaigns || [];
                 setCampaigns(campaignList.map(c => ({ _id: c._id, name: c.name })));
             }
-        } catch (err) {
-            console.error("Failed to fetch campaigns:", err);
-        }
+        } catch (err) { console.error("Failed to fetch campaigns:", err); }
     }, [workspaceId]);
 
     const fetchWorkflowsData = useCallback(async () => {
@@ -156,9 +141,7 @@ export default function InboxPage() {
                 const workflowList = response.data?.workflows || [];
                 setWorkflows(workflowList.map((w: any) => ({ _id: w._id, name: w.name })));
             }
-        } catch (err) {
-            console.error("Failed to fetch workflows:", err);
-        }
+        } catch (err) { console.error("Failed to fetch workflows:", err); }
     }, [workspaceId]);
 
     useEffect(() => {
@@ -168,112 +151,37 @@ export default function InboxPage() {
         fetchStats();
     }, [fetchMessages, fetchCampaignsData, fetchWorkflowsData, fetchStats]);
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        fetchMessages();
-    };
-
-    const handleMarkAsRead = async (messageId: string) => {
-        try {
-            await markMessageAsRead(messageId);
-            fetchMessages();
-        } catch (err) {
-            console.error("Failed to mark as read:", err);
-        }
-    };
+    const handleSearch = (e: React.FormEvent) => { e.preventDefault(); fetchMessages(); };
+    const handleMarkAsRead = async (messageId: string) => { try { await markMessageAsRead(messageId); fetchMessages(); } catch (err) { console.error("Failed to mark as read:", err); } };
 
     const getSentimentIcon = (sentiment?: string) => {
-        switch (sentiment) {
-            case "positive":
-                return <FaceSmileIcon className="w-5 h-5 text-green-400" />;
-            case "negative":
-                return <FaceFrownIcon className="w-5 h-5 text-red-400" />;
-            case "neutral":
-                return <MinusCircleIcon className="w-5 h-5 text-gray-400" />;
-            case "out_of_office":
-                return <ExclamationCircleIcon className="w-5 h-5 text-yellow-400" />;
-            case "unsubscribe":
-                return <ExclamationCircleIcon className="w-5 h-5 text-red-400" />;
-            default:
-                return <MinusCircleIcon className="w-5 h-5 text-gray-400" />;
-        }
-    };
-
-    const getSentimentBadge = (sentiment?: string) => {
-        const badges: Record<string, { bg: string; text: string; label: string; icon: string }> = {
-            positive: { bg: "bg-green-500/15 border border-green-500/30", text: "text-green-400", label: "Positive", icon: "😊" },
-            negative: { bg: "bg-red-500/15 border border-red-500/30", text: "text-red-400", label: "Negative", icon: "😞" },
-            neutral: { bg: "bg-gray-500/15 border border-gray-500/30", text: "text-gray-400", label: "Neutral", icon: "😐" },
-            out_of_office: { bg: "bg-yellow-500/15 border border-yellow-500/30", text: "text-yellow-400", label: "Away", icon: "🏖️" },
-            unsubscribe: { bg: "bg-red-500/15 border border-red-500/30", text: "text-red-400", label: "Unsub", icon: "🚫" },
+        const icons: Record<string, { icon: React.ReactNode; color: string }> = {
+            positive: { icon: <Smile className="w-4 h-4" />, color: "text-emerald-500" },
+            negative: { icon: <Frown className="w-4 h-4" />, color: "text-rose-500" },
+            neutral: { icon: <Meh className="w-4 h-4" />, color: "text-zinc-400" },
+            out_of_office: { icon: <Calendar className="w-4 h-4" />, color: "text-amber-500" },
+            unsubscribe: { icon: <Ban className="w-4 h-4" />, color: "text-rose-500" },
         };
-        const badge = badges[sentiment || "neutral"] || badges.neutral;
-        return (
-            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
-                <span className="text-[10px]">{badge.icon}</span>
-                {badge.label}
-            </span>
-        );
+        return icons[sentiment || "neutral"] || icons.neutral;
     };
 
     const formatDate = (dateString?: string) => {
-        if (!dateString) return "—";
+        if (!dateString) return "";
         const date = new Date(dateString);
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-        if (diffHours < 24) {
-            return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        } else if (diffDays < 7) {
-            return `${diffDays}d ago`;
-        } else {
-            return date.toLocaleDateString();
-        }
+        if (diffHours < 1) return "Just now";
+        if (diffHours < 24) return `${diffHours}h`;
+        if (diffDays < 7) return `${diffDays}d`;
+        return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
-    // Type-safe accessors for contactId which can be string or object
     const getContactName = (message: LocalInboxMessage): string => {
         if (!message.contactId) return message.toEmail || message.fromEmail || "Unknown";
         if (typeof message.contactId === "string") return message.toEmail || message.fromEmail || "Unknown";
         return message.contactId.name || message.toEmail || message.fromEmail || "Unknown";
-    };
-
-    const getContactCompany = (message: LocalInboxMessage): string => {
-        if (!message.contactId) return message.toEmail || "";
-        if (typeof message.contactId === "string") return message.toEmail || "";
-        return message.contactId.company || message.toEmail || "";
-    };
-
-    const getSourceInfo = (message: LocalInboxMessage): { type: string; name: string; icon: string; color: string } => {
-        // Check for campaign
-        if (message.campaignId) {
-            const name = typeof message.campaignId === 'string' ? 'Campaign' : (message.campaignId.name || 'Campaign');
-            return { type: 'Campaign', name, icon: '📧', color: 'text-blue-400 bg-blue-500/10' };
-        }
-        // Check for workflow
-        if (message.workflowId) {
-            const name = typeof message.workflowId === 'string' ? 'Workflow' : (message.workflowId.name || 'Workflow');
-            return { type: 'Workflow', name, icon: '⚡', color: 'text-purple-400 bg-purple-500/10' };
-        }
-        // Check for sequence
-        if (message.sequenceId) {
-            const name = typeof message.sequenceId === 'string' ? 'Sequence' : (message.sequenceId.name || 'Sequence');
-            return { type: 'Sequence', name, icon: '📋', color: 'text-orange-400 bg-orange-500/10' };
-        }
-        // Check source field
-        if (message.source === 'workflow') {
-            return { type: 'Workflow', name: 'Workflow', icon: '⚡', color: 'text-purple-400 bg-purple-500/10' };
-        }
-        if (message.source === 'sequence') {
-            return { type: 'Sequence', name: 'Sequence', icon: '📋', color: 'text-orange-400 bg-orange-500/10' };
-        }
-        if (message.source === 'campaign') {
-            return { type: 'Campaign', name: 'Campaign', icon: '📧', color: 'text-blue-400 bg-blue-500/10' };
-        }
-        // Default to direct email
-        return { type: 'Direct', name: 'Direct Email', icon: '✉️', color: 'text-gray-400 bg-gray-500/10' };
     };
 
     const getContactEmail = (message: LocalInboxMessage): string => {
@@ -282,426 +190,303 @@ export default function InboxPage() {
         return message.contactId.email || message.toEmail || message.fromEmail || "";
     };
 
+    const getSourceIcon = (message: LocalInboxMessage) => {
+        if (message.campaignId) return <Target className="w-3 h-3 text-blue-500" />;
+        if (message.workflowId) return <Workflow className="w-3 h-3 text-violet-500" />;
+        return <Mail className="w-3 h-3 text-zinc-400" />;
+    };
+
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <ArrowPathIcon className="w-8 h-8 animate-spin text-muted-foreground" />
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-900">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+                    <div className="w-10 h-10 border-2 border-zinc-200 dark:border-zinc-700 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-sm text-zinc-500">Loading inbox...</p>
+                </motion.div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-card/95 flex flex-col">
-            {/* Header - matches contacts/workflows style */}
-            <div className="h-12 px-6 border-b border-border flex items-center justify-between flex-shrink-0">
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-center gap-3"
-                >
-                    <h1 className="text-lg font-semibold text-foreground">Inbox</h1>
-                    <p className="text-xs text-muted-foreground">
-                        {messages.length} messages • {stats.unread} unread
-                    </p>
-                </motion.div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={async () => {
-                            setIsSyncing(true);
-                            try {
-                                const result = await syncInbox(workspaceId);
-                                if (result.success) {
-                                    toast.success(result.message);
-                                    fetchMessages();
-                                }
-                            } catch (err: any) {
-                                toast.error(err.message || "Failed to sync");
-                            } finally {
-                                setIsSyncing(false);
-                            }
-                        }}
-                        disabled={isSyncing}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-all disabled:opacity-50 font-medium text-sm"
+        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+            <AnimatePresence mode="wait">
+                {!selectedMessage ? (
+                    /* LIST VIEW */
+                    <motion.div
+                        key="list"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="h-screen flex flex-col"
                     >
-                        <ArrowPathIcon className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        {isSyncing ? 'Syncing...' : 'Sync Gmail'}
-                    </button>
-                    <button
-                        onClick={() => fetchMessages()}
-                        className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg hover:bg-muted/50 transition-all text-sm"
-                    >
-                        <ArrowPathIcon className="w-4 h-4" />
-                        Refresh
-                    </button>
-                </div>
-            </div>
-
-            {/* Filters */}
-            <div className="px-6 py-3 border-b border-border flex items-center gap-4 flex-shrink-0">
-                <form onSubmit={handleSearch} className="flex-1 max-w-sm">
-                    <div className="relative">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <input
-                            type="text"
-                            value={filters.search}
-                            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                            placeholder="Search messages..."
-                            className="w-full pl-9 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 focus:border-[#9ACD32] transition-all"
-                        />
-                    </div>
-                </form>
-
-                <select
-                    value={filters.sentiment}
-                    onChange={(e) => setFilters({ ...filters, sentiment: e.target.value })}
-                    className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
-                >
-                    <option value="">All Sentiments</option>
-                    <option value="positive">😊 Positive</option>
-                    <option value="negative">😞 Negative</option>
-                    <option value="neutral">😐 Neutral</option>
-                    <option value="out_of_office">🏖️ Out of Office</option>
-                    <option value="unsubscribe">🚫 Unsubscribe</option>
-                </select>
-
-                <div className="flex items-center gap-3">
-                    <select
-                        value={filters.source}
-                        onChange={(e) => setFilters({ ...filters, source: e.target.value as any, campaign: '', workflow: '' })}
-                        className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
-                    >
-                        <option value="all">📬 All Sources ({stats.all})</option>
-                        <option value="campaign">📧 Campaigns ({stats.campaigns})</option>
-                        <option value="workflow">⚡ Workflows ({stats.workflows})</option>
-                        <option value="direct">✉️ Direct ({stats.direct})</option>
-                    </select>
-
-                    {filters.source === 'campaign' && (
-                        <select
-                            value={filters.campaign}
-                            onChange={(e) => setFilters({ ...filters, campaign: e.target.value })}
-                            className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
-                        >
-                            <option value="">All Campaigns</option>
-                            {campaigns.map((campaign) => (
-                                <option key={campaign._id} value={campaign._id}>{campaign.name}</option>
-                            ))}
-                        </select>
-                    )}
-
-                    {filters.source === 'workflow' && (
-                        <select
-                            value={filters.workflow}
-                            onChange={(e) => setFilters({ ...filters, workflow: e.target.value })}
-                            className="px-3 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 cursor-pointer"
-                        >
-                            <option value="">All Workflows</option>
-                            {workflows.map((workflow) => (
-                                <option key={workflow._id} value={workflow._id}>{workflow.name}</option>
-                            ))}
-                        </select>
-                    )}
-                </div>
-            </div>
-
-            {/* Messages List & Detail View */}
-            <div className="flex-1 flex gap-4 p-6 min-h-0">
-                {/* Messages List */}
-                <div className="w-2/5 bg-card border border-border rounded-xl overflow-hidden flex flex-col">
-                    <div className="px-4 py-3 border-b border-border bg-muted/30">
-                        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                            Conversations
-                        </h2>
-                    </div>
-                    {messages.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center p-6">
-                            <div className="text-center">
-                                <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-muted flex items-center justify-center">
-                                    <EnvelopeOpenIcon className="w-7 h-7 text-muted-foreground" />
+                        {/* Header */}
+                        <div className="bg-white dark:bg-zinc-900 px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
+                            <div className="flex items-center gap-3 flex-1">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                                    <Inbox className="w-5 h-5 text-white" />
                                 </div>
-                                <h3 className="text-sm font-semibold text-foreground mb-1">No messages yet</h3>
-                                <p className="text-xs text-muted-foreground max-w-[180px] mx-auto">
-                                    When contacts reply to your emails, they will appear here
-                                </p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex-1 overflow-y-auto">
-                            {messages.map((message, index) => {
-                                const initials = getContactName(message).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                                const isSelected = selectedMessage?._id === message._id;
-                                const colors = ['from-blue-500 to-cyan-500', 'from-purple-500 to-pink-500', 'from-orange-500 to-red-500', 'from-green-500 to-emerald-500', 'from-indigo-500 to-violet-500'];
-                                const colorClass = colors[index % colors.length];
-
-                                return (
-                                    <motion.button
-                                        key={message._id}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: index * 0.02 }}
-                                        onClick={() => {
-                                            setSelectedMessage(message);
-                                            handleMarkAsRead(message._id);
-                                            setAiDraft("");
-                                            track('view', 'email', message._id);
-                                        }}
-                                        className={`w-full px-3 py-2.5 text-left transition-all border-b border-border/30 ${isSelected
-                                            ? "bg-[#9ACD32]/10 border-l-2 border-l-[#9ACD32]"
-                                            : "hover:bg-muted/40"
-                                            }`}
-                                    >
-                                        <div className="flex items-start gap-2.5">
-                                            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClass} flex items-center justify-center text-white font-medium text-xs flex-shrink-0`}>
-                                                {initials || '?'}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between mb-0.5">
-                                                    <p className="font-medium text-foreground text-xs truncate pr-2">
-                                                        {getContactName(message)}
-                                                    </p>
-                                                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                                        {formatDate(message.repliedAt)}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-foreground/80 font-medium mb-0.5 truncate">
-                                                    {message.replySubject || message.subject}
-                                                </p>
-                                                <p className="text-[10px] text-muted-foreground line-clamp-1 mb-1.5">
-                                                    {message.replyBody?.substring(0, 60)}...
-                                                </p>
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                    {getSentimentBadge(message.replySentiment)}
-                                                    {(() => {
-                                                        const sourceInfo = getSourceInfo(message);
-                                                        return (
-                                                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${sourceInfo.color}`}>
-                                                                <span>{sourceInfo.icon}</span>
-                                                                <span className="truncate max-w-[80px]">{sourceInfo.name}</span>
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </motion.button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-
-                {/* Message Detail */}
-                <div className="w-3/5 bg-card border border-border rounded-xl overflow-hidden flex flex-col">
-                    {selectedMessage ? (
-                        <>
-                            {/* Detail Header */}
-                            <div className="p-4 border-b border-border bg-muted/20">
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#9ACD32] to-[#9ACD32]/60 flex items-center justify-center text-white font-semibold text-sm">
-                                            {getContactName(selectedMessage).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-sm text-foreground">
-                                                {getContactName(selectedMessage)}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {getContactEmail(selectedMessage)}
-                                            </p>
-                                        </div>
+                                <div>
+                                    <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Inbox</h1>
+                                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                        <span>{stats.all} total</span>
+                                        <span className="w-1 h-1 rounded-full bg-zinc-300" />
+                                        <span className="text-emerald-500 font-medium">{stats.unread} unread</span>
                                     </div>
-                                    {getSentimentBadge(selectedMessage.replySentiment)}
-                                </div>
-                                <div className="bg-background/50 rounded-lg p-3 border border-border/30">
-                                    <h3 className="text-sm font-semibold text-foreground mb-1">
-                                        {selectedMessage.replySubject || selectedMessage.subject}
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground flex items-center gap-2">
-                                        {(() => {
-                                            const sourceInfo = getSourceInfo(selectedMessage);
-                                            return (
-                                                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${sourceInfo.color}`}>
-                                                    {sourceInfo.icon} {sourceInfo.name}
-                                                </span>
-                                            );
-                                        })()}
-                                        <span>•</span>
-                                        <span>{formatDate(selectedMessage.repliedAt)}</span>
-                                    </p>
                                 </div>
                             </div>
 
-                            {/* Detail Body */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                                {/* AI Email Insights */}
-                                <EmailInsightsPanel
-                                    workspaceId={workspaceId}
-                                    emailId={selectedMessage._id}
-                                />
+                            {/* Search */}
+                            <form onSubmit={handleSearch} className="flex-1 max-w-md">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                    <input
+                                        type="text"
+                                        value={filters.search}
+                                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                                        placeholder="Search conversations..."
+                                        className="w-full pl-10 pr-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                    />
+                                </div>
+                            </form>
 
-                                {/* Reply Content */}
-                                <div className="bg-muted/20 rounded-xl p-5 border border-border/30">
-                                    <p className="text-xs text-muted-foreground mb-3 font-medium uppercase tracking-wide">Reply from {getContactName(selectedMessage)}</p>
-                                    <div className="whitespace-pre-wrap text-foreground leading-relaxed">
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={cn(
+                                        "p-2.5 rounded-full transition-colors",
+                                        showFilters ? "bg-emerald-500 text-white" : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"
+                                    )}
+                                >
+                                    <Filter className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        setIsSyncing(true);
+                                        try {
+                                            const result = await syncInbox(workspaceId);
+                                            if (result.success) { toast.success(result.message); fetchMessages(); }
+                                        } catch (err: any) { toast.error(err.message || "Failed to sync"); }
+                                        finally { setIsSyncing(false); }
+                                    }}
+                                    disabled={isSyncing}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 text-white rounded-full text-sm font-medium hover:bg-emerald-600 transition-colors"
+                                >
+                                    <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
+                                    Sync
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Filters Bar */}
+                        <AnimatePresence>
+                            {showFilters && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 overflow-hidden"
+                                >
+                                    <div className="px-6 py-3 flex items-center gap-3 flex-wrap">
+                                        {['all', 'campaign', 'workflow', 'direct'].map((source) => (
+                                            <button
+                                                key={source}
+                                                onClick={() => setFilters({ ...filters, source: source as any, campaign: '', workflow: '' })}
+                                                className={cn(
+                                                    "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                                                    filters.source === source
+                                                        ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                                                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                )}
+                                            >
+                                                {source === 'all' ? '📬 All' : source === 'campaign' ? '📧 Campaigns' : source === 'workflow' ? '⚡ Workflows' : '✉️ Direct'}
+                                            </button>
+                                        ))}
+                                        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700" />
+                                        {['positive', 'negative', 'neutral'].map((s) => (
+                                            <button
+                                                key={s}
+                                                onClick={() => setFilters({ ...filters, sentiment: filters.sentiment === s ? '' : s })}
+                                                className={cn(
+                                                    "px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1",
+                                                    filters.sentiment === s
+                                                        ? s === 'positive' ? 'bg-emerald-500 text-white' : s === 'negative' ? 'bg-rose-500 text-white' : 'bg-zinc-500 text-white'
+                                                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                                                )}
+                                            >
+                                                {s === 'positive' ? <Smile className="w-3 h-3" /> : s === 'negative' ? <Frown className="w-3 h-3" /> : <Meh className="w-3 h-3" />}
+                                                {s}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Messages */}
+                        <div className="flex-1 overflow-y-auto">
+                            {messages.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full p-8">
+                                    <MailOpen className="w-16 h-16 text-zinc-200 dark:text-zinc-700 mb-4" />
+                                    <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">No messages yet</h3>
+                                    <p className="text-sm text-zinc-500 text-center">When contacts reply to your campaigns or workflows, they'll appear here</p>
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                    {messages.map((message, index) => {
+                                        const sentiment = getSentimentIcon(message.replySentiment);
+                                        const initials = getContactName(message).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                                        const colors = ['from-blue-500 to-cyan-500', 'from-violet-500 to-purple-500', 'from-amber-500 to-orange-500', 'from-emerald-500 to-teal-500', 'from-rose-500 to-pink-500'];
+                                        const colorClass = colors[index % colors.length];
+
+                                        return (
+                                            <motion.button
+                                                key={message._id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: index * 0.02 }}
+                                                onClick={() => { setSelectedMessage(message); handleMarkAsRead(message._id); setAiDraft(""); track('view', 'email', message._id); }}
+                                                className="w-full px-6 py-4 flex items-center gap-4 hover:bg-white dark:hover:bg-zinc-800/50 transition-colors text-left group"
+                                            >
+                                                <div className={cn("w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 shadow-sm", colorClass)}>
+                                                    {initials || '?'}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                        <span className="font-medium text-zinc-900 dark:text-zinc-100 text-sm truncate">{getContactName(message)}</span>
+                                                        {getSourceIcon(message)}
+                                                        <span className="ml-auto text-xs text-zinc-400">{formatDate(message.repliedAt)}</span>
+                                                    </div>
+                                                    <p className="text-sm text-zinc-600 dark:text-zinc-400 truncate mb-0.5">{message.replySubject || message.subject}</p>
+                                                    <p className="text-xs text-zinc-400 truncate">{message.replyBody?.substring(0, 80)}...</p>
+                                                </div>
+
+                                                <div className={cn("flex-shrink-0", sentiment.color)}>
+                                                    {sentiment.icon}
+                                                </div>
+
+                                                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 flex-shrink-0 transition-colors" />
+                                            </motion.button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                ) : (
+                    /* DETAIL VIEW */
+                    <motion.div
+                        key="detail"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="h-screen flex flex-col bg-white dark:bg-zinc-900"
+                    >
+                        {/* Detail Header */}
+                        <div className="px-6 py-4 flex items-center gap-4 border-b border-zinc-100 dark:border-zinc-800">
+                            <button
+                                onClick={() => setSelectedMessage(null)}
+                                className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                            >
+                                <ArrowLeft className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+                            </button>
+
+                            <div className="flex items-center gap-3 flex-1">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-semibold text-sm">
+                                    {getContactName(selectedMessage).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{getContactName(selectedMessage)}</p>
+                                    <p className="text-xs text-zinc-500 truncate">{getContactEmail(selectedMessage)}</p>
+                                </div>
+                            </div>
+
+                            <div className={cn("", getSentimentIcon(selectedMessage.replySentiment).color)}>
+                                {getSentimentIcon(selectedMessage.replySentiment).icon}
+                            </div>
+                        </div>
+
+                        {/* Detail Content */}
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="max-w-3xl mx-auto p-6 space-y-6">
+                                {/* Subject */}
+                                <div>
+                                    <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{selectedMessage.replySubject || selectedMessage.subject}</h1>
+                                    <p className="text-xs text-zinc-500">{new Date(selectedMessage.repliedAt || selectedMessage.createdAt).toLocaleString()}</p>
+                                </div>
+
+                                {/* Email Body */}
+                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                    <div className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
                                         {selectedMessage.replyBody}
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Reply Actions with AI Draft */}
-                            <div className="p-6 border-t border-border/50 bg-muted/20 space-y-4">
-                                {/* AI Draft Preview */}
-                                {aiDraft && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-xl p-4"
-                                    >
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-sm font-medium text-green-500 flex items-center gap-2">
-                                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                                ✨ AI Draft Ready
-                                            </span>
-                                            <button
-                                                onClick={() => setAiDraft("")}
-                                                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                            >
-                                                Clear
+                                {/* AI Insights */}
+                                <EmailInsightsPanel workspaceId={workspaceId} emailId={selectedMessage._id} />
+
+                                {/* AI Draft Section */}
+                                <div className="space-y-4">
+                                    {aiDraft && (
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="relative">
+                                            <div className="absolute -top-3 left-4 flex items-center gap-1.5 px-2 py-0.5 bg-violet-500 text-white text-xs font-medium rounded-full">
+                                                <Sparkles className="w-3 h-3" />
+                                                AI Draft
+                                            </div>
+                                            <textarea
+                                                value={aiDraft}
+                                                onChange={(e) => setAiDraft(e.target.value)}
+                                                rows={6}
+                                                className="w-full p-4 pt-6 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-2xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                                                placeholder="Edit your response..."
+                                            />
+                                            <button onClick={() => setAiDraft("")} className="absolute top-2 right-2 p-1 text-zinc-400 hover:text-zinc-600">
+                                                <X className="w-4 h-4" />
                                             </button>
-                                        </div>
-                                        <textarea
-                                            value={aiDraft}
-                                            onChange={(e) => setAiDraft(e.target.value)}
-                                            rows={5}
-                                            className="w-full bg-background border border-border rounded-xl p-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#9ACD32]/50 resize-none"
-                                            placeholder="Edit your response..."
-                                        />
-                                    </motion.div>
-                                )}
+                                        </motion.div>
+                                    )}
 
-                                <div className="flex gap-3">
-                                    {/* Generate AI Draft Button */}
-                                    <button
-                                        onClick={async () => {
-                                            if (!selectedMessage) return;
-                                            setIsGeneratingDraft(true);
-                                            try {
-                                                const response = await generateAIDraft(selectedMessage._id);
-                                                if (response.success && response.draft) {
-                                                    setAiDraft(response.draft);
-                                                    toast.success("AI draft generated!");
-                                                } else {
-                                                    toast.error(response.message || "Failed to generate draft");
-                                                }
-                                            } catch (err: any) {
-                                                toast.error(err.message || "Failed to generate draft");
-                                            } finally {
-                                                setIsGeneratingDraft(false);
-                                            }
-                                        }}
-                                        disabled={isGeneratingDraft}
-                                        className="flex-1 px-5 py-3 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-500/20 text-foreground rounded-xl hover:from-violet-500/20 hover:to-purple-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-medium"
-                                    >
-                                        {isGeneratingDraft ? (
-                                            <>
-                                                <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                                                Generating...
-                                            </>
-                                        ) : (
-                                            <>✨ Generate AI Draft</>
-                                        )}
-                                    </button>
-
-                                    {/* Send Button */}
-                                    <button
-                                        onClick={async () => {
-                                            if (!selectedMessage || !aiDraft.trim()) {
-                                                toast.error("Please generate or write a reply first");
-                                                return;
-                                            }
-                                            setIsSendingReply(true);
-                                            try {
-                                                const response = await sendReply(
-                                                    selectedMessage._id,
-                                                    aiDraft,
-                                                    `Re: ${selectedMessage.replySubject || selectedMessage.subject}`
-                                                );
-                                                if (response.success) {
-                                                    toast.success("Reply sent!");
-                                                    setAiDraft("");
-                                                } else {
-                                                    toast.error(response.message || "Failed to send reply");
-                                                }
-                                            } catch (err: any) {
-                                                toast.error(err.message || "Failed to send reply");
-                                            } finally {
-                                                setIsSendingReply(false);
-                                            }
-                                        }}
-                                        disabled={!aiDraft.trim() || isSendingReply}
-                                        className="px-8 py-3 bg-[#9ACD32] text-background rounded-xl hover:bg-[#8AB82E] hover:shadow-lg hover:shadow-[#9ACD32]/30 transition-all disabled:opacity-50 disabled:hover:shadow-none flex items-center gap-2 font-semibold"
-                                    >
-                                        {isSendingReply ? (
-                                            <>
-                                                <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                                                Sending...
-                                            </>
-                                        ) : (
-                                            <>Send Reply <span className="text-lg">→</span></>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center p-8">
-                            <div className="text-center max-w-md">
-                                <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                                    <EnvelopeOpenIcon className="w-10 h-10 text-primary/60" />
-                                </div>
-                                <h3 className="text-xl font-bold text-foreground mb-2">Select a conversation</h3>
-                                <p className="text-muted-foreground text-sm mb-8">
-                                    Choose a message from the list to view details and reply
-                                </p>
-
-                                {/* Quick Stats */}
-                                <div className="grid grid-cols-3 gap-3 mb-6">
-                                    <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
-                                        <p className="text-2xl font-bold text-foreground">{stats.all}</p>
-                                        <p className="text-xs text-muted-foreground">Total</p>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
-                                        <p className="text-2xl font-bold text-primary">{stats.unread}</p>
-                                        <p className="text-xs text-muted-foreground">Unread</p>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
-                                        <p className="text-2xl font-bold text-foreground">{stats.campaigns}</p>
-                                        <p className="text-xs text-muted-foreground">Campaigns</p>
-                                    </div>
-                                </div>
-
-                                {/* Tips */}
-                                <div className="text-left space-y-2">
-                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Tips</p>
-                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                        <CheckCircleIcon className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                                        <span>Click any message to view full details and AI insights</span>
-                                    </div>
-                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                        <CheckCircleIcon className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                                        <span>Use "Generate AI Draft" for smart reply suggestions</span>
-                                    </div>
-                                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                        <CheckCircleIcon className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                                        <span>Filter by sentiment to prioritize urgent replies</span>
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={async () => {
+                                                if (!selectedMessage) return;
+                                                setIsGeneratingDraft(true);
+                                                try {
+                                                    const response = await generateAIDraft(selectedMessage._id);
+                                                    if (response.success && response.draft) { setAiDraft(response.draft); toast.success("AI draft ready!"); }
+                                                    else { toast.error(response.message || "Failed to generate"); }
+                                                } catch (err: any) { toast.error(err.message || "Failed to generate"); }
+                                                finally { setIsGeneratingDraft(false); }
+                                            }}
+                                            disabled={isGeneratingDraft}
+                                            className="flex-1 px-5 py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2 font-medium disabled:opacity-50"
+                                        >
+                                            {isGeneratingDraft ? (<><RefreshCw className="w-4 h-4 animate-spin" />Generating...</>) : (<><Sparkles className="w-4 h-4 text-violet-500" />Generate AI Reply</>)}
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                if (!selectedMessage || !aiDraft.trim()) { toast.error("Write or generate a reply first"); return; }
+                                                setIsSendingReply(true);
+                                                try {
+                                                    const response = await sendReply(selectedMessage._id, aiDraft, `Re: ${selectedMessage.replySubject || selectedMessage.subject}`);
+                                                    if (response.success) { toast.success("Reply sent!"); setAiDraft(""); } else { toast.error(response.message || "Failed to send"); }
+                                                } catch (err: any) { toast.error(err.message || "Failed to send"); }
+                                                finally { setIsSendingReply(false); }
+                                            }}
+                                            disabled={!aiDraft.trim() || isSendingReply}
+                                            className="px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all disabled:opacity-50 flex items-center gap-2 font-medium"
+                                        >
+                                            {isSendingReply ? (<><RefreshCw className="w-4 h-4 animate-spin" />Sending...</>) : (<><Send className="w-4 h-4" />Send</>)}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

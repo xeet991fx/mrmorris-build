@@ -99,11 +99,11 @@ export default function OpportunityCardEnhanced({
       {...(isDragging ? {} : listeners)}
       onClick={handleCardClick}
       className={cn(
-        "relative group rounded-lg border-l-4 transition-all duration-150",
+        "relative group rounded-xl border-l-4 transition-all duration-150",
         "bg-white dark:bg-zinc-900",
-        "border border-zinc-200 dark:border-zinc-800",
-        "hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700",
-        "p-3",
+        "border border-zinc-200 dark:border-zinc-700",
+        "hover:shadow-lg hover:border-zinc-300 dark:hover:border-zinc-600",
+        "p-3.5",
         getTempBorderColor(temperature),
         isDragging && "opacity-50"
       )}
@@ -118,13 +118,13 @@ export default function OpportunityCardEnhanced({
         <div className="opacity-0 group-hover:opacity-100 transition-opacity relative flex-shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-            className="p-1 rounded text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <EllipsisVerticalIcon className="w-4 h-4" />
           </button>
           {showMenu && (
             <div
-              className="absolute right-0 mt-1 w-36 z-20 rounded-lg overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-lg"
+              className="absolute right-0 mt-1 w-40 z-20 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -217,7 +217,7 @@ export default function OpportunityCardEnhanced({
 
         {/* Priority */}
         {opportunity.priority && (
-          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium uppercase", getPriorityStyle(opportunity.priority))}>
+          <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium uppercase", getPriorityStyle(opportunity.priority))}>
             {opportunity.priority}
           </span>
         )}

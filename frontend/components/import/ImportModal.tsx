@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     XMarkIcon,
@@ -13,6 +15,7 @@ import {
     XCircleIcon,
     SparklesIcon,
     ChevronDownIcon,
+    CheckIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import {
@@ -22,9 +25,9 @@ import {
     previewCompanies,
     ImportResponse,
     PreviewResponse,
-    ColumnMapping,
     AvailableField,
 } from "@/lib/api/import";
+import { cn } from "@/lib/utils";
 
 interface ImportModalProps {
     isOpen: boolean;
@@ -130,7 +133,6 @@ export default function ImportModal({
         return DocumentIcon;
     };
 
-    // Step 1: Analyze file with AI
     const handleAnalyze = async () => {
         if (!file) return;
 
@@ -146,7 +148,6 @@ export default function ImportModal({
                 setPreviewData(result.data);
                 setAvailableFields(result.data.availableFields);
 
-                // Initialize mappings from AI suggestions
                 const initialMappings: MappingState[] = result.data.headers.map((header) => {
                     const aiMapping = result.data!.columnMappings.find(
                         (m) => m.sourceColumn === header
@@ -176,7 +177,6 @@ export default function ImportModal({
         }
     };
 
-    // Step 2: Import with user-confirmed mappings
     const handleImport = async () => {
         if (!file) return;
 
@@ -234,375 +234,449 @@ export default function ImportModal({
     const enabledMappingsCount = mappings.filter((m) => m.enabled).length;
     const FileIcon = getFileIcon();
 
-    if (!isOpen) return null;
-
     return (
-        <AnimatePresence>
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <Transition appear show={isOpen} as={Fragment}>
+            <Dialog as="div" className="relative z-50" onClose={handleClose}>
                 {/* Backdrop */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                    onClick={handleClose}
-                />
-
-                {/* Modal */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="relative z-10 w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+                <Transition.Child
+                    as={Fragment}
+                    enter="ease-out duration-300"
+                    enterFrom="opacity-0"
+                    enterTo="opacity-100"
+                    leave="ease-in duration-200"
+                    leaveFrom="opacity-100"
+                    leaveTo="opacity-0"
                 >
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-semibold text-foreground">
-                                Import {type === "contacts" ? "Contacts" : "Companies"}
-                            </h2>
-                            {step === "mapping" && (
-                                <span className="text-xs bg-[#9ACD32]/20 text-[#9ACD32] px-2 py-0.5 rounded-full">
-                                    AI Analyzed
-                                </span>
-                            )}
-                        </div>
-                        <button
-                            onClick={handleClose}
-                            className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
-                        >
-                            <XMarkIcon className="w-5 h-5" />
-                        </button>
-                    </div>
+                    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" />
+                </Transition.Child>
 
-                    {/* Content */}
-                    <div className="p-6 overflow-y-auto flex-1">
-                        {/* Step: Upload */}
-                        {step === "upload" && (
-                            <div className="space-y-4">
-                                {/* Drag & Drop Zone */}
-                                <div
-                                    onDragOver={handleDragOver}
-                                    onDragLeave={handleDragLeave}
-                                    onDrop={handleDrop}
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${isDragging
-                                            ? "border-[#9ACD32] bg-[#9ACD32]/10"
-                                            : file
-                                                ? "border-[#9ACD32]/50 bg-[#9ACD32]/5"
-                                                : "border-border hover:border-[#9ACD32]/50 hover:bg-muted/30"
-                                        }`}
-                                >
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept=".csv,.xlsx,.xls,.pdf"
-                                        onChange={handleFileSelect}
-                                        className="hidden"
-                                    />
-
-                                    {file ? (
-                                        <div className="space-y-2">
-                                            <FileIcon className="w-12 h-12 mx-auto text-[#9ACD32]" />
-                                            <p className="text-sm font-medium text-foreground">{file.name}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {(file.size / 1024).toFixed(1)} KB
-                                            </p>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setFile(null);
-                                                }}
-                                                className="text-xs text-red-400 hover:text-red-300 underline"
-                                            >
-                                                Remove file
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <ArrowUpTrayIcon className="w-12 h-12 mx-auto text-muted-foreground" />
-                                            <p className="text-sm font-medium text-foreground">
-                                                Drag & drop your file here
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                or click to browse
-                                            </p>
-                                            <p className="text-xs text-muted-foreground/70">
-                                                Supports CSV, Excel (.xlsx, .xls), and PDF files
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Info */}
-                                <div className="p-3 bg-muted/30 rounded-lg border border-border flex items-start gap-2">
-                                    <SparklesIcon className="w-4 h-4 text-[#9ACD32] flex-shrink-0 mt-0.5" />
-                                    <p className="text-xs text-muted-foreground">
-                                        <span className="font-medium text-foreground">AI-Powered:</span>{" "}
-                                        Our AI will analyze your file and suggest column mappings. You can review and adjust before importing.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step: Analyzing */}
-                        {step === "analyzing" && (
-                            <div className="py-8 text-center space-y-4">
-                                <div className="relative w-16 h-16 mx-auto">
-                                    <div className="w-16 h-16 border-3 border-[#9ACD32] border-t-transparent rounded-full animate-spin" />
-                                    <SparklesIcon className="w-6 h-6 text-[#9ACD32] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                                </div>
-                                <p className="text-sm font-medium text-foreground">AI is analyzing your file...</p>
-                                <p className="text-xs text-muted-foreground">
-                                    Detecting columns and mapping them to {type === "contacts" ? "contact" : "company"} fields
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Step: Mapping */}
-                        {step === "mapping" && previewData && (
-                            <div className="space-y-4">
-                                {/* File Summary */}
-                                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
-                                    <div>
-                                        <p className="text-sm font-medium text-foreground">{previewData.filename}</p>
-                                        <p className="text-xs text-muted-foreground">{previewData.totalRows} rows found</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-medium text-[#9ACD32]">{enabledMappingsCount} columns selected</p>
-                                        <p className="text-xs text-muted-foreground">for import</p>
-                                    </div>
-                                </div>
-
-                                {/* Warnings */}
-                                {previewData.warnings && previewData.warnings.length > 0 && (
-                                    <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-                                        <p className="text-xs font-medium text-yellow-500 mb-1">Warnings:</p>
-                                        {previewData.warnings.map((warning, i) => (
-                                            <p key={i} className="text-xs text-muted-foreground">{warning}</p>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Column Mappings */}
-                                <div className="space-y-2">
-                                    <p className="text-sm font-medium text-foreground">Column Mappings</p>
-                                    <p className="text-xs text-muted-foreground mb-3">
-                                        Toggle columns to include/exclude and select which field they map to
-                                    </p>
-
-                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                                        {mappings.map((mapping) => (
-                                            <div
-                                                key={mapping.sourceColumn}
-                                                className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${mapping.enabled
-                                                        ? "bg-[#9ACD32]/5 border-[#9ACD32]/30"
-                                                        : "bg-muted/30 border-border opacity-60"
-                                                    }`}
-                                            >
-                                                {/* Toggle */}
-                                                <input
-                                                    type="checkbox"
-                                                    checked={mapping.enabled}
-                                                    onChange={() => toggleColumn(mapping.sourceColumn)}
-                                                    className="w-4 h-4 rounded border-border bg-input text-[#9ACD32] focus:ring-[#9ACD32]"
-                                                />
-
-                                                {/* Source Column */}
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-foreground truncate">
-                                                        {mapping.sourceColumn}
-                                                    </p>
-                                                    {mapping.sample && (
-                                                        <p className="text-xs text-muted-foreground truncate">
-                                                            e.g. "{mapping.sample}"
+                {/* Sidebar Panel */}
+                <div className="fixed inset-0 overflow-hidden">
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                            <Transition.Child
+                                as={Fragment}
+                                enter="transform transition ease-out duration-300"
+                                enterFrom="translate-x-full"
+                                enterTo="translate-x-0"
+                                leave="transform transition ease-in duration-200"
+                                leaveFrom="translate-x-0"
+                                leaveTo="translate-x-full"
+                            >
+                                <Dialog.Panel className="pointer-events-auto w-screen max-w-lg">
+                                    <div className="flex h-full flex-col bg-white dark:bg-zinc-900 shadow-2xl">
+                                        {/* Header */}
+                                        <div className="px-6 py-6 border-b border-zinc-100 dark:border-zinc-800">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <Dialog.Title className="text-xl font-semibold text-zinc-900 dark:text-white">
+                                                        Import {type === "contacts" ? "Contacts" : "Companies"}
+                                                    </Dialog.Title>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                                            {step === "upload" && "Upload your file to get started"}
+                                                            {step === "analyzing" && "Analyzing your file..."}
+                                                            {step === "mapping" && "Review column mappings"}
+                                                            {step === "importing" && "Importing data..."}
+                                                            {step === "results" && "Import complete"}
                                                         </p>
+                                                        {step === "mapping" && (
+                                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                                                <SparklesIcon className="w-3 h-3" />
+                                                                AI Analyzed
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={handleClose}
+                                                    className="p-2 -m-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                                                >
+                                                    <XMarkIcon className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="flex-1 overflow-y-auto px-6 py-6">
+                                            <AnimatePresence mode="wait">
+                                                {/* Step: Upload */}
+                                                {step === "upload" && (
+                                                    <motion.div
+                                                        key="upload"
+                                                        initial={{ opacity: 0, y: 20 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -20 }}
+                                                        className="space-y-6"
+                                                    >
+                                                        <div
+                                                            onDragOver={handleDragOver}
+                                                            onDragLeave={handleDragLeave}
+                                                            onDrop={handleDrop}
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className={cn(
+                                                                "relative rounded-2xl p-12 text-center cursor-pointer transition-all border-2 border-dashed",
+                                                                isDragging
+                                                                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                                                                    : file
+                                                                        ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-900/10 dark:border-emerald-800/50"
+                                                                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                                                            )}
+                                                        >
+                                                            <input
+                                                                ref={fileInputRef}
+                                                                type="file"
+                                                                accept=".csv,.xlsx,.xls,.pdf"
+                                                                onChange={handleFileSelect}
+                                                                className="hidden"
+                                                            />
+
+                                                            {file ? (
+                                                                <div className="space-y-3">
+                                                                    <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                                                        <FileIcon className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-zinc-900 dark:text-white">{file.name}</p>
+                                                                        <p className="text-xs text-zinc-500 mt-0.5">
+                                                                            {(file.size / 1024).toFixed(1)} KB
+                                                                        </p>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setFile(null);
+                                                                        }}
+                                                                        className="text-xs text-red-500 hover:text-red-600 font-medium"
+                                                                    >
+                                                                        Remove file
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-3">
+                                                                    <div className="w-14 h-14 mx-auto rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                                                        <ArrowUpTrayIcon className="w-7 h-7 text-zinc-400" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                                                            Drop your file here
+                                                                        </p>
+                                                                        <p className="text-xs text-zinc-500 mt-0.5">
+                                                                            or click to browse
+                                                                        </p>
+                                                                    </div>
+                                                                    <p className="text-xs text-zinc-400">
+                                                                        CSV, Excel, or PDF up to 10MB
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="flex items-start gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+                                                            <SparklesIcon className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                                                            <div>
+                                                                <p className="text-sm font-medium text-zinc-900 dark:text-white">AI-Powered Analysis</p>
+                                                                <p className="text-xs text-zinc-500 mt-0.5">
+                                                                    Our AI will detect columns and suggest mappings automatically.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+
+                                                {/* Step: Analyzing */}
+                                                {step === "analyzing" && (
+                                                    <motion.div
+                                                        key="analyzing"
+                                                        initial={{ opacity: 0, y: 20 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -20 }}
+                                                        className="py-16 text-center space-y-4"
+                                                    >
+                                                        <div className="relative w-16 h-16 mx-auto">
+                                                            <div className="w-16 h-16 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                                            <SparklesIcon className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-zinc-900 dark:text-white">Analyzing your file...</p>
+                                                            <p className="text-xs text-zinc-500 mt-1">
+                                                                Detecting columns and mapping to fields
+                                                            </p>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+
+                                                {/* Step: Mapping */}
+                                                {step === "mapping" && previewData && (
+                                                    <motion.div
+                                                        key="mapping"
+                                                        initial={{ opacity: 0, y: 20 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -20 }}
+                                                        className="space-y-6"
+                                                    >
+                                                        <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+                                                            <div>
+                                                                <p className="text-sm font-medium text-zinc-900 dark:text-white">{previewData.filename}</p>
+                                                                <p className="text-xs text-zinc-500">{previewData.totalRows} rows found</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{enabledMappingsCount} columns</p>
+                                                                <p className="text-xs text-zinc-500">selected</p>
+                                                            </div>
+                                                        </div>
+
+                                                        {previewData.warnings && previewData.warnings.length > 0 && (
+                                                            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30">
+                                                                <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Warnings:</p>
+                                                                {previewData.warnings.map((warning, i) => (
+                                                                    <p key={i} className="text-xs text-amber-600 dark:text-amber-400 mt-1">{warning}</p>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        <div className="space-y-2">
+                                                            {mappings.map((mapping, index) => (
+                                                                <motion.div
+                                                                    key={mapping.sourceColumn}
+                                                                    initial={{ opacity: 0, x: 20 }}
+                                                                    animate={{ opacity: 1, x: 0 }}
+                                                                    transition={{ delay: index * 0.03 }}
+                                                                    className={cn(
+                                                                        "p-4 rounded-xl transition-all",
+                                                                        mapping.enabled
+                                                                            ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30"
+                                                                            : "bg-zinc-50 dark:bg-zinc-800/50 border border-transparent opacity-60"
+                                                                    )}
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <button
+                                                                            onClick={() => toggleColumn(mapping.sourceColumn)}
+                                                                            className={cn(
+                                                                                "w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all",
+                                                                                mapping.enabled
+                                                                                    ? "bg-emerald-500 text-white"
+                                                                                    : "border-2 border-zinc-300 dark:border-zinc-600"
+                                                                            )}
+                                                                        >
+                                                                            {mapping.enabled && <CheckIcon className="w-3 h-3" />}
+                                                                        </button>
+
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">
+                                                                                {mapping.sourceColumn}
+                                                                            </p>
+                                                                            {mapping.sample && (
+                                                                                <p className="text-xs text-zinc-400 truncate mt-0.5">
+                                                                                    e.g. &quot;{mapping.sample}&quot;
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <span className="text-zinc-300 dark:text-zinc-600">→</span>
+
+                                                                        <div className="relative min-w-[140px]">
+                                                                            <select
+                                                                                value={mapping.targetField}
+                                                                                onChange={(e) => updateMapping(mapping.sourceColumn, e.target.value)}
+                                                                                disabled={!mapping.enabled}
+                                                                                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-emerald-500"
+                                                                            >
+                                                                                <option value="_skip">Skip</option>
+                                                                                {availableFields
+                                                                                    .filter((f) => f.key !== "_skip")
+                                                                                    .map((field) => (
+                                                                                        <option key={field.key} value={field.key}>
+                                                                                            {field.label} {field.required && "*"}
+                                                                                        </option>
+                                                                                    ))}
+                                                                            </select>
+                                                                            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                                                                        </div>
+                                                                    </div>
+                                                                </motion.div>
+                                                            ))}
+                                                        </div>
+
+                                                        <label className="flex items-center gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={skipDuplicates}
+                                                                onChange={(e) => setSkipDuplicates(e.target.checked)}
+                                                                className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-emerald-600 focus:ring-emerald-500/20"
+                                                            />
+                                                            <span className="text-sm text-zinc-700 dark:text-zinc-200">
+                                                                Skip duplicate {type === "contacts" ? "emails" : "company names"}
+                                                            </span>
+                                                        </label>
+                                                    </motion.div>
+                                                )}
+
+                                                {/* Step: Importing */}
+                                                {step === "importing" && (
+                                                    <motion.div
+                                                        key="importing"
+                                                        initial={{ opacity: 0, y: 20 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -20 }}
+                                                        className="py-16 text-center space-y-4"
+                                                    >
+                                                        <div className="w-16 h-16 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                                                        <div>
+                                                            <p className="text-sm font-medium text-zinc-900 dark:text-white">Importing {type}...</p>
+                                                            <p className="text-xs text-zinc-500 mt-1">This may take a moment</p>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+
+                                                {/* Step: Results */}
+                                                {step === "results" && importResult && (
+                                                    <motion.div
+                                                        key="results"
+                                                        initial={{ opacity: 0, y: 20 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -20 }}
+                                                        className="space-y-6"
+                                                    >
+                                                        <div className={cn(
+                                                            "p-6 rounded-2xl",
+                                                            importResult.success && importResult.data?.summary.imported
+                                                                ? "bg-emerald-50 dark:bg-emerald-900/20"
+                                                                : importResult.success
+                                                                    ? "bg-amber-50 dark:bg-amber-900/20"
+                                                                    : "bg-red-50 dark:bg-red-900/20"
+                                                        )}>
+                                                            <div className="flex items-center gap-4">
+                                                                {importResult.success && importResult.data?.summary.imported ? (
+                                                                    <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                                                        <CheckCircleIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                                                                    </div>
+                                                                ) : importResult.success ? (
+                                                                    <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                                                        <ExclamationTriangleIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                                                        <XCircleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
+                                                                    </div>
+                                                                )}
+                                                                <div>
+                                                                    <p className="font-medium text-zinc-900 dark:text-white">{importResult.message}</p>
+                                                                    {importResult.error && (
+                                                                        <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">{importResult.error}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {importResult.data?.summary && (
+                                                            <div className="grid grid-cols-3 gap-3">
+                                                                <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-center">
+                                                                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                                                        {importResult.data.summary.imported}
+                                                                    </p>
+                                                                    <p className="text-xs text-zinc-500 mt-1">Imported</p>
+                                                                </div>
+                                                                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-center">
+                                                                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                                                                        {importResult.data.summary.skipped}
+                                                                    </p>
+                                                                    <p className="text-xs text-zinc-500 mt-1">Skipped</p>
+                                                                </div>
+                                                                <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-center">
+                                                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                                                        {importResult.data.summary.errors}
+                                                                    </p>
+                                                                    <p className="text-xs text-zinc-500 mt-1">Errors</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {importResult.data?.results.skipped && importResult.data.results.skipped.length > 0 && (
+                                                            <details className="text-sm">
+                                                                <summary className="cursor-pointer text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 font-medium">
+                                                                    View skipped records ({importResult.data.results.skipped.length})
+                                                                </summary>
+                                                                <div className="mt-3 max-h-32 overflow-y-auto space-y-1 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                                                                    {importResult.data.results.skipped.slice(0, 10).map((item, i) => (
+                                                                        <p key={i} className="text-xs text-zinc-500">
+                                                                            {item.email || item.name}: {item.reason}
+                                                                        </p>
+                                                                    ))}
+                                                                    {importResult.data.results.skipped.length > 10 && (
+                                                                        <p className="text-xs text-zinc-400">
+                                                                            ...and {importResult.data.results.skipped.length - 10} more
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </details>
+                                                        )}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        {/* Footer */}
+                                        <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    {step === "mapping" && (
+                                                        <button
+                                                            onClick={() => setStep("upload")}
+                                                            className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 font-medium transition-colors"
+                                                        >
+                                                            ← Back
+                                                        </button>
                                                     )}
                                                 </div>
 
-                                                {/* Arrow */}
-                                                <span className="text-muted-foreground">→</span>
-
-                                                {/* Target Field Dropdown */}
-                                                <div className="relative min-w-[160px]">
-                                                    <select
-                                                        value={mapping.targetField}
-                                                        onChange={(e) => updateMapping(mapping.sourceColumn, e.target.value)}
-                                                        disabled={!mapping.enabled}
-                                                        className="w-full px-3 py-1.5 bg-background border border-border rounded text-sm text-foreground appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-[#9ACD32]/50"
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={handleClose}
+                                                        className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
                                                     >
-                                                        <option value="_skip">Do not import</option>
-                                                        {availableFields
-                                                            .filter((f) => f.key !== "_skip")
-                                                            .map((field) => (
-                                                                <option key={field.key} value={field.key}>
-                                                                    {field.label} {field.required && "*"}
-                                                                </option>
-                                                            ))}
-                                                    </select>
-                                                    <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                                        {step === "results" ? "Close" : "Cancel"}
+                                                    </button>
+
+                                                    {step === "upload" && (
+                                                        <button
+                                                            onClick={handleAnalyze}
+                                                            disabled={!file || isProcessing}
+                                                            className="flex items-center gap-2 px-5 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <SparklesIcon className="w-4 h-4" />
+                                                            Analyze
+                                                        </button>
+                                                    )}
+
+                                                    {step === "mapping" && (
+                                                        <button
+                                                            onClick={handleImport}
+                                                            disabled={enabledMappingsCount === 0 || isProcessing}
+                                                            className="px-5 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            Import {enabledMappingsCount} Columns
+                                                        </button>
+                                                    )}
+
+                                                    {step === "results" && (
+                                                        <button
+                                                            onClick={resetState}
+                                                            className="px-5 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                                        >
+                                                            Import Another
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Options */}
-                                <div className="flex items-center gap-2 pt-2 border-t border-border">
-                                    <input
-                                        type="checkbox"
-                                        id="skipDuplicates"
-                                        checked={skipDuplicates}
-                                        onChange={(e) => setSkipDuplicates(e.target.checked)}
-                                        className="w-4 h-4 rounded border-border bg-input text-[#9ACD32] focus:ring-[#9ACD32]"
-                                    />
-                                    <label htmlFor="skipDuplicates" className="text-sm text-muted-foreground">
-                                        Skip duplicate {type === "contacts" ? "emails" : "company names"}
-                                    </label>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step: Importing */}
-                        {step === "importing" && (
-                            <div className="py-8 text-center space-y-4">
-                                <div className="w-12 h-12 border-3 border-[#9ACD32] border-t-transparent rounded-full animate-spin mx-auto" />
-                                <p className="text-sm font-medium text-foreground">Importing {type}...</p>
-                                <p className="text-xs text-muted-foreground">
-                                    This may take a moment for large files
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Step: Results */}
-                        {step === "results" && importResult && (
-                            <div className="space-y-4">
-                                {/* Summary */}
-                                <div className={`p-4 rounded-lg border ${importResult.success && importResult.data?.summary.imported
-                                        ? "bg-green-500/10 border-green-500/30"
-                                        : importResult.success
-                                            ? "bg-yellow-500/10 border-yellow-500/30"
-                                            : "bg-red-500/10 border-red-500/30"
-                                    }`}>
-                                    <div className="flex items-center gap-3">
-                                        {importResult.success && importResult.data?.summary.imported ? (
-                                            <CheckCircleIcon className="w-8 h-8 text-green-500 flex-shrink-0" />
-                                        ) : importResult.success ? (
-                                            <ExclamationTriangleIcon className="w-8 h-8 text-yellow-500 flex-shrink-0" />
-                                        ) : (
-                                            <XCircleIcon className="w-8 h-8 text-red-500 flex-shrink-0" />
-                                        )}
-                                        <div>
-                                            <p className="font-medium text-foreground">{importResult.message}</p>
-                                            {importResult.error && (
-                                                <p className="text-sm text-red-400">{importResult.error}</p>
-                                            )}
                                         </div>
                                     </div>
-                                </div>
-
-                                {/* Stats */}
-                                {importResult.data?.summary && (
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="p-3 bg-green-500/10 rounded-lg text-center">
-                                            <p className="text-2xl font-bold text-green-500">
-                                                {importResult.data.summary.imported}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">Imported</p>
-                                        </div>
-                                        <div className="p-3 bg-yellow-500/10 rounded-lg text-center">
-                                            <p className="text-2xl font-bold text-yellow-500">
-                                                {importResult.data.summary.skipped}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">Skipped</p>
-                                        </div>
-                                        <div className="p-3 bg-red-500/10 rounded-lg text-center">
-                                            <p className="text-2xl font-bold text-red-500">
-                                                {importResult.data.summary.errors}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">Errors</p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Skipped Details */}
-                                {importResult.data?.results.skipped && importResult.data.results.skipped.length > 0 && (
-                                    <details className="text-xs">
-                                        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                                            View skipped records ({importResult.data.results.skipped.length})
-                                        </summary>
-                                        <div className="mt-2 max-h-32 overflow-y-auto space-y-1 p-2 bg-muted/30 rounded">
-                                            {importResult.data.results.skipped.slice(0, 10).map((item, i) => (
-                                                <p key={i} className="text-muted-foreground">
-                                                    {item.email || item.name}: {item.reason}
-                                                </p>
-                                            ))}
-                                            {importResult.data.results.skipped.length > 10 && (
-                                                <p className="text-muted-foreground/70">
-                                                    ...and {importResult.data.results.skipped.length - 10} more
-                                                </p>
-                                            )}
-                                        </div>
-                                    </details>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border bg-muted/30 flex-shrink-0">
-                        <div>
-                            {step === "mapping" && (
-                                <button
-                                    onClick={() => setStep("upload")}
-                                    className="text-sm text-muted-foreground hover:text-foreground"
-                                >
-                                    ← Back to upload
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={handleClose}
-                                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                {step === "results" ? "Close" : "Cancel"}
-                            </button>
-
-                            {step === "upload" && (
-                                <button
-                                    onClick={handleAnalyze}
-                                    disabled={!file || isProcessing}
-                                    className="px-4 py-2 bg-[#9ACD32] text-background font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                    <SparklesIcon className="w-4 h-4" />
-                                    Analyze with AI
-                                </button>
-                            )}
-
-                            {step === "mapping" && (
-                                <button
-                                    onClick={handleImport}
-                                    disabled={enabledMappingsCount === 0 || isProcessing}
-                                    className="px-4 py-2 bg-[#9ACD32] text-background font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Import {enabledMappingsCount} Columns
-                                </button>
-                            )}
-
-                            {step === "results" && (
-                                <button
-                                    onClick={resetState}
-                                    className="px-4 py-2 bg-[#9ACD32] text-background font-medium text-sm rounded-lg hover:bg-[#8AB82E] transition-all"
-                                >
-                                    Import Another File
-                                </button>
-                            )}
+                                </Dialog.Panel>
+                            </Transition.Child>
                         </div>
                     </div>
-                </motion.div>
-            </div>
-        </AnimatePresence>
+                </div>
+            </Dialog>
+        </Transition>
     );
 }

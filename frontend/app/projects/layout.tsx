@@ -6,31 +6,37 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FolderIcon,
   PlusIcon,
-  ArrowRightOnRectangleIcon,
+  ArrowRightStartOnRectangleIcon,
   ChevronDownIcon,
-  UserGroupIcon,
-  HomeIcon,
-  BuildingOffice2Icon,
-  Squares2X2Icon,
-  EnvelopeIcon,
   Cog6ToothIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  RocketLaunchIcon,
-  InboxIcon,
-  AtSymbolIcon,
-  ShieldCheckIcon,
-  ChartBarIcon,
-  CalendarDaysIcon,
+  Bars3BottomLeftIcon,
+  XMarkIcon,
+  BellIcon,
+  CheckIcon,
+} from "@heroicons/react/24/outline";
+import {
+  HomeIcon,
+  UserGroupIcon,
+  BuildingOffice2Icon,
+  ViewColumnsIcon,
   DocumentTextIcon,
-  PresentationChartBarIcon,
-  CurrencyDollarIcon,
-  PhoneIcon,
   ClipboardDocumentListIcon,
   GlobeAltIcon,
   EyeIcon,
+  RocketLaunchIcon,
+  EnvelopeOpenIcon,
+  DocumentDuplicateIcon,
+  AtSymbolIcon,
+  InboxStackIcon,
+  PhoneArrowDownLeftIcon,
+  CalendarDaysIcon,
+  BoltIcon,
+  CheckCircleIcon,
+  TicketIcon,
+  ChartBarSquareIcon,
+  PresentationChartLineIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -38,9 +44,73 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/ui/CommandPalette";
-import { NotificationBell } from "@/components/ui/NotificationBell";
-import { OnboardingWizard } from "@/components/dashboard/OnboardingWizard";
 import { AIChatPanel } from "@/components/chat/AIChatPanel";
+
+// Navigation items with unique icons
+const NAV_SECTIONS = {
+  crm: {
+    label: "CRM",
+    items: [
+      { label: "Dashboard", icon: HomeIcon, path: "dashboard" },
+      { label: "Contacts", icon: UserGroupIcon, path: "contacts" },
+      { label: "Companies", icon: BuildingOffice2Icon, path: "companies" },
+      { label: "Pipelines", icon: ViewColumnsIcon, path: "pipelines" },
+      { label: "Proposals", icon: DocumentTextIcon, path: "proposals" },
+    ],
+  },
+  marketing: {
+    label: "Marketing",
+    items: [
+      { label: "Forms", icon: ClipboardDocumentListIcon, path: "forms" },
+      { label: "Pages", icon: GlobeAltIcon, path: "pages" },
+      { label: "Visitors", icon: EyeIcon, path: "visitors" },
+      { label: "Campaigns", icon: RocketLaunchIcon, path: "campaigns" },
+      { label: "Sequences", icon: EnvelopeOpenIcon, path: "sequences" },
+      { label: "Templates", icon: DocumentDuplicateIcon, path: "email-templates" },
+    ],
+  },
+  communication: {
+    label: "Communication",
+    items: [
+      { label: "Email Account", icon: AtSymbolIcon, path: "email-accounts" },
+      { label: "Inbox", icon: InboxStackIcon, path: "inbox" },
+      { label: "Calls", icon: PhoneArrowDownLeftIcon, path: "calls" },
+      { label: "Meetings", icon: CalendarDaysIcon, path: "meetings" },
+    ],
+  },
+  automation: {
+    label: "Automation",
+    items: [
+      { label: "Workflows", icon: BoltIcon, path: "workflows" },
+      { label: "Tasks", icon: CheckCircleIcon, path: "tasks" },
+      { label: "Tickets", icon: TicketIcon, path: "tickets" },
+    ],
+  },
+  analytics: {
+    label: "Analytics",
+    items: [
+      { label: "Reports", icon: ChartBarSquareIcon, path: "reports" },
+      { label: "Analytics", icon: PresentationChartLineIcon, path: "analytics" },
+      { label: "Forecasting", icon: CurrencyDollarIcon, path: "forecasting" },
+    ],
+  },
+};
+
+// Mobile bottom nav items
+const MOBILE_NAV_ITEMS = [
+  { label: "Home", icon: HomeIcon, path: "dashboard" },
+  { label: "Contacts", icon: UserGroupIcon, path: "contacts" },
+  { label: "Pipelines", icon: ViewColumnsIcon, path: "pipelines" },
+  { label: "Tasks", icon: CheckCircleIcon, path: "tasks" },
+  { label: "Menu", icon: Bars3BottomLeftIcon, path: null },
+];
+
+// Sample notifications - replace with real data
+const SAMPLE_NOTIFICATIONS = [
+  { id: 1, title: "New lead assigned", description: "John Doe from Acme Inc", time: "2m ago", unread: true },
+  { id: 2, title: "Meeting reminder", description: "Team sync in 30 minutes", time: "28m ago", unread: true },
+  { id: 3, title: "Task completed", description: "Follow-up with Smith Corp", time: "1h ago", unread: false },
+];
 
 function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -48,65 +118,59 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuthStore();
   const { workspaces, fetchWorkspaces, setCurrentWorkspace } = useWorkspaceStore();
 
-  // Sidebar is always visible - either expanded (full) or collapsed (icon-only)
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('sidebarExpanded');
-      return saved ? JSON.parse(saved) : true;
+      return saved ? JSON.parse(saved) : false; // Default to collapsed
     }
-    return true;
+    return false;
   });
 
-  const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false);
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState(SAMPLE_NOTIFICATIONS);
 
-  // Collapsible sections state
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('expandedSections');
-      return saved ? JSON.parse(saved) : {
-        crm: true,
-        marketing: true,
-        communication: true,
-        automation: false,
-        analytics: true,
-      };
-    }
-    return { crm: true, marketing: true, communication: true, automation: false, analytics: true };
-  });
+  const sidebarNavRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef(0);
+  const workspaceMenuRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
-  // Save expanded sections to localStorage
-  useEffect(() => {
-    localStorage.setItem('expandedSections', JSON.stringify(expandedSections));
-  }, [expandedSections]);
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  // Save sidebar expanded state to localStorage
   useEffect(() => {
     localStorage.setItem('sidebarExpanded', JSON.stringify(isSidebarExpanded));
   }, [isSidebarExpanded]);
 
-  const toggleSidebar = () => {
-    setIsSidebarExpanded(!isSidebarExpanded);
-  };
+  const toggleSidebar = () => setIsSidebarExpanded(!isSidebarExpanded);
 
-
-  // Fetch workspaces on mount with error handling
   useEffect(() => {
     const loadWorkspaces = async () => {
       try {
         await fetchWorkspaces();
       } catch (error) {
         console.error("Failed to fetch workspaces:", error);
-        // User will still see the UI, just with no workspaces
-        // Toast notification already handled by the store
       }
     };
-
     loadWorkspaces();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (sidebarNavRef.current) {
+      sidebarNavRef.current.scrollTop = scrollPositionRef.current;
+    }
+  }, [pathname]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (workspaceMenuRef.current && !workspaceMenuRef.current.contains(e.target as Node)) {
+        setIsWorkspaceMenuOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleLogout = async () => {
@@ -117,674 +181,613 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
   const handleWorkspaceClick = (workspace: any) => {
     setCurrentWorkspace(workspace);
     router.push(`/projects/${workspace._id}`);
+    setIsWorkspaceMenuOpen(false);
   };
 
-  const handleCreateWorkspace = () => {
-    router.push("/projects");
-  };
+  const isPathActive = (path: string) => pathname.includes(`/${path}`);
 
-  const isWorkspaceActive = (workspaceId: string) => {
-    return pathname.includes(workspaceId);
-  };
-
-  // Check if we're inside a specific workspace
   const isInsideWorkspace = pathname.startsWith('/projects/') && pathname !== '/projects';
   const currentWorkspaceFromUrl = isInsideWorkspace
     ? workspaces.find(w => pathname.includes(w._id))
     : null;
 
-  const SidebarContent = ({ isExpanded }: { isExpanded: boolean }) => (
-    <div className="flex flex-col h-full">
-      {/* Workspace Header - Clickable */}
-      <div className={cn(
-        "h-12 border-b border-border transition-all duration-150 relative flex-shrink-0 flex items-center",
-        isExpanded ? "px-3" : "px-2"
-      )}>
-        {isExpanded ? (
-          <button
-            onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
-            className="w-full flex items-center gap-2.5 hover:bg-muted/20 rounded-md p-1 -m-1 transition-colors"
+  const COLLAPSED_WIDTH = 64;
+  const EXPANDED_WIDTH = 240;
+  const unreadCount = notifications.filter(n => n.unread).length;
+
+  // Navigation Item
+  const NavItem = ({ item, workspaceId }: { item: any; workspaceId: string }) => {
+    const isActive = isPathActive(item.path);
+    const Icon = item.icon;
+    const [isHovered, setIsHovered] = useState(false);
+    const itemRef = useRef<HTMLDivElement>(null);
+    const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+
+    const handleMouseEnter = () => {
+      if (!isSidebarExpanded && itemRef.current) {
+        const rect = itemRef.current.getBoundingClientRect();
+        setTooltipPos({
+          top: rect.top + rect.height / 2,
+          left: COLLAPSED_WIDTH + 8
+        });
+        setIsHovered(true);
+      }
+    };
+
+    return (
+      <Link href={`/projects/${workspaceId}/${item.path}`} scroll={false} onClick={() => setIsMobileMenuOpen(false)}>
+        <motion.div
+          ref={itemRef}
+          whileHover={{ x: 2 }}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={() => setIsHovered(false)}
+          className={cn(
+            "relative flex items-center gap-2 py-1.5 rounded-lg transition-all duration-150 group cursor-pointer",
+            isSidebarExpanded ? "px-2.5" : "px-0 justify-center",
+            isActive
+              ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
+              : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          )}
+        >
+          <Icon className="w-[15px] h-[15px] flex-shrink-0" strokeWidth={1.5} />
+          {isSidebarExpanded && (
+            <span className="text-[13px] font-medium whitespace-nowrap overflow-hidden">
+              {item.label}
+            </span>
+          )}
+        </motion.div>
+
+        {/* Tooltip for collapsed state - using fixed position to escape overflow */}
+        {isHovered && !isSidebarExpanded && (
+          <div
+            className="fixed px-2.5 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-medium rounded-md whitespace-nowrap z-[100] shadow-lg pointer-events-none"
+            style={{
+              left: tooltipPos.left,
+              top: tooltipPos.top,
+              transform: 'translateY(-50%)'
+            }}
           >
-            <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 overflow-visible">
-              <Image
-                src="/Clianta-logo-removebg-preview.png"
-                alt="Company Logo"
-                width={64}
-                height={64}
-                className="object-contain mx-auto"
-              />
-            </div>
-            <div className="flex-1 min-w-0 overflow-hidden text-left">
-              <h1 className="text-sm font-semibold text-foreground truncate">
-                {currentWorkspaceFromUrl?.name || user?.name || "Workspace"}
-              </h1>
-            </div>
-            <ChevronDownIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          </button>
-        ) : (
-          <button
-            onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
-            className="flex items-center justify-center w-full hover:bg-muted/20 rounded-md p-1 -m-1 transition-colors"
-          >
-            <div className="w-7 h-7 flex items-center justify-center overflow-visible">
-              <Image
-                src="/Clianta-logo-removebg-preview.png"
-                alt="Company Logo"
-                width={64}
-                height={64}
-                className="object-contain mx-auto"
-              />
-            </div>
-          </button>
-        )}
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto">
-
-        {/* CRM Pages - Show when inside a workspace */}
-        {isInsideWorkspace && currentWorkspaceFromUrl && (
-          <div className={cn(
-            "py-3",
-            isExpanded ? "px-3" : "px-2"
-          )}>
-            <div className={cn(isExpanded ? "space-y-1" : "space-y-1")}>
-
-              {/* ===== CRM SECTION ===== */}
-              {isExpanded && (
-                <button
-                  onClick={() => toggleSection('crm')}
-                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide"
-                >
-                  <span>CRM</span>
-                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.crm && "rotate-180")} />
-                </button>
-              )}
-
-              {(expandedSections.crm || !isExpanded) && (
-                <>
-                  {/* Dashboard */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/dashboard`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/dashboard')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Dashboard" : ""}
-                  >
-                    <HomeIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Dashboard</span>}
-                  </Link>
-
-                  {/* Contacts */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/contacts`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/contacts')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Contacts" : ""}
-                  >
-                    <UserGroupIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Contacts</span>}
-                  </Link>
-
-                  {/* Companies */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/companies`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/companies')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Companies" : ""}
-                  >
-                    <BuildingOffice2Icon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Companies</span>}
-                  </Link>
-
-                  {/* Pipelines */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/pipelines`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/pipelines')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Pipelines" : ""}
-                  >
-                    <Squares2X2Icon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Pipelines</span>}
-                  </Link>
-
-
-                </>
-              )}
-
-              {/* ===== MARKETING SECTION ===== */}
-              {isExpanded && (
-                <button
-                  onClick={() => toggleSection('marketing')}
-                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide mt-3"
-                >
-                  <span>Marketing</span>
-                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.marketing && "rotate-180")} />
-                </button>
-              )}
-
-              {(expandedSections.marketing || !isExpanded) && (
-                <>
-                  {/* Forms */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/forms`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/forms')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Forms" : ""}
-                  >
-                    <ClipboardDocumentListIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Forms</span>}
-                  </Link>
-
-                  {/* Landing Pages */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/pages`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/pages')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Pages" : ""}
-                  >
-                    <GlobeAltIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Pages</span>}
-                  </Link>
-
-                  {/* Visitors */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/visitors`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/visitors')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Visitors" : ""}
-                  >
-                    <EyeIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Visitors</span>}
-                  </Link>
-
-                  {/* Campaigns */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/campaigns`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/campaigns')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Campaigns" : ""}
-                  >
-                    <RocketLaunchIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Campaigns</span>}
-                  </Link>
-
-                  {/* Sequences */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/sequences`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/sequences')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Sequences" : ""}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                    </svg>
-                    {isExpanded && <span className="text-sm">Sequences</span>}
-                  </Link>
-
-                  {/* Email Templates */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/email-templates`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/email-templates')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Templates" : ""}
-                  >
-                    <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Templates</span>}
-                  </Link>
-                </>
-              )}
-
-              {/* ===== COMMUNICATION SECTION ===== */}
-              {isExpanded && (
-                <button
-                  onClick={() => toggleSection('communication')}
-                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide mt-3"
-                >
-                  <span>Communication</span>
-                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.communication && "rotate-180")} />
-                </button>
-              )}
-
-              {(expandedSections.communication || !isExpanded) && (
-                <>
-                  {/* Email Accounts */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/email-accounts`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/email-accounts')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Email" : ""}
-                  >
-                    <AtSymbolIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Email Account</span>}
-                  </Link>
-
-                  {/* Inbox */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/inbox`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/inbox')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Inbox" : ""}
-                  >
-                    <InboxIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Inbox</span>}
-                  </Link>
-
-                  {/* Calls */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/calls`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname === `/projects/${currentWorkspaceFromUrl._id}/calls`
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Calls" : ""}
-                  >
-                    <PhoneIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Calls</span>}
-                  </Link>
-
-                  {/* Meetings */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/meetings`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/meetings')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Meetings" : ""}
-                  >
-                    <CalendarDaysIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Meetings</span>}
-                  </Link>
-                </>
-              )}
-
-              {/* ===== AUTOMATION SECTION ===== */}
-              {isExpanded && (
-                <button
-                  onClick={() => toggleSection('automation')}
-                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide mt-3"
-                >
-                  <span>Automation</span>
-                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.automation && "rotate-180")} />
-                </button>
-              )}
-
-              {(expandedSections.automation || !isExpanded) && (
-                <>
-                  {/* Workflows */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/workflows`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/workflows')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Workflows" : ""}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                    </svg>
-                    {isExpanded && <span className="text-sm">Workflows</span>}
-                  </Link>
-
-                  {/* Tasks */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/tasks`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/tasks')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Tasks" : ""}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {isExpanded && <span className="text-sm">Tasks</span>}
-                  </Link>
-
-                  {/* Tickets */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/tickets`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/tickets')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Tickets" : ""}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 flex-shrink-0">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
-                    </svg>
-                    {isExpanded && <span className="text-sm">Tickets</span>}
-                  </Link>
-                </>
-              )}
-
-              {/* ===== ANALYTICS SECTION ===== */}
-              {isExpanded && (
-                <button
-                  onClick={() => toggleSection('analytics')}
-                  className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wide mt-3"
-                >
-                  <span>Analytics</span>
-                  <ChevronDownIcon className={cn("w-3 h-3 transition-transform", expandedSections.analytics && "rotate-180")} />
-                </button>
-              )}
-
-              {(expandedSections.analytics || !isExpanded) && (
-                <>
-                  {/* Reports */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/reports`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname.includes('/reports')
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Reports" : ""}
-                  >
-                    <ChartBarIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Reports</span>}
-                  </Link>
-
-                  {/* Analytics */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/analytics`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname === `/projects/${currentWorkspaceFromUrl._id}/analytics`
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Analytics" : ""}
-                  >
-                    <PresentationChartBarIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Analytics</span>}
-                  </Link>
-
-                  {/* Forecasting */}
-                  <Link
-                    href={`/projects/${currentWorkspaceFromUrl._id}/forecasting`}
-                    className={cn(
-                      "w-full flex items-center rounded-md transition-all",
-                      isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                      pathname === `/projects/${currentWorkspaceFromUrl._id}/forecasting`
-                        ? "bg-muted/70 text-foreground"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                    )}
-                    title={!isExpanded ? "Forecasting" : ""}
-                  >
-                    <CurrencyDollarIcon className="w-4 h-4 flex-shrink-0" />
-                    {isExpanded && <span className="text-sm">Forecasting</span>}
-                  </Link>
-                </>
-              )}
-
-              {/* ===== SETTINGS (No collapse) ===== */}
-              {isExpanded && (
-                <div className="w-full px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-3">
-                  Settings
-                </div>
-              )}
-
-              {/* Settings */}
-              <Link
-                href={`/projects/${currentWorkspaceFromUrl._id}/settings`}
-                className={cn(
-                  "w-full flex items-center rounded-md transition-all",
-                  isExpanded ? "gap-2 px-2 py-1.5 text-left ml-2" : "justify-center p-1.5",
-                  pathname.includes('/settings')
-                    ? "bg-muted/70 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                )}
-                title={!isExpanded ? "Settings" : ""}
-              >
-                <Cog6ToothIcon className="w-4 h-4 flex-shrink-0" />
-                {isExpanded && <span className="text-sm">Settings</span>}
-              </Link>
-            </div>
+            {item.label}
           </div>
         )}
+      </Link>
+    );
+  };
 
+  // Section Component
+  const NavSection = ({ section, workspaceId }: { section: typeof NAV_SECTIONS.crm; workspaceId: string }) => (
+    <div className="mb-3">
+      <AnimatePresence>
+        {isSidebarExpanded && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="px-2.5 mb-1 text-[9px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider"
+          >
+            {section.label}
+          </motion.p>
+        )}
+      </AnimatePresence>
+      <div className="space-y-0.5">
+        {section.items.map((item) => (
+          <NavItem key={item.path} item={item} workspaceId={workspaceId} />
+        ))}
       </div>
-
-      {/* Bottom Actions */}
-      <div className="mt-auto border-t border-border">
-        {/* Notifications */}
-        <div className={cn(
-          "flex items-center transition-all text-muted-foreground hover:bg-muted/30",
-          isExpanded ? "gap-2 px-4 py-2" : "justify-center p-2"
-        )}>
-          <NotificationBell />
-          {isExpanded && (
-            <span className="text-sm">Notifications</span>
-          )}
-        </div>
-
-        {/* Log Out */}
-        <button
-          onClick={handleLogout}
-          className={cn(
-            "w-full flex items-center transition-all text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground",
-            isExpanded ? "gap-2 px-4 py-2 text-left" : "justify-center p-2"
-          )}
-          title={!isExpanded ? "Log out" : ""}
-        >
-          <ArrowRightOnRectangleIcon className="w-4 h-4 flex-shrink-0" />
-          {isExpanded && (
-            <span>Log out</span>
-          )}
-        </button>
-
-        {/* Sidebar Toggle Button */}
-        <button
-          onClick={toggleSidebar}
-          className={cn(
-            "w-full flex items-center transition-all border-t border-border text-sm text-muted-foreground hover:bg-muted/30 hover:text-foreground",
-            isExpanded ? "gap-2 px-4 py-3 text-left" : "justify-center p-3"
-          )}
-          title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
-        >
-          {isExpanded ? (
-            <ChevronLeftIcon className="w-4 h-4 flex-shrink-0" />
-          ) : (
-            <ChevronRightIcon className="w-4 h-4 flex-shrink-0" />
-          )}
-          {isExpanded && (
-            <span>Collapse</span>
-          )}
-        </button>
-      </div>
-
     </div>
   );
-
-  const COLLAPSED_WIDTH = 60;
-  const EXPANDED_WIDTH = 280;
 
   return (
     <>
       <CommandPalette />
-      {/* OnboardingWizard removed - was showing placeholder-like popup */}
       <AIChatPanel />
       <Toaster position="top-right" />
-      <div className="min-h-screen bg-card">
-        {/* Workspace Switcher Popup */}
+
+      <div className="min-h-screen bg-white dark:bg-zinc-900">
+        {/* Mobile Menu Overlay */}
         <AnimatePresence>
-          {isWorkspaceSwitcherOpen && (
+          {isMobileMenuOpen && (
             <>
-              {/* Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/20 z-40"
-                onClick={() => setIsWorkspaceSwitcherOpen(false)}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+                onClick={() => setIsMobileMenuOpen(false)}
               />
-
-              {/* Popup */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                transition={{ duration: 0.15 }}
-                className="fixed z-50 bg-card border border-border rounded-lg shadow-2xl backdrop-blur-xl"
-                style={{
-                  left: isSidebarExpanded ? `${EXPANDED_WIDTH + 20}px` : `${COLLAPSED_WIDTH + 20}px`,
-                  top: '16px',
-                  width: '280px',
-                }}
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                className="fixed left-0 top-0 bottom-0 w-72 bg-white dark:bg-zinc-900 z-50 lg:hidden shadow-2xl flex flex-col"
               >
-                {/* User Email */}
-                <div className="px-4 py-2 text-xs text-muted-foreground border-b border-border">
-                  {user?.email}
-                </div>
-
-                {/* Workspaces List */}
-                <div className="px-3 py-3 max-h-[400px] overflow-y-auto">
-                  <div className="space-y-0.5">
-                    {workspaces.map((workspace) => (
-                      <button
-                        key={workspace._id}
-                        onClick={() => {
-                          handleWorkspaceClick(workspace);
-                          setIsWorkspaceSwitcherOpen(false);
-                        }}
-                        className={cn(
-                          "w-full flex items-center gap-2 rounded-md transition-all text-left px-2 py-1.5",
-                          isWorkspaceActive(workspace._id)
-                            ? "bg-muted/70 text-foreground"
-                            : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
-                        )}
-                      >
-                        <div className="w-5 h-5 bg-primary rounded flex items-center justify-center text-primary-foreground text-xs font-semibold flex-shrink-0">
-                          {workspace.name?.charAt(0).toUpperCase()}
-                        </div>
-                        <p className="text-sm font-normal truncate flex-1">
-                          {workspace.name}
+                {/* Mobile Workspace Header with Close Button */}
+                <div className="relative flex-shrink-0">
+                  <div className="flex items-center border-b border-zinc-100 dark:border-zinc-800">
+                    <button
+                      onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)}
+                      className="flex-1 flex items-center gap-2.5 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
+                        {currentWorkspaceFromUrl?.name?.charAt(0).toUpperCase() || "W"}
+                      </div>
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">
+                          {currentWorkspaceFromUrl?.name || "Workspace"}
                         </p>
-                      </button>
-                    ))}
+                        <p className="text-[9px] text-zinc-400 truncate">{user?.email}</p>
+                      </div>
+                      <motion.div
+                        animate={{ rotate: isWorkspaceMenuOpen ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronDownIcon className="w-4 h-4 text-zinc-400" />
+                      </motion.div>
+                    </button>
+                    <button
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="p-3 text-zinc-400 hover:text-zinc-600 border-l border-zinc-100 dark:border-zinc-800"
+                    >
+                      <XMarkIcon className="w-5 h-5" />
+                    </button>
                   </div>
 
-                  {/* Add New Workspace */}
+                  {/* Dropdown Content */}
+                  <AnimatePresence>
+                    {isWorkspaceMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden border-b border-zinc-100 dark:border-zinc-800"
+                      >
+                        {/* Workspaces List */}
+                        <div className="py-2 px-3 max-h-40 overflow-y-auto">
+                          <p className="px-2 py-1 text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Workspaces</p>
+                          {workspaces.map((workspace) => (
+                            <button
+                              key={workspace._id}
+                              onClick={() => { handleWorkspaceClick(workspace); setIsWorkspaceMenuOpen(false); setIsMobileMenuOpen(false); }}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors",
+                                pathname.includes(workspace._id)
+                                  ? "bg-emerald-50 dark:bg-emerald-900/20"
+                                  : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold",
+                                pathname.includes(workspace._id)
+                                  ? "bg-emerald-500 text-white"
+                                  : "bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300"
+                              )}>
+                                {workspace.name?.charAt(0).toUpperCase()}
+                              </div>
+                              <span className={cn(
+                                "text-[13px] font-medium truncate flex-1",
+                                pathname.includes(workspace._id)
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-zinc-700 dark:text-zinc-200"
+                              )}>
+                                {workspace.name}
+                              </span>
+                              {pathname.includes(workspace._id) && (
+                                <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="h-px bg-zinc-100 dark:bg-zinc-800 mx-3" />
+
+                        {/* Quick Actions */}
+                        <div className="py-2 px-3">
+                          <button
+                            onClick={() => { router.push("/projects"); setIsWorkspaceMenuOpen(false); setIsMobileMenuOpen(false); }}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 text-[13px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-md transition-colors"
+                          >
+                            <PlusIcon className="w-3.5 h-3.5" />
+                            New Workspace
+                          </button>
+                        </div>
+
+                        <div className="h-px bg-zinc-100 dark:bg-zinc-800 mx-3" />
+
+                        {/* Settings & Logout */}
+                        <div className="py-2 px-3">
+                          {currentWorkspaceFromUrl && (
+                            <Link href={`/projects/${currentWorkspaceFromUrl._id}/settings`} onClick={() => { setIsWorkspaceMenuOpen(false); setIsMobileMenuOpen(false); }}>
+                              <div className="w-full flex items-center gap-2 px-2 py-1.5 text-[13px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors">
+                                <Cog6ToothIcon className="w-3.5 h-3.5" />
+                                Settings
+                              </div>
+                            </Link>
+                          )}
+                          <button
+                            onClick={() => { handleLogout(); setIsWorkspaceMenuOpen(false); setIsMobileMenuOpen(false); }}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                          >
+                            <ArrowRightStartOnRectangleIcon className="w-3.5 h-3.5" />
+                            Log out
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Navigation */}
+                <div className="flex-1 overflow-y-auto p-3">
+                  {isInsideWorkspace && currentWorkspaceFromUrl && (
+                    <>
+                      {Object.values(NAV_SECTIONS).map((section, i) => (
+                        <NavSection key={i} section={section} workspaceId={currentWorkspaceFromUrl._id} />
+                      ))}
+                    </>
+                  )}
+                </div>
+
+                {/* Footer with Notifications */}
+                <div className="border-t border-zinc-100 dark:border-zinc-800 p-3 flex-shrink-0 relative">
                   <button
-                    onClick={() => {
-                      handleCreateWorkspace();
-                      setIsWorkspaceSwitcherOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2 rounded-md transition-all text-left mt-2 px-2 py-1.5 text-muted-foreground hover:bg-muted/30 hover:text-foreground border-t border-border pt-3"
+                    onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg relative"
                   >
-                    <PlusIcon className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm font-normal text-primary">
-                      New workspace
-                    </span>
+                    <div className="relative">
+                      <BellIcon className="w-[15px] h-[15px]" strokeWidth={1.5} />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    Notifications
                   </button>
+
+                  {/* Mobile Notifications Panel */}
+                  <AnimatePresence>
+                    {isNotificationsOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl z-50 overflow-hidden"
+                      >
+                        <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                          <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Notifications</p>
+                          <button onClick={() => setIsNotificationsOpen(false)} className="text-zinc-400 hover:text-zinc-600">
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                          {notifications.length === 0 ? (
+                            <div className="py-6 text-center text-sm text-zinc-400">No notifications</div>
+                          ) : (
+                            notifications.map((notif) => (
+                              <div
+                                key={notif.id}
+                                className={cn(
+                                  "px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors border-b border-zinc-50 dark:border-zinc-800 last:border-0",
+                                  notif.unread && "bg-emerald-50/50 dark:bg-emerald-900/10"
+                                )}
+                              >
+                                <div className="flex items-start gap-2">
+                                  {notif.unread && <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-emerald-500 flex-shrink-0" />}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[13px] font-medium text-zinc-900 dark:text-white">{notif.title}</p>
+                                    <p className="text-[11px] text-zinc-500 truncate">{notif.description}</p>
+                                    <p className="text-[9px] text-zinc-400 mt-0.5">{notif.time}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             </>
           )}
         </AnimatePresence>
 
-        {/* Sidebar - Always visible */}
-        <aside
-          className={cn(
-            "fixed top-0 left-0 bottom-0 bg-card/95 backdrop-blur-xl border-r border-border z-30 overflow-hidden transition-all duration-200 ease-out"
-          )}
-          style={{
-            width: isSidebarExpanded ? `${EXPANDED_WIDTH}px` : `${COLLAPSED_WIDTH}px`
-          }}
+        {/* Desktop Sidebar */}
+        <motion.aside
+          animate={{ width: isSidebarExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="fixed top-0 left-0 bottom-0 z-30 hidden lg:flex flex-col bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800"
         >
-          <div className="h-full w-full">
-            <SidebarContent isExpanded={isSidebarExpanded} />
+          {/* Workspace Header with Dropdown */}
+          <div ref={workspaceMenuRef} className="relative">
+            <button
+              onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)}
+              className={cn(
+                "w-full flex items-center gap-2 h-12 border-b border-zinc-100 dark:border-zinc-800 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50",
+                isSidebarExpanded ? "px-3" : "px-0 justify-center"
+              )}
+            >
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-md shadow-emerald-500/20 flex-shrink-0">
+                {currentWorkspaceFromUrl?.name?.charAt(0).toUpperCase() || "W"}
+              </div>
+              <AnimatePresence>
+                {isSidebarExpanded && (
+                  <motion.div
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
+                    className="flex-1 text-left min-w-0 overflow-hidden"
+                  >
+                    <p className="text-[13px] font-semibold text-zinc-900 dark:text-white truncate">
+                      {currentWorkspaceFromUrl?.name || "Workspace"}
+                    </p>
+                    <p className="text-[9px] text-zinc-400 truncate">{user?.email}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {isSidebarExpanded && (
+                <motion.div
+                  animate={{ rotate: isWorkspaceMenuOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDownIcon className="w-4 h-4 text-zinc-400" />
+                </motion.div>
+              )}
+            </button>
+
+            {/* Workspace Dropdown Menu */}
+            <AnimatePresence>
+              {isWorkspaceMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, y: -10 }}
+                  animate={{ opacity: 1, height: "auto", y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: -10 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute left-0 right-0 top-full bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shadow-lg z-50 overflow-hidden"
+                >
+                  {/* Workspaces List */}
+                  <div className="py-1.5 px-1.5 max-h-48 overflow-y-auto">
+                    <p className="px-2 py-0.5 text-[9px] font-semibold text-zinc-400 uppercase tracking-wider">Workspaces</p>
+                    {workspaces.map((workspace) => (
+                      <button
+                        key={workspace._id}
+                        onClick={() => handleWorkspaceClick(workspace)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors",
+                          pathname.includes(workspace._id)
+                            ? "bg-emerald-50 dark:bg-emerald-900/20"
+                            : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold",
+                          pathname.includes(workspace._id)
+                            ? "bg-emerald-500 text-white"
+                            : "bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300"
+                        )}>
+                          {workspace.name?.charAt(0).toUpperCase()}
+                        </div>
+                        <span className={cn(
+                          "text-[13px] font-medium truncate flex-1",
+                          pathname.includes(workspace._id)
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-zinc-700 dark:text-zinc-200"
+                        )}>
+                          {workspace.name}
+                        </span>
+                        {pathname.includes(workspace._id) && (
+                          <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-zinc-100 dark:bg-zinc-800 mx-1.5" />
+
+                  {/* Quick Actions */}
+                  <div className="py-1.5 px-1.5">
+                    <button
+                      onClick={() => { router.push("/projects"); setIsWorkspaceMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-[13px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-md transition-colors"
+                    >
+                      <PlusIcon className="w-3.5 h-3.5" />
+                      New Workspace
+                    </button>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="h-px bg-zinc-100 dark:bg-zinc-800 mx-1.5" />
+
+                  {/* Settings & Logout */}
+                  <div className="py-1.5 px-1.5">
+                    {currentWorkspaceFromUrl && (
+                      <Link href={`/projects/${currentWorkspaceFromUrl._id}/settings`} onClick={() => setIsWorkspaceMenuOpen(false)}>
+                        <div className="w-full flex items-center gap-2 px-2 py-1.5 text-[13px] text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-md transition-colors">
+                          <Cog6ToothIcon className="w-3.5 h-3.5" />
+                          Settings
+                        </div>
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => { handleLogout(); setIsWorkspaceMenuOpen(false); }}
+                      className="w-full flex items-center gap-2 px-2 py-1.5 text-[13px] text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                    >
+                      <ArrowRightStartOnRectangleIcon className="w-3.5 h-3.5" />
+                      Log out
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </aside>
+
+          {/* Navigation */}
+          <div
+            ref={sidebarNavRef}
+            onScroll={(e) => { scrollPositionRef.current = e.currentTarget.scrollTop; }}
+            className={cn(
+              "flex-1 overflow-y-auto overflow-x-hidden py-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
+              isSidebarExpanded ? "px-2" : "px-1.5"
+            )}
+          >
+            {isInsideWorkspace && currentWorkspaceFromUrl && (
+              <>
+                {Object.values(NAV_SECTIONS).map((section, i) => (
+                  <NavSection key={i} section={section} workspaceId={currentWorkspaceFromUrl._id} />
+                ))}
+              </>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className={cn(
+            "border-t border-zinc-100 dark:border-zinc-800 py-2",
+            isSidebarExpanded ? "px-2" : "px-1.5"
+          )}>
+            {/* Notifications */}
+            <div ref={notificationsRef} className="relative mb-2">
+              <button
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className={cn(
+                  "w-full flex items-center gap-2 py-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors relative",
+                  isSidebarExpanded ? "px-2.5" : "px-0 justify-center"
+                )}
+              >
+                <div className="relative">
+                  <BellIcon className="w-[15px] h-[15px]" strokeWidth={1.5} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+                {isSidebarExpanded && (
+                  <span className="text-[13px] font-medium whitespace-nowrap overflow-hidden">
+                    Notifications
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              <AnimatePresence>
+                {isNotificationsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute bottom-full left-0 mb-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl z-50 overflow-hidden"
+                    style={{ width: isSidebarExpanded ? EXPANDED_WIDTH : 200 }}
+                  >
+                    <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+                      <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">Notifications</p>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-zinc-400">No notifications</div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            className={cn(
+                              "px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors border-b border-zinc-50 dark:border-zinc-800 last:border-0",
+                              notif.unread && "bg-emerald-50/50 dark:bg-emerald-900/10"
+                            )}
+                          >
+                            <div className="flex items-start gap-2">
+                              {notif.unread && <div className="w-1.5 h-1.5 mt-1.5 rounded-full bg-emerald-500 flex-shrink-0" />}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-medium text-zinc-900 dark:text-white">{notif.title}</p>
+                                <p className="text-[11px] text-zinc-500 truncate">{notif.description}</p>
+                                <p className="text-[9px] text-zinc-400 mt-0.5">{notif.time}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Toggle Button */}
+            <button
+              onClick={toggleSidebar}
+              className={cn(
+                "w-full flex items-center gap-2 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors",
+                isSidebarExpanded ? "px-2.5" : "px-0 justify-center"
+              )}
+            >
+              <motion.div animate={{ rotate: isSidebarExpanded ? 0 : 180 }} transition={{ duration: 0.2 }}>
+                <Bars3BottomLeftIcon className="w-[15px] h-[15px]" strokeWidth={1.5} />
+              </motion.div>
+              {isSidebarExpanded && (
+                <span className="text-[13px] whitespace-nowrap overflow-hidden">
+                  Collapse
+                </span>
+              )}
+            </button>
+          </div>
+        </motion.aside>
+
+        {/* Mobile Bottom Navigation */}
+        {isInsideWorkspace && currentWorkspaceFromUrl && (
+          <nav className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 safe-area-pb">
+            <div className="flex items-center justify-around h-14">
+              {MOBILE_NAV_ITEMS.map((item) => {
+                const isActive = item.path ? isPathActive(item.path) : false;
+                const Icon = item.icon;
+
+                if (item.path === null) {
+                  return (
+                    <button
+                      key={item.label}
+                      onClick={() => setIsMobileMenuOpen(true)}
+                      className="flex flex-col items-center justify-center flex-1 h-full text-zinc-400"
+                    >
+                      <Icon className="w-5 h-5" strokeWidth={1.5} />
+                      <span className="text-[10px] mt-0.5">{item.label}</span>
+                    </button>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.path}
+                    href={`/projects/${currentWorkspaceFromUrl._id}/${item.path}`}
+                    scroll={false}
+                    className={cn(
+                      "flex flex-col items-center justify-center flex-1 h-full",
+                      isActive ? "text-zinc-900 dark:text-white" : "text-zinc-400"
+                    )}
+                  >
+                    <Icon className="w-5 h-5" strokeWidth={isActive ? 2 : 1.5} />
+                    <span className={cn("text-[10px] mt-0.5", isActive && "font-semibold")}>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        )}
 
         {/* Main Content */}
-        <main className="min-h-screen">
-          <div
-            className="min-h-screen bg-card transition-all duration-200 ease-out"
-            style={{
-              marginLeft: isSidebarExpanded ? `${EXPANDED_WIDTH}px` : `${COLLAPSED_WIDTH}px`,
+        <main className="h-screen">
+          <motion.div
+            animate={{
+              marginLeft: typeof window !== 'undefined' && window.innerWidth >= 1024
+                ? (isSidebarExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH)
+                : 0
             }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="h-full bg-white dark:bg-zinc-900 overflow-y-auto pb-14 lg:pb-0"
           >
             {children}
-          </div>
+          </motion.div>
         </main>
       </div>
     </>

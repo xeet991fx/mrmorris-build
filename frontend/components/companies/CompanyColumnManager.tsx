@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
 import { Dialog, Transition, Tab } from "@headlessui/react";
-import { XMarkIcon, PlusIcon, PencilIcon, TrashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { XMarkIcon, PlusIcon, TrashIcon, LockClosedIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { motion } from "framer-motion";
 import { useCompanyStore, CompanyColumn, BuiltInColumn } from "@/store/useCompanyStore";
 import { cn } from "@/lib/utils";
@@ -41,13 +41,11 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
         updateColumnLabel,
         resetColumnLabel,
         createCustomColumn,
-        updateCustomColumn,
         deleteCustomColumn,
     } = useCompanyStore();
 
     const [selectedTab, setSelectedTab] = useState(0);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [editingColumn, setEditingColumn] = useState<CustomColumnDefinition | null>(null);
     const [deletingColumn, setDeletingColumn] = useState<CustomColumnDefinition | null>(null);
 
     // New column form state
@@ -56,7 +54,6 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
     const [newColumnOptions, setNewColumnOptions] = useState("");
     const [isCreating, setIsCreating] = useState(false);
 
-    // Get all available columns (built-in + custom active columns)
     const allColumns: Array<{ value: CompanyColumn; label: string; isCustom: boolean; isProtected: boolean }> = [
         ...Object.entries(BUILT_IN_COLUMN_LABELS).map(([value, label]) => ({
             value: value as BuiltInColumn,
@@ -76,7 +73,6 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
 
     const toggleColumn = (column: CompanyColumn) => {
         if (visibleColumns.includes(column)) {
-            // Prevent hiding all columns - keep at least one
             if (visibleColumns.length > 1) {
                 setVisibleColumns(visibleColumns.filter((c) => c !== column));
             }
@@ -129,25 +125,23 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
     };
 
     const getColumnLabel = (column: CompanyColumn): string => {
-        // Check for custom label override
         if (columnLabels[column]) {
             return columnLabels[column];
         }
-
-        // Check if it's a custom column
         const customCol = customColumns.find((c) => c.fieldKey === column);
         if (customCol) {
             return customCol.fieldLabel;
         }
-
-        // Fall back to default built-in label
         return BUILT_IN_COLUMN_LABELS[column as BuiltInColumn] || column;
     };
+
+    const tabItems = ["Visibility", "Custom Fields", "Labels"];
 
     return (
         <>
             <Transition appear show={isOpen} as={Fragment}>
                 <Dialog as="div" className="relative z-50" onClose={onClose}>
+                    {/* Backdrop */}
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -157,291 +151,252 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
                         leaveFrom="opacity-100"
                         leaveTo="opacity-0"
                     >
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+                        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" />
                     </Transition.Child>
 
-                    <div className="fixed inset-0 overflow-y-auto">
-                        <div className="flex min-h-full items-center justify-center p-4 text-center">
-                            <Transition.Child
-                                as={Fragment}
-                                enter="ease-out duration-300"
-                                enterFrom="opacity-0 scale-95"
-                                enterTo="opacity-100 scale-100"
-                                leave="ease-in duration-200"
-                                leaveFrom="opacity-100 scale-100"
-                                leaveTo="opacity-0 scale-95"
-                            >
-                                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-xl bg-card border border-border p-6 text-left align-middle shadow-xl transition-all">
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.2 }}
-                                    >
-                                        {/* Header */}
-                                        <div className="flex items-center justify-between mb-6">
-                                            <Dialog.Title
-                                                as="h3"
-                                                className="text-lg font-semibold text-foreground"
-                                            >
-                                                Manage Company Columns
-                                            </Dialog.Title>
-                                            <button
-                                                type="button"
-                                                onClick={onClose}
-                                                className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                            >
-                                                <XMarkIcon className="w-5 h-5" />
-                                            </button>
-                                        </div>
-
-                                        {/* Tabs */}
-                                        <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
-                                            <Tab.List className="flex space-x-1 rounded-lg bg-background p-1 mb-6">
-                                                <Tab
-                                                    className={({ selected }) =>
-                                                        cn(
-                                                            "w-full rounded-lg py-2.5 text-sm font-medium leading-5 transition-colors",
-                                                            "focus:outline-none focus:ring-2 ring-offset-2 ring-offset-background ring-[#9ACD32]/50",
-                                                            selected
-                                                                ? "bg-muted text-foreground shadow"
-                                                                : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
-                                                        )
-                                                    }
-                                                >
-                                                    Show/Hide
-                                                </Tab>
-                                                <Tab
-                                                    className={({ selected }) =>
-                                                        cn(
-                                                            "w-full rounded-lg py-2.5 text-sm font-medium leading-5 transition-colors",
-                                                            "focus:outline-none focus:ring-2 ring-offset-2 ring-offset-background ring-[#9ACD32]/50",
-                                                            selected
-                                                                ? "bg-muted text-foreground shadow"
-                                                                : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
-                                                        )
-                                                    }
-                                                >
-                                                    Custom Columns
-                                                </Tab>
-                                                <Tab
-                                                    className={({ selected }) =>
-                                                        cn(
-                                                            "w-full rounded-lg py-2.5 text-sm font-medium leading-5 transition-colors",
-                                                            "focus:outline-none focus:ring-2 ring-offset-2 ring-offset-background ring-[#9ACD32]/50",
-                                                            selected
-                                                                ? "bg-muted text-foreground shadow"
-                                                                : "text-muted-foreground hover:bg-card/50 hover:text-foreground"
-                                                        )
-                                                    }
-                                                >
-                                                    Edit Labels
-                                                </Tab>
-                                            </Tab.List>
-
-                                            <Tab.Panels>
-                                                {/* Tab 1: Show/Hide Columns */}
-                                                <Tab.Panel className="space-y-2">
-                                                    <p className="text-sm text-muted-foreground mb-4">
-                                                        Select which columns to display in the companies table. You can also
-                                                        drag column headers to reorder them and drag their edges to resize.
-                                                    </p>
-
-                                                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                                                        {allColumns.map((column) => {
-                                                            const isVisible = visibleColumns.includes(column.value);
-                                                            const isOnlyVisible = isVisible && visibleColumns.length === 1;
-
-                                                            return (
-                                                                <label
-                                                                    key={column.value}
-                                                                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer"
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={isVisible}
-                                                                        onChange={() => toggleColumn(column.value)}
-                                                                        disabled={isOnlyVisible}
-                                                                        className="w-4 h-4 rounded border-border bg-muted text-black focus:ring-primary focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                    />
-                                                                    <span
-                                                                        className={cn(
-                                                                            "text-sm flex-1",
-                                                                            isVisible ? "text-foreground" : "text-muted-foreground"
-                                                                        )}
-                                                                    >
-                                                                        {getColumnLabel(column.value)}
-                                                                    </span>
-                                                                    {column.isCustom && (
-                                                                        <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                                                            Custom
-                                                                        </span>
-                                                                    )}
-                                                                    {column.isProtected && (
-                                                                        <LockClosedIcon className="w-4 h-4 text-muted-foreground" title="Protected column" />
-                                                                    )}
-                                                                    {isOnlyVisible && (
-                                                                        <span className="text-xs text-muted-foreground ml-auto">
-                                                                            (Required)
-                                                                        </span>
-                                                                    )}
-                                                                </label>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </Tab.Panel>
-
-                                                {/* Tab 2: Custom Columns */}
-                                                <Tab.Panel className="space-y-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-sm text-muted-foreground">
-                                                            Create and manage custom columns for tracking additional company data.
+                    {/* Sidebar Panel */}
+                    <div className="fixed inset-0 overflow-hidden">
+                        <div className="absolute inset-0 overflow-hidden">
+                            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+                                <Transition.Child
+                                    as={Fragment}
+                                    enter="transform transition ease-out duration-300"
+                                    enterFrom="translate-x-full"
+                                    enterTo="translate-x-0"
+                                    leave="transform transition ease-in duration-200"
+                                    leaveFrom="translate-x-0"
+                                    leaveTo="translate-x-full"
+                                >
+                                    <Dialog.Panel className="pointer-events-auto w-screen max-w-lg">
+                                        <div className="flex h-full flex-col bg-white dark:bg-zinc-900 shadow-2xl">
+                                            {/* Header */}
+                                            <div className="px-6 py-6 border-b border-zinc-100 dark:border-zinc-800">
+                                                <div className="flex items-start justify-between">
+                                                    <div>
+                                                        <Dialog.Title className="text-xl font-semibold text-zinc-900 dark:text-white">
+                                                            Manage Columns
+                                                        </Dialog.Title>
+                                                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                                            Customize your company table layout
                                                         </p>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowAddModal(true)}
-                                                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-background bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white rounded-lg transition-colors"
-                                                        >
-                                                            <PlusIcon className="w-4 h-4" />
-                                                            Add Column
-                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        onClick={onClose}
+                                                        className="p-2 -m-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                                                    >
+                                                        <XMarkIcon className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Content */}
+                                            <div className="flex-1 overflow-y-auto">
+                                                <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
+                                                    <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 px-6 pt-4 pb-2">
+                                                        <Tab.List className="flex gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                                                            {tabItems.map((tab) => (
+                                                                <Tab
+                                                                    key={tab}
+                                                                    className={({ selected }) =>
+                                                                        cn(
+                                                                            "flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 outline-none",
+                                                                            selected
+                                                                                ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm"
+                                                                                : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {tab}
+                                                                </Tab>
+                                                            ))}
+                                                        </Tab.List>
                                                     </div>
 
-                                                    {customColumns.filter((col) => col.isActive).length === 0 ? (
-                                                        <div className="py-12 text-center">
-                                                            <div className="mx-auto w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                                                                <PlusIcon className="w-8 h-8 text-muted-foreground" />
-                                                            </div>
-                                                            <p className="text-sm text-muted-foreground mb-4">
-                                                                No custom columns yet. Click &quot;Add Column&quot; to create one.
-                                                            </p>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                                                            {customColumns
-                                                                .filter((col) => col.isActive)
-                                                                .sort((a, b) => a.order - b.order)
-                                                                .map((column) => (
-                                                                    <div
-                                                                        key={column._id}
-                                                                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-accent/50 dark:hover:bg-accent/20 transition-colors"
-                                                                    >
-                                                                        <div className="flex-1">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-sm font-medium text-foreground">
-                                                                                    {column.fieldLabel}
-                                                                                </span>
-                                                                                <span
-                                                                                    className={cn(
-                                                                                        "text-xs px-2 py-0.5 rounded capitalize",
-                                                                                        column.fieldType === "text" &&
-                                                                                        "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-                                                                                        column.fieldType === "number" &&
-                                                                                        "bg-green-500/10 text-green-400 border border-green-500/20",
-                                                                                        column.fieldType === "select" &&
-                                                                                        "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                                                                                    )}
-                                                                                >
-                                                                                    {column.fieldType}
-                                                                                </span>
-                                                                                {column.isRequired && (
-                                                                                    <span className="text-xs px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
-                                                                                        Required
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                            <div className="text-xs text-muted-foreground font-mono mt-1">
-                                                                                {column.fieldKey}
-                                                                            </div>
-                                                                        </div>
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => setDeletingColumn(column)}
-                                                                            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-red-400 transition-colors"
-                                                                            title="Delete column"
+                                                    <Tab.Panels className="px-6 py-4">
+                                                        {/* Tab 1: Visibility */}
+                                                        <Tab.Panel className="focus:outline-none">
+                                                            <div className="space-y-3">
+                                                                {allColumns.map((column, index) => {
+                                                                    const isVisible = visibleColumns.includes(column.value);
+                                                                    const isOnlyVisible = isVisible && visibleColumns.length === 1;
+
+                                                                    return (
+                                                                        <motion.button
+                                                                            key={column.value}
+                                                                            initial={{ opacity: 0, x: 20 }}
+                                                                            animate={{ opacity: 1, x: 0 }}
+                                                                            transition={{ delay: index * 0.02 }}
+                                                                            onClick={() => !isOnlyVisible && toggleColumn(column.value)}
+                                                                            disabled={isOnlyVisible}
+                                                                            className={cn(
+                                                                                "w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200",
+                                                                                isVisible
+                                                                                    ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30"
+                                                                                    : "bg-zinc-50 dark:bg-zinc-800/50 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700",
+                                                                                isOnlyVisible && "opacity-60 cursor-not-allowed"
+                                                                            )}
                                                                         >
-                                                                            <TrashIcon className="w-4 h-4" />
-                                                                        </button>
-                                                                    </div>
-                                                                ))}
-                                                        </div>
-                                                    )}
-                                                </Tab.Panel>
-
-                                                {/* Tab 3: Edit Labels */}
-                                                <Tab.Panel className="space-y-4">
-                                                    <p className="text-sm text-muted-foreground mb-4">
-                                                        Customize how column names appear in the table.
-                                                    </p>
-
-                                                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                                                        {allColumns.map((column) => {
-                                                            const currentLabel = getColumnLabel(column.value);
-                                                            const hasCustomLabel = !!columnLabels[column.value];
-
-                                                            return (
-                                                                <div
-                                                                    key={column.value}
-                                                                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/30"
-                                                                >
-                                                                    <div className="flex-1 space-y-1">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="text-xs text-muted-foreground font-mono">
-                                                                                {column.value}
-                                                                            </span>
+                                                                            <div
+                                                                                className={cn(
+                                                                                    "w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all",
+                                                                                    isVisible
+                                                                                        ? "bg-emerald-500 text-white"
+                                                                                        : "border-2 border-zinc-300 dark:border-zinc-600"
+                                                                                )}
+                                                                            >
+                                                                                {isVisible && <CheckIcon className="w-3 h-3" />}
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <span className={cn(
+                                                                                    "text-sm font-medium block",
+                                                                                    isVisible ? "text-emerald-900 dark:text-emerald-100" : "text-zinc-700 dark:text-zinc-200"
+                                                                                )}>
+                                                                                    {getColumnLabel(column.value)}
+                                                                                </span>
+                                                                            </div>
                                                                             {column.isCustom && (
-                                                                                <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
                                                                                     Custom
                                                                                 </span>
                                                                             )}
-                                                                        </div>
-                                                                        <input
-                                                                            type="text"
-                                                                            value={currentLabel}
-                                                                            onChange={(e) =>
-                                                                                updateColumnLabel(column.value, e.target.value)
-                                                                            }
-                                                                            className="w-full px-2 py-1 bg-muted border border-border rounded text-sm text-foreground focus:outline-none focus:border-black transition-colors"
-                                                                        />
-                                                                    </div>
-                                                                    {!column.isCustom && hasCustomLabel && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => resetColumnLabel(column.value)}
-                                                                            className="px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
-                                                                            title="Reset to default"
-                                                                        >
-                                                                            Reset
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </Tab.Panel>
-                                            </Tab.Panels>
-                                        </Tab.Group>
+                                                                            {column.isProtected && (
+                                                                                <LockClosedIcon className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                                                                            )}
+                                                                        </motion.button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </Tab.Panel>
 
-                                        {/* Actions */}
-                                        <div className="flex items-center justify-between pt-4 border-t border-border mt-6">
-                                            <button
-                                                type="button"
-                                                onClick={handleReset}
-                                                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                                                title="Reset columns, order, and widths to defaults"
-                                            >
-                                                Reset All
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={onClose}
-                                                className="px-4 py-2 text-sm font-medium text-background bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white rounded-lg transition-colors"
-                                            >
-                                                Done
-                                            </button>
+                                                        {/* Tab 2: Custom Fields */}
+                                                        <Tab.Panel className="focus:outline-none">
+                                                            <div className="space-y-4">
+                                                                <button
+                                                                    onClick={() => setShowAddModal(true)}
+                                                                    className="w-full flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 hover:border-zinc-300 dark:hover:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all"
+                                                                >
+                                                                    <PlusIcon className="w-5 h-5" />
+                                                                    <span className="text-sm font-medium">Add Custom Field</span>
+                                                                </button>
+
+                                                                {customColumns.filter((col) => col.isActive).length === 0 ? (
+                                                                    <div className="py-12 text-center">
+                                                                        <p className="text-sm text-zinc-400">No custom fields created yet</p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="space-y-2">
+                                                                        {customColumns
+                                                                            .filter((col) => col.isActive)
+                                                                            .sort((a, b) => a.order - b.order)
+                                                                            .map((column, index) => (
+                                                                                <motion.div
+                                                                                    key={column._id}
+                                                                                    initial={{ opacity: 0, x: 20 }}
+                                                                                    animate={{ opacity: 1, x: 0 }}
+                                                                                    transition={{ delay: index * 0.05 }}
+                                                                                    className="group flex items-center gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                                                                                >
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                                                            <span className="text-sm font-medium text-zinc-900 dark:text-white">
+                                                                                                {column.fieldLabel}
+                                                                                            </span>
+                                                                                            <span
+                                                                                                className={cn(
+                                                                                                    "text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide",
+                                                                                                    column.fieldType === "text" && "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+                                                                                                    column.fieldType === "number" && "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+                                                                                                    column.fieldType === "select" && "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                                                                                                )}
+                                                                                            >
+                                                                                                {column.fieldType}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <span className="text-xs text-zinc-400 font-mono">{column.fieldKey}</span>
+                                                                                    </div>
+                                                                                    <button
+                                                                                        onClick={() => setDeletingColumn(column)}
+                                                                                        className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 transition-all"
+                                                                                    >
+                                                                                        <TrashIcon className="w-4 h-4" />
+                                                                                    </button>
+                                                                                </motion.div>
+                                                                            ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </Tab.Panel>
+
+                                                        {/* Tab 3: Labels */}
+                                                        <Tab.Panel className="focus:outline-none">
+                                                            <div className="space-y-3">
+                                                                {allColumns.map((column, index) => {
+                                                                    const currentLabel = getColumnLabel(column.value);
+                                                                    const hasCustomLabel = !!columnLabels[column.value];
+
+                                                                    return (
+                                                                        <motion.div
+                                                                            key={column.value}
+                                                                            initial={{ opacity: 0, x: 20 }}
+                                                                            animate={{ opacity: 1, x: 0 }}
+                                                                            transition={{ delay: index * 0.02 }}
+                                                                            className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50"
+                                                                        >
+                                                                            <div className="flex items-center gap-2 mb-2">
+                                                                                <span className="text-xs text-zinc-400 font-medium">
+                                                                                    {column.isCustom ? column.label : BUILT_IN_COLUMN_LABELS[column.value as BuiltInColumn]}
+                                                                                </span>
+                                                                                {column.isCustom && (
+                                                                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
+                                                                                        Custom
+                                                                                    </span>
+                                                                                )}
+                                                                                {hasCustomLabel && !column.isCustom && (
+                                                                                    <button
+                                                                                        onClick={() => resetColumnLabel(column.value)}
+                                                                                        className="ml-auto text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                                                                                    >
+                                                                                        Reset
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                            <input
+                                                                                type="text"
+                                                                                value={currentLabel}
+                                                                                onChange={(e) => updateColumnLabel(column.value, e.target.value)}
+                                                                                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 rounded-lg text-sm text-zinc-900 dark:text-white placeholder-zinc-400 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-emerald-500 dark:focus:border-emerald-500 transition-colors"
+                                                                                placeholder="Enter custom label"
+                                                                            />
+                                                                        </motion.div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </Tab.Panel>
+                                                    </Tab.Panels>
+                                                </Tab.Group>
+                                            </div>
+
+                                            {/* Footer */}
+                                            <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+                                                <div className="flex items-center justify-between">
+                                                    <button
+                                                        onClick={handleReset}
+                                                        className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200 font-medium transition-colors"
+                                                    >
+                                                        Reset to defaults
+                                                    </button>
+                                                    <button
+                                                        onClick={onClose}
+                                                        className="px-5 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                                    >
+                                                        Done
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </motion.div>
-                                </Dialog.Panel>
-                            </Transition.Child>
+                                    </Dialog.Panel>
+                                </Transition.Child>
+                            </div>
                         </div>
                     </div>
                 </Dialog>
@@ -449,7 +404,7 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
 
             {/* Add Column Modal */}
             <Transition appear show={showAddModal} as={Fragment}>
-                <Dialog as="div" className="relative z-50" onClose={() => setShowAddModal(false)}>
+                <Dialog as="div" className="relative z-[60]" onClose={() => setShowAddModal(false)}>
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -459,65 +414,70 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
                         leaveFrom="opacity-100"
                         leaveTo="opacity-0"
                     >
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+                        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
                     </Transition.Child>
 
                     <div className="fixed inset-0 overflow-y-auto">
                         <div className="flex min-h-full items-center justify-center p-4">
                             <Transition.Child
                                 as={Fragment}
-                                enter="ease-out duration-300"
+                                enter="ease-out duration-200"
                                 enterFrom="opacity-0 scale-95"
                                 enterTo="opacity-100 scale-100"
-                                leave="ease-in duration-200"
+                                leave="ease-in duration-150"
                                 leaveFrom="opacity-100 scale-100"
                                 leaveTo="opacity-0 scale-95"
                             >
-                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-card border border-border p-6 shadow-xl transition-all">
-                                    <Dialog.Title className="text-lg font-semibold text-foreground mb-4">
+                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow-2xl transition-all">
+                                    <Dialog.Title className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
                                         Add Custom Column
                                     </Dialog.Title>
 
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-foreground mb-1">
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                                                 Column Label
                                             </label>
                                             <input
-                                                type="text"
                                                 value={newColumnLabel}
                                                 onChange={(e) => setNewColumnLabel(e.target.value)}
                                                 placeholder="e.g., Contract Value"
-                                                className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-black"
+                                                className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white placeholder-zinc-400 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors"
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-foreground mb-1">
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                                                 Field Type
                                             </label>
-                                            <select
-                                                value={newColumnType}
-                                                onChange={(e) => setNewColumnType(e.target.value as "text" | "number" | "select")}
-                                                className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-black"
-                                            >
-                                                <option value="text">Text</option>
-                                                <option value="number">Number</option>
-                                                <option value="select">Select (Dropdown)</option>
-                                            </select>
+                                            <div className="flex gap-2">
+                                                {["text", "number", "select"].map((type) => (
+                                                    <button
+                                                        key={type}
+                                                        onClick={() => setNewColumnType(type as any)}
+                                                        className={cn(
+                                                            "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all",
+                                                            newColumnType === type
+                                                                ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
+                                                                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                                        )}
+                                                    >
+                                                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
 
                                         {newColumnType === "select" && (
                                             <div>
-                                                <label className="block text-sm font-medium text-foreground mb-1">
+                                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
                                                     Options (comma-separated)
                                                 </label>
                                                 <input
-                                                    type="text"
                                                     value={newColumnOptions}
                                                     onChange={(e) => setNewColumnOptions(e.target.value)}
                                                     placeholder="Option 1, Option 2, Option 3"
-                                                    className="w-full px-3 py-2 bg-input border border-border rounded-lg text-foreground focus:outline-none focus:border-black"
+                                                    className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-white placeholder-zinc-400 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-emerald-500 transition-colors"
                                                 />
                                             </div>
                                         )}
@@ -525,19 +485,17 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
 
                                     <div className="flex justify-end gap-3 mt-6">
                                         <button
-                                            type="button"
                                             onClick={() => setShowAddModal(false)}
-                                            className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                                            className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
                                         >
                                             Cancel
                                         </button>
                                         <button
-                                            type="button"
                                             onClick={handleCreateColumn}
                                             disabled={isCreating || !newColumnLabel.trim()}
-                                            className="px-4 py-2 text-sm font-medium text-background bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-black dark:text-white rounded-lg transition-colors disabled:opacity-50"
+                                            className="px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50"
                                         >
-                                            {isCreating ? "Creating..." : "Create Column"}
+                                            {isCreating ? "Creating..." : "Create"}
                                         </button>
                                     </div>
                                 </Dialog.Panel>
@@ -549,7 +507,7 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
 
             {/* Delete Confirmation */}
             <Transition appear show={!!deletingColumn} as={Fragment}>
-                <Dialog as="div" className="relative z-50" onClose={() => setDeletingColumn(null)}>
+                <Dialog as="div" className="relative z-[60]" onClose={() => setDeletingColumn(null)}>
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -559,42 +517,40 @@ export default function CompanyColumnManager({ isOpen, onClose }: CompanyColumnM
                         leaveFrom="opacity-100"
                         leaveTo="opacity-0"
                     >
-                        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+                        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
                     </Transition.Child>
 
                     <div className="fixed inset-0 overflow-y-auto">
                         <div className="flex min-h-full items-center justify-center p-4">
                             <Transition.Child
                                 as={Fragment}
-                                enter="ease-out duration-300"
+                                enter="ease-out duration-200"
                                 enterFrom="opacity-0 scale-95"
                                 enterTo="opacity-100 scale-100"
-                                leave="ease-in duration-200"
+                                leave="ease-in duration-150"
                                 leaveFrom="opacity-100 scale-100"
                                 leaveTo="opacity-0 scale-95"
                             >
-                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-xl bg-card border border-border p-6 shadow-xl transition-all">
-                                    <Dialog.Title className="text-lg font-semibold text-foreground mb-2">
+                                <Dialog.Panel className="w-full max-w-sm transform overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 p-6 shadow-2xl transition-all">
+                                    <Dialog.Title className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
                                         Delete Column
                                     </Dialog.Title>
-                                    <p className="text-sm text-muted-foreground mb-6">
-                                        Are you sure you want to delete &quot;{deletingColumn?.fieldLabel}&quot;? This will also delete all data in this column.
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+                                        Are you sure you want to delete &quot;{deletingColumn?.fieldLabel}&quot;? This action cannot be undone.
                                     </p>
 
                                     <div className="flex justify-end gap-3">
                                         <button
-                                            type="button"
                                             onClick={() => setDeletingColumn(null)}
-                                            className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                                            className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
                                         >
                                             Cancel
                                         </button>
                                         <button
-                                            type="button"
                                             onClick={() => deletingColumn && handleDeleteColumn(deletingColumn)}
-                                            className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+                                            className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
                                         >
-                                            Delete Column
+                                            Delete
                                         </button>
                                     </div>
                                 </Dialog.Panel>

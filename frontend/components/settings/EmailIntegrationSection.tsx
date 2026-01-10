@@ -135,7 +135,6 @@ export default function EmailIntegrationSection({
         );
         loadIntegrations();
       } else {
-        // Show specific message for permission errors
         if (result.error?.includes("Insufficient permissions") || result.error?.includes("insufficient authentication")) {
           toast.error(
             "Please reconnect Gmail to grant contact permissions",
@@ -174,18 +173,15 @@ export default function EmailIntegrationSection({
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-start gap-3 p-3 rounded-lg border border-blue-500/20 bg-blue-500/5"
+          className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-cyan-500/5"
         >
           <InformationCircleIcon className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-xs font-medium text-blue-400 mb-1">
-              New: Automatic Contact Extraction
+              Automatic Contact Extraction
             </p>
-            <p className="text-xs text-muted-foreground">
-              Contacts are now automatically extracted from your emails! When you sync emails,
-              we'll create contacts for everyone you email with (name, email, company from domain).
-              <br />
-              <strong>Bonus:</strong> Use "Sync Contacts" to import your saved Gmail contacts too!
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Contacts are now extracted from emails automatically! Use "Sync Contacts" to import your Gmail contacts too.
             </p>
           </div>
         </motion.div>
@@ -198,12 +194,14 @@ export default function EmailIntegrationSection({
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Gmail Card */}
-          <button
+          <motion.button
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleConnectGmail}
             disabled={connecting}
-            className="flex items-center gap-3 p-4 rounded-lg border border-border bg-background hover:bg-card hover:border-neutral-600 transition-all group disabled:opacity-50"
+            className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-background/80 to-background/40 backdrop-blur-sm hover:shadow-md transition-all duration-300 disabled:opacity-50 group"
           >
-            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
               <svg viewBox="0 0 24 24" className="w-6 h-6">
                 <path
                   fill="#EA4335"
@@ -234,14 +232,14 @@ export default function EmailIntegrationSection({
             {connecting && (
               <ArrowPathIcon className="w-4 h-4 text-muted-foreground animate-spin" />
             )}
-          </button>
+          </motion.button>
 
           {/* Outlook Card - Coming Soon */}
-          <div className="flex items-center gap-3 p-4 rounded-lg border border-border bg-background/30 opacity-50 cursor-not-allowed relative">
-            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-muted rounded text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-background/40 to-background/20 backdrop-blur-sm opacity-50 cursor-not-allowed relative">
+            <span className="absolute top-2 right-2 px-2 py-0.5 text-[10px] font-medium rounded-full bg-muted text-muted-foreground">
               Coming Soon
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
+            </span>
+            <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center shadow-sm">
               <svg viewBox="0 0 24 24" className="w-6 h-6">
                 <path
                   fill="#0078D4"
@@ -283,28 +281,28 @@ export default function EmailIntegrationSection({
             <span className="text-xs text-muted-foreground">
               Auto-extract from emails
             </span>
-            <span className="text-[10px] text-muted-foreground/60 px-1.5 py-0.5 bg-muted rounded">
+            <span className="text-[10px] text-muted-foreground/60 px-1.5 py-0.5 bg-muted/50 rounded-full">
               Beta
             </span>
           </label>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12 rounded-lg border border-border bg-background">
+          <div className="flex items-center justify-center py-12 rounded-xl bg-gradient-to-br from-background/80 to-background/40">
             <div className="flex flex-col items-center gap-2">
               <ArrowPathIcon className="w-6 h-6 text-muted-foreground animate-spin" />
               <p className="text-sm text-muted-foreground">Loading accounts...</p>
             </div>
           </div>
         ) : integrations.length === 0 ? (
-          <div className="text-center py-12 rounded-lg border border-border bg-background">
-            <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
-              <EnvelopeIcon className="w-6 h-6 text-muted-foreground" />
+          <div className="text-center py-12 rounded-xl bg-gradient-to-br from-background/80 to-background/40">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center mx-auto mb-4">
+              <EnvelopeIcon className="w-7 h-7 text-muted-foreground" />
             </div>
             <h3 className="text-sm font-medium text-foreground mb-1">
               No accounts connected
             </h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
               Connect your Gmail to start automatically syncing emails as activities
             </p>
           </div>
@@ -317,11 +315,11 @@ export default function EmailIntegrationSection({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-background hover:bg-card/50 transition-all"
+                  transition={{ delay: index * 0.05, type: "spring", stiffness: 300, damping: 30 }}
+                  className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-br from-background/80 to-background/40 hover:shadow-md transition-all duration-300"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
                       <svg viewBox="0 0 24 24" className="w-5 h-5">
                         <path
                           fill="#EA4335"
@@ -348,13 +346,13 @@ export default function EmailIntegrationSection({
                           {integration.email}
                         </span>
                         {integration.isActive ? (
-                          <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-500/10 rounded text-[10px] text-green-400">
-                            <CheckCircleIcon className="w-2.5 h-2.5" />
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] font-medium text-emerald-400">
+                            <CheckCircleIcon className="w-3 h-3" />
                             Active
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 px-1.5 py-0.5 bg-red-500/10 rounded text-[10px] text-red-400">
-                            <ExclamationCircleIcon className="w-2.5 h-2.5" />
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-[10px] font-medium text-red-400">
+                            <ExclamationCircleIcon className="w-3 h-3" />
                             Error
                           </span>
                         )}
@@ -371,38 +369,42 @@ export default function EmailIntegrationSection({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleSync(integration._id)}
                       disabled={syncing === integration._id || syncingContacts === integration._id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-medium rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-xs font-medium rounded-lg hover:shadow-md hover:shadow-primary/20 transition-all duration-300 disabled:opacity-50"
                     >
                       <ArrowPathIcon
-                        className={`w-3.5 h-3.5 ${
-                          syncing === integration._id ? "animate-spin" : ""
-                        }`}
+                        className={`w-3.5 h-3.5 ${syncing === integration._id ? "animate-spin" : ""
+                          }`}
                       />
                       {syncing === integration._id ? "Syncing..." : "Sync Emails"}
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleSyncContacts(integration._id)}
                       disabled={syncingContacts === integration._id || syncing === integration._id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-green-500 text-white text-xs font-medium rounded-lg hover:shadow-md hover:shadow-emerald-500/20 transition-all duration-300 disabled:opacity-50"
                       title="Sync contacts from Gmail"
                     >
                       <UserGroupIcon
-                        className={`w-3.5 h-3.5 ${
-                          syncingContacts === integration._id ? "animate-spin" : ""
-                        }`}
+                        className={`w-3.5 h-3.5 ${syncingContacts === integration._id ? "animate-spin" : ""
+                          }`}
                       />
                       {syncingContacts === integration._id ? "Syncing..." : "Sync Contacts"}
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={() => handleDisconnect(integration._id)}
-                      className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+                      className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-300"
                       title="Disconnect"
                     >
                       <TrashIcon className="w-4 h-4" />
-                    </button>
+                    </motion.button>
                   </div>
                 </motion.div>
               ))}

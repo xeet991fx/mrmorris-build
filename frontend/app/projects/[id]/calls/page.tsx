@@ -4,21 +4,25 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    PhoneIcon,
-    PlusIcon,
-    ArrowPathIcon,
-    PlayIcon,
-    PauseIcon,
-    DocumentTextIcon,
-    UserIcon,
-    ClockIcon,
-    TagIcon,
-    TrashIcon,
+    XMarkIcon,
     CheckCircleIcon,
     XCircleIcon,
     ExclamationCircleIcon,
-    MicrophoneIcon,
 } from "@heroicons/react/24/outline";
+import {
+    Phone,
+    Plus,
+    RefreshCw,
+    Play,
+    Pause,
+    FileText,
+    User,
+    Clock,
+    Tag,
+    Trash2,
+    Mic,
+    Upload,
+} from "lucide-react";
 import {
     getCallRecordings,
     uploadCallRecording,
@@ -39,7 +43,6 @@ export default function CallRecordingsPage() {
     const [isPlaying, setIsPlaying] = useState(false);
     const audioRef = useRef<HTMLAudioElement>(null);
 
-    // Upload form state
     const [uploadData, setUploadData] = useState({
         title: "",
         audioFile: null as File | null,
@@ -87,13 +90,7 @@ export default function CallRecordingsPage() {
 
             toast.success("Call recording uploaded successfully");
             setShowUploadModal(false);
-            setUploadData({
-                title: "",
-                audioFile: null,
-                transcript: "",
-                participants: [],
-                tags: [],
-            });
+            setUploadData({ title: "", audioFile: null, transcript: "", participants: [], tags: [] });
             loadRecordings();
         } catch (error) {
             console.error("Error uploading recording:", error);
@@ -137,263 +134,271 @@ export default function CallRecordingsPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const getSentimentColor = (sentiment?: string) => {
-        switch (sentiment) {
-            case "positive": return "text-green-500";
-            case "negative": return "text-red-500";
-            default: return "text-yellow-500";
-        }
+    const getSentimentBadge = (sentiment?: string) => {
+        const badges: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
+            positive: { bg: "bg-emerald-500/10", text: "text-emerald-500", icon: <CheckCircleIcon className="w-3.5 h-3.5" /> },
+            negative: { bg: "bg-rose-500/10", text: "text-rose-500", icon: <XCircleIcon className="w-3.5 h-3.5" /> },
+            neutral: { bg: "bg-amber-500/10", text: "text-amber-500", icon: <ExclamationCircleIcon className="w-3.5 h-3.5" /> },
+        };
+        const badge = badges[sentiment || "neutral"] || badges.neutral;
+        return (
+            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", badge.bg, badge.text)}>
+                {badge.icon}
+                {sentiment ? sentiment.charAt(0).toUpperCase() + sentiment.slice(1) : "Neutral"}
+            </span>
+        );
     };
 
-    const getSentimentIcon = (sentiment?: string) => {
-        switch (sentiment) {
-            case "positive": return <CheckCircleIcon className="w-5 h-5" />;
-            case "negative": return <XCircleIcon className="w-5 h-5" />;
-            default: return <ExclamationCircleIcon className="w-5 h-5" />;
-        }
-    };
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-900">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+                    <div className="w-10 h-10 border-2 border-zinc-200 dark:border-zinc-700 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-sm text-zinc-500">Loading call recordings...</p>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="min-h-screen bg-white dark:bg-zinc-900">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Call Recordings</h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Upload and analyze sales call recordings with AI insights
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <button
-                        onClick={loadRecordings}
-                        disabled={isLoading}
-                        className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/70 transition-colors"
-                    >
-                        <ArrowPathIcon className={cn("w-4 h-4", isLoading && "animate-spin")} />
-                    </button>
-                    <button
-                        onClick={() => setShowUploadModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                    >
-                        <PlusIcon className="w-4 h-4" />
-                        Upload Recording
-                    </button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Recordings List */}
-                <div className="lg:col-span-1 space-y-3">
-                    <h2 className="text-lg font-semibold text-foreground">Recordings ({recordings.length})</h2>
-
-                    {isLoading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <ArrowPathIcon className="w-6 h-6 animate-spin text-primary" />
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800"
+            >
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Phone className="w-5 h-5 text-violet-500" />
+                        <div>
+                            <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Call Recordings</h1>
+                            <p className="text-xs text-zinc-500">{recordings.length} recordings • AI-powered insights</p>
                         </div>
-                    ) : recordings.length === 0 ? (
-                        <div className="text-center py-12 border border-dashed border-border rounded-lg">
-                            <PhoneIcon className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                            <p className="text-sm text-muted-foreground">No call recordings yet</p>
-                            <button
-                                onClick={() => setShowUploadModal(true)}
-                                className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={loadRecordings}
+                            className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setShowUploadModal(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-full font-medium hover:bg-emerald-600 transition-colors"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Upload Recording
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+
+            <div className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Recordings List */}
+                    <div className="lg:col-span-1 space-y-3">
+                        <h2 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                            Recordings ({recordings.length})
+                        </h2>
+
+                        {recordings.length === 0 ? (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-center py-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl"
                             >
-                                Upload First Recording
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
-                            {recordings.map((recording) => (
-                                <motion.div
-                                    key={recording._id}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    onClick={() => setSelectedRecording(recording)}
-                                    className={cn(
-                                        "p-4 rounded-lg border cursor-pointer transition-all",
-                                        selectedRecording?._id === recording._id
-                                            ? "border-primary bg-primary/5"
-                                            : "border-border bg-card hover:border-primary/50"
-                                    )}
+                                <Phone className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                                <p className="text-sm text-zinc-500 mb-4">No call recordings yet</p>
+                                <button
+                                    onClick={() => setShowUploadModal(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-full text-sm font-medium hover:bg-emerald-600 transition-colors"
                                 >
-                                    <div className="flex items-start justify-between mb-2">
-                                        <h3 className="font-semibold text-foreground line-clamp-1">
-                                            {recording.title}
-                                        </h3>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDelete(recording._id);
-                                            }}
-                                            className="text-red-500 hover:text-red-600"
-                                        >
-                                            <TrashIcon className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        <ClockIcon className="w-3 h-3" />
-                                        <span>{new Date(recording.recordedAt).toLocaleDateString()}</span>
-                                        {recording.duration && (
-                                            <>
-                                                <span>•</span>
-                                                <span>{formatDuration(recording.duration)}</span>
-                                            </>
+                                    <Upload className="w-4 h-4" />
+                                    Upload First Recording
+                                </button>
+                            </motion.div>
+                        ) : (
+                            <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto pr-1">
+                                {recordings.map((recording, index) => (
+                                    <motion.div
+                                        key={recording._id}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                        onClick={() => setSelectedRecording(recording)}
+                                        className={cn(
+                                            "p-4 rounded-xl border cursor-pointer transition-all",
+                                            selectedRecording?._id === recording._id
+                                                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                                                : "border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-200 dark:hover:border-zinc-700"
                                         )}
-                                    </div>
-                                    {recording.contactId && (
-                                        <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                            <UserIcon className="w-3 h-3" />
-                                            <span>
-                                                {recording.contactId.firstName} {recording.contactId.lastName}
-                                            </span>
+                                    >
+                                        <div className="flex items-start justify-between mb-2">
+                                            <h3 className="font-medium text-zinc-900 dark:text-zinc-100 line-clamp-1 text-sm">{recording.title}</h3>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(recording._id);
+                                                }}
+                                                className="text-zinc-400 hover:text-rose-500 transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                    )}
-                                    {recording.overallSentiment && (
-                                        <div className={cn("flex items-center gap-1 mt-2", getSentimentColor(recording.overallSentiment))}>
-                                            {getSentimentIcon(recording.overallSentiment)}
-                                            <span className="text-xs capitalize">{recording.overallSentiment}</span>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Recording Detail */}
-                <div className="lg:col-span-2">
-                    {selectedRecording ? (
-                        <div className="space-y-4">
-                            {/* Player */}
-                            {selectedRecording.audioUrl && (
-                                <div className="p-6 rounded-lg border border-border bg-card">
-                                    <div className="flex items-center gap-4">
-                                        <button
-                                            onClick={togglePlayPause}
-                                            className="p-4 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                        >
-                                            {isPlaying ? (
-                                                <PauseIcon className="w-6 h-6" />
-                                            ) : (
-                                                <PlayIcon className="w-6 h-6" />
+                                        <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2">
+                                            <Clock className="w-3 h-3" />
+                                            <span>{new Date(recording.recordedAt).toLocaleDateString()}</span>
+                                            {recording.duration && (
+                                                <>
+                                                    <span className="text-zinc-300 dark:text-zinc-600">•</span>
+                                                    <span>{formatDuration(recording.duration)}</span>
+                                                </>
                                             )}
-                                        </button>
-                                        <div className="flex-1">
-                                            <h2 className="font-semibold text-foreground">{selectedRecording.title}</h2>
-                                            <p className="text-sm text-muted-foreground">
-                                                {new Date(selectedRecording.recordedAt).toLocaleString()}
-                                            </p>
+                                        </div>
+                                        {recording.contactId && (
+                                            <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2">
+                                                <User className="w-3 h-3" />
+                                                <span>{recording.contactId.firstName} {recording.contactId.lastName}</span>
+                                            </div>
+                                        )}
+                                        {recording.overallSentiment && getSentimentBadge(recording.overallSentiment)}
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Recording Detail */}
+                    <div className="lg:col-span-2">
+                        {selectedRecording ? (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-4"
+                            >
+                                {/* Player */}
+                                {selectedRecording.audioUrl && (
+                                    <div className="p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                                        <div className="flex items-center gap-4">
+                                            <button
+                                                onClick={togglePlayPause}
+                                                className="p-4 rounded-full bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                                            >
+                                                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                                            </button>
+                                            <div className="flex-1">
+                                                <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">{selectedRecording.title}</h2>
+                                                <p className="text-sm text-zinc-500">{new Date(selectedRecording.recordedAt).toLocaleString()}</p>
+                                            </div>
+                                            {selectedRecording.overallSentiment && getSentimentBadge(selectedRecording.overallSentiment)}
+                                        </div>
+                                        <audio
+                                            ref={audioRef}
+                                            src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}${selectedRecording.audioUrl}`}
+                                            onEnded={() => setIsPlaying(false)}
+                                            className="w-full mt-4"
+                                            controls
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Summary */}
+                                {selectedRecording.summary && (
+                                    <div className="p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                                        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-violet-500 rounded-full" />
+                                            AI Summary
+                                        </h3>
+                                        <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{selectedRecording.summary}</p>
+                                    </div>
+                                )}
+
+                                {/* BANT Insights */}
+                                {selectedRecording.keyInsights && (
+                                    <div className="p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                                        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-4 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                                            BANT Insights
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {selectedRecording.keyInsights.budget?.mentioned && (
+                                                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+                                                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">💰 Budget</p>
+                                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{selectedRecording.keyInsights.budget.details}</p>
+                                                </div>
+                                            )}
+                                            {selectedRecording.keyInsights.authority?.decisionMaker && (
+                                                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+                                                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">👑 Authority</p>
+                                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{selectedRecording.keyInsights.authority.details}</p>
+                                                </div>
+                                            )}
+                                            {selectedRecording.keyInsights.need?.identified && (
+                                                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+                                                    <p className="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-1">🎯 Need</p>
+                                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{selectedRecording.keyInsights.need.painPoints?.join(", ")}</p>
+                                                </div>
+                                            )}
+                                            {selectedRecording.keyInsights.timeline?.mentioned && (
+                                                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+                                                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">⏰ Timeline</p>
+                                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">{selectedRecording.keyInsights.timeline.details}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <audio
-                                        ref={audioRef}
-                                        src={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}${selectedRecording.audioUrl}`}
-                                        onEnded={() => setIsPlaying(false)}
-                                        className="w-full mt-4"
-                                        controls
-                                    />
-                                </div>
-                            )}
+                                )}
 
-                            {/* Summary */}
-                            {selectedRecording.summary && (
-                                <div className="p-6 rounded-lg border border-border bg-card">
-                                    <h3 className="font-semibold text-foreground mb-2">AI Summary</h3>
-                                    <p className="text-sm text-foreground">{selectedRecording.summary}</p>
-                                </div>
-                            )}
-
-                            {/* BANT Insights */}
-                            {selectedRecording.keyInsights && (
-                                <div className="p-6 rounded-lg border border-border bg-card">
-                                    <h3 className="font-semibold text-foreground mb-4">BANT Insights</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {selectedRecording.keyInsights.budget?.mentioned && (
-                                            <div className="p-3 rounded bg-muted/30">
-                                                <p className="text-sm font-medium text-foreground">Budget</p>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {selectedRecording.keyInsights.budget.details}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {selectedRecording.keyInsights.authority?.decisionMaker && (
-                                            <div className="p-3 rounded bg-muted/30">
-                                                <p className="text-sm font-medium text-foreground">Authority</p>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {selectedRecording.keyInsights.authority.details}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {selectedRecording.keyInsights.need?.identified && (
-                                            <div className="p-3 rounded bg-muted/30">
-                                                <p className="text-sm font-medium text-foreground">Need</p>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {selectedRecording.keyInsights.need.painPoints?.join(", ")}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {selectedRecording.keyInsights.timeline?.mentioned && (
-                                            <div className="p-3 rounded bg-muted/30">
-                                                <p className="text-sm font-medium text-foreground">Timeline</p>
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    {selectedRecording.keyInsights.timeline.details}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Action Items */}
-                            {selectedRecording.actionItems && selectedRecording.actionItems.length > 0 && (
-                                <div className="p-6 rounded-lg border border-border bg-card">
-                                    <h3 className="font-semibold text-foreground mb-3">Action Items</h3>
-                                    <div className="space-y-2">
-                                        {selectedRecording.actionItems.map((item, idx) => (
-                                            <div key={idx} className="flex items-start gap-2">
-                                                <CheckCircleIcon className={cn(
-                                                    "w-4 h-4 mt-0.5",
-                                                    item.completed ? "text-green-500" : "text-muted-foreground"
-                                                )} />
-                                                <div className="flex-1">
-                                                    <p className="text-sm text-foreground">{item.task}</p>
-                                                    {item.assignee && (
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Assigned to: {item.assignee}
-                                                        </p>
-                                                    )}
+                                {/* Action Items */}
+                                {selectedRecording.actionItems && selectedRecording.actionItems.length > 0 && (
+                                    <div className="p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                                        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-amber-500 rounded-full" />
+                                            Action Items
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {selectedRecording.actionItems.map((item, idx) => (
+                                                <div key={idx} className="flex items-start gap-2.5 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                                                    <CheckCircleIcon className={cn(
+                                                        "w-4 h-4 mt-0.5 flex-shrink-0",
+                                                        item.completed ? "text-emerald-500" : "text-zinc-300 dark:text-zinc-600"
+                                                    )} />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm text-zinc-700 dark:text-zinc-300">{item.task}</p>
+                                                        {item.assignee && (
+                                                            <p className="text-xs text-zinc-500 mt-0.5">Assigned to: {item.assignee}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Transcript */}
-                            {selectedRecording.transcript && (
-                                <div className="p-6 rounded-lg border border-border bg-card">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <DocumentTextIcon className="w-5 h-5 text-primary" />
-                                        <h3 className="font-semibold text-foreground">Transcript</h3>
-                                    </div>
-                                    <div className="prose prose-sm max-w-none">
-                                        <p className="text-sm text-foreground whitespace-pre-wrap">
+                                {/* Transcript */}
+                                {selectedRecording.transcript && (
+                                    <div className="p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <FileText className="w-4 h-4 text-emerald-500" />
+                                            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Transcript</h3>
+                                        </div>
+                                        <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed">
                                             {selectedRecording.transcript}
                                         </p>
                                     </div>
+                                )}
+                            </motion.div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full min-h-[400px] border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
+                                <div className="text-center">
+                                    <Mic className="w-12 h-12 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                                    <p className="text-sm text-zinc-500">Select a recording to view details</p>
                                 </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-center h-full border border-dashed border-border rounded-lg">
-                            <div className="text-center">
-                                <MicrophoneIcon className="w-16 h-16 text-muted-foreground mx-auto mb-3" />
-                                <p className="text-sm text-muted-foreground">
-                                    Select a recording to view details
-                                </p>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -404,74 +409,73 @@ export default function CallRecordingsPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
                         onClick={() => setShowUploadModal(false)}
                     >
                         <motion.div
-                            initial={{ scale: 0.9, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.9, y: 20 }}
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl mx-4"
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-card border border-border rounded-lg p-6 w-full max-w-lg"
                         >
-                            <h2 className="text-xl font-bold text-foreground mb-4">Upload Call Recording</h2>
+                            <div className="flex items-center justify-between p-5 border-b border-zinc-100 dark:border-zinc-800">
+                                <div className="flex items-center gap-3">
+                                    <Upload className="w-5 h-5 text-emerald-500" />
+                                    <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Upload Call Recording</h2>
+                                </div>
+                                <button onClick={() => setShowUploadModal(false)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                                    <XMarkIcon className="w-5 h-5 text-zinc-500" />
+                                </button>
+                            </div>
 
-                            <form onSubmit={handleUpload} className="space-y-4">
+                            <form onSubmit={handleUpload} className="p-5 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">
-                                        Title *
-                                    </label>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Title *</label>
                                     <input
                                         type="text"
                                         value={uploadData.title}
                                         onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
+                                        className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                         placeholder="e.g., Discovery call with Acme Corp"
                                         required
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">
-                                        Audio File *
-                                    </label>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Audio File *</label>
                                     <input
                                         type="file"
                                         accept="audio/*"
-                                        onChange={(e) => setUploadData({
-                                            ...uploadData,
-                                            audioFile: e.target.files?.[0] || null
-                                        })}
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
+                                        onChange={(e) => setUploadData({ ...uploadData, audioFile: e.target.files?.[0] || null })}
+                                        className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-emerald-500 file:text-white file:text-xs file:font-medium"
                                         required
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">
-                                        Transcript (Optional)
-                                    </label>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Transcript (Optional)</label>
                                     <textarea
                                         value={uploadData.transcript}
                                         onChange={(e) => setUploadData({ ...uploadData, transcript: e.target.value })}
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground"
+                                        className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                                         rows={4}
                                         placeholder="Paste transcript here (optional)"
                                     />
                                 </div>
 
-                                <div className="flex gap-3 justify-end">
+                                <div className="flex gap-3 pt-4">
                                     <button
                                         type="button"
                                         onClick={() => setShowUploadModal(false)}
-                                        className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/70 transition-colors"
+                                        className="flex-1 px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={uploading}
-                                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                        className="flex-1 px-4 py-2 rounded-full bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
                                     >
                                         {uploading ? "Uploading..." : "Upload"}
                                     </button>

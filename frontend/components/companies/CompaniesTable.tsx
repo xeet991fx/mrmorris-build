@@ -137,20 +137,12 @@ export default function CompaniesTable({
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <div>
-        {/* Table */}
-        <div>
-          <table className="w-full" style={{ tableLayout: 'fixed' }}>
-            {/* Checkbox | Dynamic columns | Actions */}
-            <colgroup>
-              <col style={{ width: '36px' }} />
-              {orderedVisibleColumns.map((column) => (
-                <col key={column} style={{ width: `${columnWidths[column]}px` }} />
-              ))}
-              <col style={{ width: '36px' }} />
-            </colgroup>
-            <thead className="bg-card/95">
-              <tr className="border-b border-border group">
+      <div className="h-full flex flex-col">
+        {/* Table Container - scrollable */}
+        <div className="flex-1 overflow-auto">
+          <table className="w-full table-auto">
+            <thead className="sticky top-0 bg-white dark:bg-zinc-900 z-10">
+              <tr className="border-b border-zinc-200 dark:border-zinc-700 group">
                 {/* Checkbox Header */}
                 <th className="px-4 py-2 w-9 h-8">
                   <input
@@ -162,7 +154,7 @@ export default function CompaniesTable({
                       }
                     }}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-border bg-input text-black focus:ring-primary focus:ring-offset-0"
+                    className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 bg-zinc-100 dark:bg-zinc-800 checked:bg-emerald-500 checked:border-emerald-500 accent-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
                   />
                 </th>
 
@@ -183,17 +175,14 @@ export default function CompaniesTable({
                     />
                   ))}
                 </SortableContext>
-
-                {/* Actions Header */}
-                <th className="px-4 py-2 w-9 h-8"></th>
               </tr>
             </thead>
             <tbody>
               {companies.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={orderedVisibleColumns.length + 2}
-                    className="px-4 py-12 text-center text-sm text-muted-foreground"
+                    colSpan={orderedVisibleColumns.length + 1}
+                    className="px-4 py-12 text-center text-sm text-zinc-500"
                   >
                     No companies found
                   </td>
@@ -217,19 +206,19 @@ export default function CompaniesTable({
           </table>
         </div>
 
-        {/* Pagination */}
+        {/* Pagination - Fixed at bottom */}
         {pagination.pages > 1 && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex-shrink-0 px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between bg-white dark:bg-zinc-900">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Showing{" "}
-              <span className="font-medium text-foreground">
+              <span className="font-medium text-zinc-700 dark:text-zinc-200">
                 {(pagination.page - 1) * pagination.limit + 1}
               </span>{" "}
               to{" "}
-              <span className="font-medium text-foreground">
+              <span className="font-medium text-zinc-700 dark:text-zinc-200">
                 {Math.min(pagination.page * pagination.limit, pagination.total)}
               </span>{" "}
-              of <span className="font-medium text-foreground">{pagination.total}</span>{" "}
+              of <span className="font-medium text-zinc-700 dark:text-zinc-200">{pagination.total}</span>{" "}
               companies
             </p>
 
@@ -237,19 +226,19 @@ export default function CompaniesTable({
               <button
                 onClick={() => handlePageChange(pagination.page - 1)}
                 disabled={pagination.page === 1}
-                className="px-3 py-1.5 rounded-lg bg-card/95 border border-border text-foreground hover:text-foreground hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                className="px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
               >
                 <ChevronLeftIcon className="w-4 h-4" />
               </button>
 
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">
                 Page {pagination.page} of {pagination.pages}
               </span>
 
               <button
                 onClick={() => handlePageChange(pagination.page + 1)}
                 disabled={pagination.page === pagination.pages}
-                className="px-3 py-1.5 rounded-lg bg-card/95 border border-border text-foreground hover:text-foreground hover:border-border disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                className="px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
               >
                 <ChevronRightIcon className="w-4 h-4" />
               </button>

@@ -2,18 +2,16 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowPathIcon,
-  FunnelIcon,
+  ArrowLeftIcon,
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
   ShieldCheckIcon,
-  TrashIcon,
-  PencilIcon,
   EnvelopeIcon,
   PhoneIcon,
   BuildingOfficeIcon,
@@ -21,8 +19,46 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
+import { ClipboardList } from "lucide-react";
 import { getForm, getFormSubmissions, type Form, type FormSubmission } from "@/lib/api/form";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } }
+};
+
+// Stat Card Component
+function StatCard({ icon: Icon, label, value, color }: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <motion.div
+      variants={itemVariants}
+      className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800"
+    >
+      <div className="flex items-center gap-3">
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", color)}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{label}</p>
+          <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function FormSubmissionsPage() {
   const params = useParams();
@@ -37,12 +73,7 @@ export default function FormSubmissionsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    limit: 50,
-    offset: 0,
-    hasMore: false,
-  });
+  const [pagination, setPagination] = useState({ total: 0, limit: 50, offset: 0, hasMore: false });
 
   useEffect(() => {
     loadData();
@@ -64,10 +95,7 @@ export default function FormSubmissionsPage() {
         }),
       ]);
 
-      if (formResponse.success) {
-        setForm(formResponse.data);
-      }
-
+      if (formResponse.success) setForm(formResponse.data);
       if (submissionsResponse.success) {
         setSubmissions(submissionsResponse.data);
         setPagination(submissionsResponse.pagination);
@@ -87,32 +115,16 @@ export default function FormSubmissionsPage() {
 
     const query = searchQuery.toLowerCase();
     const filtered = submissions.filter((submission) => {
-      // Search in submission data
       const dataString = JSON.stringify(submission.data).toLowerCase();
       if (dataString.includes(query)) return true;
 
-      // Search in contact info
       if (submission.contactId) {
         const contact = submission.contactId;
         if (
           contact.firstName?.toLowerCase().includes(query) ||
           contact.lastName?.toLowerCase().includes(query) ||
-          contact.email?.toLowerCase().includes(query) ||
-          contact.phone?.toLowerCase().includes(query) ||
-          contact.company?.toLowerCase().includes(query)
-        ) {
-          return true;
-        }
-      }
-
-      // Search in source
-      if (
-        submission.source.url?.toLowerCase().includes(query) ||
-        submission.source.referrer?.toLowerCase().includes(query) ||
-        submission.source.utmSource?.toLowerCase().includes(query) ||
-        submission.source.utmCampaign?.toLowerCase().includes(query)
-      ) {
-        return true;
+          contact.email?.toLowerCase().includes(query)
+        ) return true;
       }
 
       return false;
@@ -124,22 +136,10 @@ export default function FormSubmissionsPage() {
   const exportToCSV = () => {
     if (!form || filteredSubmissions.length === 0) return;
 
-    // Build CSV header
     const fieldIds = form.fields.map((f) => f.id);
     const fieldLabels = form.fields.map((f) => f.label);
-    const headers = [
-      "Submission ID",
-      "Date",
-      "Status",
-      "Contact Name",
-      "Contact Email",
-      ...fieldLabels,
-      "Source URL",
-      "UTM Source",
-      "UTM Campaign",
-    ];
+    const headers = ["Submission ID", "Date", "Status", "Contact Name", "Contact Email", ...fieldLabels];
 
-    // Build CSV rows
     const rows = filteredSubmissions.map((submission) => {
       const contact = submission.contactId;
       return [
@@ -150,24 +150,16 @@ export default function FormSubmissionsPage() {
         contact?.email || "",
         ...fieldIds.map((fieldId) => {
           const value = submission.data[fieldId];
-          if (Array.isArray(value)) return value.join(", ");
-          return value || "";
+          return Array.isArray(value) ? value.join(", ") : value || "";
         }),
-        submission.source.url || "",
-        submission.source.utmSource || "",
-        submission.source.utmCampaign || "",
       ];
     });
 
-    // Generate CSV
     const csv = [
       headers.join(","),
-      ...rows.map((row) =>
-        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
-      ),
+      ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     ].join("\n");
 
-    // Download
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -182,457 +174,283 @@ export default function FormSubmissionsPage() {
     if (value === undefined || value === null || value === "") return "-";
     if (Array.isArray(value)) return value.join(", ");
     if (typeof value === "boolean") return value ? "Yes" : "No";
-    if (typeof value === "object") return JSON.stringify(value);
     return String(value);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "new":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "contacted":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "qualified":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      case "spam":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300";
-      case "archived":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+      case "new": return "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400";
+      case "contacted": return "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400";
+      case "qualified": return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400";
+      case "spam": return "bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400";
+      default: return "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "new":
-        return <ClockIcon className="w-4 h-4" />;
-      case "contacted":
-        return <EnvelopeIcon className="w-4 h-4" />;
-      case "qualified":
-        return <CheckCircleIcon className="w-4 h-4" />;
-      case "spam":
-        return <XCircleIcon className="w-4 h-4" />;
-      case "archived":
-        return <TrashIcon className="w-4 h-4" />;
-      default:
-        return null;
+      case "new": return <ClockIcon className="w-3.5 h-3.5" />;
+      case "contacted": return <EnvelopeIcon className="w-3.5 h-3.5" />;
+      case "qualified": return <CheckCircleIcon className="w-3.5 h-3.5" />;
+      case "spam": return <XCircleIcon className="w-3.5 h-3.5" />;
+      default: return null;
     }
   };
 
   const statusOptions = [
-    { value: "all", label: "All Submissions", count: submissions.length },
-    { value: "new", label: "New", count: submissions.filter((s) => s.status === "new").length },
-    {
-      value: "contacted",
-      label: "Contacted",
-      count: submissions.filter((s) => s.status === "contacted").length,
-    },
-    {
-      value: "qualified",
-      label: "Qualified",
-      count: submissions.filter((s) => s.status === "qualified").length,
-    },
-    { value: "spam", label: "Spam", count: submissions.filter((s) => s.status === "spam").length },
-    {
-      value: "archived",
-      label: "Archived",
-      count: submissions.filter((s) => s.status === "archived").length,
-    },
+    { value: "all", label: "All" },
+    { value: "new", label: "New" },
+    { value: "contacted", label: "Contacted" },
+    { value: "qualified", label: "Qualified" },
+    { value: "spam", label: "Spam" },
+    { value: "archived", label: "Archived" },
   ];
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <ArrowPathIcon className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-zinc-200 dark:border-zinc-700 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-zinc-500">Loading submissions...</p>
+        </div>
       </div>
     );
   }
 
   if (!form) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-600 dark:text-gray-400">Form not found</p>
+      <div className="h-full flex items-center justify-center">
+        <p className="text-zinc-500">Form not found</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0"
+      >
+        <div className="flex items-center gap-4">
           <button
             onClick={() => router.push(`/projects/${workspaceId}/forms`)}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
           >
-            ← Back to Forms
+            <ArrowLeftIcon className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{form.name}</h1>
+            <p className="text-sm text-zinc-500">{pagination.total} submissions</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={loadData}
+            disabled={isLoading}
+            className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
+          >
+            <ArrowPathIcon className={cn("w-5 h-5", isLoading && "animate-spin")} />
+          </button>
+          <button
+            onClick={exportToCSV}
+            disabled={filteredSubmissions.length === 0}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-300 disabled:cursor-not-allowed rounded-full transition-colors"
+          >
+            <ArrowDownTrayIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{form.name}</h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          {pagination.total} total submission{pagination.total !== 1 ? "s" : ""}
-        </p>
-      </div>
+      </motion.div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        {/* Stats */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
         >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/20">
-              <ClockIcon className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">New</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {submissions.filter((s) => s.status === "new").length}
-              </p>
-            </div>
-          </div>
+          <StatCard icon={ClockIcon} label="New" value={submissions.filter((s) => s.status === "new").length} color="bg-gradient-to-br from-blue-400 to-blue-600" />
+          <StatCard icon={EnvelopeIcon} label="Contacted" value={submissions.filter((s) => s.status === "contacted").length} color="bg-gradient-to-br from-amber-400 to-amber-600" />
+          <StatCard icon={CheckCircleIcon} label="Qualified" value={submissions.filter((s) => s.status === "qualified").length} color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
+          <StatCard icon={ShieldCheckIcon} label="Contacts Created" value={submissions.filter((s) => s.contactCreated).length} color="bg-gradient-to-br from-purple-400 to-purple-600" />
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/20">
-              <EnvelopeIcon className="w-6 h-6 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Contacted</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {submissions.filter((s) => s.status === "contacted").length}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/20">
-              <CheckCircleIcon className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Qualified</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {submissions.filter((s) => s.status === "qualified").length}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-purple-100 dark:bg-purple-900/20">
-              <ShieldCheckIcon className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Contact Created</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {submissions.filter((s) => s.contactCreated).length}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Filters and Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
           {/* Status Filter */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <FunnelIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Filter by Status
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {statusOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setSelectedStatus(option.value)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedStatus === option.value
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                  }`}
-                >
-                  {option.label} ({option.count})
-                </button>
-              ))}
-            </div>
+          <div className="inline-flex p-1 rounded-full bg-zinc-100 dark:bg-zinc-800/50">
+            {statusOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSelectedStatus(option.value)}
+                className={cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-full transition-all",
+                  selectedStatus === option.value
+                    ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
+                    : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
           {/* Search */}
-          <div className="w-full md:w-80">
-            <div className="flex items-center gap-2 mb-2">
-              <MagnifyingGlassIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Search</span>
-            </div>
+          <div className="flex-1 relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, email, or any field..."
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              placeholder="Search submissions..."
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
-
-          {/* Export */}
-          <div className="flex items-end">
-            <button
-              onClick={exportToCSV}
-              disabled={filteredSubmissions.length === 0}
-              className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-            >
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              Export CSV
-            </button>
-          </div>
         </div>
-      </div>
 
-      {/* Submissions Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        {/* Submissions */}
         {filteredSubmissions.length === 0 ? (
-          <div className="p-12 text-center">
-            <ClockIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">
-              {searchQuery
-                ? "No submissions match your search criteria"
-                : selectedStatus === "all"
-                  ? "No submissions yet. Share your form to start collecting responses!"
-                  : `No ${selectedStatus} submissions`}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center py-16 text-center"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+              <ClipboardList className="w-8 h-8 text-zinc-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">No submissions</h3>
+            <p className="text-sm text-zinc-500">
+              {searchQuery ? "No results match your search" : "Share your form to start collecting responses"}
             </p>
-          </div>
+          </motion.div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Source
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredSubmissions.map((submission) => (
-                  <React.Fragment key={submission._id}>
-                    <motion.tr
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        <div>{new Date(submission.createdAt).toLocaleDateString()}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatDistanceToNow(new Date(submission.createdAt), { addSuffix: true })}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {submission.contactId ? (
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {submission.contactId.firstName} {submission.contactId.lastName}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                              <EnvelopeIcon className="w-3 h-3" />
-                              {submission.contactId.email}
-                            </div>
-                            {submission.contactId.phone && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                <PhoneIcon className="w-3 h-3" />
-                                {submission.contactId.phone}
-                              </div>
-                            )}
-                            {submission.contactId.company && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                <BuildingOfficeIcon className="w-3 h-3" />
-                                {submission.contactId.company}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            No contact created
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(submission.status)}`}
-                        >
-                          {getStatusIcon(submission.status)}
-                          {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {submission.source.utmSource || submission.source.utmCampaign ? (
-                          <div>
-                            <div className="text-gray-900 dark:text-white font-medium">
-                              {submission.source.utmSource || "Direct"}
-                            </div>
-                            {submission.source.utmCampaign && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {submission.source.utmCampaign}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                            <GlobeAltIcon className="w-4 h-4" />
-                            Direct
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() =>
-                            setExpandedRow(expandedRow === submission._id ? null : submission._id)
-                          }
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          {expandedRow === submission._id ? (
-                            <>
-                              <ChevronDownIcon className="w-4 h-4" />
-                              Hide Details
-                            </>
-                          ) : (
-                            <>
-                              <ChevronRightIcon className="w-4 h-4" />
-                              View Details
-                            </>
-                          )}
-                        </button>
-                      </td>
-                    </motion.tr>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-3"
+          >
+            {filteredSubmissions.map((submission) => (
+              <motion.div
+                key={submission._id}
+                variants={itemVariants}
+                className="rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 overflow-hidden"
+              >
+                {/* Row Header */}
+                <div
+                  className="p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                  onClick={() => setExpandedRow(expandedRow === submission._id ? null : submission._id)}
+                >
+                  {/* Date */}
+                  <div className="flex-shrink-0 w-24">
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      {new Date(submission.createdAt).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {formatDistanceToNow(new Date(submission.createdAt), { addSuffix: true })}
+                    </p>
+                  </div>
 
-                    {/* Expanded Row */}
-                    {expandedRow === submission._id && (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-4 bg-gray-50 dark:bg-gray-900">
-                          <div className="space-y-4">
-                            <h4 className="font-semibold text-gray-900 dark:text-white">
-                              Submission Data
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {form.fields
-                                .filter((field) => field.type !== "divider" && field.type !== "html")
-                                .map((field) => (
-                                  <div
-                                    key={field.id}
-                                    className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
-                                  >
-                                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                                      {field.label}
-                                    </div>
-                                    <div className="text-sm text-gray-900 dark:text-white break-words">
-                                      {getFieldValue(submission, field.id)}
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-
-                            {/* Source Details */}
-                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                              <h5 className="font-semibold text-gray-900 dark:text-white mb-2">
-                                Source Tracking
-                              </h5>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                                {submission.source.url && (
-                                  <div>
-                                    <span className="text-gray-500 dark:text-gray-400">URL: </span>
-                                    <a
-                                      href={submission.source.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 hover:underline break-all"
-                                    >
-                                      {submission.source.url}
-                                    </a>
-                                  </div>
-                                )}
-                                {submission.source.referrer && (
-                                  <div>
-                                    <span className="text-gray-500 dark:text-gray-400">
-                                      Referrer:{" "}
-                                    </span>
-                                    <span className="text-gray-900 dark:text-white">
-                                      {submission.source.referrer}
-                                    </span>
-                                  </div>
-                                )}
-                                {submission.source.utmSource && (
-                                  <div>
-                                    <span className="text-gray-500 dark:text-gray-400">
-                                      UTM Source:{" "}
-                                    </span>
-                                    <span className="text-gray-900 dark:text-white">
-                                      {submission.source.utmSource}
-                                    </span>
-                                  </div>
-                                )}
-                                {submission.source.utmMedium && (
-                                  <div>
-                                    <span className="text-gray-500 dark:text-gray-400">
-                                      UTM Medium:{" "}
-                                    </span>
-                                    <span className="text-gray-900 dark:text-white">
-                                      {submission.source.utmMedium}
-                                    </span>
-                                  </div>
-                                )}
-                                {submission.source.utmCampaign && (
-                                  <div>
-                                    <span className="text-gray-500 dark:text-gray-400">
-                                      UTM Campaign:{" "}
-                                    </span>
-                                    <span className="text-gray-900 dark:text-white">
-                                      {submission.source.utmCampaign}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
+                  {/* Contact */}
+                  <div className="flex-1 min-w-0">
+                    {submission.contactId ? (
+                      <div>
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                          {submission.contactId.firstName} {submission.contactId.lastName}
+                        </p>
+                        <p className="text-xs text-zinc-500 truncate flex items-center gap-1">
+                          <EnvelopeIcon className="w-3 h-3" />
+                          {submission.contactId.email}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-zinc-400 italic">No contact</span>
                     )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </div>
+
+                  {/* Status */}
+                  <span className={cn(
+                    "px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 flex-shrink-0",
+                    getStatusColor(submission.status)
+                  )}>
+                    {getStatusIcon(submission.status)}
+                    {submission.status}
+                  </span>
+
+                  {/* Source */}
+                  <div className="hidden md:block text-right flex-shrink-0 w-24">
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                      {submission.source.utmSource || "Direct"}
+                    </p>
+                  </div>
+
+                  {/* Expand */}
+                  {expandedRow === submission._id ? (
+                    <ChevronDownIcon className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+                  ) : (
+                    <ChevronRightIcon className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+                  )}
+                </div>
+
+                {/* Expanded Details */}
+                <AnimatePresence>
+                  {expandedRow === submission._id && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden border-t border-zinc-100 dark:border-zinc-800"
+                    >
+                      <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 space-y-4">
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Submission Data</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {form.fields
+                            .filter((field) => field.type !== "divider" && field.type !== "html")
+                            .map((field) => (
+                              <div key={field.id} className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+                                <p className="text-xs font-medium text-zinc-500 mb-1">{field.label}</p>
+                                <p className="text-sm text-zinc-900 dark:text-zinc-100 break-words">
+                                  {getFieldValue(submission, field.id)}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+
+                        {/* Source Tracking */}
+                        {(submission.source.url || submission.source.utmSource) && (
+                          <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+                            <h5 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Source</h5>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              {submission.source.url && (
+                                <span className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                  URL: {submission.source.url}
+                                </span>
+                              )}
+                              {submission.source.utmSource && (
+                                <span className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                  Source: {submission.source.utmSource}
+                                </span>
+                              )}
+                              {submission.source.utmCampaign && (
+                                <span className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                                  Campaign: {submission.source.utmCampaign}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))}
+          </motion.div>
         )}
       </div>
     </div>
