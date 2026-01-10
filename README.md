@@ -1,10 +1,14 @@
-# MrMorris - AI-Native CRM & Marketing Automation Platform
+# Clianta - AI-Native CRM That Builds Itself
 
-An intelligent CRM and marketing automation system powered by autonomous AI agents. Built with Google Gemini 2.5 Pro and DeepAgents framework, MrMorris features multi-agent coordination, cold outreach automation, workflow automation, and AI-driven insights where agents work side-by-side with humans to execute complex tasks autonomously.
+> **Note**: This repository uses "mrmorris" in folder/package names (legacy from product pivot). The product name is **Clianta**.
+
+An intelligent AI-native CRM powered by autonomous AI agents. Built with Google Gemini 2.5 Pro and DeepAgents framework, Clianta features multi-agent coordination, workflow automation, and AI-driven insights where agents work side-by-side with humans to execute complex CRM tasks autonomously.
+
+**Live**: https://clianta.online
 
 ## 🚀 Overview
 
-MrMorris is an AI-native CRM and marketing automation platform that understands your business, knows your customers, and works like your best employee. Built with Google Gemini 2.5 Pro, DeepAgents framework, and multi-agent coordination architecture, it provides deep context awareness, autonomous task execution, cold email outreach, workflow automation, and proactive insights across sales, marketing, and customer success.
+**Clianta** is an AI-native CRM that understands your business, knows your customers, and works like your best employee. Built with Google Gemini 2.5 Pro, DeepAgents framework, and multi-agent coordination architecture, it provides deep context awareness, autonomous task execution, workflow automation, and proactive insights across sales and customer success.
 
 ## 🛠️ Tech Stack
 
@@ -40,13 +44,40 @@ MrMorris is an AI-native CRM and marketing automation platform that understands 
 - **Real-time**: Socket.io
 
 ### Integrations
-- **CRM**: Salesforce (bi-directional sync)
 - **Email**: Gmail, Outlook, SMTP/IMAP
 - **Calendar**: Google Calendar
 - **Communication**: Slack, Twilio (SMS)
 - **Productivity**: Notion, Google Sheets
 - **Enrichment**: Apollo.io (contact data enrichment)
 - **Payments**: Stripe (planned)
+
+## 📚 Documentation
+
+Comprehensive documentation for production deployment and repository restructuring:
+
+### Architecture & Design
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - System design, technology stack, and architectural patterns
+- **[Folder Structure](docs/FOLDER_STRUCTURE.md)** - Repository organization and recommended production structure
+- **[API Routes Map](docs/API_ROUTES_MAP.md)** - Complete API endpoint reference (200+ endpoints)
+
+### Data & Models
+- **[Models & Schemas](docs/MODELS_AND_SCHEMAS.md)** - Database schema documentation (70+ MongoDB models)
+- **[Dependencies](docs/DEPENDENCIES.md)** - Package dependency catalog and version management
+
+### AI & Automation
+- **[Agent System](docs/AGENT_SYSTEM.md)** - Multi-agent AI architecture (23 specialized agents)
+- **[Background Jobs](docs/BACKGROUND_JOBS.md)** - Queue system and scheduled tasks (9 jobs)
+
+### Integrations & Configuration
+- **[Integrations Guide](docs/INTEGRATIONS.md)** - Third-party integrations (Salesforce, Apollo, Google, Slack, etc.)
+- **[Environment Configuration](docs/ENVIRONMENT_CONFIGURATION.md)** - Environment variables and setup guide
+
+### Deployment & Migration
+- **[Build & Deployment](docs/BUILD_AND_DEPLOYMENT.md)** - Build process and production deployment guide
+- **[Restructure Checklist](docs/RESTRUCTURE_CHECKLIST.md)** - Step-by-step repository restructuring guide
+- **[Migration Notes](docs/MIGRATION_NOTES.md)** - Template for tracking migration decisions
+
+**Quick Start**: See [Environment Configuration](docs/ENVIRONMENT_CONFIGURATION.md) for setup instructions.
 
 ## 📁 Project Structure
 
