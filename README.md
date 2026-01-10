@@ -1,10 +1,10 @@
-# MrMorris - AI-Native CRM Platform
+# MrMorris - AI-Native CRM & Marketing Automation Platform
 
-An intelligent CRM system where AI agents and humans work side-by-side with full business context to execute work autonomously.
+An intelligent CRM and marketing automation system powered by autonomous AI agents. Built with Google Gemini 2.5 Pro and DeepAgents framework, MrMorris features multi-agent coordination, cold outreach automation, workflow automation, and AI-driven insights where agents work side-by-side with humans to execute complex tasks autonomously.
 
 ## 🚀 Overview
 
-MrMorris is an AI-native CRM that understands your business, knows your customers, and works like your best employee. Built with Google Gemini 2.5 Pro and autonomous agent architecture, it provides deep context awareness and proactive execution across sales, support, and customer success.
+MrMorris is an AI-native CRM and marketing automation platform that understands your business, knows your customers, and works like your best employee. Built with Google Gemini 2.5 Pro, DeepAgents framework, and multi-agent coordination architecture, it provides deep context awareness, autonomous task execution, cold email outreach, workflow automation, and proactive insights across sales, marketing, and customer success.
 
 ## 🛠️ Tech Stack
 
@@ -17,6 +17,9 @@ MrMorris is an AI-native CRM that understands your business, knows your customer
 - **State Management**: Zustand
 - **HTTP Client**: Axios
 - **Form Validation**: React Hook Form + Zod
+- **Charts**: Chart.js, Recharts
+- **Email Editor**: React Email Editor (Unlayer)
+- **Drag & Drop**: @dnd-kit, ReactFlow
 - **Real-time**: Socket.io (Chat, notifications)
 
 ### Backend
@@ -24,21 +27,25 @@ MrMorris is an AI-native CRM that understands your business, knows your customer
 - **Language**: TypeScript
 - **Database**: MongoDB with Mongoose
 - **Cache**: Redis (sessions, rate limiting)
-- **Queue**: BullMQ (background jobs)
-- **AI Provider**: Google Gemini 2.5 Pro (via Vertex AI)
+- **Queue**: BullMQ (background jobs, scheduled tasks)
+- **AI Provider**: Google Gemini 2.5 Pro (via @google/generative-ai)
 - **AI Orchestration**: LangChain + @langchain/google-vertexai
+- **Agent Framework**: DeepAgents (Multi-agent coordination)
 - **Authentication**: Passport.js (JWT, Local, Google OAuth)
 - **Validation**: Zod
-- **File Upload**: Multer
+- **File Upload**: Multer with Sharp (image processing)
 - **Email**: Nodemailer + Resend
+- **SMS**: Twilio
+- **Scheduling**: node-cron (automated tasks)
 - **Real-time**: Socket.io
 
 ### Integrations
-- **CRM**: Salesforce
-- **Email**: Gmail, Outlook
+- **CRM**: Salesforce (bi-directional sync)
+- **Email**: Gmail, Outlook, SMTP/IMAP
 - **Calendar**: Google Calendar
-- **Communication**: Slack, Twilio
+- **Communication**: Slack, Twilio (SMS)
 - **Productivity**: Notion, Google Sheets
+- **Enrichment**: Apollo.io (contact data enrichment)
 - **Payments**: Stripe (planned)
 
 ## 📁 Project Structure
@@ -337,44 +344,61 @@ npm run install:all      # Install all dependencies
 ## ✨ Key Features
 
 ### Core CRM
-- **Contact Management**: Rich contact profiles with enrichment
-- **Company Management**: Account-based tracking and insights
-- **Deal Pipeline**: Visual kanban with AI-powered scoring
-- **Activity Tracking**: Emails, calls, meetings, notes
-- **Custom Fields**: Flexible data model for any business
+- **Contact Management**: Rich contact profiles with Apollo enrichment and data verification
+- **Company Management**: Account-based tracking with company insights
+- **Deal Pipeline**: Visual kanban with custom stages and AI-powered scoring
+- **Activity Tracking**: Emails, calls, meetings, notes with full history
+- **Lead Scoring**: Automated A-F grade scoring with decay rules and distribution analytics
+- **Custom Fields**: Flexible data model for contacts, companies, and deals
+- **Data Stewardship**: Automated data quality checks and verification
 
-### AI-Powered
-- **AI Assistant**: Natural language queries and actions
-- **AI Memory**: Context-aware knowledge base
-- **AI Content**: Generate forms, emails, landing pages
-- **Intent Scoring**: Behavioral analytics and lead scoring
-- **Proactive Insights**: Meeting prep, stale deal alerts, daily summaries
+### AI-Powered (Multi-Agent Architecture)
+- **Autonomous Agents**: 20+ specialized AI agents (contact, deal, campaign, briefing, etc.)
+- **Multi-Agent Coordination**: Dynamic 2-4 agent collaboration for complex tasks
+- **AI Assistant**: Natural language queries with intelligent routing
+- **AI Memory**: Context-aware knowledge base with workspace context
+- **AI Content**: Generate emails, campaigns, and responses with Gemini
+- **Lead Scoring**: Automated behavioral scoring with intent analysis
+- **Meeting Preparation**: Multi-agent briefings combining contact, deal, and company intel
+- **Proactive Insights**: Automated deal health, forecast generation, competitive analysis
 
 ### Automation
-- **Workflows**: Visual workflow builder with triggers and actions
-- **Sequences**: Automated email campaigns
+- **Visual Workflow Builder**: Drag-and-drop editor with triggers and actions
+- **Email Sequences**: Multi-step automated drip campaigns
+- **Cold Email Outreach**: SMTP/IMAP configuration for outbound campaigns
+- **Email Warmup**: Automated warmup activities to improve deliverability
+- **Unified Inbox**: Centralized inbox for replying to campaign responses
 - **Lead Recycling**: Re-engage cold leads automatically
-- **Lifecycle Stages**: Automatic progression tracking
+- **Lifecycle Stages**: Automatic progression tracking with smart triggers
+- **Scheduled Jobs**: Background automation with BullMQ and node-cron
 
-### Integrations
-- **Email**: Gmail, Outlook sync
-- **Calendar**: Google Calendar integration
-- **Salesforce**: Bi-directional sync
-- **Slack**: Notifications and team collaboration
-- **Notion**: Knowledge base integration
-- **Google Sheets**: Data import/export
+### Integrations & Enrichment
+- **Email**: Gmail OAuth, Outlook, SMTP/IMAP with full sync
+- **Calendar**: Google Calendar integration for scheduling
+- **Salesforce**: Bi-directional CRM sync with field mapping
+- **Slack**: Notifications, alerts, and team collaboration
+- **Notion**: Knowledge base and documentation sync
+- **Google Sheets**: Data import/export with spreadsheet integration
+- **Apollo.io**: Contact enrichment, verification, and job change tracking
+- **Twilio**: SMS integration for outreach and notifications
 
-### Lead Generation
-- **Form Builder**: AI-powered form creation with intelligence
-- **Landing Pages**: Embeddable landing page builder
-- **Chatbot**: AI chatbot with qualification logic
-- **Website Tracking**: Visitor identification and tracking
+### Lead Generation & Marketing
+- **Email Campaigns**: Multi-channel campaign creation and scheduling
+- **Campaign Analytics**: Open rate, click rate, reply rate, bounce tracking
+- **Email Templates**: Template creation with variable substitution
+- **Form Builder**: AI-powered form creation with intelligence (planned)
+- **Landing Pages**: Embeddable landing page builder (planned)
+- **Chatbot**: AI chatbot with qualification logic (planned)
+- **Website Tracking**: Visitor identification and tracking (planned)
 
-### Analytics
-- **Dashboard**: Real-time metrics and KPIs
-- **Reports**: Custom report builder
-- **Forecasting**: AI-powered revenue forecasting
-- **Attribution**: Multi-touch attribution tracking
+### Analytics & Insights
+- **Dashboard**: Real-time metrics, KPIs, and lead score distribution
+- **Email Analytics**: Campaign performance with detailed tracking
+- **Lead Score Analytics**: A-F grade distribution and trend analysis
+- **Deal Health**: Automated deal hygiene and health scoring
+- **Forecasting**: AI-powered revenue forecasting with multi-agent analysis
+- **Reports**: Custom report builder with data visualization
+- **Activity Analytics**: Email, call, and meeting tracking with sentiment analysis
 
 ## 📡 API Documentation
 
@@ -457,37 +481,67 @@ cd backend && npm test
 - **Redis**: Cache and session management
 - **MongoDB**: Data persistence
 
-## 🗺️ Roadmap
+## 🗺️ Roadmap & Status
 
-### Phase 1: Core Architecture (In Progress)
-- ✅ Database schema design
-- ✅ Authentication system
-- ✅ Basic CRM features
-- ⏳ AI Assistant core
+### Phase 1: Core CRM ✅ Complete
+- ✅ Contacts, Companies, Deals management
+- ✅ Custom fields and data model
+- ✅ Pipelines with visual kanban
+- ✅ Authentication (JWT, OAuth, email verification)
 
-### Phase 2: AI Assistant
-- ⏳ Natural language interface
-- ⏳ Context-aware actions
-- ⏳ Proactive notifications
+### Phase 2: Marketing Automation ✅ Complete
+- ✅ Email campaigns and sequences
+- ✅ Email templates and unified inbox
+- ✅ Cold email outreach with warmup
+- ✅ Campaign analytics and tracking
 
-### Phase 3: Autonomous Agents
-- ⏳ Document-to-agent parser
-- ⏳ Agent execution engine
-- ⏳ Multi-agent orchestration
+### Phase 3: Workflows & Automation ✅ Complete
+- ✅ Visual workflow builder
+- ✅ Triggers and actions system
+- ✅ Enrollment and scheduling logic
+- ✅ Background job processing
 
-### Phase 4: Advanced Features
-- ⏳ Custom object builder
-- ⏳ Data enrichment service
-- ⏳ Lead discovery engine
+### Phase 4: AI & Agents ✅ Complete
+- ✅ 20+ specialized AI agents
+- ✅ Multi-agent coordination (2-4 agents)
+- ✅ DeepAgents framework integration
+- ✅ AI-powered meeting prep and briefings
+- ✅ Lead scoring with decay rules
+
+### Phase 5: Integrations ✅ Complete
+- ✅ Salesforce bi-directional sync
+- ✅ Apollo.io enrichment
+- ✅ Google Calendar, Sheets, Gmail
+- ✅ Slack and Twilio
+
+### Phase 6: Advanced Features ⏳ In Progress
+- ✅ Lead score analytics
+- ✅ Data stewardship and verification
+- ⏳ Form and landing page builder
+- ⏳ Website visitor tracking
+- ⏳ Custom reports builder
 - ⏳ Developer API
 
 ## 📝 Documentation
 
-- [API Documentation](docs/API_DOCUMENTATION.md)
-- [Integration Status](docs/INTEGRATION_STATUS.md)
-- [Workflow Architecture](docs/WORKFLOW_DATA_FLOW.md)
-- [Lead Generation Guide](docs/LEAD_GENERATION_PLAN.md)
-- [Production Deployment](docs/PRODUCTION_DEPLOYMENT_GUIDE.md)
+### Core Documentation
+- [Feature Status Guide](docs/FEATURE_STATUS.md) - Complete feature overview and requirements
+- [CRM Features Guide](docs/CRM_FEATURES_GUIDE.md) - Detailed CRM functionality guide
+- [Progress Notes](docs/progress%20note.md) - Latest development status
+
+### AI & Automation
+- [Multi-Agent Architecture](docs/MULTI_AGENT_ARCHITECTURE.md) - AI agent system documentation
+- [Multi-Agent README](backend/src/agents/MULTI_AGENT_README.md) - Agent coordination guide
+- [Workflow Documentation](docs/WORKFLOW_COMPLETION_SUMMARY.md) - Workflow system guide
+- [Lead Scoring](docs/LEAD_SCORING_COMPLETE.md) - Lead scoring implementation
+
+### Integrations
+- [Apollo Setup Guide](docs/APOLLO_SETUP_GUIDE.md) - Apollo.io integration
+- [Salesforce Sync](docs/SALESFORCE_SYNC_DETAILS.md) - Salesforce integration
+- [Email Integration](docs/APOLLO_EMAIL_INTEGRATION_SUMMARY.md) - Email system setup
+
+### Troubleshooting
+- [MongoDB & Redis Troubleshooting](docs/TROUBLESHOOTING_MONGODB_REDIS.md)
 
 ## 🤝 Contributing
 
