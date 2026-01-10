@@ -95,6 +95,55 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://clianta.online',
   },
+  other: {
+    'google-site-verification': '', // Add your verification code here if you have one
+  },
+}
+
+// Structured Data for SEO (JSON-LD)
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'SoftwareApplication',
+      name: 'Clianta',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+      description: 'AI-Native CRM that builds itself. Describe how you sell and get personalized workflows and automations in minutes.',
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: '5',
+        ratingCount: '1',
+      },
+      creator: {
+        '@type': 'Organization',
+        name: 'Clianta',
+      },
+    },
+    {
+      '@type': 'Organization',
+      name: 'Clianta',
+      url: 'https://clianta.online',
+      logo: 'https://clianta.online/Clianta-logo.jpg',
+      description: 'AI-Native CRM platform that builds personalized workflows and automations',
+      sameAs: [],
+    },
+    {
+      '@type': 'WebSite',
+      name: 'Clianta',
+      url: 'https://clianta.online',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: 'https://clianta.online/search?q={search_term_string}',
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ],
 }
 
 export default function RootLayout({
@@ -104,6 +153,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      </head>
       <body className={`${outfit.variable} ${jakarta.variable} font-sans antialiased font-light`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
