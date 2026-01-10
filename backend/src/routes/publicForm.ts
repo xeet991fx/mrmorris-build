@@ -80,6 +80,15 @@ router.get(
 
             console.log(`📋 Public form request for ID: ${formId}`);
 
+            // Validate ObjectID format (must be 24 character hex string)
+            if (!/^[0-9a-fA-F]{24}$/.test(formId)) {
+                console.log(`❌ Invalid form ID format: ${formId} (length: ${formId.length})`);
+                return res.status(400).json({
+                    success: false,
+                    error: "Invalid form ID format",
+                });
+            }
+
             // First check if the form exists at all (for better error messages)
             const formExists = await Form.findById(formId).select('status name').lean();
 

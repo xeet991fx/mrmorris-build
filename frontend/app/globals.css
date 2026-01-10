@@ -42,6 +42,11 @@
     --teal: 142 70% 35%;
     /* Darker Forest Green */
     --teal-foreground: 0 0% 100%;
+
+    /* Theme Color System - Default Ocean Blue */
+    --theme-primary: #3b82f6;
+    --theme-secondary: #2563eb;
+    --theme-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   }
 
   .dark {
@@ -83,6 +88,11 @@
     --teal: 142 70% 38%;
     /* Forest Green */
     --teal-foreground: 0 0% 7%;
+
+    /* Theme Color System - Default Ocean Blue */
+    --theme-primary: #3b82f6;
+    --theme-secondary: #2563eb;
+    --theme-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   }
 }
 
