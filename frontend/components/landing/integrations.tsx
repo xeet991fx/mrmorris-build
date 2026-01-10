@@ -49,8 +49,8 @@ export function Integrations() {
             </span>
           </h2>
           <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-            Clianta connects seamlessly with all your marketing tools, CRM, analytics platforms,
-            and ad networks to provide a unified autonomous marketing experience.
+            Connect your entire tech stack. Clianta integrates with your sales tools, communication platforms,
+            and business applications to create a unified, intelligent CRM experience.
           </p>
         </motion.div>
 
