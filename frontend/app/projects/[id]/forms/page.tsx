@@ -237,15 +237,15 @@ function FormCard({ form, workspaceId, onDelete }: {
           </button>
         </Link>
         {form.status === "published" && (
-          <a
-            href={`${process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000"}/forms/${form._id}`}
+          <Link
+            href={`/forms/${form._id}`}
             target="_blank"
             rel="noopener noreferrer"
           >
             <button className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors" title="View">
               <EyeIcon className="w-4 h-4" />
             </button>
-          </a>
+          </Link>
         )}
         <button
           onClick={(e) => onDelete(form._id, e)}

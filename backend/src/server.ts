@@ -81,6 +81,7 @@ import { startSalesforceSyncJob } from "./jobs/salesforceSyncJob";
 import { startLifecycleProgressionJob } from "./jobs/lifecycleProgressionJob";
 import { startLeadRecyclingJob } from "./jobs/leadRecyclingJob";
 import { initializeProactiveAIJobs } from "./jobs/proactiveAI";
+import { startGoogleSheetFormSyncJob } from "./jobs/googleSheetFormSyncJob";
 import aiNotificationsRoutes from "./routes/aiNotifications";
 
 import fs from "fs";
@@ -488,6 +489,12 @@ const startServer = async () => {
       //   console.error('❌ Failed to start proactive AI jobs:', error);
       // });
       // console.log('🤖 Proactive AI jobs: Running');
+
+      // Start Google Sheet form sync job (runs every hour for batch sync)
+      // startGoogleSheetFormSyncJob().catch((error) => {
+      //   console.error('❌ Failed to start Google Sheet form sync job:', error);
+      // });
+      // console.log('📊 Google Sheet form sync job: Running');
 
       console.log('⚠️  Background jobs disabled to prevent Redis rate limit');
 

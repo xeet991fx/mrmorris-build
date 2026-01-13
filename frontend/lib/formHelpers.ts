@@ -4,47 +4,7 @@
  * Utilities for progressive profiling, conditional logic, and field visibility
  */
 
-export interface FormField {
-    id: string;
-    type: string;
-    label: string;
-    required: boolean;
-    placeholder?: string;
-    options?: string[];
-    defaultValue?: string;
-    validation?: {
-        min?: number;
-        max?: number;
-        pattern?: string;
-        message?: string;
-    };
-    fileSettings?: {
-        maxSize: number;
-        allowedTypes: string[];
-        multiple: boolean;
-    };
-    gdprSettings?: {
-        consentText: string;
-        privacyPolicyUrl?: string;
-        required: boolean;
-    };
-    mapToField?: string;
-    conditionalLogic?: {
-        enabled: boolean;
-        rules: Array<{
-            fieldId: string;
-            operator: 'equals' | 'notEquals' | 'contains' | 'notContains' |
-            'isEmpty' | 'isNotEmpty' | 'greaterThan' | 'lessThan';
-            value: string;
-        }>;
-        logicType: 'AND' | 'OR';
-    };
-    progressive?: {
-        enabled: boolean;
-        hideIfKnown: boolean;
-        priority: number;
-    };
-}
+import { FormField } from "@/lib/api/form";
 
 export interface Contact {
     [key: string]: any;

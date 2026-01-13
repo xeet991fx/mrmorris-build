@@ -13,7 +13,8 @@ export type FieldType =
     | 'number' | 'date' | 'datetime' | 'time' | 'url' | 'file'
     | 'multiselect' | 'country' | 'state' | 'hidden' | 'richtext'
     | 'rating' | 'signature' | 'gdpr_consent' | 'marketing_consent'
-    | 'divider' | 'html' | 'calculation';
+    | 'divider' | 'html' | 'calculation'
+    | 'heading' | 'paragraph' | 'image' | 'spacer' | 'button';
 
 export interface IFormField {
     id: string;
@@ -36,8 +37,8 @@ export interface IFormField {
 
     // CRM Mapping
     mapToField?: 'firstName' | 'lastName' | 'email' | 'phone' | 'company' |
-                 'jobTitle' | 'website' | 'address' | 'city' | 'state' |
-                 'country' | 'zip' | 'industry' | 'revenue' | 'employees' | 'custom';
+    'jobTitle' | 'website' | 'address' | 'city' | 'state' |
+    'country' | 'zip' | 'industry' | 'revenue' | 'employees' | 'custom';
     customFieldName?: string;
 
     // Conditional Logic
@@ -46,7 +47,7 @@ export interface IFormField {
         rules: Array<{
             fieldId: string;
             operator: 'equals' | 'notEquals' | 'contains' | 'notContains' |
-                      'isEmpty' | 'isNotEmpty' | 'greaterThan' | 'lessThan';
+            'isEmpty' | 'isNotEmpty' | 'greaterThan' | 'lessThan';
             value: string;
         }>;
         logicType: 'AND' | 'OR'; // How to combine multiple rules
@@ -81,6 +82,16 @@ export interface IFormField {
         consentText: string;
         privacyPolicyUrl?: string;
         required: boolean;
+    };
+    // Canvas positioning (2D designer)
+    canvas?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        zIndex?: number;
+        locked?: boolean;
+        visible?: boolean;
     };
 }
 
@@ -228,6 +239,11 @@ export interface IForm extends Document {
         labelPosition?: 'top' | 'left' | 'inside';
         fieldSpacing?: 'compact' | 'normal' | 'comfortable';
 
+        // Display Mode
+        // 'classic' = All fields visible like Google Forms
+        // 'conversational' = One question at a time like Typeform
+        displayMode?: 'classic' | 'conversational';
+
         // Advanced
         allowMultipleSubmissions: boolean;
         requireCaptcha: boolean;
@@ -301,6 +317,20 @@ export interface IForm extends Document {
         slack?: { enabled: boolean; webhookUrl?: string; channel?: string };
     };
 
+    // Google Sheets Integration
+    googleSheetsIntegration?: {
+        enabled: boolean;
+        spreadsheetId: string;
+        sheetName: string;
+        syncMode: 'realtime' | 'batch';
+        credentialId: string;
+        lastSyncAt?: Date;
+        syncStats?: {
+            totalSynced: number;
+            failedSyncs: number;
+        };
+    };
+
     // Embed
     embedCode?: string;
 
@@ -314,9 +344,10 @@ const formFieldSchema = new Schema<IFormField>({
     type: {
         type: String,
         enum: ['text', 'email', 'phone', 'textarea', 'select', 'checkbox', 'radio',
-               'number', 'date', 'datetime', 'time', 'url', 'file', 'multiselect',
-               'country', 'state', 'hidden', 'richtext', 'rating', 'signature',
-               'gdpr_consent', 'marketing_consent', 'divider', 'html', 'calculation'],
+            'number', 'date', 'datetime', 'time', 'url', 'file', 'multiselect',
+            'country', 'state', 'hidden', 'richtext', 'rating', 'signature',
+            'gdpr_consent', 'marketing_consent', 'divider', 'html', 'calculation',
+            'heading', 'paragraph', 'image', 'spacer', 'button'],
         required: true,
     },
     label: { type: String, required: true },
@@ -335,8 +366,8 @@ const formFieldSchema = new Schema<IFormField>({
     mapToField: {
         type: String,
         enum: ['firstName', 'lastName', 'email', 'phone', 'company', 'jobTitle',
-               'website', 'address', 'city', 'state', 'country', 'zip', 'industry',
-               'revenue', 'employees', 'custom'],
+            'website', 'address', 'city', 'state', 'country', 'zip', 'industry',
+            'revenue', 'employees', 'custom'],
     },
     customFieldName: { type: String },
     conditionalLogic: {
@@ -368,6 +399,16 @@ const formFieldSchema = new Schema<IFormField>({
         consentText: { type: String },
         privacyPolicyUrl: { type: String },
         required: { type: Boolean, default: true },
+    },
+    // Canvas positioning (2D designer)
+    canvas: {
+        x: { type: Number },
+        y: { type: Number },
+        width: { type: Number },
+        height: { type: Number },
+        zIndex: { type: Number, default: 1 },
+        locked: { type: Boolean, default: false },
+        visible: { type: Boolean, default: true },
     },
 }, { _id: false });
 
@@ -526,6 +567,7 @@ const formSchema = new Schema<IForm>(
             layout: { type: String, enum: ['vertical', 'horizontal', 'two_column'], default: 'vertical' },
             labelPosition: { type: String, enum: ['top', 'left', 'inside'], default: 'top' },
             fieldSpacing: { type: String, enum: ['compact', 'normal', 'comfortable'], default: 'normal' },
+            displayMode: { type: String, enum: ['classic', 'conversational', 'canvas'], default: 'conversational' },
 
             allowMultipleSubmissions: { type: Boolean, default: false },
             requireCaptcha: { type: Boolean, default: false },
@@ -593,6 +635,20 @@ const formSchema = new Schema<IForm>(
             },
         },
 
+        // Google Sheets Integration
+        googleSheetsIntegration: {
+            enabled: { type: Boolean, default: false },
+            spreadsheetId: { type: String },
+            sheetName: { type: String, default: 'Form Submissions' },
+            syncMode: { type: String, enum: ['realtime', 'batch'], default: 'realtime' },
+            credentialId: { type: String },
+            lastSyncAt: { type: Date },
+            syncStats: {
+                totalSynced: { type: Number, default: 0 },
+                failedSyncs: { type: Number, default: 0 },
+            },
+        },
+
         embedCode: { type: String },
     },
     {
@@ -606,7 +662,7 @@ formSchema.index({ workspaceId: 1, createdAt: -1 });
 formSchema.index({ 'stats.conversionRate': -1 });
 
 // Generate embed code on save
-formSchema.pre('save', function(next) {
+formSchema.pre('save', function (next) {
     if (this.isModified('_id') || !this.embedCode) {
         const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         this.embedCode = `<script src="${baseUrl}/forms/embed.js"></script>\n<div data-morrisb-form="${this._id}"></div>`;
@@ -615,7 +671,7 @@ formSchema.pre('save', function(next) {
 });
 
 // Update conversion rate when stats change
-formSchema.pre('save', function(next) {
+formSchema.pre('save', function (next) {
     if (this.stats.views > 0) {
         this.stats.conversionRate = (this.stats.submissions / this.stats.views) * 100;
     }

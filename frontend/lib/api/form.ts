@@ -19,13 +19,15 @@ function getAuthHeaders(): HeadersInit {
     };
 }
 
-// Advanced field types
+// Advanced field types + Content elements for canvas designer
 export type FieldType =
     | 'text' | 'email' | 'phone' | 'textarea' | 'select' | 'checkbox' | 'radio'
     | 'number' | 'date' | 'datetime' | 'time' | 'url' | 'file'
     | 'multiselect' | 'country' | 'state' | 'hidden' | 'richtext'
     | 'rating' | 'signature' | 'gdpr_consent' | 'marketing_consent'
-    | 'divider' | 'html' | 'calculation';
+    | 'divider' | 'html' | 'calculation'
+    // Content elements for canvas
+    | 'heading' | 'paragraph' | 'image' | 'spacer' | 'button';
 
 export interface FormField {
     id: string;
@@ -77,6 +79,16 @@ export interface FormField {
         consentText: string;
         privacyPolicyUrl?: string;
         required: boolean;
+    };
+    // Canvas positioning for 2D designer
+    canvas?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        zIndex?: number;
+        locked?: boolean;
+        visible?: boolean;
     };
 }
 
@@ -195,6 +207,7 @@ export interface Form {
         layout?: 'vertical' | 'horizontal' | 'two_column';
         labelPosition?: 'top' | 'left' | 'inside';
         fieldSpacing?: 'compact' | 'normal' | 'comfortable';
+        displayMode?: 'classic' | 'conversational' | 'canvas';
         allowMultipleSubmissions: boolean;
         requireCaptcha: boolean;
         trackingEnabled: boolean;
@@ -468,7 +481,8 @@ export async function submitForm(
     );
 
     if (!response.ok) {
-        throw new Error("Failed to submit form");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || `Failed to submit form (${response.status})`);
     }
 
     return response.json();

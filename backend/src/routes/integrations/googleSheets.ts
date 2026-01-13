@@ -213,4 +213,151 @@ router.post('/google_sheets/refresh_token', authenticate, async (req: AuthReques
     }
 });
 
+// ============================================
+// FORM GOOGLE SHEETS INTEGRATION ROUTES
+// ============================================
+
+import { getUserSpreadsheets, getSpreadsheetSheets, getFormSyncStatus, batchSyncSubmissions } from '../../services/FormGoogleSheetSync';
+import Form from '../../models/Form';
+import { triggerFormSync } from '../../jobs/googleSheetFormSyncJob';
+
+/**
+ * GET /api/integrations/google_sheets/spreadsheets
+ *
+ * List user's Google Spreadsheets
+ */
+router.get('/google_sheets/spreadsheets', authenticate, async (req: AuthRequest, res) => {
+    try {
+        const { credentialId } = req.query;
+
+        if (!credentialId) {
+            return res.status(400).json({ error: 'credentialId is required' });
+        }
+
+        const spreadsheets = await getUserSpreadsheets(credentialId as string);
+        res.json({ success: true, spreadsheets });
+    } catch (error: any) {
+        logger.error('[GoogleSheets] List spreadsheets error:', error.message);
+        res.status(500).json({ error: 'Failed to list spreadsheets' });
+    }
+});
+
+/**
+ * GET /api/integrations/google_sheets/sheets
+ *
+ * List sheets (tabs) in a spreadsheet
+ */
+router.get('/google_sheets/sheets', authenticate, async (req: AuthRequest, res) => {
+    try {
+        const { credentialId, spreadsheetId } = req.query;
+
+        if (!credentialId || !spreadsheetId) {
+            return res.status(400).json({ error: 'credentialId and spreadsheetId are required' });
+        }
+
+        const sheets = await getSpreadsheetSheets(credentialId as string, spreadsheetId as string);
+        res.json({ success: true, sheets });
+    } catch (error: any) {
+        logger.error('[GoogleSheets] List sheets error:', error.message);
+        res.status(500).json({ error: 'Failed to list sheets' });
+    }
+});
+
+/**
+ * POST /api/integrations/google_sheets/forms/:formId/sync
+ *
+ * Trigger manual sync for a form
+ */
+router.post('/google_sheets/forms/:formId/sync', authenticate, async (req: AuthRequest, res) => {
+    try {
+        const { formId } = req.params;
+
+        // Verify form exists and has Google Sheets integration enabled
+        const form = await Form.findById(formId);
+        if (!form) {
+            return res.status(404).json({ error: 'Form not found' });
+        }
+
+        if (!form.googleSheetsIntegration?.enabled) {
+            return res.status(400).json({ error: 'Google Sheets integration is not enabled for this form' });
+        }
+
+        // Trigger immediate sync
+        const result = await batchSyncSubmissions(formId);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: `Successfully synced ${result.rowsAdded || 0} submissions to Google Sheets`,
+                rowsAdded: result.rowsAdded,
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: result.error || 'Sync failed',
+            });
+        }
+    } catch (error: any) {
+        logger.error('[GoogleSheets] Manual sync error:', error.message);
+        res.status(500).json({ error: 'Failed to sync to Google Sheets' });
+    }
+});
+
+/**
+ * GET /api/integrations/google_sheets/forms/:formId/sync-status
+ *
+ * Get sync status for a form
+ */
+router.get('/google_sheets/forms/:formId/sync-status', authenticate, async (req: AuthRequest, res) => {
+    try {
+        const { formId } = req.params;
+
+        const status = await getFormSyncStatus(formId);
+        res.json({ success: true, ...status });
+    } catch (error: any) {
+        logger.error('[GoogleSheets] Get sync status error:', error.message);
+        res.status(500).json({ error: 'Failed to get sync status' });
+    }
+});
+
+/**
+ * PUT /api/integrations/google_sheets/forms/:formId/config
+ *
+ * Update Google Sheets integration config for a form
+ */
+router.put('/google_sheets/forms/:formId/config', authenticate, async (req: AuthRequest, res) => {
+    try {
+        const { formId } = req.params;
+        const { enabled, spreadsheetId, sheetName, syncMode, credentialId } = req.body;
+
+        const form = await Form.findById(formId);
+        if (!form) {
+            return res.status(404).json({ error: 'Form not found' });
+        }
+
+        // Update Google Sheets integration config
+        form.googleSheetsIntegration = {
+            enabled: enabled ?? false,
+            spreadsheetId: spreadsheetId || '',
+            sheetName: sheetName || 'Form Submissions',
+            syncMode: syncMode || 'realtime',
+            credentialId: credentialId || '',
+            lastSyncAt: form.googleSheetsIntegration?.lastSyncAt,
+            syncStats: form.googleSheetsIntegration?.syncStats || {
+                totalSynced: 0,
+                failedSyncs: 0,
+            },
+        };
+
+        await form.save();
+
+        logger.info(`[GoogleSheets] Updated form ${formId} Google Sheets config`);
+        res.json({ success: true, googleSheetsIntegration: form.googleSheetsIntegration });
+    } catch (error: any) {
+        logger.error('[GoogleSheets] Update config error:', error.message);
+        res.status(500).json({ error: 'Failed to update Google Sheets configuration' });
+    }
+});
+
 export default router;
+

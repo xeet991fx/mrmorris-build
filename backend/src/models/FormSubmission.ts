@@ -34,6 +34,15 @@ export interface IFormSubmission extends Document {
     processedAt?: Date;
     processingError?: string;
 
+    // Google Sheets sync tracking
+    googleSheetSync?: {
+        synced: boolean;
+        syncedAt?: Date;
+        spreadsheetId?: string;
+        sheetName?: string;
+        error?: string;
+    };
+
     createdAt: Date;
     updatedAt: Date;
 }
@@ -84,6 +93,15 @@ const formSubmissionSchema = new Schema<IFormSubmission>(
         contactCreated: { type: Boolean, default: false },
         processedAt: { type: Date },
         processingError: { type: String },
+
+        // Google Sheets sync tracking
+        googleSheetSync: {
+            synced: { type: Boolean, default: false },
+            syncedAt: { type: Date },
+            spreadsheetId: { type: String },
+            sheetName: { type: String },
+            error: { type: String },
+        },
     },
     {
         timestamps: true,

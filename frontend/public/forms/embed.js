@@ -8,16 +8,16 @@
  * <div data-morrisb-form="FORM_ID"></div>
  */
 
-(function() {
+(function () {
   'use strict';
 
   const API_BASE_URL = window.location.hostname.includes('localhost')
     ? 'http://localhost:3000'
-    : 'https://app.morrisb.com';
+    : 'https://clianta.online';
 
   const BACKEND_URL = window.location.hostname.includes('localhost')
     ? 'http://localhost:5000'
-    : 'https://api.morrisb.com';
+    : 'https://api.clianta.online';
 
   /**
    * MorrisB Form Embed Class
@@ -132,7 +132,7 @@
     }
 
     generateVisitorId() {
-      const id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = Math.random() * 16 | 0;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);

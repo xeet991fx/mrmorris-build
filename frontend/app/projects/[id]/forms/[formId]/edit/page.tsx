@@ -38,10 +38,36 @@ import {
     ClipboardDocumentCheckIcon,
     SparklesIcon,
     BeakerIcon,
+    // Field type icons
+    PencilIcon,
+    EnvelopeIcon,
+    PhoneIcon,
+    HashtagIcon,
+    LinkIcon,
+    DocumentTextIcon,
+    ChevronDownIcon,
+    ListBulletIcon,
+    CheckCircleIcon,
+    StopIcon,
+    GlobeAltIcon,
+    MapPinIcon,
+    CalendarIcon,
+    ClockIcon,
+    PaperClipIcon,
+    StarIcon,
+    PencilSquareIcon,
+    CalculatorIcon,
+    EyeSlashIcon,
+    LockClosedIcon,
+    EnvelopeOpenIcon,
+    MinusIcon,
 } from "@heroicons/react/24/outline";
 import { getForm, updateForm, createForm, getFormAnalytics, type Form, type FormField, type FieldType, type FormStep, type LeadRoutingRule, type FollowUpAction, type FormAnalytics } from "@/lib/api/form";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import GoogleSheetsFormIntegration from "@/components/forms/GoogleSheetsFormIntegration";
+import CanvasFormBuilder from "@/components/forms/CanvasFormBuilder";
+import { Squares2X2Icon } from "@heroicons/react/24/outline";
 import {
     DndContext,
     closestCenter,
@@ -63,39 +89,39 @@ import { CSS } from '@dnd-kit/utilities';
 // Comprehensive Field Types (25+)
 const FIELD_TYPES = [
     // Basic Input Fields
-    { type: 'text', label: 'Single Line Text', icon: '📝', category: 'basic' },
-    { type: 'email', label: 'Email', icon: '📧', category: 'basic' },
-    { type: 'phone', label: 'Phone Number', icon: '📞', category: 'basic' },
-    { type: 'number', label: 'Number', icon: '🔢', category: 'basic' },
-    { type: 'url', label: 'Website URL', icon: '🔗', category: 'basic' },
-    { type: 'textarea', label: 'Multi-line Text', icon: '📄', category: 'basic' },
+    { type: 'text', label: 'Single Line Text', Icon: PencilIcon, category: 'basic' },
+    { type: 'email', label: 'Email', Icon: EnvelopeIcon, category: 'basic' },
+    { type: 'phone', label: 'Phone Number', Icon: PhoneIcon, category: 'basic' },
+    { type: 'number', label: 'Number', Icon: HashtagIcon, category: 'basic' },
+    { type: 'url', label: 'Website URL', Icon: LinkIcon, category: 'basic' },
+    { type: 'textarea', label: 'Multi-line Text', Icon: DocumentTextIcon, category: 'basic' },
 
     // Selection Fields
-    { type: 'select', label: 'Dropdown', icon: '📋', category: 'selection' },
-    { type: 'multiselect', label: 'Multi-Select Dropdown', icon: '🎯', category: 'selection' },
-    { type: 'checkbox', label: 'Checkboxes', icon: '☑️', category: 'selection' },
-    { type: 'radio', label: 'Radio Buttons', icon: '🔘', category: 'selection' },
-    { type: 'country', label: 'Country Selector', icon: '🌎', category: 'selection' },
-    { type: 'state', label: 'State/Province', icon: '📍', category: 'selection' },
+    { type: 'select', label: 'Dropdown', Icon: ChevronDownIcon, category: 'selection' },
+    { type: 'multiselect', label: 'Multi-Select Dropdown', Icon: ListBulletIcon, category: 'selection' },
+    { type: 'checkbox', label: 'Checkboxes', Icon: CheckCircleIcon, category: 'selection' },
+    { type: 'radio', label: 'Radio Buttons', Icon: StopIcon, category: 'selection' },
+    { type: 'country', label: 'Country Selector', Icon: GlobeAltIcon, category: 'selection' },
+    { type: 'state', label: 'State/Province', Icon: MapPinIcon, category: 'selection' },
 
     // Date & Time
-    { type: 'date', label: 'Date Picker', icon: '📅', category: 'datetime' },
-    { type: 'datetime', label: 'Date & Time', icon: '🕐', category: 'datetime' },
-    { type: 'time', label: 'Time Picker', icon: '⏰', category: 'datetime' },
+    { type: 'date', label: 'Date Picker', Icon: CalendarIcon, category: 'datetime' },
+    { type: 'datetime', label: 'Date & Time', Icon: CalendarIcon, category: 'datetime' },
+    { type: 'time', label: 'Time Picker', Icon: ClockIcon, category: 'datetime' },
 
     // Advanced Fields
-    { type: 'file', label: 'File Upload', icon: '📎', category: 'advanced' },
-    { type: 'richtext', label: 'Rich Text Editor', icon: '✏️', category: 'advanced' },
-    { type: 'rating', label: 'Star Rating', icon: '⭐', category: 'advanced' },
-    { type: 'signature', label: 'E-Signature', icon: '✍️', category: 'advanced' },
-    { type: 'calculation', label: 'Calculated Field', icon: '🧮', category: 'advanced' },
+    { type: 'file', label: 'File Upload', Icon: PaperClipIcon, category: 'advanced' },
+    { type: 'richtext', label: 'Rich Text Editor', Icon: PencilSquareIcon, category: 'advanced' },
+    { type: 'rating', label: 'Star Rating', Icon: StarIcon, category: 'advanced' },
+    { type: 'signature', label: 'E-Signature', Icon: PencilIcon, category: 'advanced' },
+    { type: 'calculation', label: 'Calculated Field', Icon: CalculatorIcon, category: 'advanced' },
 
     // Special Fields
-    { type: 'hidden', label: 'Hidden Field', icon: '👁️', category: 'special' },
-    { type: 'gdpr_consent', label: 'GDPR Consent', icon: '🔒', category: 'special' },
-    { type: 'marketing_consent', label: 'Marketing Opt-in', icon: '📬', category: 'special' },
-    { type: 'divider', label: 'Section Divider', icon: '➖', category: 'special' },
-    { type: 'html', label: 'Custom HTML', icon: '🌐', category: 'special' },
+    { type: 'hidden', label: 'Hidden Field', Icon: EyeSlashIcon, category: 'special' },
+    { type: 'gdpr_consent', label: 'GDPR Consent', Icon: LockClosedIcon, category: 'special' },
+    { type: 'marketing_consent', label: 'Marketing Opt-in', Icon: EnvelopeOpenIcon, category: 'special' },
+    { type: 'divider', label: 'Section Divider', Icon: MinusIcon, category: 'special' },
+    { type: 'html', label: 'Custom HTML', Icon: CodeBracketIcon, category: 'special' },
 ] as const;
 
 // CRM Field Mapping Options
@@ -168,7 +194,7 @@ function SortableFieldItem({
                     >
                         <Bars3Icon className="w-4 h-4 text-muted-foreground" />
                     </button>
-                    <span className="text-lg">{fieldTypeInfo?.icon}</span>
+                    {fieldTypeInfo?.Icon && <fieldTypeInfo.Icon className="w-5 h-5 text-primary" />}
                     <div>
                         <label className="block text-sm font-medium text-foreground">
                             {field.label}
@@ -368,7 +394,7 @@ export default function EnhancedFormBuilder() {
     const [form, setForm] = useState<Form | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'build' | 'steps' | 'settings' | 'routing' | 'automations' | 'analytics' | 'integrations' | 'embed'>('build');
+    const [activeTab, setActiveTab] = useState<'build' | 'canvas' | 'steps' | 'settings' | 'routing' | 'automations' | 'analytics' | 'integrations' | 'embed'>('build');
     const [editingField, setEditingField] = useState<FormField | null>(null);
     const [showFieldEditor, setShowFieldEditor] = useState(false);
     const [embedMode, setEmbedMode] = useState<'iframe' | 'direct'>('iframe');
@@ -385,7 +411,7 @@ export default function EnhancedFormBuilder() {
         })
     );
 
-    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    const frontendUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
 
     useEffect(() => {
         if (formId === 'new') {
@@ -778,6 +804,7 @@ export default function EnhancedFormBuilder() {
             <div className="border-b border-border bg-card px-6 flex gap-1 overflow-x-auto">
                 {[
                     { id: 'build', label: 'Build', icon: PaintBrushIcon },
+                    { id: 'canvas', label: 'Canvas Designer', icon: Squares2X2Icon },
                     { id: 'steps', label: 'Steps', icon: ClipboardDocumentCheckIcon },
                     { id: 'settings', label: 'Settings', icon: Cog6ToothIcon },
                     { id: 'routing', label: 'Lead Routing', icon: UserGroupIcon },
@@ -844,13 +871,13 @@ export default function EnhancedFormBuilder() {
                             </div>
 
                             <div className="space-y-2">
-                                {filteredFieldTypes.map(({ type, label, icon }) => (
+                                {filteredFieldTypes.map(({ type, label, Icon }) => (
                                     <button
                                         key={type}
                                         onClick={() => addField(type as FieldType)}
                                         className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-muted hover:bg-muted/70 transition-colors text-left group"
                                     >
-                                        <span className="text-lg">{icon}</span>
+                                        <Icon className="w-5 h-5 text-primary" />
                                         <span className="text-sm font-medium text-foreground flex-1">{label}</span>
                                         <PlusIcon className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </button>
@@ -960,7 +987,29 @@ export default function EnhancedFormBuilder() {
                     </>
                 )}
 
-                {/* STEPS TAB */}
+                {/* CANVAS DESIGNER TAB */}
+                {activeTab === 'canvas' && (
+                    <div className="flex-1 overflow-hidden h-[calc(100vh-140px)]">
+                        <CanvasFormBuilder
+                            elements={form.fields.map(f => ({
+                                ...f,
+                                canvas: f.canvas || {
+                                    x: 50,
+                                    y: 50,
+                                    width: 300,
+                                    height: 80,
+                                    zIndex: 1,
+                                    visible: true
+                                }
+                            })) as any}
+                            onChange={(elements) => {
+                                // Map back to form fields
+                                const updatedFields = elements.map(el => el as FormField);
+                                setForm({ ...form, fields: updatedFields });
+                            }}
+                        />
+                    </div>
+                )}
                 {activeTab === 'steps' && (
                     <div className="flex-1 p-8 overflow-y-auto">
                         <div className="max-w-4xl mx-auto">
@@ -1184,6 +1233,74 @@ export default function EnhancedFormBuilder() {
                                 </div>
                             </div>
 
+                            {/* Display Mode */}
+                            <div className="p-6 bg-card border border-border rounded-lg space-y-4">
+                                <h3 className="text-lg font-semibold text-foreground">Display Mode</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Choose how your form is displayed to users
+                                </p>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setForm({
+                                            ...form,
+                                            settings: { ...form.settings, displayMode: 'conversational' }
+                                        })}
+                                        className={cn(
+                                            "p-4 rounded-lg border-2 text-left transition-all",
+                                            (form.settings.displayMode || 'conversational') === 'conversational'
+                                                ? "border-primary bg-primary/5"
+                                                : "border-border hover:border-muted-foreground/50"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <div className="font-medium text-foreground">Conversational</div>
+                                                <div className="text-xs text-muted-foreground">Typeform style</div>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            One question at a time with smooth animations. Great for engagement.
+                                        </p>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setForm({
+                                            ...form,
+                                            settings: { ...form.settings, displayMode: 'classic' }
+                                        })}
+                                        className={cn(
+                                            "p-4 rounded-lg border-2 text-left transition-all",
+                                            form.settings.displayMode === 'classic'
+                                                ? "border-primary bg-primary/5"
+                                                : "border-border hover:border-muted-foreground/50"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <div className="font-medium text-foreground">Classic</div>
+                                                <div className="text-xs text-muted-foreground">Google Forms style</div>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            All fields visible on one page. Familiar and straightforward.
+                                        </p>
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Appearance Settings */}
                             <div className="p-6 bg-card border border-border rounded-lg space-y-4">
                                 <h3 className="text-lg font-semibold text-foreground">Appearance</h3>
@@ -1243,6 +1360,24 @@ export default function EnhancedFormBuilder() {
                                 </div>
 
                                 <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                        Display Mode
+                                    </label>
+                                    <select
+                                        value={form.settings.displayMode || 'conversational'}
+                                        onChange={(e) => setForm({
+                                            ...form,
+                                            settings: { ...form.settings, displayMode: e.target.value as any }
+                                        })}
+                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
+                                    >
+                                        <option value="classic">Classic (One Page)</option>
+                                        <option value="conversational">Conversational (Step-by-Step)</option>
+                                        <option value="canvas">Canvas Designer (2D Layout)</option>
+                                    </select>
+                                </div>
+
+                                <div className="mt-4">
                                     <label className="block text-sm font-medium text-foreground mb-2">
                                         Layout
                                     </label>
@@ -1627,28 +1762,44 @@ export default function EnhancedFormBuilder() {
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                {[
-                                    { name: 'Zapier', desc: 'Connect to 5000+ apps', icon: '⚡', connected: false },
-                                    { name: 'Salesforce', desc: 'Sync leads to Salesforce', icon: '☁️', connected: false },
-                                    { name: 'HubSpot', desc: 'Import into HubSpot CRM', icon: '🧡', connected: false },
-                                    { name: 'Mailchimp', desc: 'Add to email lists', icon: '📬', connected: false },
-                                    { name: 'Slack', desc: 'Post to Slack channels', icon: '💬', connected: false },
-                                    { name: 'Google Sheets', desc: 'Export to spreadsheets', icon: '📊', connected: false },
-                                ].map(integration => (
-                                    <div key={integration.name} className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors">
-                                        <div className="flex items-start gap-4 mb-4">
-                                            <div className="text-3xl">{integration.icon}</div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-foreground">{integration.name}</h3>
-                                                <p className="text-sm text-muted-foreground mt-1">{integration.desc}</p>
+                            {/* Google Sheets Integration */}
+                            <GoogleSheetsFormIntegration
+                                workspaceId={workspaceId}
+                                formId={formId}
+                                config={(form as any).googleSheetsIntegration}
+                                onConfigChange={(config) => {
+                                    setForm({
+                                        ...form,
+                                        googleSheetsIntegration: config,
+                                    } as any);
+                                }}
+                            />
+
+                            {/* Other Integrations (placeholders) */}
+                            <div className="mt-8">
+                                <h3 className="text-lg font-semibold text-foreground mb-4">More Integrations</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {[
+                                        { name: 'Zapier', desc: 'Connect to 5000+ apps', icon: '⚡', connected: false },
+                                        { name: 'Salesforce', desc: 'Sync leads to Salesforce', icon: '☁️', connected: false },
+                                        { name: 'HubSpot', desc: 'Import into HubSpot CRM', icon: '🧡', connected: false },
+                                        { name: 'Mailchimp', desc: 'Add to email lists', icon: '📬', connected: false },
+                                        { name: 'Slack', desc: 'Post to Slack channels', icon: '💬', connected: false },
+                                    ].map(integration => (
+                                        <div key={integration.name} className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors opacity-60">
+                                            <div className="flex items-start gap-4 mb-4">
+                                                <div className="text-3xl">{integration.icon}</div>
+                                                <div className="flex-1">
+                                                    <h3 className="font-semibold text-foreground">{integration.name}</h3>
+                                                    <p className="text-sm text-muted-foreground mt-1">{integration.desc}</p>
+                                                </div>
                                             </div>
+                                            <button className="w-full px-4 py-2 bg-muted text-muted-foreground rounded-lg cursor-not-allowed text-sm font-medium">
+                                                Coming Soon
+                                            </button>
                                         </div>
-                                        <button className="w-full px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium">
-                                            {integration.connected ? 'Configure' : 'Connect'}
-                                        </button>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>

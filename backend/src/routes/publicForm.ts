@@ -12,6 +12,7 @@ import Contact from "../models/Contact";
 import emailService from "../services/email";
 import { routeLead } from "../services/leadRouting";
 import { executeFollowUpActions } from "../services/followUpActions";
+import { syncFormSubmission } from "../services/FormGoogleSheetSync";
 import axios from "axios";
 
 const router = Router();
@@ -355,6 +356,56 @@ router.post(
                 } catch (actionError: any) {
                     console.error("Error executing follow-up actions:", actionError);
                     // Don't fail the submission if actions fail
+                }
+            }
+
+            // Google Sheets Sync
+            if ((form as any).googleSheetsIntegration?.enabled) {
+                const sheetsConfig = (form as any).googleSheetsIntegration;
+
+                if (sheetsConfig.syncMode === 'realtime') {
+                    // Sync immediately (async, don't block response)
+                    syncFormSubmission(
+                        formId,
+                        data,
+                        contactId?.toString() || null,
+                        {
+                            enabled: true,
+                            spreadsheetId: sheetsConfig.spreadsheetId,
+                            sheetName: sheetsConfig.sheetName || 'Form Submissions',
+                            syncMode: 'realtime',
+                            credentialId: sheetsConfig.credentialId,
+                        }
+                    ).then(async (result) => {
+                        if (result.success) {
+                            console.log(`[GoogleSheets] Sync successful for form ${formId}`);
+                            await FormSubmission.findByIdAndUpdate(submission._id, {
+                                $set: {
+                                    'googleSheetSync.synced': true,
+                                    'googleSheetSync.syncedAt': new Date(),
+                                    'googleSheetSync.spreadsheetId': sheetsConfig.spreadsheetId,
+                                    'googleSheetSync.sheetName': sheetsConfig.sheetName,
+                                },
+                            });
+                        } else {
+                            console.error(`[GoogleSheets] Sync failed: ${result.error}`);
+                            await FormSubmission.findByIdAndUpdate(submission._id, {
+                                $set: {
+                                    'googleSheetSync.synced': false,
+                                    'googleSheetSync.error': result.error,
+                                },
+                            });
+                        }
+                    }).catch((error) => {
+                        console.error('Google Sheet sync error:', error.message);
+                    });
+                } else {
+                    // Mark for batch sync later
+                    await FormSubmission.findByIdAndUpdate(submission._id, {
+                        $set: {
+                            'googleSheetSync.synced': false,
+                        },
+                    });
                 }
             }
 
