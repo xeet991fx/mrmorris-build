@@ -116,6 +116,11 @@ export default function CompaniesTable({
     fetchCompanies(workspaceId, { page: newPage, limit: pagination.limit });
   };
 
+  const handlePageSizeChange = (newLimit: number) => {
+    // Reset to page 1 when changing page size
+    fetchCompanies(workspaceId, { page: 1, limit: newLimit });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -130,6 +135,8 @@ export default function CompaniesTable({
   const orderedVisibleColumns = columnOrder.filter((col) =>
     visibleColumns.includes(col)
   );
+
+  const pageSizeOptions = [20, 50, 100, 150, 200];
 
   return (
     <DndContext
@@ -207,12 +214,12 @@ export default function CompaniesTable({
         </div>
 
         {/* Pagination - Fixed at bottom */}
-        {pagination.pages > 1 && (
-          <div className="flex-shrink-0 px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between bg-white dark:bg-zinc-900">
+        <div className="flex-shrink-0 px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 flex items-center justify-between bg-white dark:bg-zinc-900">
+          <div className="flex items-center gap-4">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               Showing{" "}
               <span className="font-medium text-zinc-700 dark:text-zinc-200">
-                {(pagination.page - 1) * pagination.limit + 1}
+                {pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1}
               </span>{" "}
               to{" "}
               <span className="font-medium text-zinc-700 dark:text-zinc-200">
@@ -222,6 +229,24 @@ export default function CompaniesTable({
               companies
             </p>
 
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">Show:</span>
+              <select
+                value={pagination.limit}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="px-2 py-1 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                {pageSizeOptions.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {pagination.pages > 1 && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handlePageChange(pagination.page - 1)}
@@ -243,8 +268,8 @@ export default function CompaniesTable({
                 <ChevronRightIcon className="w-4 h-4" />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </DndContext>
   );

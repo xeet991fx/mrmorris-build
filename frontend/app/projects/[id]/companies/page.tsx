@@ -29,7 +29,7 @@ export default function CompaniesPage() {
   const params = useParams();
   const workspaceId = params.id as string;
 
-  const { companies, isLoading, fetchCompanies, deleteCompany, bulkDeleteCompanies, fetchCustomColumns, selectedCompanies } = useCompanyStore();
+  const { companies, isLoading, fetchCompanies, deleteCompany, bulkDeleteCompanies, fetchCustomColumns, selectedCompanies, pagination } = useCompanyStore();
 
   const [isAddSlideOverOpen, setIsAddSlideOverOpen] = useState(false);
   const [isEditSlideOverOpen, setIsEditSlideOverOpen] = useState(false);
@@ -73,6 +73,8 @@ export default function CompaniesPage() {
       await deleteCompany(workspaceId, companyToDelete);
       toast.success("Company deleted successfully");
       setCompanyToDelete(null);
+      // Refetch to fill the page with remaining companies
+      fetchCompanies(workspaceId, { page: pagination.page, limit: pagination.limit });
     } catch (error) {
       toast.error("Failed to delete company");
     }
@@ -87,6 +89,10 @@ export default function CompaniesPage() {
     try {
       const deletedCount = await bulkDeleteCompanies(workspaceId, selectedCompanies);
       toast.success(`Deleted ${deletedCount} companies`);
+      // Refetch to fill the page with remaining companies from subsequent pages
+      // If we deleted all companies on the current page, go back to page 1
+      const newPage = pagination.page > 1 && companies.length === selectedCompanies.length ? 1 : pagination.page;
+      fetchCompanies(workspaceId, { page: newPage, limit: pagination.limit });
     } catch (error) {
       toast.error("Failed to delete companies");
     }

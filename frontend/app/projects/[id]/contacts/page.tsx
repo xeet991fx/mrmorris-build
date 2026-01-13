@@ -26,7 +26,7 @@ export default function ContactsPage() {
   const params = useParams();
   const workspaceId = params.id as string;
 
-  const { contacts, isLoading, fetchContacts, deleteContact, bulkDeleteContacts, fetchCustomColumns, selectedContacts, clearSelectedContacts } = useContactStore();
+  const { contacts, isLoading, fetchContacts, deleteContact, bulkDeleteContacts, fetchCustomColumns, selectedContacts, clearSelectedContacts, pagination } = useContactStore();
 
   const [isAddSlideOverOpen, setIsAddSlideOverOpen] = useState(false);
   const [isEditSlideOverOpen, setIsEditSlideOverOpen] = useState(false);
@@ -63,6 +63,8 @@ export default function ContactsPage() {
       await deleteContact(workspaceId, contactToDelete);
       toast.success("Contact deleted successfully");
       setContactToDelete(null);
+      // Refetch to fill the page with remaining contacts
+      fetchContacts(workspaceId, { page: pagination.page, limit: pagination.limit });
     } catch (error) {
       toast.error("Failed to delete contact");
     }
@@ -77,6 +79,10 @@ export default function ContactsPage() {
     try {
       const deletedCount = await bulkDeleteContacts(workspaceId, selectedContacts);
       toast.success(`Deleted ${deletedCount} contacts`);
+      // Refetch to fill the page with remaining contacts from subsequent pages
+      // If we deleted all contacts on the current page, go back to page 1
+      const newPage = pagination.page > 1 && contacts.length === selectedContacts.length ? 1 : pagination.page;
+      fetchContacts(workspaceId, { page: newPage, limit: pagination.limit });
     } catch (error) {
       toast.error("Failed to delete contacts");
     }
