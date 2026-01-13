@@ -242,7 +242,8 @@ export interface IForm extends Document {
         // Display Mode
         // 'classic' = All fields visible like Google Forms
         // 'conversational' = One question at a time like Typeform
-        displayMode?: 'classic' | 'conversational';
+        // 'canvas' = Free-form 2D canvas layout with absolute positioning
+        displayMode?: 'classic' | 'conversational' | 'canvas';
 
         // Advanced
         allowMultipleSubmissions: boolean;

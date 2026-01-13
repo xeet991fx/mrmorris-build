@@ -375,6 +375,9 @@ router.post(
                         const contact = await Contact.create(contactData);
                         contactId = contact._id;
 
+                        // Note: Workflow trigger is handled automatically by Contact model post-save hook
+                        // No manual trigger needed here - see models/Contact.ts
+
                         // Update submission with contact ID
                         await FormSubmission.findByIdAndUpdate(submission._id, {
                             contactId,

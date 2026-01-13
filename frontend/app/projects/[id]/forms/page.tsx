@@ -272,7 +272,7 @@ export default function FormsPage() {
   const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [aiReasoning, setAiReasoning] = useState<string | null>(null);
+  const [aiReasoning, setAiReasoning] = useState<string | object | null>(null);
 
   const loadForms = async () => {
     setIsLoading(true);
@@ -720,7 +720,14 @@ export default function FormsPage() {
                 {aiReasoning && (
                   <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
                     <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">🧠 AI Reasoning</p>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">{aiReasoning}</p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {typeof aiReasoning === 'string'
+                        ? aiReasoning
+                        : typeof aiReasoning === 'object'
+                          ? JSON.stringify(aiReasoning, null, 2)
+                          : String(aiReasoning)
+                      }
+                    </p>
                   </div>
                 )}
               </div>

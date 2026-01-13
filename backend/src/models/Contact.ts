@@ -400,6 +400,48 @@ contactSchema.index({
   company: "text",
 });
 
+// ============================================
+// WORKFLOW TRIGGER HOOK
+// ============================================
+// This hook automatically triggers workflows when a contact is created
+// from ANY source (form submission, API, manual creation, import, etc.)
+
+contactSchema.post("save", async function (doc) {
+  // Only trigger on new documents, not updates
+  // We check if this is a new document by checking if createdAt === updatedAt (within 1 second)
+  const isNewContact = Math.abs(new Date(doc.createdAt).getTime() - new Date(doc.updatedAt).getTime()) < 1000;
+
+  if (!isNewContact) {
+    return; // Skip for updates
+  }
+
+  try {
+    // Dynamic import to avoid circular dependencies
+    const { emitWorkflowEvent } = await import("../middleware/workflowTrigger");
+
+    console.log(`🔔 [Contact Model Hook] New contact created: ${doc.email || doc.phone || doc._id}`);
+    console.log(`📡 Triggering workflow for contact in workspace: ${doc.workspaceId}`);
+
+    await emitWorkflowEvent(
+      "contact:created",
+      doc,
+      doc.workspaceId.toString()
+    );
+  } catch (error: any) {
+    // Don't fail the save operation if workflow trigger fails
+    console.error("⚠️ [Contact Model Hook] Workflow trigger failed:", error.message);
+  }
+});
+
+// Also trigger on findOneAndUpdate with upsert (for form submissions that use upsert)
+contactSchema.post("findOneAndUpdate", async function (doc) {
+  if (!doc) return;
+
+  // Check if this was an upsert that created a new document
+  // We can't easily detect this, so we'll skip to avoid duplicates
+  // The post-save hook will handle new creations
+});
+
 const Contact = mongoose.model<IContact>("Contact", contactSchema);
 
 export default Contact;

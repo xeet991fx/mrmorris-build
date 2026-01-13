@@ -13,6 +13,7 @@ import emailService from "../services/email";
 import { routeLead } from "../services/leadRouting";
 import { executeFollowUpActions } from "../services/followUpActions";
 import { syncFormSubmission } from "../services/FormGoogleSheetSync";
+import { emitWorkflowEvent } from "../middleware/workflowTrigger";
 import axios from "axios";
 
 const router = Router();
@@ -291,7 +292,7 @@ router.post(
                             query.phone = contactData.phone;
                         }
 
-                        const contact = await Contact.findOneAndUpdate(
+                        const result = await Contact.findOneAndUpdate(
                             query,
                             {
                                 $setOnInsert: contactData, // Only set these fields on insert, not update
@@ -300,15 +301,37 @@ router.post(
                                 upsert: true, // Create if doesn't exist
                                 new: true, // Return the document after update
                                 setDefaultsOnInsert: true, // Apply schema defaults on insert
+                                includeResultMetadata: true, // Need this to check if upserted
                             }
                         );
 
+                        const contact = result.value;
+                        const wasCreated = result.lastErrorObject?.upserted !== undefined;
                         contactId = contact._id;
+
+                        // 🔔 TRIGGER WORKFLOW: Only for NEW contacts
+                        // Note: findOneAndUpdate doesn't trigger post-save hook,
+                        // so we manually emit the workflow event here
+                        if (wasCreated && contact) {
+                            console.log(`📡 [PublicForm] NEW contact created: ${contact.email || contact.phone}`);
+                            try {
+                                await emitWorkflowEvent(
+                                    "contact:created",
+                                    contact,
+                                    form.workspaceId.toString()
+                                );
+                            } catch (workflowError: any) {
+                                console.error("⚠️ Workflow trigger failed:", workflowError.message);
+                                // Don't fail submission if workflow fails
+                            }
+                        } else {
+                            console.log(`📌 [PublicForm] Existing contact found: ${contact?.email || contact?.phone}`);
+                        }
 
                         // Update submission with contact ID
                         await FormSubmission.findByIdAndUpdate(submission._id, {
                             contactId,
-                            contactCreated: true,
+                            contactCreated: wasCreated,
                             processedAt: new Date(),
                         });
                     }

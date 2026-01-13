@@ -394,6 +394,8 @@ export default function EnhancedFormBuilder() {
     const [form, setForm] = useState<Form | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [activeTab, setActiveTab] = useState<'build' | 'canvas' | 'steps' | 'settings' | 'routing' | 'automations' | 'analytics' | 'integrations' | 'embed'>('build');
     const [editingField, setEditingField] = useState<FormField | null>(null);
     const [showFieldEditor, setShowFieldEditor] = useState(false);
@@ -460,6 +462,65 @@ export default function EnhancedFormBuilder() {
         }
     }, [activeTab, formId]);
 
+    // Set displayMode to 'canvas' when Canvas Designer tab is active
+    // This ensures the form will render using canvas layout when published
+    useEffect(() => {
+        if (activeTab === 'canvas' && form && form.settings?.displayMode !== 'canvas') {
+            // Also add default canvas data to any fields that don't have it
+            const fieldsWithCanvas = form.fields.map(f => ({
+                ...f,
+                canvas: f.canvas || {
+                    x: 50,
+                    y: 50 + form.fields.indexOf(f) * 80,
+                    width: 300,
+                    height: 60,
+                    zIndex: form.fields.indexOf(f) + 1,
+                    visible: true
+                }
+            }));
+
+            setForm({
+                ...form,
+                fields: fieldsWithCanvas,
+                settings: {
+                    ...form.settings,
+                    displayMode: 'canvas'
+                }
+            });
+        }
+    }, [activeTab]);
+
+    // Auto-save effect with debounce
+    useEffect(() => {
+        if (!form || formId === 'new' || isLoading) return;
+
+        // Mark as having unsaved changes
+        setHasUnsavedChanges(true);
+
+        // Debounce auto-save by 2 seconds
+        const autoSaveTimer = setTimeout(async () => {
+            try {
+                setIsSaving(true);
+                const response = await updateForm(workspaceId, formId, form);
+                if (response.success) {
+                    setHasUnsavedChanges(false);
+                    setLastSaved(new Date());
+                    // Don't call setForm(response.data) here!
+                    // This was causing a race condition where ongoing canvas edits
+                    // would be overwritten by the server response, losing changes
+                    // made while the save was in progress.
+                }
+            } catch (error) {
+                console.error('Auto-save error:', error);
+                toast.error('Failed to auto-save form');
+            } finally {
+                setIsSaving(false);
+            }
+        }, 2000);
+
+        return () => clearTimeout(autoSaveTimer);
+    }, [form, workspaceId, formId, isLoading]);
+
     const loadAnalytics = async () => {
         try {
             setIsLoadingAnalytics(true);
@@ -507,7 +568,10 @@ export default function EnhancedFormBuilder() {
                 const response = await updateForm(workspaceId, formId, form);
                 if (response.success) {
                     toast.success("Form saved successfully");
-                    setForm(response.data);
+                    // Don't overwrite local form state with server response
+                    // to preserve any ongoing edits (same fix as auto-save)
+                    setHasUnsavedChanges(false);
+                    setLastSaved(new Date());
                 }
             }
         } catch (error) {
@@ -656,7 +720,8 @@ export default function EnhancedFormBuilder() {
         try {
             const response = await updateForm(workspaceId, formId, updatedForm);
             if (response.success) {
-                setForm(response.data);
+                // Only update the status locally, don't replace entire form
+                setForm(prev => prev ? { ...prev, status: newStatus } : prev);
                 toast.success(
                     newStatus === 'published'
                         ? "✅ Form published successfully!"
@@ -765,6 +830,27 @@ export default function EnhancedFormBuilder() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                    {/* Auto-save status indicator */}
+                    {formId !== 'new' && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            {isSaving ? (
+                                <>
+                                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                    <span>Saving...</span>
+                                </>
+                            ) : hasUnsavedChanges ? (
+                                <>
+                                    <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+                                    <span>Unsaved changes</span>
+                                </>
+                            ) : lastSaved ? (
+                                <>
+                                    <CheckIcon className="w-4 h-4 text-green-500" />
+                                    <span>Saved {new Date().getTime() - lastSaved.getTime() < 60000 ? 'just now' : 'recently'}</span>
+                                </>
+                            ) : null}
+                        </div>
+                    )}
                     <button
                         onClick={() => {
                             if (form._id) {
@@ -782,7 +868,7 @@ export default function EnhancedFormBuilder() {
                         disabled={isSaving}
                         className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/70 transition-colors"
                     >
-                        {isSaving ? "Saving..." : "Save"}
+                        {isSaving ? "Saving..." : "Save Now"}
                     </button>
                     <button
                         onClick={togglePublish}
@@ -989,7 +1075,18 @@ export default function EnhancedFormBuilder() {
 
                 {/* CANVAS DESIGNER TAB */}
                 {activeTab === 'canvas' && (
-                    <div className="flex-1 overflow-hidden h-[calc(100vh-140px)]">
+                    <div className="flex-1 overflow-hidden h-[calc(100vh-140px)] flex flex-col">
+                        {/* Canvas mode info banner */}
+                        {form.settings?.displayMode !== 'canvas' && form.fields.length === 0 && (
+                            <div className="bg-blue-50 dark:bg-blue-950/20 border-b border-blue-200 dark:border-blue-800 px-6 py-3">
+                                <div className="flex items-center gap-2 text-sm text-blue-900 dark:text-blue-100">
+                                    <Squares2X2Icon className="w-5 h-5" />
+                                    <span>
+                                        <strong>Canvas Mode:</strong> Add elements and position them freely. Your form will automatically use canvas layout when rendered.
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                         <CanvasFormBuilder
                             elements={form.fields.map(f => ({
                                 ...f,
@@ -1003,9 +1100,21 @@ export default function EnhancedFormBuilder() {
                                 }
                             })) as any}
                             onChange={(elements) => {
-                                // Map back to form fields
-                                const updatedFields = elements.map(el => el as FormField);
-                                setForm({ ...form, fields: updatedFields });
+                                // Map back to form fields, preserving canvas data
+                                const updatedFields = elements.map(el => ({
+                                    ...el,
+                                    canvas: el.canvas // Ensure canvas data is preserved
+                                } as FormField));
+
+                                // Set displayMode to canvas so it renders correctly
+                                setForm({
+                                    ...form,
+                                    fields: updatedFields,
+                                    settings: {
+                                        ...form.settings,
+                                        displayMode: 'canvas'
+                                    }
+                                });
                             }}
                         />
                     </div>
@@ -1240,7 +1349,7 @@ export default function EnhancedFormBuilder() {
                                     Choose how your form is displayed to users
                                 </p>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-3 gap-4">
                                     <button
                                         type="button"
                                         onClick={() => setForm({
@@ -1266,7 +1375,7 @@ export default function EnhancedFormBuilder() {
                                             </div>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            One question at a time with smooth animations. Great for engagement.
+                                            One question at a time with smooth animations.
                                         </p>
                                     </button>
 
@@ -1295,10 +1404,66 @@ export default function EnhancedFormBuilder() {
                                             </div>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            All fields visible on one page. Familiar and straightforward.
+                                            All fields visible on one page.
                                         </p>
                                     </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            // Add default canvas data to fields if not present
+                                            const fieldsWithCanvas = form.fields.map((f, idx) => ({
+                                                ...f,
+                                                canvas: f.canvas || {
+                                                    x: 50,
+                                                    y: 50 + idx * 80,
+                                                    width: 300,
+                                                    height: 60,
+                                                    zIndex: idx + 1,
+                                                    visible: true
+                                                }
+                                            }));
+                                            setForm({
+                                                ...form,
+                                                fields: fieldsWithCanvas,
+                                                settings: { ...form.settings, displayMode: 'canvas' }
+                                            });
+                                        }}
+                                        className={cn(
+                                            "p-4 rounded-lg border-2 text-left transition-all",
+                                            form.settings.displayMode === 'canvas'
+                                                ? "border-purple-500 bg-purple-500/5"
+                                                : "border-border hover:border-muted-foreground/50"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                                <Squares2X2Icon className="w-5 h-5 text-purple-500" />
+                                            </div>
+                                            <div>
+                                                <div className="font-medium text-foreground">Canvas (2D)</div>
+                                                <div className="text-xs text-muted-foreground">Free positioning</div>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Drag & drop elements anywhere on the canvas.
+                                        </p>
+                                        <span className="inline-block mt-2 px-2 py-0.5 bg-purple-500/10 text-purple-500 text-xs rounded-full">
+                                            Dynamic Layout
+                                        </span>
+                                    </button>
                                 </div>
+
+                                {form.settings.displayMode === 'canvas' && (
+                                    <div className="mt-4 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg">
+                                        <div className="flex items-center gap-2 text-sm text-purple-700 dark:text-purple-300">
+                                            <Squares2X2Icon className="w-4 h-4" />
+                                            <span>
+                                                <strong>Canvas Mode Active:</strong> Use the "Canvas Designer" tab to position your form elements.
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Appearance Settings */}
@@ -1359,23 +1524,6 @@ export default function EnhancedFormBuilder() {
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-foreground mb-2">
-                                        Display Mode
-                                    </label>
-                                    <select
-                                        value={form.settings.displayMode || 'conversational'}
-                                        onChange={(e) => setForm({
-                                            ...form,
-                                            settings: { ...form.settings, displayMode: e.target.value as any }
-                                        })}
-                                        className="w-full px-3 py-2 bg-background border border-border rounded-lg"
-                                    >
-                                        <option value="classic">Classic (One Page)</option>
-                                        <option value="conversational">Conversational (Step-by-Step)</option>
-                                        <option value="canvas">Canvas Designer (2D Layout)</option>
-                                    </select>
-                                </div>
 
                                 <div className="mt-4">
                                     <label className="block text-sm font-medium text-foreground mb-2">
@@ -1586,14 +1734,16 @@ export default function EnhancedFormBuilder() {
 
                             <div className="grid gap-4">
                                 {[
-                                    { type: 'email', icon: '📧', title: 'Send Email', desc: 'Send automated email to submitter or team' },
-                                    { type: 'task', icon: '✓', title: 'Create Task', desc: 'Create a follow-up task for your team' },
-                                    { type: 'webhook', icon: '🔗', title: 'Webhook', desc: 'Send data to external service via HTTP' },
-                                    { type: 'slack', icon: '💬', title: 'Slack Notification', desc: 'Post message to Slack channel' },
+                                    { type: 'email', Icon: EnvelopeIcon, title: 'Send Email', desc: 'Send automated email to submitter or team', color: 'text-blue-500 bg-blue-500/10' },
+                                    { type: 'task', Icon: ClipboardDocumentCheckIcon, title: 'Create Task', desc: 'Create a follow-up task for your team', color: 'text-green-500 bg-green-500/10' },
+                                    { type: 'webhook', Icon: LinkIcon, title: 'Webhook', desc: 'Send data to external service via HTTP', color: 'text-purple-500 bg-purple-500/10' },
+                                    { type: 'slack', Icon: HashtagIcon, title: 'Slack Notification', desc: 'Post message to Slack channel', color: 'text-orange-500 bg-orange-500/10' },
                                 ].map(action => (
                                     <div key={action.type} className="p-6 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors">
                                         <div className="flex items-start gap-4">
-                                            <div className="text-3xl">{action.icon}</div>
+                                            <div className={cn("p-3 rounded-lg flex items-center justify-center", action.color)}>
+                                                <action.Icon className="w-6 h-6" />
+                                            </div>
                                             <div className="flex-1">
                                                 <h3 className="font-semibold text-foreground">{action.title}</h3>
                                                 <p className="text-sm text-muted-foreground mt-1">{action.desc}</p>

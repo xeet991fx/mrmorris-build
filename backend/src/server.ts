@@ -453,9 +453,9 @@ const startServer = async () => {
       // ⚠️ BACKGROUND JOBS TEMPORARILY DISABLED - Redis limit exceeded
       // Uncomment these when Redis issue is resolved or using local Redis
 
-      // Start workflow scheduler (runs every minute)
-      // workflowScheduler.start();
-      // console.log(`⚡ Workflow scheduler: Running`);
+      // Start workflow scheduler (runs every 30 seconds - uses node-cron, NOT Redis)
+      workflowScheduler.start();
+      console.log(`⚡ Workflow scheduler: Running`);
 
       // Start contact sync scheduler (runs daily at 2 AM)
       // startContactSyncScheduler();
@@ -496,7 +496,7 @@ const startServer = async () => {
       // });
       // console.log('📊 Google Sheet form sync job: Running');
 
-      console.log('⚠️  Background jobs disabled to prevent Redis rate limit');
+      console.log('⚠️  Some background jobs disabled to prevent Redis rate limit');
 
       // Initialize event consumers (NEW)
       (async () => {
