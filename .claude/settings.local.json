@@ -79,7 +79,8 @@
       "Bash(del \"C:\\\\Users\\\\imkum\\\\SDE\\\\Clianta\\\\mrmorris-build\\\\frontend\\\\components\\\\workflows\\\\config\\\\NotionNodeConfig.tsx\")",
       "Bash(npx terser:*)",
       "Bash(echo:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(npm run test:*)"
     ],
     "deny": [],
     "ask": []
