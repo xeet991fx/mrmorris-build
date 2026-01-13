@@ -56,7 +56,7 @@ const NAV_SECTIONS = {
       { label: "Contacts", icon: UserGroupIcon, path: "contacts" },
       { label: "Companies", icon: BuildingOffice2Icon, path: "companies" },
       { label: "Pipelines", icon: ViewColumnsIcon, path: "pipelines" },
-      { label: "Proposals", icon: DocumentTextIcon, path: "proposals" },
+      // { label: "Proposals", icon: DocumentTextIcon, path: "proposals" },
     ],
   },
   marketing: {

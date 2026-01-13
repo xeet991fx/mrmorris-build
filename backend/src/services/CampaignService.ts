@@ -12,6 +12,7 @@ import EmailAccountService from "./EmailAccountService";
 import nodemailer, { Transporter } from "nodemailer";
 import { Types } from "mongoose";
 import { getProModel } from "../agents/modelFactory";
+import { processBatches } from "../utils/batchProcessor";
 
 // ============================================
 // CAMPAIGN SERVICE
@@ -108,6 +109,7 @@ class CampaignService {
     /**
      * Send next batch of campaign emails
      * Called by cron job every 5 minutes
+     * Uses parallel batch processing for scalability
      */
     async sendNextBatch(): Promise<number> {
         console.log("📤 Processing campaign emails...");
@@ -127,126 +129,143 @@ class CampaignService {
             return 0;
         }
 
-        let sent = 0;
+        console.log(`📊 Found ${enrollments.length} enrollments to process`);
 
-        for (const enrollment of enrollments) {
-            try {
-                const campaign = enrollment.campaignId as unknown as any;
-                const contact = enrollment.contactId as unknown as any;
-
-                // Check if campaign exists (might have been deleted)
-                if (!campaign || !campaign._id) {
-                    console.log(`⚠️ Enrollment ${enrollment._id} has no campaign, marking as completed`);
-                    enrollment.status = "completed";
-                    await enrollment.save();
-                    continue;
-                }
-
-                // Check if contact exists (might have been deleted)
-                if (!contact || !contact._id) {
-                    console.log(`⚠️ Enrollment ${enrollment._id} has no contact, marking as completed`);
-                    enrollment.status = "completed";
-                    await enrollment.save();
-                    continue;
-                }
-
-                // Check if campaign is active
-                if (campaign.status !== "active") {
-                    continue;
-                }
-
-                // Check if within sending time window
-                if (!this.isWithinSendingWindow(campaign)) {
-                    continue;
-                }
-
-
-                //Check daily limit
-                const sentTodayForCampaign = await this.getCampaignSentToday(campaign._id);
-                if (sentTodayForCampaign >= campaign.dailyLimit) {
-                    console.log(`⏸️ Campaign ${campaign.name} daily limit reached`);
-                    continue;
-                }
-
-                // Get current step
-                const step = campaign.steps[enrollment.currentStepIndex];
-                if (!step) {
-                    // No more steps, complete enrollment
-                    enrollment.status = "completed";
-                    enrollment.completedAt = new Date();
-                    await enrollment.save();
-                    continue;
-                }
-
-                // Check conditional sending
-                if (!this.shouldSendStep(step, enrollment)) {
-                    // Skip to next step
-                    enrollment.currentStepIndex += 1;
-                    const nextStep = campaign.steps[enrollment.currentStepIndex];
-                    if (nextStep) {
-                        enrollment.nextSendAt = this.calculateNextSendTime(
-                            campaign,
-                            nextStep.delayDays,
-                            nextStep.delayHours
-                        );
-                    } else {
-                        enrollment.status = "completed";
+        // Process enrollments in parallel batches of 10
+        const batchResult = await processBatches(
+            enrollments,
+            async (enrollment) => this.processEnrollment(enrollment, now),
+            {
+                batchSize: 10,
+                batchDelayMs: 200, // Small delay between batches to prevent overwhelming email providers
+                continueOnError: true,
+                onProgress: (processed, total) => {
+                    if (processed % 20 === 0) {
+                        console.log(`📧 Progress: ${processed}/${total} enrollments`);
                     }
-                    await enrollment.save();
-                    continue;
-                }
-
-                // Send email
-                const result = await this.sendCampaignEmail(
-                    campaign,
-                    enrollment,
-                    step,
-                    contact
-                );
-
-                if (result.success) {
-                    sent++;
-
-                    // Update enrollment
-                    enrollment.status = "active";
-                    enrollment.emailsSent.push({
-                        stepId: step.id,
-                        messageId: result.messageId!,
-                        sentAt: now,
-                        fromAccountId: result.fromAccountId as Types.ObjectId,
-                        opened: false,
-                        clicked: false,
-                        replied: false,
-                        bounced: false,
-                    });
-
-                    // Move to next step
-                    enrollment.currentStepIndex += 1;
-                    const nextStep = campaign.steps[enrollment.currentStepIndex];
-                    if (nextStep) {
-                        enrollment.nextSendAt = this.calculateNextSendTime(
-                            campaign,
-                            nextStep.delayDays,
-                            nextStep.delayHours
-                        );
-                    } else {
-                        enrollment.nextSendAt = undefined;
-                    }
-
-                    await enrollment.save();
-
-                    // Update campaign stats
-                    campaign.stats.sent += 1;
-                    await campaign.save();
-                }
-            } catch (error: any) {
-                console.error(`Error sending email for enrollment ${enrollment._id}:`, error.message);
+                },
             }
+        );
+
+        console.log(`📧 Campaign batch complete: ${batchResult.successCount} sent, ${batchResult.errorCount} errors in ${batchResult.duration}ms`);
+        return batchResult.successCount;
+    }
+
+    /**
+     * Process a single enrollment - extracted for parallel processing
+     */
+    private async processEnrollment(enrollment: any, now: Date): Promise<{ sent: boolean; error?: string }> {
+        const campaign = enrollment.campaignId as unknown as any;
+        const contact = enrollment.contactId as unknown as any;
+
+        // Check if campaign exists (might have been deleted)
+        if (!campaign || !campaign._id) {
+            console.log(`⚠️ Enrollment ${enrollment._id} has no campaign, marking as completed`);
+            enrollment.status = "completed";
+            await enrollment.save();
+            return { sent: false, error: "No campaign" };
         }
 
-        console.log(`📧 Sent ${sent} campaign emails`);
-        return sent;
+        // Check if contact exists (might have been deleted)
+        if (!contact || !contact._id) {
+            console.log(`⚠️ Enrollment ${enrollment._id} has no contact, marking as completed`);
+            enrollment.status = "completed";
+            await enrollment.save();
+            return { sent: false, error: "No contact" };
+        }
+
+        // Check if campaign is active
+        if (campaign.status !== "active") {
+            return { sent: false, error: "Campaign not active" };
+        }
+
+        // Check if within sending time window
+        if (!this.isWithinSendingWindow(campaign)) {
+            return { sent: false, error: "Outside sending window" };
+        }
+
+        // Check daily limit
+        const sentTodayForCampaign = await this.getCampaignSentToday(campaign._id);
+        if (sentTodayForCampaign >= campaign.dailyLimit) {
+            console.log(`⏸️ Campaign ${campaign.name} daily limit reached`);
+            return { sent: false, error: "Daily limit reached" };
+        }
+
+        // Get current step
+        const step = campaign.steps[enrollment.currentStepIndex];
+        if (!step) {
+            // No more steps, complete enrollment
+            enrollment.status = "completed";
+            enrollment.completedAt = new Date();
+            await enrollment.save();
+            return { sent: false, error: "No more steps" };
+        }
+
+        // Check conditional sending
+        if (!this.shouldSendStep(step, enrollment)) {
+            // Skip to next step
+            enrollment.currentStepIndex += 1;
+            const nextStep = campaign.steps[enrollment.currentStepIndex];
+            if (nextStep) {
+                enrollment.nextSendAt = this.calculateNextSendTime(
+                    campaign,
+                    nextStep.delayDays,
+                    nextStep.delayHours
+                );
+            } else {
+                enrollment.status = "completed";
+            }
+            await enrollment.save();
+            return { sent: false, error: "Step condition not met" };
+        }
+
+        // Send email
+        const result = await this.sendCampaignEmail(
+            campaign,
+            enrollment,
+            step,
+            contact
+        );
+
+        if (result.success) {
+            // Update enrollment
+            enrollment.status = "active";
+            enrollment.emailsSent.push({
+                stepId: step.id,
+                messageId: result.messageId!,
+                sentAt: now,
+                fromAccountId: result.fromAccountId as Types.ObjectId,
+                opened: false,
+                clicked: false,
+                replied: false,
+                bounced: false,
+            });
+
+            // Move to next step
+            enrollment.currentStepIndex += 1;
+            const nextStep = campaign.steps[enrollment.currentStepIndex];
+            if (nextStep) {
+                enrollment.nextSendAt = this.calculateNextSendTime(
+                    campaign,
+                    nextStep.delayDays,
+                    nextStep.delayHours
+                );
+            } else {
+                enrollment.nextSendAt = undefined;
+            }
+
+            await enrollment.save();
+
+            // Update campaign stats
+            campaign.stats.sent += 1;
+            await campaign.save();
+
+            return { sent: true };
+        }
+
+        return { sent: false, error: result.error };
     }
+
 
     /**
      * Send a campaign email
@@ -467,6 +486,12 @@ class CampaignService {
             (match, beforeHref, url, afterHref) => {
                 // Don't track if it's already a tracking link
                 if (url.includes('/api/email-tracking/')) {
+                    return match;
+                }
+
+                // Skip placeholder/invalid URLs that shouldn't be tracked
+                const skipPatterns = ['#', 'javascript:', 'mailto:', 'tel:', 'data:'];
+                if (skipPatterns.some(pattern => url.startsWith(pattern) || url === pattern)) {
                     return match;
                 }
 

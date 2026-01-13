@@ -310,6 +310,12 @@ export class EmailActionExecutor extends BaseActionExecutor {
                     return match;
                 }
 
+                // Skip placeholder/invalid URLs that shouldn't be tracked
+                const skipPatterns = ['#', 'javascript:', 'mailto:', 'tel:', 'data:'];
+                if (skipPatterns.some(pattern => url.startsWith(pattern) || url === pattern)) {
+                    return match;
+                }
+
                 // Encode the original URL
                 const encodedUrl = Buffer.from(url).toString("base64");
                 const trackingUrl = `${baseUrl}/api/email-tracking/click/${trackingId}?url=${encodedUrl}`;
@@ -346,10 +352,11 @@ Requirements:
 1. Write a compelling subject line (max 60 chars)
 2. Write a personalized email body (150-250 words)
 3. Use HTML formatting for the body (paragraphs, line breaks)
-4. Include a clear call-to-action if appropriate
+4. DO NOT include any links or buttons. No <a> tags. No call-to-action buttons. Just plain text with HTML paragraphs.
 5. Be warm, professional, and NOT generic
 6. Reference their specific role/company if available
 7. Make it feel human, not templated
+8. End with a friendly sign-off inviting them to reply
 
 Respond in this exact JSON format only, no other text:
 {"subject": "...", "body": "<p>...</p>"}`;
