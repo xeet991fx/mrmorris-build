@@ -201,6 +201,8 @@ export function parseMultipleEmails(header: string): Array<{ email: string; name
 
 /**
  * Extract all unique email addresses from email headers
+ * Only extracts From and To - CC and BCC are intentionally excluded
+ * to avoid creating contacts from carbon-copied recipients
  */
 export function extractEmailParticipants(headers: {
     from?: string;
@@ -243,39 +245,8 @@ export function extractEmailParticipants(headers: {
         }
     }
 
-    // Parse Cc
-    if (headers.cc) {
-        const ccList = parseMultipleEmails(headers.cc);
-        for (const item of ccList) {
-            if (!seenEmails.has(item.email.toLowerCase())) {
-                // Skip generic company emails
-                if (!isGenericCompanyEmail(item.email)) {
-                    seenEmails.add(item.email.toLowerCase());
-                    participants.push({
-                        ...item,
-                        company: extractCompanyFromDomain(item.email) || undefined,
-                    });
-                }
-            }
-        }
-    }
-
-    // Parse Bcc (if available)
-    if (headers.bcc) {
-        const bccList = parseMultipleEmails(headers.bcc);
-        for (const item of bccList) {
-            if (!seenEmails.has(item.email.toLowerCase())) {
-                // Skip generic company emails
-                if (!isGenericCompanyEmail(item.email)) {
-                    seenEmails.add(item.email.toLowerCase());
-                    participants.push({
-                        ...item,
-                        company: extractCompanyFromDomain(item.email) || undefined,
-                    });
-                }
-            }
-        }
-    }
+    // NOTE: CC and BCC recipients are intentionally NOT extracted as contacts
+    // They are typically not the primary correspondents and should not be auto-created
 
     return participants;
 }
