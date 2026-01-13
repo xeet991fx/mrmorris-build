@@ -165,3 +165,18 @@ export const deleteContact = async (
   );
   return response.data;
 };
+
+/**
+ * Bulk delete multiple contacts at once
+ */
+export const bulkDeleteContacts = async (
+  workspaceId: string,
+  contactIds: string[]
+): Promise<{ success: boolean; message: string; data?: { deletedCount: number }; error?: string }> => {
+  const response = await axiosInstance.delete(
+    `/workspaces/${workspaceId}/contacts/bulk`,
+    { data: { contactIds } }
+  );
+  return response.data;
+};
+

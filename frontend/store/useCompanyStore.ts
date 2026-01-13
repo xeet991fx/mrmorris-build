@@ -99,6 +99,7 @@ interface CompanyState {
     data: UpdateCompanyData
   ) => Promise<void>;
   deleteCompany: (workspaceId: string, companyId: string) => Promise<void>;
+  bulkDeleteCompanies: (workspaceId: string, companyIds: string[]) => Promise<number>;
   setCurrentCompany: (company: Company | null) => void;
   setSearchQuery: (query: string) => void;
   setFilters: (
@@ -343,6 +344,44 @@ export const useCompanyStore = create<CompanyState>()(
           const errorMessage =
             error.response?.data?.error ||
             "Failed to delete company. Please try again.";
+
+          set({
+            error: errorMessage,
+            isLoading: false,
+          });
+
+          throw error;
+        }
+      },
+
+      /**
+       * Bulk delete multiple companies at once
+       */
+      bulkDeleteCompanies: async (workspaceId: string, companyIds: string[]) => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const response = await companyApi.bulkDeleteCompanies(workspaceId, companyIds);
+
+          if (response.success) {
+            set((state) => ({
+              companies: state.companies.filter((c) => !companyIds.includes(c._id)),
+              currentCompany:
+                state.currentCompany && companyIds.includes(state.currentCompany._id)
+                  ? null
+                  : state.currentCompany,
+              selectedCompanies: [],
+              isLoading: false,
+            }));
+
+            return response.data?.deletedCount || companyIds.length;
+          }
+
+          throw new Error(response.error || "Failed to delete companies");
+        } catch (error: any) {
+          const errorMessage =
+            error.response?.data?.error ||
+            "Failed to delete companies. Please try again.";
 
           set({
             error: errorMessage,

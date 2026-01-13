@@ -415,6 +415,67 @@ router.patch(
 );
 
 /**
+ * @route   DELETE /api/workspaces/:workspaceId/companies/bulk
+ * @desc    Bulk delete multiple companies at once
+ * @access  Private
+ */
+router.delete(
+  "/:workspaceId/companies/bulk",
+  authenticate,
+  companyLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { companyIds } = req.body;
+
+      // Validate companyIds array
+      if (!companyIds || !Array.isArray(companyIds) || companyIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Please provide an array of company IDs to delete.",
+        });
+      }
+
+      // Validate workspace exists and user has access
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Bulk delete companies using deleteMany for efficiency
+      const result = await Company.deleteMany({
+        _id: { $in: companyIds },
+        workspaceId,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully deleted ${result.deletedCount} company/companies.`,
+        data: {
+          deletedCount: result.deletedCount,
+        },
+      });
+    } catch (error: any) {
+      console.error("Bulk delete companies error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to delete companies. Please try again.",
+      });
+    }
+  }
+);
+
+/**
  * @route   DELETE /api/workspaces/:workspaceId/companies/:id
  * @desc    Delete company
  * @access  Private

@@ -482,6 +482,73 @@ router.patch(
 );
 
 /**
+ * @route   DELETE /api/workspaces/:workspaceId/contacts/bulk
+ * @desc    Bulk delete multiple contacts at once
+ * @access  Private
+ */
+router.delete(
+  "/:workspaceId/contacts/bulk",
+  authenticate,
+  contactLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { contactIds } = req.body;
+
+      // Validate contactIds array
+      if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Please provide an array of contact IDs to delete.",
+        });
+      }
+
+      // Validate workspace exists and user has access
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Bulk delete contacts using deleteMany for efficiency
+      const result = await Contact.deleteMany({
+        _id: { $in: contactIds },
+        workspaceId,
+      });
+
+      // Also delete associated lead scores
+      await LeadScore.deleteMany({
+        workspaceId,
+        contactId: { $in: contactIds },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully deleted ${result.deletedCount} contact(s).`,
+        data: {
+          deletedCount: result.deletedCount,
+        },
+      });
+    } catch (error: any) {
+      console.error("Bulk delete contacts error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to delete contacts. Please try again.",
+      });
+    }
+  }
+);
+
+/**
  * @route   DELETE /api/workspaces/:workspaceId/contacts/:id
  * @desc    Delete contact
  * @access  Private

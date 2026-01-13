@@ -26,7 +26,7 @@ export default function ContactsPage() {
   const params = useParams();
   const workspaceId = params.id as string;
 
-  const { contacts, isLoading, fetchContacts, deleteContact, fetchCustomColumns, selectedContacts, clearSelectedContacts } = useContactStore();
+  const { contacts, isLoading, fetchContacts, deleteContact, bulkDeleteContacts, fetchCustomColumns, selectedContacts, clearSelectedContacts } = useContactStore();
 
   const [isAddSlideOverOpen, setIsAddSlideOverOpen] = useState(false);
   const [isEditSlideOverOpen, setIsEditSlideOverOpen] = useState(false);
@@ -75,13 +75,10 @@ export default function ContactsPage() {
 
   const confirmBulkDelete = async () => {
     try {
-      for (const contactId of selectedContacts) {
-        await deleteContact(workspaceId, contactId);
-      }
-      toast.success(`Deleted ${selectedContacts.length} contacts`);
-      clearSelectedContacts();
+      const deletedCount = await bulkDeleteContacts(workspaceId, selectedContacts);
+      toast.success(`Deleted ${deletedCount} contacts`);
     } catch (error) {
-      toast.error("Failed to delete some contacts");
+      toast.error("Failed to delete contacts");
     }
   };
 

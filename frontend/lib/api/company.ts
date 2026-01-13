@@ -170,3 +170,18 @@ export const deleteCompany = async (
   );
   return response.data;
 };
+
+/**
+ * Bulk delete multiple companies at once
+ */
+export const bulkDeleteCompanies = async (
+  workspaceId: string,
+  companyIds: string[]
+): Promise<{ success: boolean; message: string; data?: { deletedCount: number }; error?: string }> => {
+  const response = await axiosInstance.delete(
+    `/workspaces/${workspaceId}/companies/bulk`,
+    { data: { companyIds } }
+  );
+  return response.data;
+};
+

@@ -94,6 +94,7 @@ interface ContactState {
     data: UpdateContactData
   ) => Promise<void>;
   deleteContact: (workspaceId: string, contactId: string) => Promise<void>;
+  bulkDeleteContacts: (workspaceId: string, contactIds: string[]) => Promise<number>;
   setCurrentContact: (contact: Contact | null) => void;
   setSearchQuery: (query: string) => void;
   setFilters: (
@@ -337,6 +338,44 @@ export const useContactStore = create<ContactState>()(
           const errorMessage =
             error.response?.data?.error ||
             "Failed to delete contact. Please try again.";
+
+          set({
+            error: errorMessage,
+            isLoading: false,
+          });
+
+          throw error;
+        }
+      },
+
+      /**
+       * Bulk delete multiple contacts at once
+       */
+      bulkDeleteContacts: async (workspaceId: string, contactIds: string[]) => {
+        set({ isLoading: true, error: null });
+
+        try {
+          const response = await contactApi.bulkDeleteContacts(workspaceId, contactIds);
+
+          if (response.success) {
+            set((state) => ({
+              contacts: state.contacts.filter((c) => !contactIds.includes(c._id)),
+              currentContact:
+                state.currentContact && contactIds.includes(state.currentContact._id)
+                  ? null
+                  : state.currentContact,
+              selectedContacts: [],
+              isLoading: false,
+            }));
+
+            return response.data?.deletedCount || contactIds.length;
+          }
+
+          throw new Error(response.error || "Failed to delete contacts");
+        } catch (error: any) {
+          const errorMessage =
+            error.response?.data?.error ||
+            "Failed to delete contacts. Please try again.";
 
           set({
             error: errorMessage,
