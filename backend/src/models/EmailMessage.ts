@@ -51,6 +51,13 @@ export interface IEmailMessage extends Document {
     bounced: boolean;
     bouncedAt?: Date;
 
+    // Detailed link tracking
+    linkClicks?: Array<{
+        url: string;           // Original destination URL
+        clickedAt: Date;       // When this link was clicked
+        clickCount: number;    // Number of times this specific link was clicked
+    }>;
+
     // Reply details
     replySubject?: string;
     replyBody?: string;
@@ -182,6 +189,24 @@ const emailMessageSchema = new Schema<IEmailMessage>(
             default: false,
         },
         bouncedAt: Date,
+
+        // Detailed link tracking
+        linkClicks: [{
+            url: {
+                type: String,
+                required: true,
+            },
+            clickedAt: {
+                type: Date,
+                required: true,
+                default: Date.now,
+            },
+            clickCount: {
+                type: Number,
+                required: true,
+                default: 1,
+            },
+        }],
 
         // Reply details
         replySubject: String,

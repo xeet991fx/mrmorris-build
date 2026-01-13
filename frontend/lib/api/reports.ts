@@ -23,3 +23,10 @@ export const getReportsEmail = async (workspaceId: string) => {
     const response = await axiosInstance.get(`/workspaces/${workspaceId}/reports/email`);
     return response.data;
 };
+
+export const getReportsEmailDetails = async (workspaceId: string, limit = 50, skip = 0) => {
+    const response = await axiosInstance.get(`/workspaces/${workspaceId}/reports/email-details`, {
+        params: { limit, skip }
+    });
+    return response.data;
+};

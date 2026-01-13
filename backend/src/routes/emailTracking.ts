@@ -287,22 +287,92 @@ router.get("/click/:trackingId", async (req: Request, res: Response) => {
 
         // Update EmailMessage record if this is a campaign email
         if (emailType === "campaign" && campaignId) {
-            const emailMessage = await EmailMessage.findOneAndUpdate(
-                { campaignId, contactId, clicked: false },
-                { clicked: true, clickedAt: new Date() },
-                { new: true }
-            );
+            // Check if this specific link was already clicked
+            const emailMessage = await EmailMessage.findOne({ campaignId, contactId });
 
             if (emailMessage) {
-                isFirstClick = true;
-                // Update campaign stats
-                await Campaign.findByIdAndUpdate(campaignId, {
-                    $inc: { "stats.clicked": 1 }
-                });
-                console.log(`📊 Updated EmailMessage and Campaign stats for click`);
+                const existingLinkClick = emailMessage.linkClicks?.find(lc => lc.url === destinationUrl);
+
+                if (existingLinkClick) {
+                    // Increment click count for this link
+                    await EmailMessage.findOneAndUpdate(
+                        { campaignId, contactId, "linkClicks.url": destinationUrl },
+                        {
+                            $inc: { "linkClicks.$.clickCount": 1 },
+                            $set: { "linkClicks.$.clickedAt": new Date() }
+                        }
+                    );
+                    console.log(`📊 Incremented click count for link: ${destinationUrl}`);
+                } else {
+                    // First click on this specific link
+                    await EmailMessage.findOneAndUpdate(
+                        { campaignId, contactId },
+                        {
+                            clicked: true,
+                            clickedAt: emailMessage.clicked ? emailMessage.clickedAt : new Date(),
+                            $push: {
+                                linkClicks: {
+                                    url: destinationUrl,
+                                    clickedAt: new Date(),
+                                    clickCount: 1
+                                }
+                            }
+                        }
+                    );
+                    isFirstClick = !emailMessage.clicked;
+                    console.log(`📊 Added new link click: ${destinationUrl}`);
+                }
+
+                // Update campaign stats only on first overall click
+                if (!emailMessage.clicked) {
+                    await Campaign.findByIdAndUpdate(campaignId, {
+                        $inc: { "stats.clicked": 1 }
+                    });
+                }
             }
         } else {
-            // For workflow emails, check if we've already logged a click activity for this trackingId
+            // For workflow emails, find the email message by workflowEnrollmentId or other criteria
+            const emailMessage = await EmailMessage.findOne({
+                workspaceId,
+                contactId,
+                source: 'workflow'
+            }).sort({ sentAt: -1 }); // Get most recent workflow email
+
+            if (emailMessage) {
+                const existingLinkClick = emailMessage.linkClicks?.find(lc => lc.url === destinationUrl);
+
+                if (existingLinkClick) {
+                    // Increment click count for this link
+                    await EmailMessage.findOneAndUpdate(
+                        { _id: emailMessage._id, "linkClicks.url": destinationUrl },
+                        {
+                            $inc: { "linkClicks.$.clickCount": 1 },
+                            $set: { "linkClicks.$.clickedAt": new Date() }
+                        }
+                    );
+                    console.log(`📊 Incremented click count for workflow link: ${destinationUrl}`);
+                } else {
+                    // First click on this specific link
+                    await EmailMessage.findOneAndUpdate(
+                        { _id: emailMessage._id },
+                        {
+                            clicked: true,
+                            clickedAt: emailMessage.clicked ? emailMessage.clickedAt : new Date(),
+                            $push: {
+                                linkClicks: {
+                                    url: destinationUrl,
+                                    clickedAt: new Date(),
+                                    clickCount: 1
+                                }
+                            }
+                        }
+                    );
+                    isFirstClick = !emailMessage.clicked;
+                    console.log(`📊 Added new workflow link click: ${destinationUrl}`);
+                }
+            }
+
+            // Check if we've already logged a click activity for this trackingId
             const existingActivity = await Activity.findOne({
                 workspaceId,
                 entityId: contactId,

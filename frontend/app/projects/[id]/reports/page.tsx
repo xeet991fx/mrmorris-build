@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     ChartBarIcon,
     UserGroupIcon,
@@ -10,12 +10,16 @@ import {
     CheckCircleIcon,
     SparklesIcon,
     ArrowPathIcon,
+    ChevronDownIcon,
+    ChevronUpIcon,
+    LinkIcon,
 } from "@heroicons/react/24/outline";
 import {
     getReportsOverview,
     getReportsPipeline,
     getReportsActivity,
     getReportsEmail,
+    getReportsEmailDetails,
 } from "@/lib/api/reports";
 import { cn } from "@/lib/utils";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
@@ -65,8 +69,11 @@ export default function ReportsPage() {
     const [overview, setOverview] = useState<any>(null);
     const [pipeline, setPipeline] = useState<any>(null);
     const [email, setEmail] = useState<any>(null);
+    const [emailDetails, setEmailDetails] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showInsights, setShowInsights] = useState(false);
+    const [showEmailDetails, setShowEmailDetails] = useState(false);
+    const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
 
     const { track } = useInsightTracking({
         workspaceId,
@@ -90,6 +97,15 @@ export default function ReportsPage() {
             console.error("Failed to fetch reports:", error);
         }
         setIsLoading(false);
+    };
+
+    const fetchEmailDetails = async () => {
+        try {
+            const detailsRes = await getReportsEmailDetails(workspaceId);
+            if (detailsRes.success) setEmailDetails(detailsRes.data);
+        } catch (error) {
+            console.error("Failed to fetch email details:", error);
+        }
     };
 
     useEffect(() => {
@@ -281,9 +297,32 @@ export default function ReportsPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
                     >
-                        <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
-                            Email Performance
-                        </h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                                Email Performance
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    setShowEmailDetails(!showEmailDetails);
+                                    if (!showEmailDetails && !emailDetails) {
+                                        fetchEmailDetails();
+                                    }
+                                }}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                            >
+                                {showEmailDetails ? (
+                                    <>
+                                        <ChevronUpIcon className="w-4 h-4" />
+                                        Hide Details
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDownIcon className="w-4 h-4" />
+                                        Show Details
+                                    </>
+                                )}
+                            </button>
+                        </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                             <div className="text-center py-4">
                                 <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{email.totalSent || 0}</p>
@@ -302,6 +341,135 @@ export default function ReportsPage() {
                                 <p className="text-sm text-zinc-500 mt-1">Reply Rate</p>
                             </div>
                         </div>
+
+                        {/* Email Details Table */}
+                        <AnimatePresence>
+                            {showEmailDetails && emailDetails && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="mt-6 overflow-hidden"
+                                >
+                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                                        <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-4">
+                                            Recent Emails ({emailDetails.totalCount})
+                                        </h4>
+                                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                                            {emailDetails.emails?.map((emailItem: any) => (
+                                                <div
+                                                    key={emailItem._id}
+                                                    className="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700"
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <h5 className="font-medium text-zinc-900 dark:text-zinc-100">
+                                                                    {emailItem.subject}
+                                                                </h5>
+                                                                {emailItem.opened && (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                                                        Opened
+                                                                    </span>
+                                                                )}
+                                                                {emailItem.clicked && (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                                                                        Clicked
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                                                                To: {emailItem.toEmail} • {new Date(emailItem.sentAt).toLocaleDateString()}
+                                                            </p>
+                                                        </div>
+                                                        {emailItem.linkClicks && emailItem.linkClicks.length > 0 && (
+                                                            <button
+                                                                onClick={() => setExpandedEmailId(expandedEmailId === emailItem._id ? null : emailItem._id)}
+                                                                className="ml-4 p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                                                            >
+                                                                {expandedEmailId === emailItem._id ? (
+                                                                    <ChevronUpIcon className="w-5 h-5" />
+                                                                ) : (
+                                                                    <ChevronDownIcon className="w-5 h-5" />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Link Clicks Details */}
+                                                    <AnimatePresence>
+                                                        {expandedEmailId === emailItem._id && emailItem.linkClicks && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: "auto" }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700"
+                                                            >
+                                                                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
+                                                                    Link Clicks
+                                                                </p>
+                                                                <div className="space-y-2">
+                                                                    {emailItem.linkClicks.map((click: any, idx: number) => (
+                                                                        <div
+                                                                            key={idx}
+                                                                            className="flex items-start gap-2 text-sm"
+                                                                        >
+                                                                            <LinkIcon className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="text-zinc-700 dark:text-zinc-300 truncate">
+                                                                                    {click.url}
+                                                                                </p>
+                                                                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                                                    {click.clickCount} {click.clickCount === 1 ? 'click' : 'clicks'} • Last: {new Date(click.clickedAt).toLocaleString()}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Link Performance Summary */}
+                                        {emailDetails.linkPerformance && emailDetails.linkPerformance.length > 0 && (
+                                            <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-700">
+                                                <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-4">
+                                                    Top Performing Links
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    {emailDetails.linkPerformance.slice(0, 5).map((link: any, idx: number) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                                                        >
+                                                            <div className="flex-1 min-w-0 mr-4">
+                                                                <p className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
+                                                                    {link.url || link._id}
+                                                                </p>
+                                                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                                    {link.uniqueEmailCount} {link.uniqueEmailCount === 1 ? 'email' : 'emails'}
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-lg font-bold text-emerald-500">
+                                                                    {link.totalClicks}
+                                                                </p>
+                                                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                                    clicks
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </motion.div>
                 )}
             </div>

@@ -1,5 +1,6 @@
 import express, { Response } from "express";
 import rateLimit from "express-rate-limit";
+import mongoose from "mongoose";
 import Contact from "../models/Contact";
 import Company from "../models/Company";
 import Opportunity from "../models/Opportunity";
@@ -300,6 +301,77 @@ router.get(
         } catch (error: any) {
             console.error("Get email stats error:", error);
             res.status(500).json({ success: false, error: "Failed to fetch email stats." });
+        }
+    }
+);
+
+/**
+ * @route   GET /api/workspaces/:workspaceId/reports/email-details
+ * @desc    Get detailed email tracking data including individual link clicks
+ */
+router.get(
+    "/:workspaceId/reports/email-details",
+    authenticate,
+    reportLimiter,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any).toString();
+            const { limit = 50, skip = 0 } = req.query;
+
+            if (!(await validateAccess(workspaceId, userId, res))) return;
+
+            // Get detailed email messages with link tracking
+            const emails = await EmailMessage.find({ workspaceId })
+                .populate("contactId", "firstName lastName email")
+                .sort({ sentAt: -1 })
+                .limit(Number(limit))
+                .skip(Number(skip))
+                .select("subject toEmail fromEmail sentAt opened openedAt clicked clickedAt linkClicks source campaignId workflowId");
+
+            // Get total count for pagination
+            const totalCount = await EmailMessage.countDocuments({ workspaceId });
+
+            // Aggregate link performance across all emails
+            const linkPerformance = await EmailMessage.aggregate([
+                { $match: { workspaceId: mongoose.Types.ObjectId.createFromHexString(workspaceId) } },
+                { $unwind: "$linkClicks" },
+                {
+                    $group: {
+                        _id: "$linkClicks.url",
+                        totalClicks: { $sum: "$linkClicks.clickCount" },
+                        uniqueEmails: { $addToSet: "$_id" },
+                        lastClicked: { $max: "$linkClicks.clickedAt" },
+                    },
+                },
+                {
+                    $project: {
+                        url: "$_id",
+                        totalClicks: 1,
+                        uniqueEmailCount: { $size: "$uniqueEmails" },
+                        lastClicked: 1,
+                    },
+                },
+                { $sort: { totalClicks: -1 } },
+                { $limit: 20 },
+            ]);
+
+            res.json({
+                success: true,
+                data: {
+                    emails,
+                    totalCount,
+                    linkPerformance,
+                    pagination: {
+                        limit: Number(limit),
+                        skip: Number(skip),
+                        hasMore: Number(skip) + Number(limit) < totalCount,
+                    },
+                },
+            });
+        } catch (error: any) {
+            console.error("Get email details error:", error);
+            res.status(500).json({ success: false, error: "Failed to fetch email details." });
         }
     }
 );
