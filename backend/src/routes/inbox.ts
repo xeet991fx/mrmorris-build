@@ -91,6 +91,36 @@ router.get("/stats", async (req: any, res) => {
 });
 
 /**
+ * GET /api/inbox/grouped
+ * Get inbox messages grouped by source with subdivisions
+ */
+router.get("/grouped", async (req: any, res) => {
+    try {
+        const { workspaceId } = req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                message: "workspaceId is required",
+            });
+        }
+
+        const grouped = await InboxService.getGroupedInbox(workspaceId);
+
+        res.json({
+            success: true,
+            data: grouped,
+        });
+    } catch (error: any) {
+        console.error("Get grouped inbox error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
+/**
  * POST /api/inbox/sync
  * Manually trigger inbox sync to fetch new replies
  */

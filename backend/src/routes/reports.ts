@@ -281,9 +281,9 @@ router.get(
 
             const [totalSent, opened, clicked, replied] = await Promise.all([
                 EmailMessage.countDocuments({ workspaceId }),
-                EmailMessage.countDocuments({ workspaceId, "tracking.openedAt": { $exists: true } }),
-                EmailMessage.countDocuments({ workspaceId, "tracking.clickedAt": { $exists: true } }),
-                EmailMessage.countDocuments({ workspaceId, "tracking.repliedAt": { $exists: true } }),
+                EmailMessage.countDocuments({ workspaceId, opened: true }),
+                EmailMessage.countDocuments({ workspaceId, clicked: true }),
+                EmailMessage.countDocuments({ workspaceId, replied: true }),
             ]);
 
             res.json({

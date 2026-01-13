@@ -195,6 +195,33 @@ export const getAIDraft = async (
 };
 
 /**
+ * Get grouped inbox messages by source
+ */
+export const getGroupedInbox = async (workspaceId: string): Promise<{
+    success: boolean;
+    data: {
+        campaigns: Array<{
+            id: string;
+            name: string;
+            count: number;
+            emails: any[];
+        }>;
+        workflows: Array<{
+            id: string;
+            name: string;
+            count: number;
+            emails: any[];
+        }>;
+        direct: any[];
+    };
+}> => {
+    const response = await axiosInstance.get(`/inbox/grouped`, {
+        params: { workspaceId },
+    });
+    return response.data;
+};
+
+/**
  * Sync inbox to fetch new replies from Gmail
  */
 export const syncInbox = async (workspaceId: string): Promise<{

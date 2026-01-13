@@ -134,6 +134,82 @@ class InboxService {
     }
 
     /**
+     * Get inbox messages grouped by source with subdivisions
+     */
+    async getGroupedInbox(workspaceId: Types.ObjectId): Promise<{
+        campaigns: Array<{
+            id: string;
+            name: string;
+            count: number;
+            emails: any[];
+        }>;
+        workflows: Array<{
+            id: string;
+            name: string;
+            count: number;
+            emails: any[];
+        }>;
+        direct: any[];
+    }> {
+        // Get all inbox messages
+        const allMessages = await EmailMessage.find({ workspaceId })
+            .populate("campaignId", "name")
+            .populate("workflowId", "name")
+            .populate("contactId", "firstName lastName email company")
+            .sort({ sentAt: -1 })
+            .lean();
+
+        // Group by campaigns
+        const campaignGroups = new Map<string, any>();
+        const workflowGroups = new Map<string, any>();
+        const directEmails: any[] = [];
+
+        for (const msg of allMessages) {
+            if (msg.source === 'campaign' && msg.campaignId) {
+                const campaign = msg.campaignId as any;
+                const campaignId = campaign._id.toString();
+
+                if (!campaignGroups.has(campaignId)) {
+                    campaignGroups.set(campaignId, {
+                        id: campaignId,
+                        name: campaign.name || 'Unnamed Campaign',
+                        count: 0,
+                        emails: []
+                    });
+                }
+
+                const group = campaignGroups.get(campaignId)!;
+                group.count++;
+                group.emails.push(msg);
+            } else if (msg.source === 'workflow' && msg.workflowId) {
+                const workflow = msg.workflowId as any;
+                const workflowId = workflow._id.toString();
+
+                if (!workflowGroups.has(workflowId)) {
+                    workflowGroups.set(workflowId, {
+                        id: workflowId,
+                        name: workflow.name || 'Unnamed Workflow',
+                        count: 0,
+                        emails: []
+                    });
+                }
+
+                const group = workflowGroups.get(workflowId)!;
+                group.count++;
+                group.emails.push(msg);
+            } else if (msg.source === 'direct') {
+                directEmails.push(msg);
+            }
+        }
+
+        return {
+            campaigns: Array.from(campaignGroups.values()),
+            workflows: Array.from(workflowGroups.values()),
+            direct: directEmails
+        };
+    }
+
+    /**
      * Mark message as read
      */
     async markAsRead(messageId: string): Promise<void> {
