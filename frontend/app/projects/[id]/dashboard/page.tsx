@@ -53,6 +53,7 @@ export default function DashboardPage() {
         { label: "Inbox", icon: <EnvelopeIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/inbox` },
         { label: "Meetings", icon: <CalendarDaysIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/meetings` },
         { label: "Pipelines", icon: <BriefcaseIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/pipelines` },
+        { label: "Agents", icon: <CpuChipIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/agents` },
         { label: "Workflows", icon: <BoltIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/workflows` },
         { label: "Campaigns", icon: <RocketLaunchIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/campaigns` },
     ];

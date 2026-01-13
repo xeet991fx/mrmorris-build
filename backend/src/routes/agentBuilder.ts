@@ -1,0 +1,84 @@
+/**
+ * Agent Builder Routes
+ *
+ * NOTE: This file is named agentBuilder.ts instead of agent.ts because
+ * agent.ts already exists in the routes folder (legacy agent routes).
+ * This file contains routes specific to the new Agent Builder feature (Epic 1).
+ *
+ * Routes:
+ * - POST   /api/workspaces/:workspaceId/agents          Create agent
+ * - GET    /api/workspaces/:workspaceId/agents          List agents
+ * - GET    /api/workspaces/:workspaceId/agents/:agentId Get agent
+ */
+import express from 'express';
+import { authenticate } from '../middleware/auth';
+import { validateWorkspaceAccess } from '../middleware/workspace';
+import { createAgent, listAgents, getAgent } from '../controllers/agentController';
+import { createAgentSchema } from '../validations/agentValidation';
+import { Request, Response, NextFunction } from 'express';
+
+const router = express.Router();
+
+/**
+ * Zod validation middleware
+ */
+const validate = (schema: any) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await schema.parseAsync({
+        body: req.body,
+        query: req.query,
+        params: req.params
+      });
+      next();
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: error.errors?.map((err: any) => ({
+          path: err.path.join('.'),
+          message: err.message
+        })) || []
+      });
+    }
+  };
+};
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents
+ * @desc Create a new agent in the Agent Builder
+ * @access Private (requires authentication and workspace access)
+ */
+router.post(
+  '/workspaces/:workspaceId/agents',
+  authenticate,
+  validateWorkspaceAccess,
+  validate(createAgentSchema),
+  createAgent
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents
+ * @desc List all agents in a workspace
+ * @access Private (requires authentication and workspace access)
+ */
+router.get(
+  '/workspaces/:workspaceId/agents',
+  authenticate,
+  validateWorkspaceAccess,
+  listAgents
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId
+ * @desc Get a single agent by ID from Agent Builder
+ * @access Private (requires authentication and workspace access)
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId',
+  authenticate,
+  validateWorkspaceAccess,
+  getAgent
+);
+
+export default router;

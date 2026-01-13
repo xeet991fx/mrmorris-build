@@ -37,6 +37,7 @@ import {
   ChartBarSquareIcon,
   PresentationChartLineIcon,
   CurrencyDollarIcon,
+  CpuChipIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -81,6 +82,7 @@ const NAV_SECTIONS = {
   automation: {
     label: "Automation",
     items: [
+      { label: "Agents", icon: CpuChipIcon, path: "agents" },
       { label: "Workflows", icon: BoltIcon, path: "workflows" },
       { label: "Tasks", icon: CheckCircleIcon, path: "tasks" },
       { label: "Tickets", icon: TicketIcon, path: "tickets" },
