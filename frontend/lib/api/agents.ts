@@ -1,5 +1,12 @@
 import axios from '../axios';
-import { CreateAgentInput, CreateAgentResponse, GetAgentResponse, ListAgentsResponse } from '@/types/agent';
+import {
+  CreateAgentInput,
+  CreateAgentResponse,
+  GetAgentResponse,
+  ListAgentsResponse,
+  UpdateAgentInput,
+  UpdateAgentResponse
+} from '@/types/agent';
 
 /**
  * Create a new agent in the Agent Builder
@@ -36,6 +43,21 @@ export const getAgent = async (
 ): Promise<GetAgentResponse> => {
   const response = await axios.get(
     `/workspaces/${workspaceId}/agents/${agentId}`
+  );
+  return response.data;
+};
+
+/**
+ * Update an existing agent (Story 1.2: triggers, name, goal)
+ */
+export const updateAgent = async (
+  workspaceId: string,
+  agentId: string,
+  data: UpdateAgentInput
+): Promise<UpdateAgentResponse> => {
+  const response = await axios.put(
+    `/workspaces/${workspaceId}/agents/${agentId}`,
+    data
   );
   return response.data;
 };

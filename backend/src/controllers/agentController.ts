@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Agent from '../models/Agent';
-import { CreateAgentInput } from '../validations/agentValidation';
+import { CreateAgentInput, UpdateAgentInput } from '../validations/agentValidation';
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents
@@ -144,6 +144,88 @@ export const getAgent = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch agent'
+    });
+  }
+};
+
+/**
+ * @route PUT /api/workspaces/:workspaceId/agents/:agentId
+ * @desc Update an existing agent
+ * @access Private (requires authentication and workspace access)
+ */
+export const updateAgent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const updateData = req.body as UpdateAgentInput;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Find agent with workspace filter for security
+    const agent = await Agent.findOne({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!agent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // Update fields if provided
+    if (updateData.name !== undefined) {
+      agent.name = updateData.name.trim();
+    }
+    if (updateData.goal !== undefined) {
+      agent.goal = updateData.goal;
+    }
+    if (updateData.triggers !== undefined) {
+      agent.triggers = updateData.triggers as any;
+    }
+
+    await agent.save();
+
+    res.status(200).json({
+      success: true,
+      agent: {
+        _id: agent._id,
+        workspace: agent.workspace,
+        name: agent.name,
+        goal: agent.goal,
+        status: agent.status,
+        createdBy: agent.createdBy,
+        createdAt: agent.createdAt,
+        updatedAt: agent.updatedAt,
+        triggers: agent.triggers || [],
+        instructions: agent.instructions || null,
+        parsedActions: agent.parsedActions || []
+      }
+    });
+  } catch (error: any) {
+    console.error('Error updating agent:', error);
+
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: Object.values(error.errors).map((err: any) => err.message)
+      });
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update agent'
     });
   }
 };
