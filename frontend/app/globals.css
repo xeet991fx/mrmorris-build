@@ -11,8 +11,8 @@
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 142 70% 35%;
-    /* Darker Forest Green */
+    --primary: 0 0% 9%;
+    /* Neutral Black */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222 47% 11%;
@@ -25,8 +25,8 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 142 70% 35%;
-    /* Darker Forest Green */
+    --ring: 0 0% 9%;
+    /* Neutral Black */
     --radius: 0.625rem;
     --surface: 0 0% 100%;
     --surface-hover: 210 40% 96%;
@@ -57,22 +57,22 @@
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 142 70% 38%;
-    /* Forest Green */
+    --primary: 0 0% 98%;
+    /* Neutral White */
     --primary-foreground: 0 0% 7%;
     --secondary: 0 0% 14%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 14%;
     --muted-foreground: 0 0% 55%;
-    --accent: 142 70% 38%;
-    /* Forest Green */
+    --accent: 0 0% 98%;
+    /* Neutral White */
     --accent-foreground: 0 0% 7%;
     --destructive: 0 63% 45%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 18%;
     --input: 0 0% 14%;
-    --ring: 142 70% 38%;
-    /* Forest Green */
+    --ring: 0 0% 98%;
+    /* Neutral White */
     --surface: 0 0% 9%;
     --surface-hover: 0 0% 14%;
     --sidebar: 0 0% 5%;

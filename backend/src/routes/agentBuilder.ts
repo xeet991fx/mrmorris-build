@@ -9,12 +9,13 @@
  * - POST   /api/workspaces/:workspaceId/agents          Create agent
  * - GET    /api/workspaces/:workspaceId/agents          List agents
  * - GET    /api/workspaces/:workspaceId/agents/:agentId Get agent
+ * - PUT    /api/workspaces/:workspaceId/agents/:agentId Update agent
  */
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateWorkspaceAccess } from '../middleware/workspace';
-import { createAgent, listAgents, getAgent } from '../controllers/agentController';
-import { createAgentSchema } from '../validations/agentValidation';
+import { createAgent, listAgents, getAgent, updateAgent } from '../controllers/agentController';
+import { createAgentSchema, updateAgentSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
 const router = express.Router();
@@ -79,6 +80,19 @@ router.get(
   authenticate,
   validateWorkspaceAccess,
   getAgent
+);
+
+/**
+ * @route PUT /api/workspaces/:workspaceId/agents/:agentId
+ * @desc Update an existing agent (Story 1.2: triggers, name, goal)
+ * @access Private (requires authentication and workspace access)
+ */
+router.put(
+  '/workspaces/:workspaceId/agents/:agentId',
+  authenticate,
+  validateWorkspaceAccess,
+  validate(updateAgentSchema),
+  updateAgent
 );
 
 export default router;

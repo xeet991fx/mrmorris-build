@@ -483,3 +483,382 @@ describe('Agent Builder - Story 1.1: Create Basic Agent', () => {
     });
   });
 });
+
+/**
+ * Agent Builder - Story 1.2 Test Suite
+ * Tests for Add Trigger Configuration functionality
+ */
+describe('Agent Builder - Story 1.2: Add Trigger Configuration', () => {
+  let authToken: string;
+  let userId: string;
+  let workspaceId: string;
+  let agentId: string;
+
+  beforeAll(async () => {
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGODB_URI_TEST || process.env.MONGODB_URI || '');
+    }
+  });
+
+  beforeEach(async () => {
+    // Clear test data
+    await Agent.deleteMany({});
+    await User.deleteMany({});
+    await Project.deleteMany({});
+    await TeamMember.deleteMany({});
+
+    // Create test user
+    const user = await User.create({
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'hashedpassword123',
+    });
+    userId = user._id.toString();
+
+    // Create workspace
+    const workspace = await Project.create({
+      name: 'Test Workspace',
+      owner: userId,
+    });
+    workspaceId = workspace._id.toString();
+
+    // Add user to workspace
+    await TeamMember.create({
+      workspace: workspaceId,
+      user: userId,
+      role: 'owner',
+    });
+
+    // Generate mock auth token
+    authToken = 'mock-jwt-token-user1';
+
+    // Create a test agent
+    const agent = await Agent.create({
+      workspace: workspaceId,
+      name: 'Test Agent',
+      goal: 'Test goal',
+      createdBy: userId,
+      status: 'Draft',
+    });
+    agentId = agent._id.toString();
+  });
+
+  afterAll(async () => {
+    await Agent.deleteMany({});
+    await User.deleteMany({});
+    await Project.deleteMany({});
+    await TeamMember.deleteMany({});
+    await mongoose.connection.close();
+  });
+
+  describe('Manual Trigger Configuration', () => {
+    it('should add manual trigger to agent', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'manual',
+            config: {},
+            enabled: true,
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.triggers).toHaveLength(1);
+      expect(response.body.agent.triggers[0].type).toBe('manual');
+      expect(response.body.agent.triggers[0].enabled).toBe(true);
+    });
+  });
+
+  describe('Scheduled Trigger Configuration', () => {
+    it('should add daily scheduled trigger', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'scheduled',
+            config: {
+              frequency: 'daily',
+              time: '09:00',
+            },
+            enabled: true,
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.triggers).toHaveLength(1);
+      expect(response.body.agent.triggers[0].type).toBe('scheduled');
+      expect(response.body.agent.triggers[0].config.frequency).toBe('daily');
+      expect(response.body.agent.triggers[0].config.time).toBe('09:00');
+    });
+
+    it('should add weekly scheduled trigger with days', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'scheduled',
+            config: {
+              frequency: 'weekly',
+              time: '14:30',
+              days: [1, 3, 5], // Monday, Wednesday, Friday
+            },
+            enabled: true,
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.triggers[0].config.frequency).toBe('weekly');
+      expect(response.body.agent.triggers[0].config.days).toEqual([1, 3, 5]);
+    });
+
+    it('should add monthly scheduled trigger with date', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'scheduled',
+            config: {
+              frequency: 'monthly',
+              time: '08:00',
+              date: 1, // First day of month
+            },
+            enabled: true,
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.triggers[0].config.frequency).toBe('monthly');
+      expect(response.body.agent.triggers[0].config.date).toBe(1);
+    });
+
+    it('should reject scheduled trigger with invalid time format', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'scheduled',
+            config: {
+              frequency: 'daily',
+              time: '9:00', // Invalid - should be 09:00
+            },
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should reject weekly trigger without days', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'scheduled',
+            config: {
+              frequency: 'weekly',
+              time: '09:00',
+              // Missing days array
+            },
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should reject monthly trigger without date', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'scheduled',
+            config: {
+              frequency: 'monthly',
+              time: '09:00',
+              // Missing date
+            },
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('Event Trigger Configuration', () => {
+    it('should add event trigger without conditions', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'event',
+            config: {
+              event: 'contact.created',
+            },
+            enabled: true,
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.triggers[0].type).toBe('event');
+      expect(response.body.agent.triggers[0].config.event).toBe('contact.created');
+    });
+
+    it('should add event trigger with conditions', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'event',
+            config: {
+              event: 'deal.stage_updated',
+              conditions: [
+                {
+                  field: 'value',
+                  operator: '>',
+                  value: 10000,
+                },
+              ],
+            },
+            enabled: true,
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.triggers[0].config.event).toBe('deal.stage_updated');
+      expect(response.body.agent.triggers[0].config.conditions).toHaveLength(1);
+      expect(response.body.agent.triggers[0].config.conditions[0].field).toBe('value');
+      expect(response.body.agent.triggers[0].config.conditions[0].operator).toBe('>');
+      expect(response.body.agent.triggers[0].config.conditions[0].value).toBe(10000);
+    });
+  });
+
+  describe('Multiple Triggers', () => {
+    it('should support multiple triggers on same agent', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'manual',
+            config: {},
+            enabled: true,
+          },
+          {
+            type: 'scheduled',
+            config: {
+              frequency: 'daily',
+              time: '09:00',
+            },
+            enabled: true,
+          },
+          {
+            type: 'event',
+            config: {
+              event: 'contact.created',
+            },
+            enabled: false,
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.triggers).toHaveLength(3);
+      expect(response.body.agent.triggers[0].type).toBe('manual');
+      expect(response.body.agent.triggers[1].type).toBe('scheduled');
+      expect(response.body.agent.triggers[2].type).toBe('event');
+      expect(response.body.agent.triggers[2].enabled).toBe(false);
+    });
+  });
+
+  describe('Trigger Validation', () => {
+    it('should reject empty triggers array', async () => {
+      const updateData = {
+        triggers: [],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should reject invalid trigger type', async () => {
+      const updateData = {
+        triggers: [
+          {
+            type: 'invalid_type',
+            config: {},
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+});
