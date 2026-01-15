@@ -862,3 +862,384 @@ describe('Agent Builder - Story 1.2: Add Trigger Configuration', () => {
     });
   });
 });
+
+/**
+ * Agent Builder - Story 1.3 Test Suite
+ * Tests for Write Natural Language Instructions functionality
+ */
+describe('Agent Builder - Story 1.3: Write Natural Language Instructions', () => {
+  let authToken: string;
+  let userId: string;
+  let workspaceId: string;
+  let agentId: string;
+
+  beforeAll(async () => {
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGODB_URI_TEST || process.env.MONGODB_URI || '');
+    }
+  });
+
+  beforeEach(async () => {
+    // Clear test data
+    await Agent.deleteMany({});
+    await User.deleteMany({});
+    await Project.deleteMany({});
+    await TeamMember.deleteMany({});
+
+    // Create test user
+    const user = await User.create({
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'hashedpassword123',
+    });
+    userId = user._id.toString();
+
+    // Create workspace
+    const workspace = await Project.create({
+      name: 'Test Workspace',
+      owner: userId,
+    });
+    workspaceId = workspace._id.toString();
+
+    // Add user to workspace
+    await TeamMember.create({
+      workspace: workspaceId,
+      user: userId,
+      role: 'owner',
+    });
+
+    // Generate mock auth token
+    authToken = 'mock-jwt-token-user1';
+
+    // Create a test agent with triggers
+    const agent = await Agent.create({
+      workspace: workspaceId,
+      name: 'Test Agent',
+      goal: 'Test goal for instructions',
+      createdBy: userId,
+      status: 'Draft',
+      triggers: [{ type: 'manual', config: {}, enabled: true }],
+    });
+    agentId = agent._id.toString();
+  });
+
+  afterAll(async () => {
+    await Agent.deleteMany({});
+    await User.deleteMany({});
+    await Project.deleteMany({});
+    await TeamMember.deleteMany({});
+    await mongoose.connection.close();
+  });
+
+  describe('Instructions CRUD Operations', () => {
+    it('[P0] should update agent with instructions', async () => {
+      const updateData = {
+        instructions: 'Send email to all contacts tagged "hot lead" using template "Sales Outreach"',
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe(updateData.instructions);
+
+      // Verify persisted in database
+      const savedAgent = await Agent.findOne({ _id: agentId, workspace: workspaceId });
+      expect(savedAgent?.instructions).toBe(updateData.instructions);
+    });
+
+    it('[P0] should preserve line breaks in multi-step instructions', async () => {
+      const multiLineInstructions = `1. Find contacts where title contains "CEO"
+2. Filter for SaaS industry companies
+3. Send personalized email using template "Outbound v2"
+4. Wait 5 days
+5. If no reply, send follow-up email`;
+
+      const updateData = {
+        instructions: multiLineInstructions,
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe(multiLineInstructions);
+
+      // Verify line breaks preserved
+      expect(response.body.agent.instructions.split('\n')).toHaveLength(5);
+    });
+
+    it('[P1] should retrieve agent with instructions', async () => {
+      // First, set instructions
+      await Agent.findOneAndUpdate(
+        { _id: agentId, workspace: workspaceId },
+        { instructions: 'Test instructions for retrieval' }
+      );
+
+      const response = await request(app)
+        .get(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe('Test instructions for retrieval');
+    });
+
+    it('[P1] should return null for agent without instructions', async () => {
+      const response = await request(app)
+        .get(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBeNull();
+    });
+
+    it('[P1] should update instructions without affecting other fields', async () => {
+      // Set initial trigger
+      await Agent.findOneAndUpdate(
+        { _id: agentId, workspace: workspaceId },
+        { triggers: [{ type: 'manual', config: {}, enabled: true }] }
+      );
+
+      // Update only instructions
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: 'New instructions' })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe('New instructions');
+      expect(response.body.agent.triggers).toHaveLength(1);
+      expect(response.body.agent.name).toBe('Test Agent');
+    });
+
+    it('[P1] should clear instructions when set to empty string', async () => {
+      // First set instructions
+      await Agent.findOneAndUpdate(
+        { _id: agentId, workspace: workspaceId },
+        { instructions: 'Some instructions' }
+      );
+
+      // Clear instructions
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: '' })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe('');
+    });
+  });
+
+  describe('Instructions Character Limits', () => {
+    it('[P1] should accept instructions at exactly 10,000 characters', async () => {
+      const maxLengthInstructions = 'A'.repeat(10000);
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: maxLengthInstructions })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toHaveLength(10000);
+    });
+
+    it('[P0] should reject instructions over 10,000 characters', async () => {
+      const tooLongInstructions = 'A'.repeat(10001);
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: tooLongInstructions })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it('[P2] should accept instructions at warning threshold (8,000 characters)', async () => {
+      const warningThresholdInstructions = 'A'.repeat(8000);
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: warningThresholdInstructions })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toHaveLength(8000);
+    });
+
+    it('[P2] should accept instructions between warning and max (8001-9999 characters)', async () => {
+      const betweenThresholdInstructions = 'A'.repeat(9500);
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: betweenThresholdInstructions })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toHaveLength(9500);
+    });
+  });
+
+  describe('Instructions Whitespace Handling', () => {
+    it('[P2] should trim leading and trailing whitespace', async () => {
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: '  Send email to CEOs  ' })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe('Send email to CEOs');
+    });
+
+    it('[P2] should preserve internal whitespace and formatting', async () => {
+      const formattedInstructions = `Step 1: Review contact
+Step 2: Send email
+
+Notes:
+  - Include personalization
+  - Use friendly tone`;
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: formattedInstructions })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      // Internal newlines and spaces should be preserved
+      expect(response.body.agent.instructions).toContain('\n\n');
+      expect(response.body.agent.instructions).toContain('  - Include');
+    });
+  });
+
+  describe('Instructions with Special Characters', () => {
+    it('[P1] should handle instructions with quotes', async () => {
+      const instructionsWithQuotes = 'Send email using template "Outbound v2" to contacts tagged \'hot lead\'';
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: instructionsWithQuotes })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe(instructionsWithQuotes);
+    });
+
+    it('[P1] should handle instructions with special characters', async () => {
+      const instructionsWithSpecialChars = 'If deal value > $50,000 && status != "closed", assign to @senior_rep';
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: instructionsWithSpecialChars })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe(instructionsWithSpecialChars);
+    });
+
+    it('[P2] should handle instructions with unicode characters', async () => {
+      const instructionsWithUnicode = 'Send 📧 to contacts in 日本 with greeting "こんにちは"';
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: instructionsWithUnicode })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe(instructionsWithUnicode);
+    });
+  });
+
+  describe('Instructions with Triggers (Combined Updates)', () => {
+    it('[P1] should update both instructions and triggers in single request', async () => {
+      const updateData = {
+        instructions: 'Send welcome email to new contacts',
+        triggers: [
+          {
+            type: 'event',
+            config: { event: 'contact.created' },
+            enabled: true,
+          },
+        ],
+      };
+
+      const response = await request(app)
+        .put(`/api/workspaces/${workspaceId}/agents/${agentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.agent.instructions).toBe('Send welcome email to new contacts');
+      expect(response.body.agent.triggers).toHaveLength(1);
+      expect(response.body.agent.triggers[0].config.event).toBe('contact.created');
+    });
+  });
+
+  describe('Workspace Isolation for Instructions', () => {
+    let otherWorkspaceId: string;
+    let otherAgentId: string;
+
+    beforeEach(async () => {
+      // Create another workspace and agent
+      const otherUser = await User.create({
+        name: 'Other User',
+        email: 'other@example.com',
+        password: 'hashedpassword456',
+      });
+
+      const otherWorkspace = await Project.create({
+        name: 'Other Workspace',
+        owner: otherUser._id,
+      });
+      otherWorkspaceId = otherWorkspace._id.toString();
+
+      await TeamMember.create({
+        workspace: otherWorkspaceId,
+        user: otherUser._id,
+        role: 'owner',
+      });
+
+      const otherAgent = await Agent.create({
+        workspace: otherWorkspaceId,
+        name: 'Other Agent',
+        goal: 'Other goal',
+        createdBy: otherUser._id,
+        status: 'Draft',
+        instructions: 'Secret instructions from other workspace',
+      });
+      otherAgentId = otherAgent._id.toString();
+    });
+
+    it('[P0] should prevent updating instructions on another workspace agent', async () => {
+      const response = await request(app)
+        .put(`/api/workspaces/${otherWorkspaceId}/agents/${otherAgentId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ instructions: 'Malicious update attempt' })
+        .expect(403);
+
+      expect(response.body.error).toContain('Access denied');
+
+      // Verify original instructions unchanged
+      const agent = await Agent.findById(otherAgentId);
+      expect(agent?.instructions).toBe('Secret instructions from other workspace');
+    });
+  });
+});

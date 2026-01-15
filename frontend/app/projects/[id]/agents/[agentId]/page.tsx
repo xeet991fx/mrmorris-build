@@ -9,6 +9,8 @@ import { IAgent, ITriggerConfig } from '@/types/agent';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { TriggerConfiguration } from '@/components/agents/TriggerConfiguration';
+import { InstructionsEditor } from '@/components/agents/InstructionsEditor';
+import { InstructionExamples } from '@/components/agents/InstructionExamples';
 
 export default function AgentBuilderPage() {
   const params = useParams();
@@ -20,6 +22,8 @@ export default function AgentBuilderPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [triggers, setTriggers] = useState<ITriggerConfig[]>([]);
+  // Story 1.3: Instructions state
+  const [instructions, setInstructions] = useState<string>('');
 
   useEffect(() => {
     fetchAgent();
@@ -32,6 +36,7 @@ export default function AgentBuilderPage() {
       if (response.success) {
         setAgent(response.agent);
         setTriggers(response.agent.triggers || []);
+        setInstructions(response.agent.instructions || '');
       }
     } catch (error: any) {
       console.error('Error fetching agent:', error);
@@ -56,6 +61,22 @@ export default function AgentBuilderPage() {
       toast.error(error.response?.data?.error || 'Failed to save triggers');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Story 1.3: Handle instructions save callback
+  const handleInstructionsSaved = (newInstructions: string) => {
+    setInstructions(newInstructions);
+    if (agent) {
+      setAgent({ ...agent, instructions: newInstructions });
+    }
+  };
+
+  // Story 1.3 Fix: Handle copy-to-editor from examples
+  const handleCopyToEditor = (text: string) => {
+    setInstructions(text);
+    if (agent) {
+      setAgent({ ...agent, instructions: text });
     }
   };
 
@@ -132,7 +153,7 @@ export default function AgentBuilderPage() {
 
       {/* Main Content */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="max-w-3xl">
+        <div className="max-w-3xl space-y-6">
           {/* Triggers Section */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
             <TriggerConfiguration
@@ -142,10 +163,24 @@ export default function AgentBuilderPage() {
             />
           </div>
 
+          {/* Story 1.3: Instructions Section */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+            <InstructionsEditor
+              agentId={agentId}
+              workspaceId={workspaceId}
+              initialInstructions={agent.instructions || null}
+              onSave={handleInstructionsSaved}
+              disabled={isSaving}
+            />
+          </div>
+
+          {/* Story 1.3: Instruction Examples */}
+          <InstructionExamples onCopyToEditor={handleCopyToEditor} />
+
           {/* Placeholder for future sections */}
-          <div className="mt-6 p-6 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl">
+          <div className="p-6 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl">
             <p className="text-sm text-zinc-400 text-center">
-              Additional settings coming soon: Instructions, Restrictions, Memory, Approvals
+              Additional settings coming soon: Restrictions, Memory, Approvals
             </p>
           </div>
         </div>
@@ -153,5 +188,3 @@ export default function AgentBuilderPage() {
     </div>
   );
 }
-
-

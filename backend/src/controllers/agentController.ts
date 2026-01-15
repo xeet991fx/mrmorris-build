@@ -191,6 +191,10 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
     if (updateData.triggers !== undefined) {
       agent.triggers = updateData.triggers as any;
     }
+    // Story 1.3: Instructions field update
+    if (updateData.instructions !== undefined) {
+      agent.instructions = updateData.instructions;
+    }
 
     await agent.save();
 
