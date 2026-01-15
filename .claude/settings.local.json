@@ -80,7 +80,8 @@
       "Bash(npx terser:*)",
       "Bash(echo:*)",
       "Bash(tee:*)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

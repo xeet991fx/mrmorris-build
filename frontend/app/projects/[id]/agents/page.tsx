@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { PlusIcon, CpuChipIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { CreateAgentModal } from '@/components/agents/CreateAgentModal';
 import { AgentCard } from '@/components/agents/AgentCard';
 import { AgentsEmptyState } from '@/components/agents/AgentsEmptyState';
@@ -50,53 +50,45 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
-      {/* Header Section */}
-      <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-6 sm:pb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <CpuChipIcon className="w-6 h-6 text-white" strokeWidth={2} />
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-                  Agents
-                </h1>
-              </div>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Automate your sales workflows with intelligent agents
-              </p>
+    <>
+      <div className="h-full flex flex-col overflow-hidden">
+        <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4 flex-shrink-0">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+          >
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                Agents
+              </h1>
+              {agents.length > 0 && (
+                <span className="px-2.5 py-1 text-sm font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded-full">
+                  {agents.length}
+                </span>
+              )}
             </div>
-            {agents.length > 0 && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
                 onClick={() => setIsModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm"
               >
-                <PlusIcon className="w-4 h-4" strokeWidth={2} />
-                Create Agent
-              </motion.button>
-            )}
-          </div>
-        </motion.div>
+                <PlusIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Agent</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
 
-        {/* Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="mt-8"
-        >
+        {/* Divider */}
+        <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
+
+        {/* Main Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
           {agents.length === 0 ? (
             <AgentsEmptyState onCreateClick={() => setIsModalOpen(true)} />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {agents.map((agent, index) => (
                 <motion.div
                   key={agent._id}
@@ -109,7 +101,7 @@ export default function AgentsPage() {
               ))}
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
 
       {/* Create Agent Modal */}
@@ -118,6 +110,8 @@ export default function AgentsPage() {
         onOpenChange={setIsModalOpen}
         workspaceId={workspaceId}
       />
-    </div>
+    </>
   );
 }
+
+

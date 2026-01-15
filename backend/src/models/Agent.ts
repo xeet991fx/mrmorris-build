@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+// Story 1.2: Trigger type definitions
+export interface ITriggerConfig {
+  type: 'manual' | 'scheduled' | 'event';
+  config: any;
+  enabled?: boolean;
+  createdAt?: Date;
+}
+
 export interface IAgent extends Document {
   workspace: mongoose.Types.ObjectId;
   name: string;
@@ -7,8 +15,10 @@ export interface IAgent extends Document {
   status: 'Draft' | 'Live' | 'Paused';
   createdBy: mongoose.Types.ObjectId;
 
+  // Story 1.2: Triggers (now properly typed)
+  triggers?: ITriggerConfig[];
+
   // Future fields (nullable for now - will be populated in later stories)
-  triggers?: any[];
   instructions?: string;
   parsedActions?: any[];
   restrictions?: string;
@@ -53,19 +63,31 @@ const AgentSchema = new Schema<IAgent>(
       required: [true, 'Creator is required']
     },
 
-    // Future fields - optional for now
-    triggers: {
-      type: [Schema.Types.Mixed],
-      default: []
-    },
+    // Story 1.2: Triggers with proper schema
+    triggers: [{
+      type: {
+        type: String,
+        enum: ['manual', 'scheduled', 'event'],
+        required: true
+      },
+      config: {
+        type: Schema.Types.Mixed,
+        required: true
+      },
+      enabled: {
+        type: Boolean,
+        default: true
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
     instructions: {
       type: String,
       default: null
     },
-    parsedActions: {
-      type: [Schema.Types.Mixed],
-      default: []
-    },
+    parsedActions: [],
     restrictions: {
       type: String,
       default: null
@@ -78,14 +100,8 @@ const AgentSchema = new Schema<IAgent>(
       type: Boolean,
       default: false
     },
-    editPermissions: {
-      type: [Schema.Types.Mixed],
-      default: []
-    },
-    integrationAccess: {
-      type: [Schema.Types.Mixed],
-      default: []
-    },
+    editPermissions: [],
+    integrationAccess: [],
     circuitBreaker: {
       type: Schema.Types.Mixed,
       default: null
@@ -100,6 +116,9 @@ const AgentSchema = new Schema<IAgent>(
 AgentSchema.index({ workspace: 1, status: 1 });
 AgentSchema.index({ workspace: 1, createdBy: 1 });
 AgentSchema.index({ workspace: 1, createdAt: -1 });
+// Story 1.2: Trigger indexes
+AgentSchema.index({ workspace: 1, 'triggers.type': 1 });
+AgentSchema.index({ workspace: 1, 'triggers.enabled': 1 });
 
 // CRITICAL: Workspace isolation middleware - prevents cross-workspace data leaks
 AgentSchema.pre('find', function() {
