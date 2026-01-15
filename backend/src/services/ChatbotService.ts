@@ -24,7 +24,7 @@ class ChatbotService {
       return await Chatbot.findOne({
         workspaceId,
         status: 'active',
-      }).lean();
+      }).lean() as unknown as IChatbot | null;
     } catch (error) {
       console.error('Error getting active chatbot:', error);
       return null;

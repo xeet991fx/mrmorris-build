@@ -142,7 +142,7 @@ export class ReverseIPService {
 
             if (!visitor) {
                 // New visitor - create and enrich
-                visitor = await this.createVisitor(workspaceId, ipAddress);
+                visitor = await this.createVisitor(workspaceId, ipAddress) as any;
             } else {
                 // Existing visitor - check if new session
                 const lastSeen = visitor.engagement.lastSeenAt.getTime();

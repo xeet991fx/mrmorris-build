@@ -333,7 +333,7 @@ export async function enrichAndQualifyLead(
 
     // Step 1: Enrich with Apollo
     try {
-        const enrichmentResult = await ApolloService.enrichContact(String(contactId), workspaceId);
+        const enrichmentResult = await ApolloService.enrichContact(String(contactId), workspaceId as any);
 
         if (enrichmentResult.success) {
             console.log(`✅ Enrichment successful. Found: ${(enrichmentResult as any).fieldsEnriched?.join(', ')}`);

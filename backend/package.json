@@ -6,10 +6,16 @@
   "scripts": {
     "dev": "docker compose -f ../docker-compose.yml up -d && nodemon --exec \"node --max-old-space-size=8192 -r ts-node/register/transpile-only\" src/server.ts",
     "dev:no-redis": "nodemon --exec \"node --max-old-space-size=8192 -r ts-node/register/transpile-only\" src/server.ts",
+    "dev:pm2": "npm run build:fast && pm2 start ecosystem.config.js",
     "build": "node --max-old-space-size=8192 node_modules/typescript/bin/tsc --skipLibCheck || echo 'Build completed with warnings'",
-    "build:fast": "node --max-old-space-size=2048 node_modules/typescript/bin/tsc --transpileOnly --skipLibCheck || tsc --transpileOnly --skipLibCheck",
+    "build:fast": "node --max-old-space-size=8192 node_modules/typescript/bin/tsc --skipLibCheck || echo 'Build completed with warnings'",
     "start": "node dist/server.js",
-    "start:dev": "ts-node src/server.ts"
+    "start:dev": "ts-node src/server.ts",
+    "start:pm2": "pm2 start ecosystem.config.js --env production",
+    "stop:pm2": "pm2 stop morrisB-api",
+    "restart:pm2": "pm2 restart morrisB-api",
+    "logs:pm2": "pm2 logs morrisB-api",
+    "status:pm2": "pm2 status"
   },
   "dependencies": {
     "@bull-board/api": "^6.16.1",

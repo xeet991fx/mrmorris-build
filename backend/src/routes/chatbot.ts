@@ -570,8 +570,8 @@ router.post('/workspaces/:workspaceId/chatbots/from-template', async (req, res) 
 
     // Get template (from the endpoint above)
     const templatesResponse = await fetch(`http://localhost:${process.env.PORT || 5000}/api/workspaces/${workspaceId}/chatbot-templates`);
-    const templatesData = await templatesResponse.json();
-    const template = templatesData.data.find((t: any) => t.id === templateId);
+    const templatesData: any = await templatesResponse.json();
+    const template = templatesData.data?.find((t: any) => t.id === templateId);
 
     if (!template) {
       return res.status(404).json({

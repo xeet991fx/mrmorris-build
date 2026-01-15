@@ -302,6 +302,89 @@ export const templateGeneratorService = new TemplateGeneratorService();
 // UNLAYER TEMPLATE GENERATOR
 // ============================================
 
+export interface ModifyUnlayerTemplateOptions {
+    currentDesign: any; // Current Unlayer design JSON
+    currentSubject: string;
+    instruction: string; // User's modification instruction
+}
+
+/**
+ * Modify an existing Unlayer email template design based on user instructions
+ */
+export async function modifyUnlayerTemplate(options: ModifyUnlayerTemplateOptions): Promise<UnlayerGeneratedTemplate> {
+    const { currentDesign, currentSubject, instruction } = options;
+
+    const genAI2 = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    const model = genAI2.getGenerativeModel({ model: "gemini-2.5-pro" });
+
+    const systemPrompt = `You are an expert email template designer. You need to MODIFY an existing email template based on the user's instructions.
+
+## Current Template:
+The current Unlayer design JSON is provided below. You must analyze it and make the requested modifications while preserving the overall structure and styling unless specifically asked to change them.
+
+## Current Subject Line:
+${currentSubject}
+
+## Current Design JSON:
+${JSON.stringify(currentDesign, null, 2)}
+
+## User's Modification Request:
+${instruction}
+
+## Output Requirements:
+Return ONLY a valid JSON object with this structure:
+{
+    "subject": "Updated email subject line (keep same if not requested to change)",
+    "body": "Plain text version of the updated email body",
+    "design": { ... Modified Unlayer design JSON ... },
+    "changes": ["List of changes made"]
+}
+
+## Modification Guidelines:
+1. PRESERVE the existing structure unless specifically asked to change it
+2. KEEP existing styles, colors, and formatting unless asked to change
+3. MODIFY only what the user specifically requests
+4. If adding new content, match the existing style
+5. If changing colors/styling, apply consistently
+6. Keep personalization variables like {{firstName}}, {{company}} intact unless asked to remove
+7. Ensure the output is a valid Unlayer design JSON
+
+## Content Types Reference:
+1. TEXT: { "type": "text", "values": { "text": "<p>HTML content</p>", "containerPadding": "10px" }}
+2. BUTTON: { "type": "button", "values": { "text": "Click Here", "href": { "url": "#" }, "buttonColors": { "color": "#ffffff", "backgroundColor": "#3AAEE0" }, "size": { "width": "auto" }, "textAlign": "center" }}
+3. IMAGE: { "type": "image", "values": { "src": { "url": "https://via.placeholder.com/600x200" }, "containerPadding": "10px" }}
+4. DIVIDER: { "type": "divider", "values": { "containerPadding": "10px", "border": { "borderTopWidth": "1px", "borderTopStyle": "solid", "borderTopColor": "#BBBBBB" }}}
+
+IMPORTANT: Return ONLY valid JSON, no markdown code blocks or explanations.`;
+
+    try {
+        const result = await model.generateContent(systemPrompt);
+        const responseText = result.response.text().trim();
+
+        // Extract JSON from response
+        let jsonStr = responseText;
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            jsonStr = jsonMatch[0];
+        }
+
+        const parsed = JSON.parse(jsonStr);
+
+        // Generate HTML from the modified design
+        const html = generateHtmlFromDesign(parsed.design, parsed.subject);
+
+        return {
+            subject: parsed.subject || currentSubject,
+            body: parsed.body || "",
+            html: html,
+            design: parsed.design,
+        };
+    } catch (error: any) {
+        console.error("Unlayer template modification error:", error);
+        throw new Error("Failed to modify template: " + error.message);
+    }
+}
+
 export interface UnlayerGeneratedTemplate {
     subject: string;
     body: string;

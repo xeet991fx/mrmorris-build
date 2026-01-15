@@ -120,8 +120,8 @@ export function extractKeyInfo(data: ScrapedWebsiteData): {
     for (const keyword of productKeywords) {
         if (textLower.includes(keyword)) {
             // Extract sentences containing the keyword
-            const sentences = data.textContent.match(/[^.!?]+[.!?]/g) || [];
-            const relevant = sentences.filter(s => s.toLowerCase().includes(keyword));
+            const sentences: string[] = data.textContent.match(/[^.!?]+[.!?]/g) || [];
+            const relevant = sentences.filter((s: string) => s.toLowerCase().includes(keyword));
             products.push(...relevant.slice(0, 3));
         }
     }
@@ -131,8 +131,8 @@ export function extractKeyInfo(data: ScrapedWebsiteData): {
     const serviceKeywords = ['service', 'consulting', 'training', 'support', 'implementation'];
     for (const keyword of serviceKeywords) {
         if (textLower.includes(keyword)) {
-            const sentences = data.textContent.match(/[^.!?]+[.!?]/g) || [];
-            const relevant = sentences.filter(s => s.toLowerCase().includes(keyword));
+            const sentences: string[] = data.textContent.match(/[^.!?]+[.!?]/g) || [];
+            const relevant = sentences.filter((s: string) => s.toLowerCase().includes(keyword));
             services.push(...relevant.slice(0, 3));
         }
     }
@@ -142,8 +142,8 @@ export function extractKeyInfo(data: ScrapedWebsiteData): {
     const painKeywords = ['challenge', 'problem', 'difficulty', 'struggle', 'issue', 'pain', 'frustration'];
     for (const keyword of painKeywords) {
         if (textLower.includes(keyword)) {
-            const sentences = data.textContent.match(/[^.!?]+[.!?]/g) || [];
-            const relevant = sentences.filter(s => s.toLowerCase().includes(keyword));
+            const sentences: string[] = data.textContent.match(/[^.!?]+[.!?]/g) || [];
+            const relevant = sentences.filter((s: string) => s.toLowerCase().includes(keyword));
             painPoints.push(...relevant.slice(0, 3));
         }
     }

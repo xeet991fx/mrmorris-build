@@ -16,7 +16,7 @@ export class ProfileUtilizationService {
     const profile = await IntelligentOnboardingService.getBusinessProfile(workspaceId);
     if (!profile) return this.getDefaultFormFields();
 
-    const fields = [
+    const fields: Array<{ name: string; label: string; type: string; required: boolean; options?: string[] }> = [
       { name: "name", label: "Full Name", type: "text", required: true },
       { name: "email", label: "Email", type: "email", required: true },
     ];
