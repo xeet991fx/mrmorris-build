@@ -1,7 +1,8 @@
 /**
  * Campaign Service
- * 
+ *
  * Manages cold email campaigns including enrollment, sending, and tracking.
+ * Supports concurrent processing with distributed locking.
  */
 
 import Campaign, { ICampaign, ICampaignStep } from "../models/Campaign";
@@ -13,6 +14,11 @@ import nodemailer, { Transporter } from "nodemailer";
 import { Types } from "mongoose";
 import { getProModel } from "../agents/modelFactory";
 import { processBatches } from "../utils/batchProcessor";
+import crypto from "crypto";
+
+// Generate unique worker ID for distributed locking
+const WORKER_ID = `worker-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
+const LOCK_DURATION_MS = 60000; // 60 seconds lock duration
 
 // ============================================
 // CAMPAIGN SERVICE
@@ -109,46 +115,148 @@ class CampaignService {
     /**
      * Send next batch of campaign emails
      * Called by cron job every 5 minutes
-     * Uses parallel batch processing for scalability
+     * Uses atomic locking to prevent duplicate sends in concurrent environments
      */
     async sendNextBatch(): Promise<number> {
-        console.log("📤 Processing campaign emails...");
+        console.log(`📤 [${WORKER_ID}] Processing campaign emails...`);
 
         const now = new Date();
+        const batchSize = 100;
+        let successCount = 0;
+        let errorCount = 0;
+        const startTime = Date.now();
 
-        // Find enrollments ready to send
-        const enrollments = await CampaignEnrollment.find({
-            status: { $in: ["pending", "active"] },
-            nextSendAt: { $lte: now },
-        })
-            .limit(100) // Process 100 at a time
+        // Process enrollments one at a time with atomic claiming
+        // This prevents race conditions when multiple workers run simultaneously
+        for (let i = 0; i < batchSize; i++) {
+            const enrollment = await this.claimNextEnrollment(now);
+            if (!enrollment) {
+                // No more enrollments to process
+                break;
+            }
+
+            try {
+                const result = await this.processEnrollment(enrollment, now);
+                if (result.sent) {
+                    successCount++;
+                }
+            } catch (error: any) {
+                console.error(`Error processing enrollment ${enrollment._id}:`, error.message);
+                errorCount++;
+            } finally {
+                // Release lock after processing
+                await this.releaseEnrollmentLock(enrollment._id);
+            }
+        }
+
+        const duration = Date.now() - startTime;
+        console.log(`📧 [${WORKER_ID}] Campaign batch complete: ${successCount} sent, ${errorCount} errors in ${duration}ms`);
+        return successCount;
+    }
+
+    /**
+     * Atomically claim an enrollment for processing
+     * Uses findOneAndUpdate to prevent race conditions
+     */
+    private async claimNextEnrollment(now: Date): Promise<any | null> {
+        const lockExpiry = new Date(now.getTime() + LOCK_DURATION_MS);
+
+        // Atomically find and lock an enrollment that:
+        // 1. Has pending/active status
+        // 2. Is ready to send (nextSendAt <= now)
+        // 3. Is not locked, OR lock has expired
+        const enrollment = await CampaignEnrollment.findOneAndUpdate(
+            {
+                status: { $in: ["pending", "active"] },
+                nextSendAt: { $lte: now },
+                $or: [
+                    { _lockedUntil: null },
+                    { _lockedUntil: { $lt: now } },
+                ],
+            },
+            {
+                $set: {
+                    _lockedUntil: lockExpiry,
+                    _lockedBy: WORKER_ID,
+                },
+            },
+            {
+                new: true,
+                sort: { nextSendAt: 1 }, // Process oldest first
+            }
+        )
             .populate("campaignId")
             .populate("contactId");
 
-        if (enrollments.length === 0) {
-            return 0;
+        return enrollment;
+    }
+
+    /**
+     * Release the lock on an enrollment after processing
+     */
+    private async releaseEnrollmentLock(enrollmentId: Types.ObjectId): Promise<void> {
+        await CampaignEnrollment.findByIdAndUpdate(enrollmentId, {
+            $set: {
+                _lockedUntil: null,
+                _lockedBy: null,
+            },
+        });
+    }
+
+    /**
+     * High-throughput batch send for handling 100-200 concurrent emails
+     * Uses parallel workers that each atomically claim enrollments
+     * Safe for multiple client requests or multiple server instances
+     */
+    async sendNextBatchParallel(concurrency: number = 10): Promise<number> {
+        console.log(`📤 [${WORKER_ID}] Processing campaign emails (parallel mode, ${concurrency} workers)...`);
+
+        const now = new Date();
+        const maxEmails = 200;
+        let totalSuccess = 0;
+        let totalErrors = 0;
+        const startTime = Date.now();
+
+        // Create worker promises that each claim and process enrollments
+        const workerPromises = Array(concurrency).fill(null).map(async (_, workerIndex) => {
+            let workerSuccess = 0;
+            let workerErrors = 0;
+            const maxPerWorker = Math.ceil(maxEmails / concurrency);
+
+            for (let i = 0; i < maxPerWorker; i++) {
+                const enrollment = await this.claimNextEnrollment(now);
+                if (!enrollment) {
+                    break; // No more enrollments available
+                }
+
+                try {
+                    const result = await this.processEnrollment(enrollment, now);
+                    if (result.sent) {
+                        workerSuccess++;
+                    }
+                } catch (error: any) {
+                    console.error(`Worker ${workerIndex}: Error processing enrollment ${enrollment._id}:`, error.message);
+                    workerErrors++;
+                } finally {
+                    await this.releaseEnrollmentLock(enrollment._id);
+                }
+            }
+
+            return { success: workerSuccess, errors: workerErrors };
+        });
+
+        // Wait for all workers to complete
+        const workerResults = await Promise.all(workerPromises);
+
+        // Aggregate results
+        for (const result of workerResults) {
+            totalSuccess += result.success;
+            totalErrors += result.errors;
         }
 
-        console.log(`📊 Found ${enrollments.length} enrollments to process`);
-
-        // Process enrollments in parallel batches of 10
-        const batchResult = await processBatches(
-            enrollments,
-            async (enrollment) => this.processEnrollment(enrollment, now),
-            {
-                batchSize: 10,
-                batchDelayMs: 200, // Small delay between batches to prevent overwhelming email providers
-                continueOnError: true,
-                onProgress: (processed, total) => {
-                    if (processed % 20 === 0) {
-                        console.log(`📧 Progress: ${processed}/${total} enrollments`);
-                    }
-                },
-            }
-        );
-
-        console.log(`📧 Campaign batch complete: ${batchResult.successCount} sent, ${batchResult.errorCount} errors in ${batchResult.duration}ms`);
-        return batchResult.successCount;
+        const duration = Date.now() - startTime;
+        console.log(`📧 [${WORKER_ID}] Parallel batch complete: ${totalSuccess} sent, ${totalErrors} errors in ${duration}ms`);
+        return totalSuccess;
     }
 
     /**
@@ -430,10 +538,7 @@ class CampaignService {
                 stepId: step.id,
             });
 
-            // Increment account sent count (only for EmailAccount, not integrations)
-            if (!account.accessToken) {
-                await EmailAccountService.incrementSentCount(account._id as Types.ObjectId);
-            }
+            // Note: sentToday is already incremented atomically in rotateSendingAccount
 
             console.log(`✅ Sent: ${subject} → ${contact.email}`);
 
@@ -444,6 +549,9 @@ class CampaignService {
             };
         } catch (error: any) {
             console.error("Send email error:", error.message);
+            // Note: We don't decrement sentToday on failure because the account was selected
+            // and we want to maintain accurate daily limits. The email may have been sent
+            // but failed to save, or the account selection itself succeeded.
             return {
                 success: false,
                 error: error.message,

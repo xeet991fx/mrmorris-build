@@ -1,5 +1,6 @@
 import cron, { ScheduledTask } from "node-cron";
 import workflowService from "./WorkflowService";
+import { startEmailQueueWorker, queueReadyEnrollments } from "./CampaignEmailQueue";
 
 // ============================================
 // WORKFLOW SCHEDULER
@@ -27,6 +28,9 @@ class WorkflowScheduler {
 
         console.log("🚀 Starting WorkflowScheduler...");
 
+        // Start the email queue worker for campaign emails
+        startEmailQueueWorker();
+
         // Workflow processing (every 30 seconds for better accuracy with short delays)
         // Using setInterval because node-cron only supports minute granularity
         setInterval(async () => {
@@ -36,10 +40,14 @@ class WorkflowScheduler {
         // Also run immediately on startup
         setTimeout(() => this.processEnrollments(), 1000);
 
-        // Campaign sending (every 5 minutes)
+        // Campaign sending via queue (every 5 minutes)
+        // Queues emails for async processing - handles 500+ emails efficiently
         cron.schedule("*/5 * * * *", async () => {
-            const CampaignService = (await import("./CampaignService")).default;
-            await CampaignService.sendNextBatch();
+            console.log("📤 Queuing campaign emails...");
+            const result = await queueReadyEnrollments(500);
+            if (result.queued > 0) {
+                console.log(`📧 Queued ${result.queued} campaign emails`);
+            }
         });
 
         // Warmup emails (every hour)

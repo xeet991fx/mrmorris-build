@@ -168,8 +168,9 @@ class EmailAccountService {
     }
 
     /**
-     * Rotate and select next account to send from
-     * Picks account with lowest sentToday that hasn't hit dailySendLimit
+     * Rotate and select next account to send from - ATOMIC VERSION
+     * Uses findOneAndUpdate to atomically select and increment in one operation
+     * This prevents race conditions when multiple workers select the same account
      */
     async rotateSendingAccount(
         workspaceId: Types.ObjectId,
@@ -186,10 +187,24 @@ class EmailAccountService {
             query._id = { $in: fromAccountIds };
         }
 
-        // Get account with lowest sentToday
-        const account = await EmailAccount.findOne(query).sort({ sentToday: 1 });
+        // Atomically find the account with lowest sentToday and increment it
+        // This prevents multiple workers from selecting the same account
+        const account = await EmailAccount.findOneAndUpdate(
+            query,
+            { $inc: { sentToday: 1 }, $set: { lastSentAt: new Date() } },
+            { sort: { sentToday: 1 }, new: true }
+        );
 
         return account;
+    }
+
+    /**
+     * Decrement sent count for an account (used when email fails after selection)
+     */
+    async decrementSentCount(accountId: Types.ObjectId): Promise<void> {
+        await EmailAccount.findByIdAndUpdate(accountId, {
+            $inc: { sentToday: -1 },
+        });
     }
 
     /**

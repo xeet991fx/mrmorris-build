@@ -7,10 +7,12 @@ import {
     CheckCircleIcon,
     PaperAirplaneIcon,
     Cog6ToothIcon,
+    SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { Mail, Save } from "lucide-react";
 import { useEmailTemplateStore } from "@/store/useEmailTemplateStore";
 import DevicePreviewToggle from "./DevicePreviewToggle";
+import AIPromptPanel from "./AIPromptPanel";
 import { EmailBuilderEditorRef } from "./EmailBuilderEditor";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +34,15 @@ export default function EmailBuilderToolbar({
     onSettings,
 }: EmailBuilderToolbarProps) {
     const router = useRouter();
-    const { currentTemplate, isSaving, hasUnsavedChanges, saveTemplate } = useEmailTemplateStore();
+    const { currentTemplate, isSaving, hasUnsavedChanges, saveTemplate, setHasUnsavedChanges } = useEmailTemplateStore();
+    const [showAIPanel, setShowAIPanel] = useState(false);
+
+    const handleAIGenerate = (html: string, design: any) => {
+        if (editorRef.current && design) {
+            editorRef.current.loadDesign(design);
+            setHasUnsavedChanges(true);
+        }
+    };
 
     const handleSave = () => {
         editorRef.current?.exportHtml((data) => {
@@ -63,7 +73,7 @@ export default function EmailBuilderToolbar({
 
     return (
         <div
-            className="flex-shrink-0 z-50 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800"
+            className="relative flex-shrink-0 z-50 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800"
             onKeyDown={handleKeyDown}
             tabIndex={0}
         >
@@ -98,6 +108,20 @@ export default function EmailBuilderToolbar({
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowAIPanel(!showAIPanel)}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors",
+                            showAIPanel
+                                ? "bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
+                                : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        )}
+                        title="Generate with AI"
+                    >
+                        <SparklesIcon className="w-4 h-4" />
+                        <span className="hidden lg:inline">AI Generate</span>
+                    </button>
+
                     <button
                         onClick={onSettings}
                         className="flex items-center gap-2 px-3 py-2 rounded-full text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -140,6 +164,14 @@ export default function EmailBuilderToolbar({
                     </button>
                 </div>
             </div>
+
+            {/* AI Prompt Panel */}
+            <AIPromptPanel
+                workspaceId={workspaceId}
+                isOpen={showAIPanel}
+                onClose={() => setShowAIPanel(false)}
+                onGenerate={handleAIGenerate}
+            />
         </div>
     );
 }

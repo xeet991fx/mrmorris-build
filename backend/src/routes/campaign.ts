@@ -1,6 +1,6 @@
 /**
  * Campaign Routes
- * 
+ *
  * API routes for managing cold email campaigns
  */
 
@@ -9,6 +9,11 @@ import { google } from "googleapis";
 import CampaignService from "../services/CampaignService";
 import Campaign from "../models/Campaign";
 import { authenticate } from "../middleware/auth";
+import {
+    queueReadyEnrollments,
+    getEmailQueueStats,
+    enqueueCampaignEmailsBulk,
+} from "../services/CampaignEmailQueue";
 
 // OAuth2 client helper for Gmail API
 const getOAuth2Client = () => {
@@ -514,6 +519,81 @@ router.post("/:id/test", async (req: any, res) => {
         }
     } catch (error: any) {
         console.error("Test email error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
+/**
+ * POST /api/campaigns/send-batch
+ * Trigger a batch send of campaign emails (for testing or manual trigger)
+ * Supports three modes:
+ * - "sequential" (default): Safe, one-at-a-time with atomic locking
+ * - "parallel": High-throughput, 10-20 concurrent workers
+ * - "queue": Production-ready async queue (recommended for 500+ emails)
+ */
+router.post("/send-batch", async (req: any, res) => {
+    try {
+        const { mode = "queue", concurrency = 10, limit = 500 } = req.body;
+
+        if (mode === "queue") {
+            // Production mode: Queue emails for async processing
+            // Returns immediately, emails sent in background
+            const result = await queueReadyEnrollments(limit);
+
+            res.json({
+                success: true,
+                message: `Queued ${result.queued} emails for sending`,
+                queued: result.queued,
+                skipped: result.skipped,
+                mode: "queue",
+            });
+        } else if (mode === "parallel") {
+            // High-throughput synchronous mode
+            const sent = await CampaignService.sendNextBatchParallel(concurrency);
+
+            res.json({
+                success: true,
+                message: `Batch send completed`,
+                sent,
+                mode: "parallel",
+            });
+        } else {
+            // Safe sequential mode
+            const sent = await CampaignService.sendNextBatch();
+
+            res.json({
+                success: true,
+                message: `Batch send completed`,
+                sent,
+                mode: "sequential",
+            });
+        }
+    } catch (error: any) {
+        console.error("Send batch error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
+/**
+ * GET /api/campaigns/queue-stats
+ * Get email queue statistics
+ */
+router.get("/queue-stats", async (req: any, res) => {
+    try {
+        const stats = await getEmailQueueStats();
+
+        res.json({
+            success: true,
+            stats,
+        });
+    } catch (error: any) {
+        console.error("Queue stats error:", error);
         res.status(500).json({
             success: false,
             message: error.message,

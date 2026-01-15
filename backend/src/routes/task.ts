@@ -4,6 +4,7 @@ import Task from "../models/Task";
 import Project from "../models/Project";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import { z } from "zod";
+import { escapeRegex } from "../utils/sanitize";
 
 const router = express.Router();
 
@@ -77,9 +78,10 @@ router.get(
             if (priority) filter.priority = priority;
             if (assignedTo) filter.assignedTo = assignedTo;
             if (search) {
+                const safeSearch = escapeRegex(search as string);
                 filter.$or = [
-                    { title: { $regex: search, $options: "i" } },
-                    { description: { $regex: search, $options: "i" } },
+                    { title: { $regex: safeSearch, $options: "i" } },
+                    { description: { $regex: safeSearch, $options: "i" } },
                 ];
             }
 

@@ -14,6 +14,7 @@ import {
 import { workflowService } from "../services/WorkflowService";
 import { eventPublisher } from "../events/publisher/EventPublisher";
 import { DEAL_EVENTS } from "../events/types/deal.events";
+import { escapeRegex } from "../utils/sanitize";
 
 const router = express.Router();
 
@@ -280,11 +281,12 @@ router.get(
         filter.tags = { $in: tags };
       }
 
-      // Search functionality
+      // Search functionality - using escaped regex to prevent ReDoS attacks
       if (queryParams.search) {
+        const safeSearch = escapeRegex(queryParams.search);
         filter.$or = [
-          { title: { $regex: queryParams.search, $options: "i" } },
-          { description: { $regex: queryParams.search, $options: "i" } },
+          { title: { $regex: safeSearch, $options: "i" } },
+          { description: { $regex: safeSearch, $options: "i" } },
         ];
       }
 

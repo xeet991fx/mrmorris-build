@@ -20,6 +20,17 @@ import {
 
 const router = express.Router();
 
+// Validate JWT_SECRET at startup
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error("CRITICAL: JWT_SECRET environment variable is required in production");
+}
+
+const getJwtSecret = (): string => {
+  if (JWT_SECRET) return JWT_SECRET;
+  return "dev-only-secret-do-not-use-in-production";
+};
+
 // Rate limiters
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -43,7 +54,7 @@ const emailLimiter = rateLimit({
 const generateToken = (userId: string): string => {
   return jwt.sign(
     { id: userId },
-    process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this",
+    getJwtSecret(),
     {
       expiresIn: process.env.JWT_EXPIRE || "7d",
     } as jwt.SignOptions

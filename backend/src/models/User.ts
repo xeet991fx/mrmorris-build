@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 export interface IUser extends Document {
   email: string;
@@ -129,10 +130,9 @@ userSchema.methods.comparePassword = async function (
   }
 };
 
-// Generate verification token
+// Generate verification token - using cryptographically secure random bytes
 userSchema.methods.generateVerificationToken = function (): string {
-  const token = Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15);
+  const token = crypto.randomBytes(32).toString('hex');
 
   this.verificationToken = token;
   this.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -140,10 +140,9 @@ userSchema.methods.generateVerificationToken = function (): string {
   return token;
 };
 
-// Generate password reset token
+// Generate password reset token - using cryptographically secure random bytes
 userSchema.methods.generatePasswordResetToken = function (): string {
-  const token = Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15);
+  const token = crypto.randomBytes(32).toString('hex');
 
   this.resetPasswordToken = token;
   this.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour

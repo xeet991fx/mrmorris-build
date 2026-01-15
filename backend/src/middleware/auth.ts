@@ -2,6 +2,19 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User, { IUser } from "../models/User";
 
+// Validate JWT_SECRET at startup
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error("CRITICAL: JWT_SECRET environment variable is required in production");
+}
+
+// Use a development-only fallback (will warn in console)
+const getJwtSecret = (): string => {
+  if (JWT_SECRET) return JWT_SECRET;
+  console.warn("⚠️  WARNING: Using default JWT secret. Set JWT_SECRET in production!");
+  return "dev-only-secret-do-not-use-in-production";
+};
+
 // Extend Express Request to include user
 declare global {
   namespace Express {
@@ -38,7 +51,7 @@ export const authenticate = async (
     // Verify token
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this"
+      getJwtSecret()
     ) as { id: string };
 
     // Get user from database

@@ -15,6 +15,7 @@ import { fileParserService } from "../services/FileParserService";
 import { aiDataExtractor } from "../services/AIDataExtractor";
 import { eventPublisher } from "../events/publisher/EventPublisher";
 import { CONTACT_EVENTS } from "../events/types/contact.events";
+import { escapeRegex } from "../utils/sanitize";
 
 const router = express.Router();
 
@@ -189,13 +190,14 @@ router.get(
         filter.tags = { $in: tags };
       }
 
-      // Search functionality
+      // Search functionality - using escaped regex to prevent ReDoS attacks
       if (queryParams.search) {
+        const safeSearch = escapeRegex(queryParams.search);
         filter.$or = [
-          { firstName: { $regex: queryParams.search, $options: "i" } },
-          { lastName: { $regex: queryParams.search, $options: "i" } },
-          { email: { $regex: queryParams.search, $options: "i" } },
-          { company: { $regex: queryParams.search, $options: "i" } },
+          { firstName: { $regex: safeSearch, $options: "i" } },
+          { lastName: { $regex: safeSearch, $options: "i" } },
+          { email: { $regex: safeSearch, $options: "i" } },
+          { company: { $regex: safeSearch, $options: "i" } },
         ];
       }
 

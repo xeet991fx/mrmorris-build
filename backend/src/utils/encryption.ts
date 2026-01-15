@@ -14,6 +14,7 @@ const KEY_LENGTH = 32;
 
 /**
  * Derive encryption key from workspace ID and secret
+ * Uses workspace-specific salt for better security
  */
 function deriveKey(workspaceId: string): Buffer {
     const secret = process.env.ENCRYPTION_SECRET || 'default-secret-change-in-production';
@@ -22,8 +23,12 @@ function deriveKey(workspaceId: string): Buffer {
         throw new Error('ENCRYPTION_SECRET environment variable must be set in production');
     }
 
+    // Generate workspace-specific salt using SHA-256 hash of workspaceId
+    // This ensures each workspace has a unique derived key
+    const salt = crypto.createHash('sha256').update(`workspace-salt-${workspaceId}`).digest();
+
     // Use scrypt for key derivation (more secure than simple hashing)
-    return crypto.scryptSync(`${workspaceId}:${secret}`, 'salt', KEY_LENGTH);
+    return crypto.scryptSync(`${workspaceId}:${secret}`, salt, KEY_LENGTH);
 }
 
 /**

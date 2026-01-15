@@ -1,9 +1,10 @@
-import express, { Application, Request, Response } from "express";
+import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import path from "path";
 import http from "http";
+import helmet from "helmet";
 import connectDB from "./config/database";
 import passport from "./config/passport";
 import { createBullBoard } from "@bull-board/api";
@@ -196,6 +197,12 @@ app.use(cors({
     "https://abdulgffarsk.netlify.app", // User's test website
   ],
   credentials: true,
+}));
+
+// Security headers using Helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for now (can be configured later)
+  crossOriginEmbedderPolicy: false, // Required for embedding tracking scripts
 }));
 
 // Request size limits (prevent large payload attacks)
@@ -426,7 +433,75 @@ if (process.env.SENTRY_DSN) {
 // 404 handler
 app.use((req: Request, res: Response) => {
   console.log(`❌ 404 - Route not found: ${req.method} ${req.url}`);
-  res.status(404).json({ error: "Route not found" });
+  res.status(404).json({ success: false, error: "Route not found" });
+});
+
+// ============================================
+// GLOBAL ERROR HANDLER
+// Must be after all routes and other error handlers
+// ============================================
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  // Log error for debugging
+  console.error('❌ Unhandled Error:', {
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    url: req.url,
+    method: req.method,
+  });
+
+  // Mongoose validation error
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation error',
+      details: err.errors,
+    });
+  }
+
+  // Mongoose duplicate key error
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyValue || {})[0];
+    return res.status(400).json({
+      success: false,
+      error: `Duplicate value for field: ${field}`,
+    });
+  }
+
+  // JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid token',
+    });
+  }
+
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      error: 'Token expired',
+    });
+  }
+
+  // Zod validation error
+  if (err.name === 'ZodError') {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: err.errors,
+    });
+  }
+
+  // Default error response
+  const statusCode = err.statusCode || err.status || 500;
+  const message = process.env.NODE_ENV === 'production'
+    ? 'Internal server error'
+    : err.message || 'Internal server error';
+
+  res.status(statusCode).json({
+    success: false,
+    error: message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  });
 });
 
 // Initialize database connection and start server

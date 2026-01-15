@@ -5,6 +5,7 @@ import Contact from "../models/Contact";
 import Project from "../models/Project";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import { z } from "zod";
+import { escapeRegex } from "../utils/sanitize";
 
 const router = express.Router();
 
@@ -82,10 +83,11 @@ router.get(
             if (priority && priority !== "all") filter.priority = priority;
             if (assignedTo) filter.assignedTo = assignedTo;
             if (search) {
+                const safeSearch = escapeRegex(search as string);
                 filter.$or = [
-                    { subject: { $regex: search, $options: "i" } },
-                    { ticketNumber: { $regex: search, $options: "i" } },
-                    { requesterEmail: { $regex: search, $options: "i" } },
+                    { subject: { $regex: safeSearch, $options: "i" } },
+                    { ticketNumber: { $regex: safeSearch, $options: "i" } },
+                    { requesterEmail: { $regex: safeSearch, $options: "i" } },
                 ];
             }
 

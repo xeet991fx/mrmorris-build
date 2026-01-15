@@ -12,6 +12,7 @@ import {
     updateWorkflowSchema,
     enrollContactSchema,
 } from "../validations/workflow";
+import { escapeRegex } from "../utils/sanitize";
 
 const router = express.Router();
 
@@ -145,9 +146,10 @@ router.get(
             }
 
             if (search) {
+                const safeSearch = escapeRegex(search as string);
                 filter.$or = [
-                    { name: { $regex: search, $options: "i" } },
-                    { description: { $regex: search, $options: "i" } },
+                    { name: { $regex: safeSearch, $options: "i" } },
+                    { description: { $regex: safeSearch, $options: "i" } },
                 ];
             }
 

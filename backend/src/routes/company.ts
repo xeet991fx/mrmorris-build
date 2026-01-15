@@ -12,6 +12,7 @@ import {
 import { fileParserService } from "../services/FileParserService";
 import { aiDataExtractor } from "../services/AIDataExtractor";
 import ActivityService from "../services/activityService";
+import { escapeRegex } from "../utils/sanitize";
 
 const router = express.Router();
 
@@ -164,12 +165,13 @@ router.get(
         filter.companySize = queryParams.companySize;
       }
 
-      // Search functionality
+      // Search functionality - using escaped regex to prevent ReDoS attacks
       if (queryParams.search) {
+        const safeSearch = escapeRegex(queryParams.search);
         filter.$or = [
-          { name: { $regex: queryParams.search, $options: "i" } },
-          { industry: { $regex: queryParams.search, $options: "i" } },
-          { website: { $regex: queryParams.search, $options: "i" } },
+          { name: { $regex: safeSearch, $options: "i" } },
+          { industry: { $regex: safeSearch, $options: "i" } },
+          { website: { $regex: safeSearch, $options: "i" } },
         ];
       }
 

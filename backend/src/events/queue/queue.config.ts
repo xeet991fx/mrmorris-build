@@ -6,6 +6,8 @@ export const QUEUE_NAMES = {
   CRM_EVENTS_DLQ: 'crm-events-dlq', // Dead letter queue
   WORKFLOW_BRIDGE: 'crm-workflow-bridge',
   ACTIVITY_LOG: 'crm-activity-log',
+  CAMPAIGN_EMAILS: 'campaign-emails', // Queue for campaign email sending
+  CAMPAIGN_EMAILS_DLQ: 'campaign-emails-dlq',
 } as const;
 
 // Get Redis connection config (supports both REDIS_URL and individual params)

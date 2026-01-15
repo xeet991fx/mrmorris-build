@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     PlusIcon,
     PlayIcon,
@@ -12,12 +12,18 @@ import {
     ArrowPathIcon,
     UserGroupIcon,
     EnvelopeIcon,
-    EyeIcon,
-    CursorArrowRaysIcon,
-    ChatBubbleLeftIcon,
     ExclamationCircleIcon,
     PaperAirplaneIcon,
+    MagnifyingGlassIcon,
+    ChevronRightIcon,
+    XMarkIcon,
+    CheckIcon,
+    SparklesIcon,
+    NewspaperIcon,
+    TicketIcon,
+    HandRaisedIcon,
 } from "@heroicons/react/24/outline";
+import { Snowflake } from "lucide-react";
 import toast from "react-hot-toast";
 import { getEmailIntegrations } from "@/lib/api/emailIntegration";
 import {
@@ -33,10 +39,156 @@ import {
 } from "@/lib/api/campaign";
 import { getEmailAccounts } from "@/lib/api/emailAccount";
 import { axiosInstance } from "@/lib/axios";
-import { TemplateGallery } from "@/components/shared/TemplateGallery";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { CampaignInsightsPanel } from "@/components/campaigns/CampaignInsightsPanel";
+import { cn } from "@/lib/utils";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
+import { campaignTemplates, CampaignTemplate, TemplateIconType } from "@/lib/campaign/templates";
+
+// Template icon mapping
+const TemplateIcon = ({ icon, className }: { icon: TemplateIconType; className?: string }) => {
+    switch (icon) {
+        case 'snowflake':
+            return <Snowflake className={className} />;
+        case 'handshake':
+            return <HandRaisedIcon className={className} />;
+        case 'newspaper':
+            return <NewspaperIcon className={className} />;
+        case 'ticket':
+            return <TicketIcon className={className} />;
+        case 'sparkles':
+            return <SparklesIcon className={className} />;
+        default:
+            return <EnvelopeIcon className={className} />;
+    }
+};
+
+// Status indicator colors - matching workflow style
+const STATUS_COLORS: Record<string, string> = {
+    draft: "bg-zinc-400",
+    active: "bg-emerald-500",
+    paused: "bg-amber-500",
+    completed: "bg-blue-500",
+};
+
+// Campaign row component - matching workflow row style
+function CampaignRow({
+    campaign,
+    onEdit,
+    onStart,
+    onPause,
+    onEnroll,
+    onTestEmail,
+    onDelete,
+}: {
+    campaign: Campaign;
+    onEdit: () => void;
+    onStart: () => void;
+    onPause: () => void;
+    onEnroll: () => void;
+    onTestEmail: () => void;
+    onDelete: () => void;
+}) {
+    const calculateRate = (num: number, denom: number) => {
+        if (denom === 0) return "0%";
+        return `${((num / denom) * 100).toFixed(0)}%`;
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group flex items-center gap-4 py-4 border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors -mx-4 px-4 cursor-pointer"
+            onClick={onEdit}
+        >
+            {/* Status indicator */}
+            <div className={cn("w-2 h-2 rounded-full flex-shrink-0", STATUS_COLORS[campaign.status] || STATUS_COLORS.draft)} />
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                        {campaign.name}
+                    </p>
+                    <span className="text-xs text-zinc-400 capitalize">{campaign.status}</span>
+                </div>
+                <div className="flex items-center gap-4 mt-1">
+                    {campaign.description && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-md">
+                            {campaign.description}
+                        </p>
+                    )}
+                    <p className="text-xs text-zinc-400">
+                        {campaign.steps.length} step{campaign.steps.length !== 1 ? 's' : ''} · {campaign.fromAccounts.length} account{campaign.fromAccounts.length !== 1 ? 's' : ''}
+                    </p>
+                </div>
+            </div>
+
+            {/* Stats */}
+            <div className="hidden sm:flex items-center gap-6 text-xs text-zinc-500">
+                <div className="text-center">
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">{campaign.totalEnrolled}</p>
+                    <p>enrolled</p>
+                </div>
+                <div className="text-center">
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">{campaign.stats.sent}</p>
+                    <p>sent</p>
+                </div>
+                <div className="text-center">
+                    <p className="font-semibold text-emerald-500">{calculateRate(campaign.stats.opened, campaign.stats.sent)}</p>
+                    <p>opened</p>
+                </div>
+                <div className="text-center">
+                    <p className="font-semibold text-blue-500">{calculateRate(campaign.stats.replied, campaign.stats.sent)}</p>
+                    <p>replied</p>
+                </div>
+            </div>
+
+            {/* Actions - hover revealed */}
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                {campaign.status === "active" ? (
+                    <button
+                        onClick={onPause}
+                        className="p-1.5 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                        title="Pause"
+                    >
+                        <PauseIcon className="w-4 h-4" />
+                    </button>
+                ) : campaign.status === "draft" || campaign.status === "paused" ? (
+                    <button
+                        onClick={onStart}
+                        className="p-1.5 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                        title="Start"
+                    >
+                        <PlayIcon className="w-4 h-4" />
+                    </button>
+                ) : null}
+                <button
+                    onClick={onEnroll}
+                    className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="Add Contacts"
+                >
+                    <UserGroupIcon className="w-4 h-4" />
+                </button>
+                <button
+                    onClick={onTestEmail}
+                    className="p-1.5 text-zinc-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors"
+                    title="Send Test Email"
+                >
+                    <PaperAirplaneIcon className="w-4 h-4" />
+                </button>
+                <button
+                    onClick={onDelete}
+                    className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    title="Delete"
+                >
+                    <TrashIcon className="w-4 h-4" />
+                </button>
+            </div>
+
+            <ChevronRightIcon className="w-4 h-4 text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+        </motion.div>
+    );
+}
 
 export default function CampaignsPage() {
     const params = useParams();
@@ -56,6 +208,10 @@ export default function CampaignsPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [emailAccounts, setEmailAccounts] = useState<Array<{ _id: string; email: string }>>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Search and filter state
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("all");
 
     // Contact enrollment state
     const [showEnrollModal, setShowEnrollModal] = useState(false);
@@ -119,13 +275,11 @@ export default function CampaignsPage() {
 
     const fetchEmailAccountsData = useCallback(async () => {
         try {
-            // Fetch cold email accounts
             const coldAccountsPromise = getEmailAccounts(workspaceId).catch(() => ({
                 success: false,
                 data: { accounts: [] }
             }));
 
-            // Fetch Gmail integrations
             const integrationsPromise = getEmailIntegrations(workspaceId).catch(() => ({
                 success: false,
                 data: { integrations: [] }
@@ -138,7 +292,6 @@ export default function CampaignsPage() {
 
             const accounts: Array<{ _id: string; email: string }> = [];
 
-            // Add cold email accounts (handle both response formats)
             const coldAccounts = coldData.data?.accounts || (coldData as any).accounts || [];
             if (coldData.success && coldAccounts.length > 0) {
                 for (const acc of coldAccounts) {
@@ -146,19 +299,13 @@ export default function CampaignsPage() {
                 }
             }
 
-            // Add Gmail integrations (these can also send emails)
             const integrations = integrationsData.data?.integrations || [];
             if (integrationsData.success && integrations.length > 0) {
                 for (const integration of integrations) {
-                    // Avoid duplicates
                     if (!accounts.some(acc => acc.email === integration.email)) {
                         accounts.push({ _id: integration._id, email: integration.email });
                     }
                 }
-            }
-
-            if (accounts.length === 0) {
-                console.warn("No email accounts found. Connect accounts in Email Accounts or Settings > Integrations.");
             }
 
             setEmailAccounts(accounts);
@@ -274,7 +421,6 @@ export default function CampaignsPage() {
         setDeleteConfirmOpen(true);
     };
 
-    // Fetch contacts for enrollment
     const fetchContactsForEnrollment = async () => {
         setContactsLoading(true);
         try {
@@ -282,7 +428,6 @@ export default function CampaignsPage() {
                 params: { limit: 100 }
             });
             const contactsList = response.data.data?.contacts || response.data.contacts || [];
-            // Filter contacts that have email addresses
             const contactsWithEmail = contactsList.filter((c: any) => c.email);
             setContacts(contactsWithEmail);
         } catch (err) {
@@ -293,7 +438,6 @@ export default function CampaignsPage() {
         }
     };
 
-    // Open enrollment modal
     const handleOpenEnrollModal = async (campaignId: string) => {
         setEnrollingCampaignId(campaignId);
         setSelectedContacts([]);
@@ -301,7 +445,6 @@ export default function CampaignsPage() {
         await fetchContactsForEnrollment();
     };
 
-    // Enroll selected contacts
     const handleEnrollContacts = async () => {
         if (!enrollingCampaignId || selectedContacts.length === 0) {
             toast.error("Please select at least one contact");
@@ -326,7 +469,6 @@ export default function CampaignsPage() {
         }
     };
 
-    // Toggle contact selection
     const toggleContactSelection = (contactId: string) => {
         setSelectedContacts(prev =>
             prev.includes(contactId)
@@ -335,7 +477,6 @@ export default function CampaignsPage() {
         );
     };
 
-    // Select all contacts
     const selectAllContacts = () => {
         if (selectedContacts.length === contacts.length) {
             setSelectedContacts([]);
@@ -344,14 +485,12 @@ export default function CampaignsPage() {
         }
     };
 
-    // Open test email modal
     const handleOpenTestEmail = (campaign: Campaign) => {
         setTestEmailCampaign(campaign);
         setTestEmailAddress("");
         setShowTestEmailModal(true);
     };
 
-    // Send test email
     const handleSendTestEmail = async () => {
         if (!testEmailCampaign || !testEmailAddress) {
             toast.error("Please enter an email address");
@@ -390,33 +529,31 @@ export default function CampaignsPage() {
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        const badges: Record<string, { bg: string; text: string; label: string }> = {
-            draft: { bg: "bg-gray-500/20", text: "text-gray-400", label: "Draft" },
-            active: { bg: "bg-green-500/20", text: "text-green-400", label: "Active" },
-            paused: { bg: "bg-yellow-500/20", text: "text-yellow-400", label: "Paused" },
-            completed: { bg: "bg-blue-500/20", text: "text-blue-400", label: "Completed" },
-        };
-        const badge = badges[status] || badges.draft;
-        return (
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${badge.bg} ${badge.text}`}>
-                {badge.label}
-            </span>
-        );
-    };
+    // Filter campaigns
+    const filteredCampaigns = campaigns.filter((c) => {
+        const matchesSearch =
+            searchQuery === "" ||
+            c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
 
-    const calculateRate = (num: number, denom: number) => {
-        if (denom === 0) return "0%";
-        return `${((num / denom) * 100).toFixed(1)}%`;
-    };
+    // Stats
+    const activeCount = campaigns.filter(c => c.status === "active").length;
+    const draftCount = campaigns.filter(c => c.status === "draft").length;
+    const pausedCount = campaigns.filter(c => c.status === "paused").length;
 
     // Loading state
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3">
-                    <ArrowPathIcon className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Loading campaigns...</p>
+            <div className="h-full overflow-y-auto">
+                <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-4 sm:pb-6">
+                    <div className="space-y-4 py-8">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-16 bg-zinc-100 dark:bg-zinc-800 rounded-lg animate-pulse" />
+                        ))}
+                    </div>
                 </div>
             </div>
         );
@@ -425,14 +562,14 @@ export default function CampaignsPage() {
     // Error state
     if (error) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
+            <div className="h-full flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4 text-center">
                     <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center">
                         <ExclamationCircleIcon className="w-8 h-8 text-red-500" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-medium text-foreground mb-1">Failed to load campaigns</h3>
-                        <p className="text-muted-foreground">{error}</p>
+                        <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">Failed to load campaigns</h3>
+                        <p className="text-zinc-500">{error}</p>
                     </div>
                     <button
                         onClick={() => {
@@ -440,7 +577,7 @@ export default function CampaignsPage() {
                             setError(null);
                             fetchCampaignsData();
                         }}
-                        className="px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
+                        className="px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
                     >
                         Try Again
                     </button>
@@ -450,532 +587,663 @@ export default function CampaignsPage() {
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground">Campaigns</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Create and manage cold email campaigns
-                    </p>
-                </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
+        <div className="h-full overflow-y-auto">
+            {/* Hero Section */}
+            <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
                 >
-                    <PlusIcon className="w-5 h-5" />
-                    New Campaign
-                </button>
-            </div>
-
-            {/* Campaigns List */}
-            {campaigns.length === 0 ? (
-                <>
-                    <div className="bg-card border border-border rounded-xl p-12 text-center">
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-muted-foreground">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-medium text-foreground mb-2">No campaigns yet</h3>
-                        <p className="text-muted-foreground mb-6">
-                            Create your first cold email campaign to start reaching prospects
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                            Campaigns
+                        </h1>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                            Create and manage cold email campaigns
                         </p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3">
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors"
+                            disabled={isSubmitting}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm disabled:opacity-50"
                         >
-                            <PlusIcon className="w-5 h-5" />
-                            Create Campaign
+                            {isSubmitting ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span className="hidden sm:inline">Creating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <PlusIcon className="w-4 h-4" />
+                                    <span className="hidden sm:inline">New Campaign</span>
+                                </>
+                            )}
                         </button>
                     </div>
-                    <TemplateGallery
-                        title="Launch Your Outreach"
-                        description="Select a campaign strategy or start from scratch."
-                        onCreateBlank={() => setShowCreateModal(true)}
-                        actionLabel="New Campaign"
-                        onSelect={(id) => {
-                            setShowCreateModal(true);
-                            // Pre-fill logic could go here based on ID
-                        }}
-                        templates={[
-                            { id: "cold-outreach", title: "Cold Outreach", description: "Standard 3-step sequence for cold prospects.", icon: "❄️" },
-                            { id: "newsletter", title: "Newsletter Blast", description: "One-off announcement to your list.", icon: "📰" },
-                            { id: "event-invite", title: "Event Invitation", description: "Invite and follow up sequence.", icon: "🎟️" }
-                        ]}
-                    />
-                </>
-            ) : (
-                <div className="space-y-4">
-                    {campaigns.map((campaign) => (
+                </motion.div>
+
+                {/* Stats Row */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="mt-4 flex items-center gap-6"
+                >
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{campaigns.length}</span>
+                        <span className="text-sm text-zinc-500">total</span>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-2xl font-bold text-emerald-500">{activeCount}</span>
+                        <span className="text-sm text-zinc-500">active</span>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-zinc-400" />
+                        <span className="text-2xl font-bold text-zinc-500">{draftCount}</span>
+                        <span className="text-sm text-zinc-500">draft</span>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span className="text-2xl font-bold text-amber-500">{pausedCount}</span>
+                        <span className="text-sm text-zinc-500">paused</span>
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Divider */}
+            <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
+
+            {/* Search & Filter */}
+            <div className="px-4 sm:px-6 lg:px-8 py-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4"
+                >
+                    {/* Search */}
+                    <div className="relative flex-1 max-w-sm">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                        <input
+                            type="text"
+                            placeholder="Search campaigns..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-0 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                        />
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-2">
+                        {(["all", "active", "draft", "paused", "completed"] as const).map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={cn(
+                                    "px-3 py-1.5 text-sm font-medium rounded-full transition-all",
+                                    statusFilter === status
+                                        ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                                )}
+                            >
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* Campaign List */}
+            <div className="px-8 pb-8">
+                {filteredCampaigns.length === 0 ? (
+                    campaigns.length === 0 ? (
                         <motion.div
-                            key={campaign._id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-card border border-border rounded-xl p-5 hover:border-[#9ACD32]/50 transition-colors"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="text-center py-16"
                         >
-                            {/* Campaign Header */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="text-lg font-medium text-foreground">{campaign.name}</h3>
-                                        {getStatusBadge(campaign.status)}
-                                    </div>
-                                    {campaign.description && (
-                                        <p className="text-sm text-muted-foreground">{campaign.description}</p>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {campaign.status === "draft" || campaign.status === "paused" ? (
-                                        <button
-                                            onClick={() => handleStartCampaign(campaign._id)}
-                                            className="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors"
-                                            title="Start Campaign"
-                                        >
-                                            <PlayIcon className="w-5 h-5" />
-                                        </button>
-                                    ) : campaign.status === "active" ? (
-                                        <button
-                                            onClick={() => handlePauseCampaign(campaign._id)}
-                                            className="p-2 text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-colors"
-                                            title="Pause Campaign"
-                                        >
-                                            <PauseIcon className="w-5 h-5" />
-                                        </button>
-                                    ) : null}
-                                    <button
-                                        onClick={() => handleOpenEnrollModal(campaign._id)}
-                                        className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                                        title="Add Contacts"
-                                    >
-                                        <UserGroupIcon className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleOpenTestEmail(campaign)}
-                                        className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                                        title="Send Test Email"
-                                    >
-                                        <PaperAirplaneIcon className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={() => openDeleteConfirm(campaign._id)}
-                                        className="p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                        title="Delete Campaign"
-                                    >
-                                        <TrashIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-6 gap-3 mb-4">
-                                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                        <UserGroupIcon className="w-4 h-4" />
-                                        <span className="text-xs">Enrolled</span>
-                                    </div>
-                                    <p className="text-xl font-semibold text-foreground">{campaign.totalEnrolled}</p>
-                                </div>
-                                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                        <EnvelopeIcon className="w-4 h-4" />
-                                        <span className="text-xs">Sent</span>
-                                    </div>
-                                    <p className="text-xl font-semibold text-foreground">{campaign.stats.sent}</p>
-                                </div>
-                                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                        <EyeIcon className="w-4 h-4" />
-                                        <span className="text-xs">Open Rate</span>
-                                    </div>
-                                    <p className="text-xl font-semibold text-foreground">
-                                        {calculateRate(campaign.stats.opened, campaign.stats.sent)}
-                                    </p>
-                                </div>
-                                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                        <CursorArrowRaysIcon className="w-4 h-4" />
-                                        <span className="text-xs">Click Rate</span>
-                                    </div>
-                                    <p className="text-xl font-semibold text-foreground">
-                                        {calculateRate(campaign.stats.clicked, campaign.stats.sent)}
-                                    </p>
-                                </div>
-                                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                        <ChatBubbleLeftIcon className="w-4 h-4" />
-                                        <span className="text-xs">Reply Rate</span>
-                                    </div>
-                                    <p className="text-xl font-semibold text-foreground">
-                                        {calculateRate(campaign.stats.replied, campaign.stats.sent)}
-                                    </p>
-                                </div>
-                                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
-                                        <span className="text-xs">Bounce Rate</span>
-                                    </div>
-                                    <p className="text-xl font-semibold text-foreground">
-                                        {calculateRate(campaign.stats.bounced, campaign.stats.sent)}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Footer Info */}
-                            <div className="flex items-center justify-between pt-3 border-t border-border text-sm text-muted-foreground">
-                                <div className="flex items-center gap-4">
-                                    <span>{campaign.steps.length} step(s)</span>
-                                    <span>{campaign.fromAccounts.length} sending account(s)</span>
-                                    <span>{campaign.dailyLimit} emails/day limit</span>
-                                </div>
-                                <span>
-                                    Created {new Date(campaign.createdAt).toLocaleDateString()}
-                                </span>
-                            </div>
-
-                            {/* AI Campaign Insights */}
-                            <div className="mt-4">
-                                <CampaignInsightsPanel
-                                    workspaceId={workspaceId}
-                                    campaignId={campaign._id}
-                                    campaignStatus={campaign.status as any}
-                                />
-                            </div>
+                            <EnvelopeIcon className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-4" />
+                            <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">No campaigns yet</h3>
+                            <p className="text-sm text-zinc-500 mb-6">Create your first campaign to start reaching prospects</p>
+                            <button
+                                onClick={() => setShowCreateModal(true)}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                                Create Campaign
+                            </button>
                         </motion.div>
-                    ))}
-                </div>
-            )}
+                    ) : (
+                        <div className="text-center py-12 text-zinc-500">
+                            No campaigns match your search.
+                        </div>
+                    )
+                ) : (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        {filteredCampaigns.map((campaign) => (
+                            <CampaignRow
+                                key={campaign._id}
+                                campaign={campaign}
+                                onEdit={() => router.push(`/projects/${workspaceId}/campaigns/${campaign._id}`)}
+                                onStart={() => handleStartCampaign(campaign._id)}
+                                onPause={() => handlePauseCampaign(campaign._id)}
+                                onEnroll={() => handleOpenEnrollModal(campaign._id)}
+                                onTestEmail={() => handleOpenTestEmail(campaign)}
+                                onDelete={() => openDeleteConfirm(campaign._id)}
+                            />
+                        ))}
+                    </motion.div>
+                )}
+            </div>
 
             {/* Create Campaign Modal */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-8">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-card border border-border rounded-xl p-6 w-full max-w-2xl mx-4"
-                    >
-                        <h2 className="text-xl font-semibold text-foreground mb-6">Create Campaign</h2>
-
-                        <form onSubmit={handleCreateCampaign} className="space-y-6">
-                            {/* Basic Info */}
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">
-                                        Campaign Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={createForm.name}
-                                        onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                                        required
-                                        className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
-                                        placeholder="Q1 Outreach Campaign"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-foreground mb-1">
-                                        Description (optional)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={createForm.description}
-                                        onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                                        className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
-                                        placeholder="Target: Marketing Managers at SaaS companies"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Email Accounts */}
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">
-                                    Sending Accounts
-                                </label>
-                                {emailAccounts.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
-                                        No email accounts connected.{" "}
-                                        <Link
-                                            href={`/projects/${workspaceId}/email-accounts`}
-                                            className="text-primary hover:underline"
-                                        >
-                                            Add one now
-                                        </Link>
-                                    </p>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2">
-                                        {emailAccounts.map((account) => (
-                                            <label
-                                                key={account._id}
-                                                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors ${createForm.fromAccounts.includes(account._id)
-                                                    ? "bg-[#9ACD32] text-background"
-                                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                                                    }`}
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={createForm.fromAccounts.includes(account._id)}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) {
-                                                            setCreateForm({
-                                                                ...createForm,
-                                                                fromAccounts: [...createForm.fromAccounts, account._id],
-                                                            });
-                                                        } else {
-                                                            setCreateForm({
-                                                                ...createForm,
-                                                                fromAccounts: createForm.fromAccounts.filter((id) => id !== account._id),
-                                                            });
-                                                        }
-                                                    }}
-                                                    className="sr-only"
-                                                />
-                                                {account.email}
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Daily Limit */}
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">
-                                    Daily Send Limit
-                                </label>
-                                <input
-                                    type="number"
-                                    value={createForm.dailyLimit}
-                                    onChange={(e) => setCreateForm({ ...createForm, dailyLimit: parseInt(e.target.value) || 50 })}
-                                    min={1}
-                                    max={500}
-                                    className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
-                                />
-                            </div>
-
-                            {/* Email Step */}
-                            <div className="bg-muted/30 rounded-lg p-4">
-                                <h3 className="text-sm font-medium text-foreground mb-4">Step 1: Initial Email</h3>
-                                <div className="space-y-4">
+            <AnimatePresence>
+                {showCreateModal && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                            onClick={() => setShowCreateModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[10vh] overflow-y-auto"
+                        >
+                            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-xl shadow-2xl">
+                                {/* Modal Header */}
+                                <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-1">
-                                            Subject Line
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={createForm.steps[0].subject}
-                                            onChange={(e) =>
-                                                setCreateForm({
-                                                    ...createForm,
-                                                    steps: [{ ...createForm.steps[0], subject: e.target.value }],
-                                                })
-                                            }
-                                            className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32]"
-                                            placeholder="Hi {{firstName}}, quick question about {{company}}"
-                                        />
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Use {"{{firstName}}"}, {"{{lastName}}"}, {"{{company}}"} for personalization
-                                        </p>
+                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">New Campaign</h2>
+                                        <p className="text-xs text-zinc-500 mt-0.5">Set up your email sequence</p>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-1">
-                                            Email Body
-                                        </label>
-                                        <textarea
-                                            value={createForm.steps[0].body}
-                                            onChange={(e) =>
-                                                setCreateForm({
-                                                    ...createForm,
-                                                    steps: [{ ...createForm.steps[0], body: e.target.value }],
-                                                })
-                                            }
-                                            rows={6}
-                                            className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] resize-none"
-                                            placeholder="Hi {{firstName}},&#10;&#10;I noticed..."
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCreateModal(false)}
-                                    disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors disabled:opacity-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {isSubmitting ? (
-                                        <>
-                                            <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                            Creating...
-                                        </>
-                                    ) : (
-                                        "Create Campaign"
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </motion.div>
-                </div>
-            )}
-
-            {/* Enroll Contacts Modal */}
-            {showEnrollModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-8">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-card border border-border rounded-xl p-6 w-full max-w-lg mx-4"
-                    >
-                        <h2 className="text-xl font-semibold text-foreground mb-4">Add Contacts to Campaign</h2>
-
-                        {contactsLoading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <ArrowPathIcon className="w-6 h-6 animate-spin text-primary" />
-                            </div>
-                        ) : contacts.length === 0 ? (
-                            <div className="text-center py-8">
-                                <UserGroupIcon className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                                <p className="text-muted-foreground mb-4">No contacts with email addresses found.</p>
-                                <button
-                                    onClick={() => router.push(`/projects/${workspaceId}/contacts`)}
-                                    className="text-primary hover:underline"
-                                >
-                                    Add contacts first
-                                </button>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="flex items-center justify-between mb-3">
-                                    <span className="text-sm text-muted-foreground">
-                                        {selectedContacts.length} of {contacts.length} selected
-                                    </span>
                                     <button
-                                        onClick={selectAllContacts}
-                                        className="text-sm text-primary hover:underline"
+                                        onClick={() => setShowCreateModal(false)}
+                                        className="p-2 -m-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
                                     >
-                                        {selectedContacts.length === contacts.length ? "Deselect All" : "Select All"}
+                                        <XMarkIcon className="w-5 h-5" />
                                     </button>
                                 </div>
 
-                                <div className="max-h-64 overflow-y-auto border border-border rounded-lg divide-y divide-border">
-                                    {contacts.map(contact => (
-                                        <label
-                                            key={contact._id}
-                                            className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedContacts.includes(contact._id)}
-                                                onChange={() => toggleContactSelection(contact._id)}
-                                                className="w-4 h-4 rounded border-border text-primary focus:ring-[#9ACD32]"
-                                            />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-foreground truncate">
-                                                    {contact.firstName} {contact.lastName}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground truncate">
-                                                    {contact.email}
-                                                </p>
+                                <form onSubmit={handleCreateCampaign}>
+                                    <div className="px-6 py-5 space-y-5">
+                                        {/* Template Selection */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                                Start with a template
+                                            </label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {/* Blank Option */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setCreateForm({
+                                                            name: "",
+                                                            description: "",
+                                                            fromAccounts: createForm.fromAccounts,
+                                                            dailyLimit: 50,
+                                                            steps: [{
+                                                                id: "step-1",
+                                                                type: "email",
+                                                                subject: "",
+                                                                body: "",
+                                                                delayDays: 0,
+                                                                delayHours: 0,
+                                                            }],
+                                                        });
+                                                    }}
+                                                    className={cn(
+                                                        "flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-all",
+                                                        createForm.name === "" && createForm.steps[0]?.subject === ""
+                                                            ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800"
+                                                            : "border-dashed border-zinc-300 dark:border-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-500"
+                                                    )}
+                                                >
+                                                    <PlusIcon className="w-5 h-5 text-zinc-400" />
+                                                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Blank</span>
+                                                </button>
+                                                {campaignTemplates.slice(0, 5).map((template) => (
+                                                    <button
+                                                        key={template.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCreateForm({
+                                                                ...createForm,
+                                                                name: template.name,
+                                                                dailyLimit: template.dailyLimit,
+                                                                steps: template.steps.map((step, idx) => ({
+                                                                    ...step,
+                                                                    id: `step-${idx + 1}`,
+                                                                })),
+                                                            });
+                                                        }}
+                                                        className={cn(
+                                                            "flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-all",
+                                                            createForm.name === template.name
+                                                                ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800"
+                                                                : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                                                        )}
+                                                    >
+                                                        <TemplateIcon icon={template.icon} className="w-5 h-5 text-zinc-500" />
+                                                        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate w-full">{template.name}</span>
+                                                    </button>
+                                                ))}
                                             </div>
-                                        </label>
-                                    ))}
-                                </div>
-                            </>
-                        )}
+                                        </div>
 
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => {
-                                    setShowEnrollModal(false);
-                                    setSelectedContacts([]);
-                                }}
-                                className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleEnrollContacts}
-                                disabled={isEnrolling || selectedContacts.length === 0}
-                                className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                                {isEnrolling ? (
-                                    <>
-                                        <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                        Enrolling...
-                                    </>
-                                ) : (
-                                    `Enroll ${selectedContacts.length} Contact${selectedContacts.length !== 1 ? 's' : ''}`
-                                )}
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+                                        {/* Campaign Name */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                                Campaign Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={createForm.name}
+                                                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                                                required
+                                                className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent text-zinc-900 dark:text-zinc-100 text-sm"
+                                                placeholder="e.g. Q1 Outreach"
+                                            />
+                                        </div>
 
-            {/* Test Email Modal */}
-            {showTestEmailModal && testEmailCampaign && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-card border border-border rounded-xl p-6 w-full max-w-md mx-4"
-                    >
-                        <h2 className="text-xl font-semibold text-foreground mb-2">
-                            Send Test Email
-                        </h2>
-                        <p className="text-sm text-muted-foreground mb-6">
-                            Send a test email from campaign &quot;{testEmailCampaign.name}&quot; to verify it works correctly.
-                        </p>
+                                        {/* Sending Account */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                                Send From
+                                            </label>
+                                            {emailAccounts.length === 0 ? (
+                                                <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                                    <ExclamationCircleIcon className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                                                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                                                        No email accounts.{" "}
+                                                        <Link href={`/projects/${workspaceId}/email-accounts`} className="font-medium underline">
+                                                            Connect one
+                                                        </Link>
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {emailAccounts.map((account) => (
+                                                        <label
+                                                            key={account._id}
+                                                            className={cn(
+                                                                "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                                                                createForm.fromAccounts.includes(account._id)
+                                                                    ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800"
+                                                                    : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600"
+                                                            )}
+                                                        >
+                                                            <div className={cn(
+                                                                "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                                                                createForm.fromAccounts.includes(account._id)
+                                                                    ? "border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100"
+                                                                    : "border-zinc-300 dark:border-zinc-600"
+                                                            )}>
+                                                                {createForm.fromAccounts.includes(account._id) && (
+                                                                    <CheckIcon className="w-3 h-3 text-white dark:text-zinc-900" />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{account.email}</p>
+                                                            </div>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={createForm.fromAccounts.includes(account._id)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setCreateForm({
+                                                                            ...createForm,
+                                                                            fromAccounts: [...createForm.fromAccounts, account._id],
+                                                                        });
+                                                                    } else {
+                                                                        setCreateForm({
+                                                                            ...createForm,
+                                                                            fromAccounts: createForm.fromAccounts.filter((id) => id !== account._id),
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                className="sr-only"
+                                                            />
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-1">
-                                    Email Address
-                                </label>
-                                <input
-                                    type="email"
-                                    value={testEmailAddress}
-                                    onChange={(e) => setTestEmailAddress(e.target.value)}
-                                    placeholder="your@email.com"
-                                    className="w-full px-3 py-2 bg-card/95 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9ACD32] text-foreground"
-                                />
+                                        {/* Email Steps */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                                    Email Sequence ({createForm.steps.length} step{createForm.steps.length !== 1 ? 's' : ''})
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-3 max-h-64 overflow-y-auto">
+                                                {createForm.steps.map((step, idx) => (
+                                                    <div key={idx} className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-3">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <div className="w-5 h-5 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center text-xs font-medium flex-shrink-0">
+                                                                {idx + 1}
+                                                            </div>
+                                                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                                                {idx === 0 ? 'Send immediately' : `Wait ${step.delayDays || 0} day${(step.delayDays || 0) !== 1 ? 's' : ''}`}
+                                                            </span>
+                                                        </div>
+                                                        <input
+                                                            type="text"
+                                                            value={step.subject}
+                                                            onChange={(e) => {
+                                                                const newSteps = [...createForm.steps];
+                                                                newSteps[idx] = { ...newSteps[idx], subject: e.target.value };
+                                                                setCreateForm({ ...createForm, steps: newSteps });
+                                                            }}
+                                                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent text-zinc-900 dark:text-zinc-100 text-sm mb-2"
+                                                            placeholder="Subject line..."
+                                                        />
+                                                        <textarea
+                                                            value={step.body}
+                                                            onChange={(e) => {
+                                                                const newSteps = [...createForm.steps];
+                                                                newSteps[idx] = { ...newSteps[idx], body: e.target.value };
+                                                                setCreateForm({ ...createForm, steps: newSteps });
+                                                            }}
+                                                            rows={3}
+                                                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent resize-none text-zinc-900 dark:text-zinc-100 text-sm"
+                                                            placeholder="Write your email..."
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-zinc-400">
+                                                Variables: {"{{firstName}}"} {"{{lastName}}"} {"{{company}}"}
+                                            </p>
+                                        </div>
+
+                                        {/* Daily Limit - Compact */}
+                                        <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/30 rounded-lg">
+                                            <div>
+                                                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Daily limit</p>
+                                                <p className="text-xs text-zinc-400">Max emails per day</p>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                value={createForm.dailyLimit}
+                                                onChange={(e) => setCreateForm({ ...createForm, dailyLimit: parseInt(e.target.value) || 50 })}
+                                                min={1}
+                                                max={500}
+                                                className="w-20 px-3 py-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 text-zinc-900 dark:text-zinc-100 text-sm text-center"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Modal Footer */}
+                                    <div className="flex gap-3 px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 rounded-b-2xl">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCreateModal(false)}
+                                            disabled={isSubmitting}
+                                            className="flex-1 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting || createForm.fromAccounts.length === 0}
+                                            className="flex-1 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            {isSubmitting ? (
+                                                <>
+                                                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                                    Creating...
+                                                </>
+                                            ) : (
+                                                "Create Campaign"
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
-                            <div className="flex gap-3 pt-2">
-                                <button
-                                    onClick={() => setShowTestEmailModal(false)}
-                                    className="flex-1 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSendTestEmail}
-                                    disabled={isSendingTest || !testEmailAddress}
-                                    className="flex-1 px-4 py-2 bg-[#9ACD32] text-background rounded-lg hover:bg-[#8AB82E] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                                >
-                                    {isSendingTest ? (
-                                        <>
-                                            <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                            Sending...
-                                        </>
+            {/* Enroll Contacts Modal */}
+            <AnimatePresence>
+                {showEnrollModal && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                            onClick={() => {
+                                setShowEnrollModal(false);
+                                setSelectedContacts([]);
+                            }}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[10vh]"
+                        >
+                            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl">
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
+                                    <div>
+                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Add Contacts</h2>
+                                        <p className="text-xs text-zinc-500 mt-0.5">Select contacts to enroll in campaign</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setShowEnrollModal(false);
+                                            setSelectedContacts([]);
+                                        }}
+                                        className="p-2 -m-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                                    >
+                                        <XMarkIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="p-5">
+                                    {contactsLoading ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <ArrowPathIcon className="w-6 h-6 animate-spin text-zinc-400" />
+                                        </div>
+                                    ) : contacts.length === 0 ? (
+                                        <div className="text-center py-8">
+                                            <UserGroupIcon className="w-10 h-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+                                            <p className="text-sm text-zinc-500 mb-3">No contacts with emails found</p>
+                                            <button
+                                                onClick={() => router.push(`/projects/${workspaceId}/contacts`)}
+                                                className="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:underline"
+                                            >
+                                                Add contacts
+                                            </button>
+                                        </div>
                                     ) : (
                                         <>
-                                            <PaperAirplaneIcon className="w-4 h-4" />
-                                            Send Test
+                                            {/* Select All */}
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-xs text-zinc-500">
+                                                    {selectedContacts.length} selected
+                                                </span>
+                                                <button
+                                                    onClick={selectAllContacts}
+                                                    className="text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100"
+                                                >
+                                                    {selectedContacts.length === contacts.length ? "Clear all" : "Select all"}
+                                                </button>
+                                            </div>
+
+                                            {/* Contact List */}
+                                            <div className="max-h-64 overflow-y-auto -mx-5 px-5">
+                                                <div className="space-y-1">
+                                                    {contacts.map(contact => (
+                                                        <label
+                                                            key={contact._id}
+                                                            className={cn(
+                                                                "flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors",
+                                                                selectedContacts.includes(contact._id)
+                                                                    ? "bg-zinc-100 dark:bg-zinc-800"
+                                                                    : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                                                            )}
+                                                        >
+                                                            <div className={cn(
+                                                                "w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                                                                selectedContacts.includes(contact._id)
+                                                                    ? "border-zinc-900 dark:border-zinc-100 bg-zinc-900 dark:bg-zinc-100"
+                                                                    : "border-zinc-300 dark:border-zinc-600"
+                                                            )}>
+                                                                {selectedContacts.includes(contact._id) && (
+                                                                    <CheckIcon className="w-3 h-3 text-white dark:text-zinc-900" />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                                                                    {contact.firstName} {contact.lastName}
+                                                                </p>
+                                                                <p className="text-xs text-zinc-500 truncate">{contact.email}</p>
+                                                            </div>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedContacts.includes(contact._id)}
+                                                                onChange={() => toggleContactSelection(contact._id)}
+                                                                className="sr-only"
+                                                            />
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </>
                                     )}
-                                </button>
+                                </div>
+
+                                {/* Footer */}
+                                {contacts.length > 0 && (
+                                    <div className="flex gap-3 px-5 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 rounded-b-2xl">
+                                        <button
+                                            onClick={() => {
+                                                setShowEnrollModal(false);
+                                                setSelectedContacts([]);
+                                            }}
+                                            className="flex-1 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handleEnrollContacts}
+                                            disabled={isEnrolling || selectedContacts.length === 0}
+                                            className="flex-1 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            {isEnrolling ? (
+                                                <>
+                                                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                                    Adding...
+                                                </>
+                                            ) : (
+                                                `Add ${selectedContacts.length || ''} Contact${selectedContacts.length !== 1 ? 's' : ''}`
+                                            )}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Test Email Modal */}
+            <AnimatePresence>
+                {showTestEmailModal && testEmailCampaign && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                            onClick={() => setShowTestEmailModal(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[15vh]"
+                        >
+                            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-sm shadow-2xl">
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
+                                    <div>
+                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Send Test</h2>
+                                        <p className="text-xs text-zinc-500 mt-0.5 truncate max-w-[200px]">{testEmailCampaign.name}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowTestEmailModal(false)}
+                                        className="p-2 -m-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                                    >
+                                        <XMarkIcon className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="p-5">
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                        Send to
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={testEmailAddress}
+                                        onChange={(e) => setTestEmailAddress(e.target.value)}
+                                        placeholder="your@email.com"
+                                        className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-100 focus:border-transparent text-zinc-900 dark:text-zinc-100 text-sm"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                {/* Footer */}
+                                <div className="flex gap-3 px-5 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 rounded-b-2xl">
+                                    <button
+                                        onClick={() => setShowTestEmailModal(false)}
+                                        className="flex-1 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSendTestEmail}
+                                        disabled={isSendingTest || !testEmailAddress}
+                                        className="flex-1 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {isSendingTest ? (
+                                            <>
+                                                <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                                Sending...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <PaperAirplaneIcon className="w-4 h-4" />
+                                                Send
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Delete Confirmation Dialog */}
             <ConfirmDialog

@@ -80,7 +80,9 @@
       "Bash(npx terser:*)",
       "Bash(echo:*)",
       "Bash(tee:*)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(start \"\" \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")"
     ],
     "deny": [],
     "ask": []

@@ -9,6 +9,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import CompanyVisitor from '../models/CompanyVisitor';
 import { reverseIPService } from '../services/ReverseIPService';
 import mongoose from 'mongoose';
+import { escapeRegex } from '../utils/sanitize';
 
 const router = express.Router();
 
@@ -47,11 +48,12 @@ router.get('/workspaces/:id/company-visitors', authenticate,
                 query['firmographics.industry'] = industry;
             }
 
-            // Search by company name or domain
+            // Search by company name or domain - using escaped regex to prevent ReDoS
             if (search) {
+                const safeSearch = escapeRegex(search as string);
                 query.$or = [
-                    { companyName: { $regex: search, $options: 'i' } },
-                    { domain: { $regex: search, $options: 'i' } },
+                    { companyName: { $regex: safeSearch, $options: 'i' } },
+                    { domain: { $regex: safeSearch, $options: 'i' } },
                 ];
             }
 

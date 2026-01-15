@@ -297,3 +297,217 @@ IMPORTANT:
 
 // Export singleton instance
 export const templateGeneratorService = new TemplateGeneratorService();
+
+// ============================================
+// UNLAYER TEMPLATE GENERATOR
+// ============================================
+
+export interface UnlayerGeneratedTemplate {
+    subject: string;
+    body: string;
+    html: string;
+    design: any; // Unlayer design JSON
+}
+
+/**
+ * Generate an Unlayer email template design from a prompt
+ */
+export async function generateUnlayerTemplate(prompt: string): Promise<UnlayerGeneratedTemplate> {
+    const genAI2 = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    const model = genAI2.getGenerativeModel({ model: "gemini-2.5-pro" });
+
+    const systemPrompt = `You are an expert email template designer. Generate a professional email template based on the user's request.
+
+## Output Requirements:
+Return ONLY a valid JSON object with this structure:
+{
+    "subject": "Email subject line",
+    "body": "Plain text version of the email body",
+    "design": { ... Unlayer design JSON ... }
+}
+
+## Unlayer Design JSON Structure:
+The design object must be a valid Unlayer editor design with this structure:
+{
+    "counters": { "u_column": 1, "u_row": 1, "u_content_text": 1, "u_content_button": 1, "u_content_image": 1 },
+    "body": {
+        "id": "unique-id",
+        "rows": [
+            {
+                "id": "row-id",
+                "cells": [1],
+                "columns": [
+                    {
+                        "id": "col-id",
+                        "contents": [
+                            {
+                                "id": "content-id",
+                                "type": "text",
+                                "values": {
+                                    "containerPadding": "10px",
+                                    "textAlign": "left",
+                                    "lineHeight": "140%",
+                                    "text": "<p style='font-size: 14px; line-height: 140%;'>Your text here</p>"
+                                }
+                            }
+                        ],
+                        "values": {}
+                    }
+                ],
+                "values": {
+                    "displayCondition": null,
+                    "columns": false,
+                    "backgroundColor": "",
+                    "columnsBackgroundColor": "",
+                    "backgroundImage": { "url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false },
+                    "padding": "0px",
+                    "hideDesktop": false,
+                    "hideMobile": false,
+                    "noStackMobile": false
+                }
+            }
+        ],
+        "values": {
+            "textColor": "#000000",
+            "backgroundColor": "#ffffff",
+            "backgroundImage": { "url": "", "fullWidth": true, "repeat": false, "center": true, "cover": false },
+            "fontFamily": { "label": "Arial", "value": "arial,helvetica,sans-serif" },
+            "contentWidth": "600px",
+            "contentAlign": "center",
+            "preheaderText": "",
+            "linkStyle": { "body": true, "linkColor": "#0000ee", "linkHoverColor": "#0000ee", "linkUnderline": true, "linkHoverUnderline": true }
+        }
+    }
+}
+
+## Content Types:
+1. TEXT: { "type": "text", "values": { "text": "<p>HTML content</p>", "containerPadding": "10px" }}
+2. BUTTON: { "type": "button", "values": { "text": "Click Here", "href": { "url": "#" }, "buttonColors": { "color": "#ffffff", "backgroundColor": "#3AAEE0" }, "size": { "width": "auto" }, "textAlign": "center" }}
+3. IMAGE: { "type": "image", "values": { "src": { "url": "https://via.placeholder.com/600x200" }, "containerPadding": "10px" }}
+4. DIVIDER: { "type": "divider", "values": { "containerPadding": "10px", "border": { "borderTopWidth": "1px", "borderTopStyle": "solid", "borderTopColor": "#BBBBBB" }}}
+
+## Design Guidelines:
+- Create a professional, modern email layout
+- Use proper spacing with padding values
+- Include a header section with branding placeholder
+- Include a main content section with the email message
+- Include a call-to-action button if appropriate
+- Include a footer section
+- Use personalization variables like {{firstName}}, {{company}} where appropriate
+- Use a clean color scheme (suggest primary color based on email purpose)
+
+## Variable Placeholders:
+Use these variables: {{firstName}}, {{lastName}}, {{company}}, {{email}}, {{senderName}}, {{senderCompany}}
+
+IMPORTANT: Return ONLY valid JSON, no markdown code blocks or explanations.`;
+
+    const fullPrompt = `${systemPrompt}\n\n## User Request:\n${prompt}`;
+
+    try {
+        const result = await model.generateContent(fullPrompt);
+        const responseText = result.response.text().trim();
+
+        // Extract JSON from response
+        let jsonStr = responseText;
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            jsonStr = jsonMatch[0];
+        }
+
+        const parsed = JSON.parse(jsonStr);
+
+        // Generate HTML from the design
+        const html = generateHtmlFromDesign(parsed.design, parsed.subject);
+
+        return {
+            subject: parsed.subject || "Untitled Email",
+            body: parsed.body || "",
+            html: html,
+            design: parsed.design,
+        };
+    } catch (error: any) {
+        console.error("Unlayer template generation error:", error);
+        throw new Error("Failed to generate template: " + error.message);
+    }
+}
+
+/**
+ * Generate basic HTML from Unlayer design (for preview)
+ */
+function generateHtmlFromDesign(design: any, subject: string): string {
+    if (!design || !design.body || !design.body.rows) {
+        return `<!DOCTYPE html><html><head><title>${subject}</title></head><body><p>Template preview not available</p></body></html>`;
+    }
+
+    const bodyValues = design.body.values || {};
+    const bgColor = bodyValues.backgroundColor || "#ffffff";
+    const textColor = bodyValues.textColor || "#000000";
+    const contentWidth = bodyValues.contentWidth || "600px";
+
+    let rowsHtml = "";
+
+    for (const row of design.body.rows) {
+        let columnsHtml = "";
+
+        for (const col of row.columns || []) {
+            let contentsHtml = "";
+
+            for (const content of col.contents || []) {
+                if (content.type === "text") {
+                    const padding = content.values?.containerPadding || "10px";
+                    contentsHtml += `<div style="padding: ${padding};">${content.values?.text || ""}</div>`;
+                } else if (content.type === "button") {
+                    const btnValues = content.values || {};
+                    const btnText = btnValues.text || "Click";
+                    const btnBgColor = btnValues.buttonColors?.backgroundColor || "#3AAEE0";
+                    const btnTextColor = btnValues.buttonColors?.color || "#ffffff";
+                    const href = btnValues.href?.url || "#";
+                    const padding = btnValues.containerPadding || "10px";
+                    contentsHtml += `<div style="padding: ${padding}; text-align: center;">
+                        <a href="${href}" style="display: inline-block; padding: 12px 24px; background-color: ${btnBgColor}; color: ${btnTextColor}; text-decoration: none; border-radius: 4px;">${btnText}</a>
+                    </div>`;
+                } else if (content.type === "image") {
+                    const imgValues = content.values || {};
+                    const src = imgValues.src?.url || "";
+                    const padding = imgValues.containerPadding || "10px";
+                    if (src) {
+                        contentsHtml += `<div style="padding: ${padding};"><img src="${src}" style="max-width: 100%; height: auto;" /></div>`;
+                    }
+                } else if (content.type === "divider") {
+                    const divValues = content.values || {};
+                    const borderStyle = divValues.border?.borderTopStyle || "solid";
+                    const borderWidth = divValues.border?.borderTopWidth || "1px";
+                    const borderColor = divValues.border?.borderTopColor || "#BBBBBB";
+                    const padding = divValues.containerPadding || "10px";
+                    contentsHtml += `<div style="padding: ${padding};"><hr style="border: none; border-top: ${borderWidth} ${borderStyle} ${borderColor};" /></div>`;
+                }
+            }
+
+            columnsHtml += `<td style="vertical-align: top;">${contentsHtml}</td>`;
+        }
+
+        const rowBgColor = row.values?.backgroundColor || "";
+        const rowPadding = row.values?.padding || "0px";
+        rowsHtml += `<tr><td style="background-color: ${rowBgColor}; padding: ${rowPadding};"><table width="100%" cellpadding="0" cellspacing="0"><tr>${columnsHtml}</tr></table></td></tr>`;
+    }
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: ${bgColor};">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${bgColor};">
+        <tr>
+            <td align="center">
+                <table width="${contentWidth}" cellpadding="0" cellspacing="0" style="max-width: ${contentWidth}; color: ${textColor};">
+                    ${rowsHtml}
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`;
+}

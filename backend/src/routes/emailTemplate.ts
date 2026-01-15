@@ -6,7 +6,7 @@ import fs from "fs";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import EmailTemplate from "../models/EmailTemplate";
 import Project from "../models/Project";
-import { templateGeneratorService, GenerateTemplateOptions } from "../services/TemplateGeneratorService";
+import { templateGeneratorService, GenerateTemplateOptions, generateUnlayerTemplate } from "../services/TemplateGeneratorService";
 import emailService from "../services/email";
 
 const router = express.Router();
@@ -574,6 +574,43 @@ router.post("/:workspaceId/email-templates/generate", authenticate, async (req: 
         res.status(500).json({
             success: false,
             error: error.message || "Failed to generate template with AI",
+        });
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/generate-unlayer
+ * Generate an Unlayer email template design using AI
+ */
+router.post("/:workspaceId/email-templates/generate-unlayer", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const { prompt } = req.body;
+
+        if (!prompt || !prompt.trim()) {
+            return res.status(400).json({
+                success: false,
+                error: "Prompt is required",
+            });
+        }
+
+        console.log("🤖 Generating Unlayer template with AI:", { prompt: prompt.substring(0, 100) + "..." });
+        const generatedTemplate = await generateUnlayerTemplate(prompt.trim());
+
+        res.json({
+            success: true,
+            data: generatedTemplate,
+            message: "Unlayer template generated successfully",
+        });
+    } catch (error: any) {
+        console.error("Unlayer AI generation error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to generate Unlayer template with AI",
         });
     }
 });

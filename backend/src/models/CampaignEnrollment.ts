@@ -38,6 +38,10 @@ export interface ICampaignEnrollment extends Document {
     currentStepIndex: number;
     nextSendAt?: Date;
 
+    // Distributed locking for concurrent processing
+    _lockedUntil?: Date;
+    _lockedBy?: string;
+
     // Sent emails tracking
     emailsSent: ISentEmail[];
 
@@ -114,6 +118,16 @@ const campaignEnrollmentSchema = new Schema<ICampaignEnrollment>(
             index: true,
         },
 
+        // Distributed locking for concurrent processing
+        _lockedUntil: {
+            type: Date,
+            default: null,
+        },
+        _lockedBy: {
+            type: String,
+            default: null,
+        },
+
         // Sent emails
         emailsSent: {
             type: [sentEmailSchema],
@@ -140,6 +154,8 @@ const campaignEnrollmentSchema = new Schema<ICampaignEnrollment>(
 campaignEnrollmentSchema.index({ campaignId: 1, status: 1 });
 campaignEnrollmentSchema.index({ nextSendAt: 1, status: 1 });
 campaignEnrollmentSchema.index({ workspaceId: 1, contactId: 1, campaignId: 1 }, { unique: true });
+// Index for concurrent processing with distributed locking
+campaignEnrollmentSchema.index({ status: 1, nextSendAt: 1, _lockedUntil: 1 });
 
 // ============================================
 // EXPORT

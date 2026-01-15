@@ -4,10 +4,21 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as GoogleStrategy, Profile, VerifyCallback } from "passport-google-oauth20";
 import User, { IUser } from "../models/User";
 
+// Validate JWT_SECRET at startup
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error("CRITICAL: JWT_SECRET environment variable is required in production");
+}
+
+const getJwtSecret = (): string => {
+  if (JWT_SECRET) return JWT_SECRET;
+  return "dev-only-secret-do-not-use-in-production";
+};
+
 // JWT Strategy Options
 const jwtOptions: StrategyOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-  secretOrKey: process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this",
+  secretOrKey: getJwtSecret(),
 };
 
 // JWT Strategy

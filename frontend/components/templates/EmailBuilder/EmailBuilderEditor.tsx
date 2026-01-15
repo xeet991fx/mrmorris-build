@@ -120,11 +120,14 @@ const EmailBuilderEditor = forwardRef<EmailBuilderEditorRef, EmailBuilderEditorP
                 emailEditorRef.current?.loadDesign(currentTemplate.builderJson);
             }
 
-            // Add event listener for design changes
-            // Note: onDesignChange prop doesn't exist, we need to use addEventListener
-            emailEditorRef.current?.addEventListener('design:updated', () => {
-                setHasUnsavedChanges(true);
-            });
+            // Register callback for design changes using Unlayer's API
+            // The editor instance is accessed through emailEditorRef.current.editor
+            const editor = (emailEditorRef.current as any)?.editor;
+            if (editor?.registerCallback) {
+                editor.registerCallback('design:updated', () => {
+                    setHasUnsavedChanges(true);
+                });
+            }
         };
 
         return (
