@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// Story 1.3: Instructions character thresholds
+export const INSTRUCTIONS_WARNING_THRESHOLD = 8000;
+export const INSTRUCTIONS_MAX_LENGTH = 10000;
+
 export const createAgentSchema = z.object({
   body: z.object({
     name: z
@@ -72,6 +76,8 @@ export const updateAgentSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(100).trim().optional(),
     goal: z.string().min(1).max(500).optional(),
+    // Story 1.3: Instructions field with 10K character limit
+    instructions: z.string().max(INSTRUCTIONS_MAX_LENGTH, `Instructions cannot exceed ${INSTRUCTIONS_MAX_LENGTH} characters`).optional(),
     // When triggers are provided, require at least one. Empty array is invalid.
     triggers: z.array(triggerSchema).min(1, 'At least one trigger is required').optional()
   }).refine(
@@ -87,3 +93,4 @@ export const updateAgentSchema = z.object({
 });
 
 export type UpdateAgentInput = z.infer<typeof updateAgentSchema>['body'];
+

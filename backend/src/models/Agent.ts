@@ -83,9 +83,12 @@ const AgentSchema = new Schema<IAgent>(
         default: Date.now
       }
     }],
+    // Story 1.3: Instructions field with character limit
     instructions: {
       type: String,
-      default: null
+      default: null,
+      trim: true,
+      maxlength: [10000, 'Instructions cannot exceed 10,000 characters']
     },
     parsedActions: [],
     restrictions: {
@@ -121,13 +124,13 @@ AgentSchema.index({ workspace: 1, 'triggers.type': 1 });
 AgentSchema.index({ workspace: 1, 'triggers.enabled': 1 });
 
 // CRITICAL: Workspace isolation middleware - prevents cross-workspace data leaks
-AgentSchema.pre('find', function() {
+AgentSchema.pre('find', function () {
   if (!this.getQuery().workspace) {
     throw new Error('SECURITY: Workspace filter required for Agent find queries');
   }
 });
 
-AgentSchema.pre('findOne', function() {
+AgentSchema.pre('findOne', function () {
   if (!this.getQuery().workspace) {
     throw new Error('SECURITY: Workspace filter required for Agent findOne queries');
   }

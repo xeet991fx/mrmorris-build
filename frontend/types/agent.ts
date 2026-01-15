@@ -67,6 +67,8 @@ export interface UpdateAgentInput {
   name?: string;
   goal?: string;
   triggers?: ITriggerConfig[];
+  // Story 1.3: Instructions field
+  instructions?: string;
 }
 
 export interface UpdateAgentResponse {
