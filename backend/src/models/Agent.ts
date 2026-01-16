@@ -8,6 +8,39 @@ export interface ITriggerConfig {
   createdAt?: Date;
 }
 
+// Story 1.4: Agent restrictions configuration
+export interface IAgentRestrictions {
+  maxExecutionsPerDay: number;
+  maxEmailsPerDay: number;
+  allowedIntegrations: string[];  // Empty array = all integrations allowed
+  excludedContacts: string[];     // Array of contact IDs to exclude
+  excludedDomains: string[];      // Array of company domains to exclude (e.g., 'competitor.com')
+  guardrails: string;             // Natural language guardrails/rules for agent behavior
+}
+
+// Story 1.4: Valid integration identifiers
+export const VALID_INTEGRATIONS = [
+  'gmail',
+  'linkedin',
+  'slack',
+  'apollo',
+  'google-calendar',
+  'google-sheets'
+] as const;
+
+// Story 1.4: Default restrictions values
+export const RESTRICTIONS_DEFAULTS: IAgentRestrictions = {
+  maxExecutionsPerDay: 100,
+  maxEmailsPerDay: 100,
+  allowedIntegrations: [],
+  excludedContacts: [],
+  excludedDomains: [],
+  guardrails: ''
+};
+
+// Story 1.4: Guardrails character limit
+export const GUARDRAILS_MAX_LENGTH = 5000;
+
 export interface IAgent extends Document {
   workspace: mongoose.Types.ObjectId;
   name: string;
@@ -21,7 +54,8 @@ export interface IAgent extends Document {
   // Future fields (nullable for now - will be populated in later stories)
   instructions?: string;
   parsedActions?: any[];
-  restrictions?: string;
+  // Story 1.4: Restrictions (typed configuration)
+  restrictions?: IAgentRestrictions;
   memory?: any;
   approvalRequired?: boolean;
   editPermissions?: any[];
@@ -91,9 +125,41 @@ const AgentSchema = new Schema<IAgent>(
       maxlength: [10000, 'Instructions cannot exceed 10,000 characters']
     },
     parsedActions: [],
+    // Story 1.4: Restrictions with typed schema
     restrictions: {
-      type: String,
-      default: null
+      type: {
+        maxExecutionsPerDay: {
+          type: Number,
+          default: 100,
+          min: [1, 'Max executions per day must be at least 1'],
+          max: [1000, 'Max executions per day cannot exceed 1000']
+        },
+        maxEmailsPerDay: {
+          type: Number,
+          default: 100,
+          min: [1, 'Max emails per day must be at least 1'],
+          max: [500, 'Max emails per day cannot exceed 500']
+        },
+        allowedIntegrations: {
+          type: [String],
+          default: [],
+          enum: ['gmail', 'linkedin', 'slack', 'apollo', 'google-calendar', 'google-sheets']
+        },
+        excludedContacts: {
+          type: [String],
+          default: []
+        },
+        excludedDomains: {
+          type: [String],
+          default: []
+        },
+        guardrails: {
+          type: String,
+          default: '',
+          maxlength: [5000, 'Guardrails cannot exceed 5,000 characters']
+        }
+      },
+      default: () => ({ ...RESTRICTIONS_DEFAULTS })
     },
     memory: {
       type: Schema.Types.Mixed,

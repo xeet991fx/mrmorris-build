@@ -4,6 +4,33 @@ import { z } from 'zod';
 export const INSTRUCTIONS_WARNING_THRESHOLD = 8000;
 export const INSTRUCTIONS_MAX_LENGTH = 10000;
 
+// Story 1.4: Restrictions constants
+export const RESTRICTIONS_LIMITS = {
+  maxExecutionsPerDay: { min: 1, max: 1000 },
+  maxEmailsPerDay: { min: 1, max: 500 }
+};
+
+export const RESTRICTIONS_DEFAULTS = {
+  maxExecutionsPerDay: 100,
+  maxEmailsPerDay: 100,
+  allowedIntegrations: [] as string[],
+  excludedContacts: [] as string[],
+  excludedDomains: [] as string[],
+  guardrails: ''
+};
+
+// Story 1.4: Guardrails character limit
+export const GUARDRAILS_MAX_LENGTH = 5000;
+
+export const VALID_INTEGRATIONS = [
+  'gmail',
+  'linkedin',
+  'slack',
+  'apollo',
+  'google-calendar',
+  'google-sheets'
+] as const;
+
 export const createAgentSchema = z.object({
   body: z.object({
     name: z
@@ -72,6 +99,24 @@ const triggerSchema = z.discriminatedUnion('type', [
   eventTriggerSchema
 ]);
 
+// Story 1.4: Restrictions schema
+const restrictionsSchema = z.object({
+  maxExecutionsPerDay: z.number()
+    .int('Must be a whole number')
+    .min(RESTRICTIONS_LIMITS.maxExecutionsPerDay.min, `Must be at least ${RESTRICTIONS_LIMITS.maxExecutionsPerDay.min}`)
+    .max(RESTRICTIONS_LIMITS.maxExecutionsPerDay.max, `Cannot exceed ${RESTRICTIONS_LIMITS.maxExecutionsPerDay.max}`)
+    .optional(),
+  maxEmailsPerDay: z.number()
+    .int('Must be a whole number')
+    .min(RESTRICTIONS_LIMITS.maxEmailsPerDay.min, `Must be at least ${RESTRICTIONS_LIMITS.maxEmailsPerDay.min}`)
+    .max(RESTRICTIONS_LIMITS.maxEmailsPerDay.max, `Cannot exceed ${RESTRICTIONS_LIMITS.maxEmailsPerDay.max}`)
+    .optional(),
+  allowedIntegrations: z.array(z.enum(VALID_INTEGRATIONS)).optional(),
+  excludedContacts: z.array(z.string()).optional(),
+  excludedDomains: z.array(z.string()).optional(),
+  guardrails: z.string().max(GUARDRAILS_MAX_LENGTH, `Guardrails cannot exceed ${GUARDRAILS_MAX_LENGTH} characters`).optional()
+}).optional();
+
 export const updateAgentSchema = z.object({
   body: z.object({
     name: z.string().min(1).max(100).trim().optional(),
@@ -79,7 +124,9 @@ export const updateAgentSchema = z.object({
     // Story 1.3: Instructions field with 10K character limit
     instructions: z.string().max(INSTRUCTIONS_MAX_LENGTH, `Instructions cannot exceed ${INSTRUCTIONS_MAX_LENGTH} characters`).optional(),
     // When triggers are provided, require at least one. Empty array is invalid.
-    triggers: z.array(triggerSchema).min(1, 'At least one trigger is required').optional()
+    triggers: z.array(triggerSchema).min(1, 'At least one trigger is required').optional(),
+    // Story 1.4: Restrictions configuration
+    restrictions: restrictionsSchema
   }).refine(
     (data) => {
       // If triggers is explicitly an empty array, reject it

@@ -1336,7 +1336,14 @@ export interface IAgent extends Document {
     parameters: Record<string, any>;
     order: number;
   }>;
-  restrictions?: string; // Optional constraints
+  restrictions?: {
+    maxExecutionsPerDay: number;
+    maxEmailsPerDay: number;
+    allowedIntegrations: string[];
+    excludedContacts: string[];
+    excludedDomains: string[];
+    guardrails: string;  // Natural language rules (max 5000 chars)
+  };
   memory?: Record<string, any>; // Optional state storage
   approvalRequired: boolean;
   createdBy: mongoose.Types.ObjectId;
@@ -1379,7 +1386,14 @@ const AgentSchema = new Schema<IAgent>({
     parameters: { type: Schema.Types.Mixed, required: true },
     order: { type: Number, required: true }
   }],
-  restrictions: String,
+  restrictions: {
+    maxExecutionsPerDay: { type: Number, default: 100 },
+    maxEmailsPerDay: { type: Number, default: 100 },
+    allowedIntegrations: [String],
+    excludedContacts: [String],
+    excludedDomains: [String],
+    guardrails: { type: String, default: '', maxlength: 5000 }  // Natural language rules
+  },
   memory: Schema.Types.Mixed,
   approvalRequired: { type: Boolean, default: false },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },

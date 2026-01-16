@@ -34,6 +34,45 @@ export interface IEventTriggerConfig {
 
 export type ITriggerConfig = IManualTriggerConfig | IScheduledTriggerConfig | IEventTriggerConfig;
 
+// Story 1.4: Restrictions configuration types
+export interface IAgentRestrictions {
+  maxExecutionsPerDay: number;
+  maxEmailsPerDay: number;
+  allowedIntegrations: string[];  // Empty array = all integrations allowed
+  excludedContacts: string[];     // Array of contact IDs to exclude
+  excludedDomains: string[];      // Array of company domains to exclude
+  guardrails: string;             // Natural language guardrails/rules
+}
+
+// Story 1.4: Valid integration identifiers with display info
+export const VALID_INTEGRATIONS = [
+  { id: 'gmail', name: 'Gmail', icon: 'mail' },
+  { id: 'linkedin', name: 'LinkedIn', icon: 'linkedin' },
+  { id: 'slack', name: 'Slack', icon: 'slack' },
+  { id: 'apollo', name: 'Apollo.io', icon: 'database' },
+  { id: 'google-calendar', name: 'Google Calendar', icon: 'calendar' },
+  { id: 'google-sheets', name: 'Google Sheets', icon: 'table' }
+] as const;
+
+// Story 1.4: Default restrictions values
+export const RESTRICTIONS_DEFAULTS: IAgentRestrictions = {
+  maxExecutionsPerDay: 100,
+  maxEmailsPerDay: 100,
+  allowedIntegrations: [],
+  excludedContacts: [],
+  excludedDomains: [],
+  guardrails: ''
+};
+
+// Story 1.4: Restrictions limits for validation
+export const RESTRICTIONS_LIMITS = {
+  maxExecutionsPerDay: { min: 1, max: 1000 },
+  maxEmailsPerDay: { min: 1, max: 500 }
+};
+
+// Story 1.4: Guardrails character limit
+export const GUARDRAILS_MAX_LENGTH = 5000;
+
 export interface IAgent {
   _id: string;
   workspace: string;
@@ -50,7 +89,8 @@ export interface IAgent {
   // Future fields (optional, nullable for now)
   instructions?: string | null;
   parsedActions?: any[];
-  restrictions?: string | null;
+  // Story 1.4: Restrictions (typed configuration)
+  restrictions?: IAgentRestrictions;
   memory?: any;
   approvalRequired?: boolean;
   editPermissions?: any[];
@@ -69,6 +109,8 @@ export interface UpdateAgentInput {
   triggers?: ITriggerConfig[];
   // Story 1.3: Instructions field
   instructions?: string;
+  // Story 1.4: Restrictions configuration
+  restrictions?: Partial<IAgentRestrictions>;
 }
 
 export interface UpdateAgentResponse {
@@ -90,3 +132,4 @@ export interface ListAgentsResponse {
   success: boolean;
   agents: IAgent[];
 }
+

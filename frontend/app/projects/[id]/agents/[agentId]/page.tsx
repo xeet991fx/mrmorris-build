@@ -5,12 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { getAgent, updateAgent } from '@/lib/api/agents';
-import { IAgent, ITriggerConfig } from '@/types/agent';
+import { IAgent, ITriggerConfig, IAgentRestrictions } from '@/types/agent';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { TriggerConfiguration } from '@/components/agents/TriggerConfiguration';
 import { InstructionsEditor } from '@/components/agents/InstructionsEditor';
 import { InstructionExamples } from '@/components/agents/InstructionExamples';
+import { RestrictionsConfiguration } from '@/components/agents/RestrictionsConfiguration';
 
 export default function AgentBuilderPage() {
   const params = useParams();
@@ -24,6 +25,8 @@ export default function AgentBuilderPage() {
   const [triggers, setTriggers] = useState<ITriggerConfig[]>([]);
   // Story 1.3: Instructions state
   const [instructions, setInstructions] = useState<string>('');
+  // Story 1.4: Restrictions state
+  const [restrictions, setRestrictions] = useState<IAgentRestrictions | null>(null);
 
   useEffect(() => {
     fetchAgent();
@@ -37,6 +40,7 @@ export default function AgentBuilderPage() {
         setAgent(response.agent);
         setTriggers(response.agent.triggers || []);
         setInstructions(response.agent.instructions || '');
+        setRestrictions(response.agent.restrictions || null);
       }
     } catch (error: any) {
       console.error('Error fetching agent:', error);
@@ -77,6 +81,14 @@ export default function AgentBuilderPage() {
     setInstructions(text);
     if (agent) {
       setAgent({ ...agent, instructions: text });
+    }
+  };
+
+  // Story 1.4: Handle restrictions save callback
+  const handleRestrictionsSaved = (newRestrictions: IAgentRestrictions) => {
+    setRestrictions(newRestrictions);
+    if (agent) {
+      setAgent({ ...agent, restrictions: newRestrictions });
     }
   };
 
@@ -177,10 +189,21 @@ export default function AgentBuilderPage() {
           {/* Story 1.3: Instruction Examples */}
           <InstructionExamples onCopyToEditor={handleCopyToEditor} />
 
+          {/* Story 1.4: Restrictions Section */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+            <RestrictionsConfiguration
+              workspaceId={workspaceId}
+              agentId={agentId}
+              initialRestrictions={restrictions}
+              onSave={handleRestrictionsSaved}
+              disabled={isSaving}
+            />
+          </div>
+
           {/* Placeholder for future sections */}
           <div className="p-6 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl">
             <p className="text-sm text-zinc-400 text-center">
-              Additional settings coming soon: Restrictions, Memory, Approvals
+              Additional settings coming soon: Memory, Approvals
             </p>
           </div>
         </div>

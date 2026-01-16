@@ -45,7 +45,7 @@ development_status:
   1-1-create-basic-agent: done
   1-2-add-trigger-configuration: review
   1-3-write-natural-language-instructions: done
-  1-4-configure-agent-restrictions: backlog
+  1-4-configure-agent-restrictions: done
   1-5-configure-agent-memory: backlog
   1-6-set-approval-requirements: backlog
   1-7-edit-existing-agent: backlog
