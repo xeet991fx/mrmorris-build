@@ -277,62 +277,14 @@ export function AgentBuilder() {
 
               {/* Connection Visualization */}
               <div className="relative flex h-[300px] items-center justify-center lg:h-[350px]">
-                {/* Integration Icons - Top */}
-                <div className="absolute -top-4 left-1/2 z-20 flex -translate-x-1/2 gap-4">
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.6 }}
-                    className="app-icon-float rounded-lg"
-                    title="Slack"
-                  >
-                    <FaSlack className="text-xl text-[#4A154B]" />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.7 }}
-                    className="app-icon-float rounded-lg"
-                    title="Notion"
-                  >
-                    <SiNotion className="text-xl text-white" />
-                  </motion.div>
-                </div>
-
-                {/* Integration Icons - Right */}
-                <div className="absolute -right-4 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-4 lg:-right-6">
-                  <motion.div
-                    initial={{ opacity: 0, x: 10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.8 }}
-                    className="app-icon-float rounded-lg"
-                    title="Gmail"
-                  >
-                    <SiGmail className="text-lg text-[#EA4335]" />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, x: 10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.9 }}
-                    className="app-icon-float rounded-lg"
-                    title="Google Calendar"
-                  >
-                    <SiGooglecalendar className="text-lg text-[#4285F4]" />
-                  </motion.div>
-                </div>
-
-                {/* Integration Icons - Left */}
-                <div className="absolute -left-4 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-4 lg:-left-6">
+                {/* LinkedIn - Left, extends OUTSIDE the card */}
+                <div className="absolute -left-6 top-1/2 z-20 -translate-y-1/2 lg:-left-8">
                   <motion.div
                     initial={{ opacity: 0, x: -10 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: 0.7 }}
-                    className="app-icon-float rounded-lg"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-lg"
                     title="LinkedIn"
                   >
                     <FaLinkedin className="text-lg text-[#0077b5]" />
@@ -340,90 +292,160 @@ export function AgentBuilder() {
                 </div>
 
                 {/* SVG Connection Lines */}
-                <div className="relative h-full w-full overflow-hidden rounded-sm border border-white/5 bg-white/[0.02]">
-                  <svg className="h-full w-full" viewBox="0 0 400 300">
-                    {/* Connection lines */}
-                    <line
-                      className="connection-pulse"
-                      x1="200"
-                      y1="150"
-                      x2="60"
-                      y2="150"
+                <div className="relative h-full w-full overflow-visible rounded-sm border border-white/5 bg-white/[0.02]">
+                  {/* Icons INSIDE the SVG container */}
+                  {/* Slack - Top left inside */}
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.6 }}
+                    className="absolute left-[22%] top-2 z-20 flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-lg"
+                    title="Slack"
+                  >
+                    <FaSlack className="text-xl text-[#4A154B]" />
+                  </motion.div>
+
+                  {/* Notion - Top center-right inside */}
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.7 }}
+                    className="absolute right-[25%] top-2 z-20 flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-lg"
+                    title="Notion"
+                  >
+                    <SiNotion className="text-xl text-black" />
+                  </motion.div>
+
+                  {/* Gmail - Right top inside */}
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.8 }}
+                    className="absolute right-2 top-[20%] z-20 flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-lg"
+                    title="Gmail"
+                  >
+                    <SiGmail className="text-lg text-[#EA4335]" />
+                  </motion.div>
+
+                  {/* Google Calendar - Right bottom inside */}
+                  <motion.div
+                    initial={{ opacity: 0, x: 10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.9 }}
+                    className="absolute right-2 bottom-[20%] z-20 flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-lg"
+                    title="Google Calendar"
+                  >
+                    <SiGooglecalendar className="text-lg text-[#4285F4]" />
+                  </motion.div>
+
+                  <svg className="h-full w-full overflow-visible" viewBox="0 0 400 300">
+                    {/* Curved connection lines with different colors and lengths */}
+                    {/* Line to LinkedIn (left, extends outside) - blue curved */}
+                    <path
+                      d="M 200 150 Q 100 130 -20 150"
+                      fill="none"
                       stroke="#0077b5"
-                      strokeWidth="1"
+                      strokeWidth="2"
+                      strokeDasharray="6,4"
+                      opacity="0.7"
+                      className="connection-pulse"
+                    />
+                    {/* Line to Slack (top left inside) - purple curved */}
+                    <path
+                      d="M 200 150 Q 140 80 100 25"
+                      fill="none"
+                      stroke="#4A154B"
+                      strokeWidth="2"
+                      strokeDasharray="6,4"
+                      opacity="0.7"
+                      className="connection-pulse"
+                    />
+                    {/* Line to Notion (top right inside) - white curved */}
+                    <path
+                      d="M 200 150 Q 260 80 300 25"
+                      fill="none"
+                      stroke="#ffffff"
+                      strokeWidth="1.5"
+                      strokeDasharray="4,4"
                       opacity="0.5"
-                    />
-                    <line
                       className="connection-pulse"
-                      x1="200"
-                      y1="150"
-                      x2="200"
-                      y2="40"
+                    />
+                    {/* Line to Gmail (right top inside) - red curved */}
+                    <path
+                      d="M 200 150 Q 320 100 385 70"
+                      fill="none"
+                      stroke="#EA4335"
+                      strokeWidth="2"
+                      strokeDasharray="6,4"
+                      opacity="0.7"
+                      className="connection-pulse"
+                    />
+                    {/* Line to Calendar (right bottom inside) - blue curved */}
+                    <path
+                      d="M 200 150 Q 300 200 385 230"
+                      fill="none"
+                      stroke="#4285F4"
+                      strokeWidth="2"
+                      strokeDasharray="6,4"
+                      opacity="0.7"
+                      className="connection-pulse"
+                    />
+
+                    {/* Decorative node paths */}
+                    <path
+                      className="node-connect"
+                      d="M 120 150 Q 160 100 200 100 Q 240 100 280 150"
+                      fill="none"
                       stroke="white"
                       strokeWidth="0.5"
                       opacity="0.2"
                     />
-                    <line
-                      className="connection-pulse"
-                      x1="200"
-                      y1="150"
-                      x2="340"
-                      y2="150"
+                    <path
+                      className="node-connect"
+                      d="M 120 150 Q 160 200 200 200 Q 240 200 280 150"
+                      fill="none"
                       stroke="white"
                       strokeWidth="0.5"
                       opacity="0.2"
                     />
 
-                    {/* Node paths */}
-                    <path
-                      className="node-connect"
-                      d="M 120 150 L 160 100 L 240 100 L 280 150"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="0.5"
-                      opacity="0.3"
-                    />
-                    <path
-                      className="node-connect"
-                      d="M 120 150 L 160 200 L 240 200 L 280 150"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="0.5"
-                      opacity="0.3"
-                    />
-
-                    {/* AI Core */}
+                    {/* AI Core with green glow */}
                     <g>
+                      {/* Glow effect */}
+                      <circle
+                        cx="200"
+                        cy="150"
+                        r="35"
+                        fill="none"
+                        stroke="#22c55e"
+                        strokeWidth="1"
+                        opacity="0.2"
+                        className="animate-pulse"
+                      />
                       <circle
                         cx="200"
                         cy="150"
                         r="30"
                         fill="black"
-                        stroke="white"
-                        strokeWidth="1"
+                        stroke="#22c55e"
+                        strokeWidth="1.5"
                       />
                       <text
                         x="200"
                         y="153"
                         textAnchor="middle"
-                        fill="white"
+                        fill="#22c55e"
                         fontFamily="monospace"
                         fontSize="8"
                         fontWeight="bold"
                       >
-                        AI CORE
+                        AI AGENT
                       </text>
                     </g>
-
-                    {/* Pulsing dot */}
-                    <circle
-                      className="animate-ping"
-                      cx="200"
-                      cy="150"
-                      r="4"
-                      fill="#22c55e"
-                      opacity="0.5"
-                    />
                   </svg>
 
                   <div className="absolute bottom-3 left-3 font-mono text-[8px] uppercase tracking-widest text-white/20">
