@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Agent from '../models/Agent';
+import Agent, { RESTRICTIONS_DEFAULTS } from '../models/Agent';
 import { CreateAgentInput, UpdateAgentInput } from '../validations/agentValidation';
 
 /**
@@ -136,7 +136,9 @@ export const getAgent = async (req: Request, res: Response): Promise<void> => {
         // Future fields (empty/null for now)
         triggers: agent.triggers || [],
         instructions: agent.instructions || null,
-        parsedActions: agent.parsedActions || []
+        parsedActions: agent.parsedActions || [],
+        // Story 1.4: Restrictions
+        restrictions: agent.restrictions || RESTRICTIONS_DEFAULTS
       }
     });
   } catch (error: any) {
@@ -195,6 +197,14 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
     if (updateData.instructions !== undefined) {
       agent.instructions = updateData.instructions;
     }
+    // Story 1.4: Restrictions field update - merge with defaults
+    if (updateData.restrictions !== undefined) {
+      agent.restrictions = {
+        ...RESTRICTIONS_DEFAULTS,
+        ...agent.restrictions,
+        ...updateData.restrictions
+      };
+    }
 
     await agent.save();
 
@@ -211,7 +221,9 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
         updatedAt: agent.updatedAt,
         triggers: agent.triggers || [],
         instructions: agent.instructions || null,
-        parsedActions: agent.parsedActions || []
+        parsedActions: agent.parsedActions || [],
+        // Story 1.4: Restrictions
+        restrictions: agent.restrictions || RESTRICTIONS_DEFAULTS
       }
     });
   } catch (error: any) {

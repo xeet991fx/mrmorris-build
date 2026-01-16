@@ -719,7 +719,7 @@ Enhanced RBAC, advanced audit logging (1 year), multi-workspace sharing, custom 
 - FR1: Users can create agents by defining goal, triggers, instructions, restrictions, memory, approval settings
 - FR2: Users can write agent instructions in natural language
 - FR3: Users can specify multiple trigger types (manual, scheduled, event-based)
-- FR4: Users can define agent restrictions to prevent unwanted behaviors
+- FR4: Users can define agent restrictions (rate limits, integrations, exclusions, and natural language guardrails) to prevent unwanted behaviors
 - FR5: Users can configure agent memory to track state between executions
 - FR6: Users can set approval requirements for specific actions
 - FR7: Users can edit existing agents and update configuration

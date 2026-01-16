@@ -145,7 +145,7 @@ So that I can prevent unwanted actions and control scope.
 
 **Given** I have an agent with instructions
 **When** I navigate to the "Restrictions" section
-**Then** I see options to configure: Max executions per day, Max emails per day, Allowed integrations, Excluded contacts/companies
+**Then** I see options to configure: Max executions per day, Max emails per day, Allowed integrations, Excluded contacts/companies, AND a "Guardrails" textarea for natural language rules
 
 **Given** I set "Max executions per day" to 50
 **When** I save the agent
@@ -168,17 +168,23 @@ So that I can prevent unwanted actions and control scope.
 **Then** The agent will skip these contacts/companies during execution
 **And** The restriction is saved: { excludedContacts: [...], excludedDomains: [...] }
 
+**Given** I write natural language guardrails
+**When** I enter text like "Never contact anyone at competitor.com" or "Wait 48 hours between follow-ups"
+**Then** The guardrails are saved and applied during agent execution
+**And** The restriction is saved: { guardrails: "..." }
+
 **Given** I leave restrictions empty
 **When** I save the agent
-**Then** Default restrictions apply: maxExecutionsPerDay: 100, maxEmailsPerDay: 100
+**Then** Default restrictions apply: maxExecutionsPerDay: 100, maxEmailsPerDay: 100, guardrails: ""
 **And** All integrations are allowed by default
 
 **Technical Requirements:**
-- Add restrictions field to Agent model (object with maxExecutionsPerDay, maxEmailsPerDay, allowedIntegrations, excludedContacts, excludedDomains)
-- Default restrictions: { maxExecutionsPerDay: 100, maxEmailsPerDay: 100, allowedIntegrations: [] (all) }
+- Add restrictions field to Agent model (object with maxExecutionsPerDay, maxEmailsPerDay, allowedIntegrations, excludedContacts, excludedDomains, guardrails)
+- Default restrictions: { maxExecutionsPerDay: 100, maxEmailsPerDay: 100, allowedIntegrations: [] (all), guardrails: "" }
+- Guardrails field: string with 5000 character limit for natural language rules
 - Update PUT `/api/workspaces/:workspaceId/agents/:agentId` endpoint to accept restrictions
-- Frontend: Restrictions configuration UI with numeric inputs, integration checkboxes, contact/company exclusion picker
-- Validation: Numeric fields must be positive integers
+- Frontend: Restrictions configuration UI with numeric inputs, integration checkboxes, domain exclusion picker, AND guardrails textarea
+- Validation: Numeric fields must be positive integers, guardrails max 5000 chars
 
 ---
 

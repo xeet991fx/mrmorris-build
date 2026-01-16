@@ -606,8 +606,9 @@ const startServer = async () => {
   }
 };
 
-// Only start server if not in serverless environment (Vercel)
-if (process.env.VERCEL !== '1') {
+console.log(`DEBUG: Server loading. NODE_ENV in server.ts: '${process.env.NODE_ENV}', VERCEL: '${process.env.VERCEL}'`);
+// Only start server if not in serverless environment (Vercel) and not in test mode
+if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
   startServer();
 }
 
