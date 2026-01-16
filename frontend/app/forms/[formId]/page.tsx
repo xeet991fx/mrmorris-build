@@ -43,6 +43,19 @@ export default function PublicFormPage() {
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     useEffect(() => {
+        const loadForm = async () => {
+            try {
+                const response = await getPublicForm(formId);
+                if (response.success) {
+                    setForm(response.data);
+                }
+            } catch (error) {
+                console.error("Error loading form:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
         loadForm();
         // Load reCAPTCHA if configured
         const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
@@ -83,18 +96,7 @@ export default function PublicFormPage() {
         return () => window.removeEventListener("message", handleMessage);
     }, [formId]);
 
-    const loadForm = async () => {
-        try {
-            const response = await getPublicForm(formId);
-            if (response.success) {
-                setForm(response.data);
-            }
-        } catch (error) {
-            console.error("Error loading form:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+
 
     const handleSubmit = async (formData: Record<string, any>) => {
         if (!form) return;
