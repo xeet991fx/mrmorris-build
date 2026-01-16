@@ -507,7 +507,7 @@
 
 /* Neural Mesh - Dot pattern background */
 .neural-mesh {
-  background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+  background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
   background-size: 24px 24px;
 }
 
@@ -535,8 +535,15 @@
 }
 
 @keyframes blink-cursor {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
 }
 
 /* Circuit Line */
@@ -552,7 +559,9 @@
 }
 
 @keyframes node-dash {
-  to { stroke-dashoffset: -100; }
+  to {
+    stroke-dashoffset: -100;
+  }
 }
 
 /* Connection Pulse Animation */
@@ -562,7 +571,9 @@
 }
 
 @keyframes pulse-dash-anim {
-  to { stroke-dashoffset: -20; }
+  to {
+    stroke-dashoffset: -20;
+  }
 }
 
 /* Data Flow Line Animation */
@@ -573,8 +584,13 @@
 }
 
 @keyframes flow-anim {
-  from { stroke-dashoffset: 1000; }
-  to { stroke-dashoffset: 0; }
+  from {
+    stroke-dashoffset: 1000;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* App Icon Float */
@@ -589,21 +605,39 @@
 }
 
 /* Brand Colors */
-.linkedin-color { color: #0077b5; }
-.slack-color { color: #4A154B; }
-.notion-color { color: #000000; }
-.gmail-color { color: #EA4335; }
-.calendar-color { color: #4285F4; }
-.hubspot-color { color: #FF7A59; }
-.salesforce-color { color: #00A1E0; }
+.linkedin-color {
+  color: #0077b5;
+}
+
+.slack-color {
+  color: #4A154B;
+}
+
+.notion-color {
+  color: #000000;
+}
+
+.gmail-color {
+  color: #EA4335;
+}
+
+.calendar-color {
+  color: #4285F4;
+}
+
+.hubspot-color {
+  color: #FF7A59;
+}
+
+.salesforce-color {
+  color: #00A1E0;
+}
 
 /* Spotlight Effect - Mouse following */
 .spotlight-dark {
-  background: radial-gradient(
-    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(34, 197, 94, 0.12),
-    transparent 80%
-  );
+  background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(34, 197, 94, 0.12),
+      transparent 80%);
 }
 
 /* Terminal Card Style */
@@ -654,7 +688,7 @@
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-.feature-grid > * {
+.feature-grid>* {
   @apply bg-white;
 }
 

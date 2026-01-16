@@ -21,6 +21,7 @@ const config: Config = {
         display: ["var(--font-display)", "system-ui", "sans-serif"],
         heading: ["var(--font-display)", "system-ui", "sans-serif"],
         body: ["var(--font-sans)", "system-ui", "sans-serif"],
+        secondary: ["var(--font-secondary)", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "Fira Code", "monospace"],
       },
       colors: {
