@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
-import Agent, { RESTRICTIONS_DEFAULTS } from '../models/Agent';
+import Agent, { RESTRICTIONS_DEFAULTS, MEMORY_DEFAULTS, APPROVAL_DEFAULTS } from '../models/Agent';
 import { CreateAgentInput, UpdateAgentInput } from '../validations/agentValidation';
+import User from '../models/User';
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents
@@ -87,7 +88,11 @@ export const listAgents = async (req: Request, res: Response): Promise<void> => 
         status: agent.status,
         createdBy: agent.createdBy,
         createdAt: agent.createdAt,
-        updatedAt: agent.updatedAt
+        updatedAt: agent.updatedAt,
+        // Story 1.5: Include memory in list response
+        memory: agent.memory || MEMORY_DEFAULTS,
+        // Story 1.6: Include approvalConfig in list response
+        approvalConfig: agent.approvalConfig || APPROVAL_DEFAULTS
       }))
     });
   } catch (error: any) {
@@ -138,7 +143,11 @@ export const getAgent = async (req: Request, res: Response): Promise<void> => {
         instructions: agent.instructions || null,
         parsedActions: agent.parsedActions || [],
         // Story 1.4: Restrictions
-        restrictions: agent.restrictions || RESTRICTIONS_DEFAULTS
+        restrictions: agent.restrictions || RESTRICTIONS_DEFAULTS,
+        // Story 1.5: Memory
+        memory: agent.memory || MEMORY_DEFAULTS,
+        // Story 1.6: Approval configuration
+        approvalConfig: agent.approvalConfig || APPROVAL_DEFAULTS
       }
     });
   } catch (error: any) {
@@ -190,8 +199,22 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
     if (updateData.goal !== undefined) {
       agent.goal = updateData.goal;
     }
+
+    // CRITICAL FIX: Sanitize existing triggers to ensure config field exists
+    // This handles legacy data that may be missing the required config field
+    if (agent.triggers && agent.triggers.length > 0) {
+      agent.triggers = agent.triggers.map(trigger => ({
+        ...trigger,
+        config: trigger.config ?? {}  // Default to empty object if missing
+      })) as any;
+    }
+
     if (updateData.triggers !== undefined) {
-      agent.triggers = updateData.triggers as any;
+      // Ensure all triggers have a config field (fixes Mongoose validation for legacy data)
+      agent.triggers = updateData.triggers.map(trigger => ({
+        ...trigger,
+        config: trigger.config ?? {}  // Default to empty object if missing
+      })) as any;
     }
     // Story 1.3: Instructions field update
     if (updateData.instructions !== undefined) {
@@ -204,6 +227,46 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
         ...agent.restrictions,
         ...updateData.restrictions
       };
+    }
+    // Story 1.5: Memory field update - merge with defaults
+    if (updateData.memory !== undefined) {
+      agent.memory = {
+        ...MEMORY_DEFAULTS,
+        ...agent.memory,
+        ...updateData.memory
+      } as any;
+    }
+    // Story 1.6: ApprovalConfig field update - merge with defaults
+    interface ApprovalConfigInput {
+      enabled?: boolean;
+      requireForAllActions?: boolean;
+      requiredForActions?: string[];
+      approvers?: string[];
+    }
+    const approvalConfigUpdate = (updateData as { approvalConfig?: ApprovalConfigInput }).approvalConfig;
+    if (approvalConfigUpdate !== undefined) {
+      // Validate approvers are real users (Story 1.6 AC4)
+      if (approvalConfigUpdate.approvers && approvalConfigUpdate.approvers.length > 0) {
+        const validUsers = await User.find({
+          _id: { $in: approvalConfigUpdate.approvers }
+        }).select('_id');
+        const validUserIds = validUsers.map(u => u._id.toString());
+        const invalidApprovers = approvalConfigUpdate.approvers.filter(
+          (id) => !validUserIds.includes(id)
+        );
+        if (invalidApprovers.length > 0) {
+          res.status(400).json({
+            success: false,
+            error: 'Invalid approvers: Some user IDs do not exist'
+          });
+          return;
+        }
+      }
+      agent.approvalConfig = {
+        ...APPROVAL_DEFAULTS,
+        ...agent.approvalConfig,
+        ...approvalConfigUpdate
+      } as any;
     }
 
     await agent.save();
@@ -223,7 +286,11 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
         instructions: agent.instructions || null,
         parsedActions: agent.parsedActions || [],
         // Story 1.4: Restrictions
-        restrictions: agent.restrictions || RESTRICTIONS_DEFAULTS
+        restrictions: agent.restrictions || RESTRICTIONS_DEFAULTS,
+        // Story 1.5: Memory
+        memory: agent.memory || MEMORY_DEFAULTS,
+        // Story 1.6: Approval configuration
+        approvalConfig: agent.approvalConfig || APPROVAL_DEFAULTS
       }
     });
   } catch (error: any) {

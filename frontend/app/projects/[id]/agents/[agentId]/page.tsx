@@ -5,13 +5,15 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { getAgent, updateAgent } from '@/lib/api/agents';
-import { IAgent, ITriggerConfig, IAgentRestrictions } from '@/types/agent';
+import { IAgent, ITriggerConfig, IAgentRestrictions, IAgentMemory, IAgentApprovalConfig, MEMORY_DEFAULTS, APPROVAL_DEFAULTS } from '@/types/agent';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { TriggerConfiguration } from '@/components/agents/TriggerConfiguration';
 import { InstructionsEditor } from '@/components/agents/InstructionsEditor';
 import { InstructionExamples } from '@/components/agents/InstructionExamples';
 import { RestrictionsConfiguration } from '@/components/agents/RestrictionsConfiguration';
+import { MemoryConfiguration } from '@/components/agents/MemoryConfiguration';
+import { ApprovalConfiguration } from '@/components/agents/ApprovalConfiguration';
 
 export default function AgentBuilderPage() {
   const params = useParams();
@@ -27,6 +29,10 @@ export default function AgentBuilderPage() {
   const [instructions, setInstructions] = useState<string>('');
   // Story 1.4: Restrictions state
   const [restrictions, setRestrictions] = useState<IAgentRestrictions | null>(null);
+  // Story 1.5: Memory state
+  const [memory, setMemory] = useState<IAgentMemory | null>(null);
+  // Story 1.6: Approval configuration state
+  const [approvalConfig, setApprovalConfig] = useState<IAgentApprovalConfig | null>(null);
 
   useEffect(() => {
     fetchAgent();
@@ -41,6 +47,10 @@ export default function AgentBuilderPage() {
         setTriggers(response.agent.triggers || []);
         setInstructions(response.agent.instructions || '');
         setRestrictions(response.agent.restrictions || null);
+        // Story 1.5: Set memory state
+        setMemory(response.agent.memory || MEMORY_DEFAULTS);
+        // Story 1.6: Set approval config state
+        setApprovalConfig(response.agent.approvalConfig || APPROVAL_DEFAULTS);
       }
     } catch (error: any) {
       console.error('Error fetching agent:', error);
@@ -62,7 +72,14 @@ export default function AgentBuilderPage() {
       }
     } catch (error: any) {
       console.error('Error saving triggers:', error);
-      toast.error(error.response?.data?.error || 'Failed to save triggers');
+      // Extract detailed validation errors from response if available
+      const details = error.response?.data?.details;
+      const errorMessage = error.response?.data?.error || 'Failed to save triggers';
+      if (details && Array.isArray(details) && details.length > 0) {
+        toast.error(`${errorMessage}: ${details.map((d: any) => d.message || d.path?.join('.') || d).join(', ')}`);
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -89,6 +106,22 @@ export default function AgentBuilderPage() {
     setRestrictions(newRestrictions);
     if (agent) {
       setAgent({ ...agent, restrictions: newRestrictions });
+    }
+  };
+
+  // Story 1.5: Handle memory save callback
+  const handleMemorySaved = (newMemory: IAgentMemory) => {
+    setMemory(newMemory);
+    if (agent) {
+      setAgent({ ...agent, memory: newMemory });
+    }
+  };
+
+  // Story 1.6: Handle approval config save callback
+  const handleApprovalSaved = (newApprovalConfig: IAgentApprovalConfig) => {
+    setApprovalConfig(newApprovalConfig);
+    if (agent) {
+      setAgent({ ...agent, approvalConfig: newApprovalConfig });
     }
   };
 
@@ -200,11 +233,26 @@ export default function AgentBuilderPage() {
             />
           </div>
 
-          {/* Placeholder for future sections */}
-          <div className="p-6 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl">
-            <p className="text-sm text-zinc-400 text-center">
-              Additional settings coming soon: Memory, Approvals
-            </p>
+          {/* Story 1.5: Memory Section */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+            <MemoryConfiguration
+              workspaceId={workspaceId}
+              agentId={agentId}
+              initialMemory={memory}
+              onSave={handleMemorySaved}
+              disabled={isSaving}
+            />
+          </div>
+
+          {/* Story 1.6: Approval Configuration Section */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+            <ApprovalConfiguration
+              workspaceId={workspaceId}
+              agentId={agentId}
+              initialApprovalConfig={approvalConfig}
+              onSave={handleApprovalSaved}
+              disabled={isSaving}
+            />
           </div>
         </div>
       </div>

@@ -41,6 +41,64 @@ export const RESTRICTIONS_DEFAULTS: IAgentRestrictions = {
 // Story 1.4: Guardrails character limit
 export const GUARDRAILS_MAX_LENGTH = 5000;
 
+// Story 1.5: Agent memory variable configuration
+export interface IAgentMemoryVariable {
+  name: string;           // Variable name (alphanumeric + underscore)
+  type: 'string' | 'number' | 'date' | 'array';
+  defaultValue: string | number | Date | any[] | null;
+}
+
+// Story 1.5: Agent memory configuration
+export interface IAgentMemory {
+  enabled: boolean;
+  variables: IAgentMemoryVariable[];
+  retentionDays: number;  // 0 = forever, 7, 30, 90
+}
+
+// Story 1.5: Memory configuration defaults
+export const MEMORY_DEFAULTS: IAgentMemory = {
+  enabled: false,
+  variables: [],
+  retentionDays: 30
+};
+
+// Story 1.5: Memory configuration limits
+export const MEMORY_VARIABLE_TYPES = ['string', 'number', 'date', 'array'] as const;
+export const MEMORY_RETENTION_OPTIONS = [0, 7, 30, 90] as const;
+export const MAX_MEMORY_VARIABLES = 20;
+
+// Story 1.6: Approvable action types for approval configuration
+export const APPROVABLE_ACTIONS = [
+  'send_email',
+  'linkedin_invite',
+  'web_search',
+  'create_task',
+  'add_tag',
+  'remove_tag',
+  'update_field',
+  'enrich_contact',
+  'update_deal_value',
+  'wait'
+] as const;
+
+export type ApprovableAction = typeof APPROVABLE_ACTIONS[number];
+
+// Story 1.6: Agent approval configuration
+export interface IAgentApprovalConfig {
+  enabled: boolean;
+  requireForAllActions: boolean;
+  requiredForActions: ApprovableAction[];
+  approvers: mongoose.Types.ObjectId[];  // User IDs who can approve, empty = all owners/admins
+}
+
+// Story 1.6: Approval configuration defaults
+export const APPROVAL_DEFAULTS: IAgentApprovalConfig = {
+  enabled: false,
+  requireForAllActions: false,
+  requiredForActions: [],
+  approvers: []
+};
+
 export interface IAgent extends Document {
   workspace: mongoose.Types.ObjectId;
   name: string;
@@ -56,8 +114,11 @@ export interface IAgent extends Document {
   parsedActions?: any[];
   // Story 1.4: Restrictions (typed configuration)
   restrictions?: IAgentRestrictions;
-  memory?: any;
-  approvalRequired?: boolean;
+  // Story 1.5: Memory configuration (typed)
+  memory?: IAgentMemory;
+  // Story 1.6: Approval configuration (typed)
+  approvalConfig?: IAgentApprovalConfig;
+  approvalRequired?: boolean;  // Legacy field - kept for backward compatibility
   editPermissions?: any[];
   integrationAccess?: any[];
   circuitBreaker?: any;
@@ -161,13 +222,59 @@ const AgentSchema = new Schema<IAgent>(
       },
       default: () => ({ ...RESTRICTIONS_DEFAULTS })
     },
+    // Story 1.5: Memory configuration with typed schema
     memory: {
-      type: Schema.Types.Mixed,
-      default: null
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      variables: [{
+        name: {
+          type: String,
+          required: true,
+          validate: {
+            validator: (v: string) => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v),
+            message: 'Variable name must be a valid identifier (alphanumeric + underscore, starting with letter or underscore)'
+          }
+        },
+        type: {
+          type: String,
+          enum: ['string', 'number', 'date', 'array'],
+          required: true
+        },
+        defaultValue: {
+          type: Schema.Types.Mixed,
+          default: null
+        }
+      }],
+      retentionDays: {
+        type: Number,
+        default: 30,
+        enum: [0, 7, 30, 90]  // 0 = forever
+      }
     },
     approvalRequired: {
       type: Boolean,
       default: false
+    },
+    // Story 1.6: Approval configuration with typed schema
+    approvalConfig: {
+      enabled: {
+        type: Boolean,
+        default: false
+      },
+      requireForAllActions: {
+        type: Boolean,
+        default: false
+      },
+      requiredForActions: [{
+        type: String,
+        enum: APPROVABLE_ACTIONS
+      }],
+      approvers: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+      }]
     },
     editPermissions: [],
     integrationAccess: [],

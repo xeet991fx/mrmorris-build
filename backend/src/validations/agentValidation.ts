@@ -31,6 +31,88 @@ export const VALID_INTEGRATIONS = [
   'google-sheets'
 ] as const;
 
+// Story 1.5: Memory configuration constants
+export const MEMORY_VARIABLE_TYPES = ['string', 'number', 'date', 'array'] as const;
+export const MEMORY_RETENTION_OPTIONS = [0, 7, 30, 90] as const;
+export const MAX_MEMORY_VARIABLES = 20;
+
+export const MEMORY_DEFAULTS = {
+  enabled: false,
+  variables: [] as any[],
+  retentionDays: 30
+};
+
+// Story 1.6: Approvable actions for approval configuration
+export const APPROVABLE_ACTIONS = [
+  'send_email',
+  'linkedin_invite',
+  'web_search',
+  'create_task',
+  'add_tag',
+  'remove_tag',
+  'update_field',
+  'enrich_contact',
+  'update_deal_value',
+  'wait'
+] as const;
+
+export type ApprovableAction = typeof APPROVABLE_ACTIONS[number];
+
+// Story 1.6: Approval configuration defaults
+export const APPROVAL_DEFAULTS = {
+  enabled: false,
+  requireForAllActions: false,
+  requiredForActions: [] as string[],
+  approvers: [] as string[]
+};
+
+// Variable name validation: Must be valid identifier (starts with letter or underscore, alphanumeric)
+const variableNameRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+// Story 1.5: Memory variable schema
+const memoryVariableSchema = z.object({
+  name: z.string()
+    .min(1, 'Variable name is required')
+    .max(50, 'Variable name cannot exceed 50 characters')
+    .regex(variableNameRegex, 'Variable name must be a valid identifier (alphanumeric + underscore, starting with letter or underscore)'),
+  type: z.enum(MEMORY_VARIABLE_TYPES),
+  defaultValue: z.any().optional().nullable()
+});
+
+// Story 1.5: Memory configuration schema
+const memorySchema = z.object({
+  enabled: z.boolean().optional(),
+  variables: z.array(memoryVariableSchema)
+    .max(MAX_MEMORY_VARIABLES, `Maximum ${MAX_MEMORY_VARIABLES} variables allowed`)
+    .optional(),
+  retentionDays: z.number()
+    .refine(val => MEMORY_RETENTION_OPTIONS.includes(val as any), {
+      message: 'Invalid retention period. Valid options: 0 (forever), 7, 30, 90 days'
+    })
+    .optional()
+}).optional();
+
+// Story 1.6: Approval configuration schema
+const approvalConfigSchema = z.object({
+  enabled: z.boolean().optional(),
+  requireForAllActions: z.boolean().optional(),
+  requiredForActions: z.array(
+    z.enum(APPROVABLE_ACTIONS)
+  ).optional(),
+  approvers: z.array(z.string()).optional()  // User IDs as strings
+}).optional().refine(
+  (data) => {
+    // If enabled and not requireForAllActions, at least one action must be selected
+    if (data?.enabled && !data?.requireForAllActions) {
+      return data.requiredForActions && data.requiredForActions.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'At least one action must be selected when approval is enabled for specific actions'
+  }
+);
+
 export const createAgentSchema = z.object({
   body: z.object({
     name: z
@@ -50,7 +132,7 @@ export type CreateAgentInput = z.infer<typeof createAgentSchema>['body'];
 // Story 1.2: Trigger configuration schemas
 const manualTriggerSchema = z.object({
   type: z.literal('manual'),
-  config: z.object({}),
+  config: z.object({}).default({}),  // Default to empty object for legacy data
   enabled: z.boolean().optional().default(true)
 });
 
@@ -126,7 +208,11 @@ export const updateAgentSchema = z.object({
     // When triggers are provided, require at least one. Empty array is invalid.
     triggers: z.array(triggerSchema).min(1, 'At least one trigger is required').optional(),
     // Story 1.4: Restrictions configuration
-    restrictions: restrictionsSchema
+    restrictions: restrictionsSchema,
+    // Story 1.5: Memory configuration
+    memory: memorySchema,
+    // Story 1.6: Approval configuration
+    approvalConfig: approvalConfigSchema
   }).refine(
     (data) => {
       // If triggers is explicitly an empty array, reject it

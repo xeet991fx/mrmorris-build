@@ -46,8 +46,8 @@ development_status:
   1-2-add-trigger-configuration: review
   1-3-write-natural-language-instructions: done
   1-4-configure-agent-restrictions: done
-  1-5-configure-agent-memory: backlog
-  1-6-set-approval-requirements: backlog
+  1-5-configure-agent-memory: review
+  1-6-set-approval-requirements: done
   1-7-edit-existing-agent: backlog
   1-8-duplicate-agent: backlog
   1-9-manage-agent-status: backlog

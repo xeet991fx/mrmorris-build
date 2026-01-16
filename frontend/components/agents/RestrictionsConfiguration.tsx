@@ -197,7 +197,14 @@ export function RestrictionsConfiguration({
             }
         } catch (error: any) {
             console.error('Error saving restrictions:', error);
-            toast.error(error.response?.data?.error || 'Failed to save restrictions');
+            // Extract detailed validation errors from response if available
+            const details = error.response?.data?.details;
+            const errorMessage = error.response?.data?.error || 'Failed to save restrictions';
+            if (details && Array.isArray(details) && details.length > 0) {
+                toast.error(`${errorMessage}: ${details.map((d: any) => d.message || d).join(', ')}`);
+            } else {
+                toast.error(errorMessage);
+            }
         } finally {
             setIsSaving(false);
         }

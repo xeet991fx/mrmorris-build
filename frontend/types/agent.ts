@@ -73,6 +73,78 @@ export const RESTRICTIONS_LIMITS = {
 // Story 1.4: Guardrails character limit
 export const GUARDRAILS_MAX_LENGTH = 5000;
 
+// Story 1.5: Memory variable configuration types
+export interface IAgentMemoryVariable {
+  name: string;           // Variable name (alphanumeric + underscore)
+  type: 'string' | 'number' | 'date' | 'array';
+  defaultValue?: string | number | Date | any[] | null;
+}
+
+// Story 1.5: Memory configuration types
+export interface IAgentMemory {
+  enabled: boolean;
+  variables: IAgentMemoryVariable[];
+  retentionDays: number;  // 0 = forever, 7, 30, 90
+}
+
+// Story 1.5: Memory variable types with display info
+export const MEMORY_VARIABLE_TYPES = [
+  { id: 'string', name: 'String', icon: 'text' },
+  { id: 'number', name: 'Number', icon: 'hash' },
+  { id: 'date', name: 'Date', icon: 'calendar' },
+  { id: 'array', name: 'Array', icon: 'list' }
+] as const;
+
+// Story 1.5: Memory retention options with display labels
+export const MEMORY_RETENTION_OPTIONS = [
+  { value: 7, label: '7 days' },
+  { value: 30, label: '30 days' },
+  { value: 90, label: '90 days' },
+  { value: 0, label: 'Forever' }
+] as const;
+
+// Story 1.5: Memory default configuration
+export const MEMORY_DEFAULTS: IAgentMemory = {
+  enabled: false,
+  variables: [],
+  retentionDays: 30
+};
+
+// Story 1.5: Maximum memory variables per agent
+export const MAX_MEMORY_VARIABLES = 20;
+
+// Story 1.6: Approvable actions for approval configuration
+export const APPROVABLE_ACTIONS = [
+  { id: 'send_email', name: 'Send Email', icon: 'mail' },
+  { id: 'linkedin_invite', name: 'LinkedIn Invitation', icon: 'linkedin' },
+  { id: 'web_search', name: 'Web Search', icon: 'search' },
+  { id: 'create_task', name: 'Create Task', icon: 'check-square' },
+  { id: 'add_tag', name: 'Add Tag', icon: 'tag' },
+  { id: 'remove_tag', name: 'Remove Tag', icon: 'x' },
+  { id: 'update_field', name: 'Update Field', icon: 'edit' },
+  { id: 'enrich_contact', name: 'Enrich Contact', icon: 'user-plus' },
+  { id: 'update_deal_value', name: 'Update Deal Value', icon: 'dollar-sign' },
+  { id: 'wait', name: 'Wait', icon: 'clock' }
+] as const;
+
+export type ApprovableAction = typeof APPROVABLE_ACTIONS[number]['id'];
+
+// Story 1.6: Approval configuration interface
+export interface IAgentApprovalConfig {
+  enabled: boolean;
+  requireForAllActions: boolean;
+  requiredForActions: ApprovableAction[];
+  approvers: string[];  // User IDs
+}
+
+// Story 1.6: Approval configuration defaults
+export const APPROVAL_DEFAULTS: IAgentApprovalConfig = {
+  enabled: false,
+  requireForAllActions: false,
+  requiredForActions: [],
+  approvers: []
+};
+
 export interface IAgent {
   _id: string;
   workspace: string;
@@ -91,7 +163,10 @@ export interface IAgent {
   parsedActions?: any[];
   // Story 1.4: Restrictions (typed configuration)
   restrictions?: IAgentRestrictions;
-  memory?: any;
+  // Story 1.5: Memory configuration (typed)
+  memory?: IAgentMemory;
+  // Story 1.6: Approval configuration (typed)
+  approvalConfig?: IAgentApprovalConfig;
   approvalRequired?: boolean;
   editPermissions?: any[];
   integrationAccess?: any[];
@@ -111,6 +186,10 @@ export interface UpdateAgentInput {
   instructions?: string;
   // Story 1.4: Restrictions configuration
   restrictions?: Partial<IAgentRestrictions>;
+  // Story 1.5: Memory configuration
+  memory?: Partial<IAgentMemory>;
+  // Story 1.6: Approval configuration
+  approvalConfig?: Partial<IAgentApprovalConfig>;
 }
 
 export interface UpdateAgentResponse {
