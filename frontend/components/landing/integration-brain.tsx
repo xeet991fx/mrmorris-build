@@ -1,7 +1,8 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { FaHubspot, FaSlack, FaLinkedin, FaSalesforce, FaGoogle } from "react-icons/fa"
+import Image from "next/image"
+import { FaSlack, FaLinkedin, FaSalesforce, FaGoogle } from "react-icons/fa"
 import { CheckCircle } from "lucide-react"
 
 export function IntegrationBrain() {
@@ -21,7 +22,7 @@ export function IntegrationBrain() {
               <div className="mb-8 flex items-center gap-2">
                 <div className="h-3 w-3 rounded-full bg-accent-green" />
                 <span className="font-mono text-2xs uppercase tracking-widest text-white/40">
-                  Global_Brain_Active
+                  Agent_Active
                 </span>
               </div>
 
@@ -33,7 +34,7 @@ export function IntegrationBrain() {
                 <div className="font-mono text-sm italic text-white/90">
                   "When a lead signs up, enrich their data via Clearbit, find
                   their LinkedIn profile, send a personalized video via Slack to
-                  the account owner, and move the HubSpot deal to 'Qualified'."
+                  the account owner, and move the deal to 'Qualified'."
                 </div>
               </div>
 
@@ -47,9 +48,15 @@ export function IntegrationBrain() {
                   className="flex items-center justify-between border border-white/10 bg-white/5 p-4"
                 >
                   <div className="flex items-center gap-4">
-                    <FaHubspot className="text-xl text-orange-500" />
+                    <Image
+                      src="/Clianta-logo-removebg-preview.png"
+                      alt="Clianta"
+                      width={24}
+                      height={24}
+                      className="h-6 w-6 object-contain"
+                    />
                     <span className="font-mono text-2xs text-white/60">
-                      HubSpot Deal Status updated
+                      Deal Status updated
                     </span>
                   </div>
                   <CheckCircle className="h-4 w-4 text-accent-green" />
@@ -120,9 +127,6 @@ export function IntegrationBrain() {
             >
               <div className="integration-icon">
                 <FaSalesforce className="text-xl sm:text-2xl lg:text-3xl text-[#00A1E0]" />
-              </div>
-              <div className="integration-icon">
-                <FaHubspot className="text-xl sm:text-2xl lg:text-3xl text-[#FF7A59]" />
               </div>
               <div className="integration-icon">
                 <FaSlack className="text-xl sm:text-2xl lg:text-3xl text-[#4A154B]" />
