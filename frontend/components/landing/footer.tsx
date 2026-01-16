@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 
 const footerLinks = {
   system: [
@@ -25,11 +26,15 @@ export function Footer() {
         <div className="mb-32 flex flex-col items-start justify-between gap-20 md:flex-row">
           {/* Brand */}
           <div className="max-w-xs">
-            <div className="mb-8 flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center bg-foreground text-background">
-                <span className="material-symbols-outlined text-sm">hub</span>
-              </div>
-              <span className="font-display text-2xl font-bold tracking-tighter">
+            <div className="mb-8 flex items-center gap-3">
+              <Image
+                src="/Clianta-logo-removebg-preview.png"
+                alt="Clianta Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
+              <span className="font-display text-2xl font-bold tracking-tight">
                 Clianta
               </span>
             </div>

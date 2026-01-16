@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Menu, X, Zap } from "lucide-react"
+import { Menu, X } from "lucide-react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/shared/theme-toggle"
 
@@ -59,13 +60,17 @@ export function Navbar() {
           {/* Logo */}
           <Link href="/" className="group flex items-center gap-3">
             <motion.div
-              whileHover={{ rotate: 180, scale: 1.1 }}
-              transition={{ duration: 0.5 }}
-              className={`flex h-10 w-10 items-center justify-center shadow-md transition-colors duration-500 ${
-                isScrolled ? "bg-accent-green text-black" : "bg-foreground text-background"
-              }`}
+              whileHover={{ scale: 1.1 }}
+              transition={{ duration: 0.3 }}
+              className="flex h-10 w-10 items-center justify-center"
             >
-              <Zap className="h-5 w-5" />
+              <Image
+                src="/Clianta-logo-removebg-preview.png"
+                alt="Clianta Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
             </motion.div>
             <span className={`font-display text-2xl font-bold tracking-tight transition-colors duration-500 ${
               isScrolled ? "text-white" : "text-foreground"
