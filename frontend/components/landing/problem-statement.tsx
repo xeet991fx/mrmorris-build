@@ -27,12 +27,12 @@ const stats = [
 
 export function ProblemStatement() {
   return (
-    <section id="problem" className="scroll-mt-20 bg-black min-h-screen flex items-center py-16 text-white relative overflow-hidden">
+    <section id="problem" className="scroll-mt-20 bg-black flex items-center py-12 sm:py-16 lg:min-h-screen text-white relative overflow-hidden">
       {/* Neural Mesh Background */}
       <div className="neural-mesh absolute inset-0 opacity-5" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-12">
-        <div className="grid items-center gap-20 lg:grid-cols-2">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
+        <div className="grid items-center gap-10 sm:gap-16 lg:gap-20 lg:grid-cols-2">
           {/* Left Content */}
           <div>
             <motion.span
@@ -49,7 +49,7 @@ export function ProblemStatement() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="heading-display mb-10 text-5xl text-white md:text-6xl"
+              className="heading-display mb-6 sm:mb-8 lg:mb-10 text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white"
             >
               Your sales team is losing 70% of their time to manual tasks.
             </motion.h2>
@@ -59,7 +59,7 @@ export function ProblemStatement() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="text-xl font-light leading-relaxed text-white/60"
+              className="text-base sm:text-lg lg:text-xl font-light leading-relaxed text-white/60"
             >
               CRMs were built for management, not for sellers. Repetitive
               follow-ups, manual data enrichment, and constant pipeline updates
@@ -68,7 +68,7 @@ export function ProblemStatement() {
           </div>
 
           {/* Right Content - Stats Grid */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {stats.map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -78,13 +78,13 @@ export function ProblemStatement() {
                 transition={{ delay: 0.1 * index }}
                 className="stats-card group"
               >
-                <div className="mb-4 font-display text-4xl font-bold text-accent-green">
+                <div className="mb-2 sm:mb-4 font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-accent-green">
                   {stat.value}
                 </div>
-                <div className="label-uppercase mb-2 opacity-40">
+                <div className="label-uppercase mb-1 sm:mb-2 opacity-40 text-[10px] sm:text-xs">
                   {stat.label}
                 </div>
-                <p className="text-sm text-white/60">{stat.description}</p>
+                <p className="text-xs sm:text-sm text-white/60 hidden sm:block">{stat.description}</p>
               </motion.div>
             ))}
           </div>

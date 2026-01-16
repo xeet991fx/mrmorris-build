@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button"
 
 export function Hero() {
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden bg-background pb-20 pt-32">
+    <section className="relative flex h-dvh min-h-[600px] items-center overflow-hidden bg-background px-4 py-16 sm:px-6 sm:py-20 lg:px-12">
       {/* Grid Background */}
       <div className="absolute inset-0 grid-bg-subtle" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-6 lg:px-12">
-        <div className="grid items-center gap-16 lg:grid-cols-12">
+        <div className="grid items-center gap-8 lg:grid-cols-12 lg:gap-16">
           {/* Left Content */}
           <div className="relative lg:col-span-7">
             {/* Status Badge */}
@@ -19,7 +19,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="mb-8 inline-flex items-center gap-3 border border-border-muted bg-background/50 px-4 py-1.5 backdrop-blur-md"
+              className="mb-4 inline-flex items-center gap-2 border border-border-muted bg-background/50 px-3 py-1 backdrop-blur-md sm:mb-6 sm:gap-3 sm:px-4 sm:py-1.5 md:mb-8"
             >
               <span className="h-2 w-2 animate-ping rounded-full bg-accent-green" />
               <span className="text-2xs font-bold uppercase tracking-mega">
@@ -32,7 +32,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.1 }}
-              className="heading-display mb-10 text-6xl text-foreground md:text-7xl lg:text-8xl xl:text-9xl"
+              className="heading-display mb-6 text-4xl text-foreground sm:mb-8 sm:text-5xl md:mb-10 md:text-6xl lg:text-7xl xl:text-8xl"
             >
               AI That Runs Your Sales Engine.
             </motion.h1>
@@ -42,7 +42,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.2 }}
-              className="mb-12 max-w-xl text-xl font-light leading-relaxed text-muted-foreground md:text-2xl"
+              className="mb-8 max-w-xl text-base font-light leading-relaxed text-muted-foreground sm:mb-10 sm:text-lg md:mb-12 md:text-xl lg:text-2xl"
             >
               The AI-native CRM where a conversational agent automates your
               entire sales process — from first touch to closed deal.
@@ -76,7 +76,7 @@ export function Hero() {
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="relative lg:col-span-5"
+            className="relative hidden lg:col-span-5 lg:block"
           >
             <div className="group relative">
               {/* Glow Effect */}

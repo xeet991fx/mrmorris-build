@@ -52,7 +52,7 @@ export function Navbar() {
       className={`fixed top-0 z-[100] w-full transition-all duration-500 ${
         isScrolled
           ? "border-b border-white/10 bg-black/95 shadow-lg shadow-black/20 backdrop-blur-2xl"
-          : "border-b border-border/30 bg-white/80 backdrop-blur-sm"
+          : "border-b border-border/30 bg-white/80 dark:bg-black/80 backdrop-blur-sm"
       }`}
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-12">
@@ -73,7 +73,7 @@ export function Navbar() {
               />
             </motion.div>
             <span className={`font-display text-2xl font-bold tracking-tight transition-colors duration-500 ${
-              isScrolled ? "text-white" : "text-foreground"
+              isScrolled ? "text-white" : "text-foreground dark:text-white"
             }`}>
               Clianta
             </span>
@@ -89,7 +89,7 @@ export function Navbar() {
                 className={`relative cursor-pointer text-[11px] font-semibold uppercase tracking-wider transition-colors after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-accent-green after:transition-all after:duration-300 hover:after:w-full ${
                   isScrolled
                     ? "text-white/70 hover:text-white"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white"
                 }`}
               >
                 {link.label}
@@ -115,7 +115,7 @@ export function Navbar() {
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className={`flex h-10 w-10 items-center justify-center transition-colors md:hidden ${
-                isScrolled ? "text-white" : "text-foreground"
+                isScrolled ? "text-white" : "text-foreground dark:text-white"
               }`}
               aria-label="Toggle menu"
             >

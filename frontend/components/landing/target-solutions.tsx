@@ -29,10 +29,10 @@ const targetProfiles = [
 
 export function TargetSolutions() {
   return (
-    <section id="target" className="scroll-mt-20 bg-black min-h-screen flex items-center py-16 text-white relative overflow-hidden">
-      <div className="mx-auto max-w-7xl px-6 lg:px-12">
+    <section id="target" className="scroll-mt-20 bg-black flex items-center py-12 sm:py-16 lg:min-h-screen text-white relative overflow-hidden">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
         {/* Header */}
-        <div className="mb-20 text-center">
+        <div className="mb-10 sm:mb-16 lg:mb-20 text-center">
           <motion.span
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -47,14 +47,14 @@ export function TargetSolutions() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="heading-display text-5xl text-white md:text-6xl"
+            className="heading-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white"
           >
             Built For Sales Teams That Want Speed
           </motion.h2>
         </div>
 
         {/* Cards Grid */}
-        <div className="grid gap-8 md:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
           {targetProfiles.map((profile, index) => {
             const Icon = profile.icon
             return (
@@ -64,21 +64,21 @@ export function TargetSolutions() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 * index }}
-                className="border border-white/10 bg-white/5 p-10 transition-all hover:border-accent-green lg:p-12"
+                className="border border-white/10 bg-white/5 p-6 sm:p-8 lg:p-10 xl:p-12 transition-all hover:border-accent-green"
               >
-                <div className="mb-8 flex h-12 w-12 items-center justify-center border border-white/10">
-                  <Icon className="h-6 w-6 text-white" />
+                <div className="mb-4 sm:mb-6 lg:mb-8 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center border border-white/10">
+                  <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
 
-                <h4 className="mb-4 text-sm font-bold uppercase tracking-widest text-white">
+                <h4 className="mb-2 sm:mb-4 text-xs sm:text-sm font-bold uppercase tracking-widest text-white">
                   {profile.title}
                 </h4>
 
-                <p className="mb-8 text-sm leading-relaxed text-white/60">
+                <p className="mb-4 sm:mb-6 lg:mb-8 text-xs sm:text-sm leading-relaxed text-white/60">
                   {profile.description}
                 </p>
 
-                <ul className="space-y-3">
+                <ul className="space-y-2 sm:space-y-3">
                   {profile.features.map((feature) => (
                     <li
                       key={feature}

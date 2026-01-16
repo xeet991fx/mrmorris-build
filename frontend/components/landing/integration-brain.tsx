@@ -6,15 +6,15 @@ import { CheckCircle } from "lucide-react"
 
 export function IntegrationBrain() {
   return (
-    <section className="bg-background min-h-screen flex items-center py-16">
-      <div className="mx-auto max-w-7xl px-6 lg:px-12">
-        <div className="grid items-center gap-24 lg:grid-cols-2">
+    <section className="bg-background flex items-center py-12 sm:py-16 lg:min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
+        <div className="grid items-center gap-10 sm:gap-16 lg:gap-24 lg:grid-cols-2">
           {/* Left - Terminal Demo */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="relative order-2 lg:order-1"
+            className="relative order-2 hidden lg:block lg:order-1"
           >
             <div className="relative border border-foreground bg-surface-dark p-8 shadow-2xl">
               {/* Header */}
@@ -93,7 +93,7 @@ export function IntegrationBrain() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="heading-display mb-8 text-5xl md:text-6xl"
+              className="heading-display mb-4 sm:mb-6 lg:mb-8 text-3xl sm:text-4xl md:text-5xl lg:text-6xl"
             >
               Execute across your entire stack.
             </motion.h2>
@@ -103,7 +103,7 @@ export function IntegrationBrain() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="mb-10 text-xl font-light leading-relaxed text-muted-foreground"
+              className="mb-6 sm:mb-8 lg:mb-10 text-base sm:text-lg lg:text-xl font-light leading-relaxed text-muted-foreground"
             >
               Clianta doesn't just "talk" to your tools—it understands the
               context across all of them. It acts as the central intelligence
@@ -116,22 +116,22 @@ export function IntegrationBrain() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
-              className="flex flex-wrap gap-8"
+              className="flex flex-wrap gap-4 sm:gap-6 lg:gap-8"
             >
               <div className="integration-icon">
-                <FaSalesforce className="text-3xl text-[#00A1E0]" />
+                <FaSalesforce className="text-xl sm:text-2xl lg:text-3xl text-[#00A1E0]" />
               </div>
               <div className="integration-icon">
-                <FaHubspot className="text-3xl text-[#FF7A59]" />
+                <FaHubspot className="text-xl sm:text-2xl lg:text-3xl text-[#FF7A59]" />
               </div>
               <div className="integration-icon">
-                <FaSlack className="text-3xl text-[#4A154B]" />
+                <FaSlack className="text-xl sm:text-2xl lg:text-3xl text-[#4A154B]" />
               </div>
               <div className="integration-icon">
-                <FaLinkedin className="text-3xl text-[#0077b5]" />
+                <FaLinkedin className="text-xl sm:text-2xl lg:text-3xl text-[#0077b5]" />
               </div>
               <div className="integration-icon">
-                <FaGoogle className="text-3xl text-[#4285F4]" />
+                <FaGoogle className="text-xl sm:text-2xl lg:text-3xl text-[#4285F4]" />
               </div>
             </motion.div>
           </div>

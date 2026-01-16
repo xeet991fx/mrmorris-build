@@ -9,10 +9,10 @@ export function AgentBuilder() {
   return (
     <section
       id="workflow"
-      className="scroll-mt-20 border-y border-border bg-background min-h-screen flex items-center py-16"
+      className="scroll-mt-20 border-y border-border bg-background flex items-center py-12 sm:py-16 lg:min-h-screen"
     >
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-12">
-        <div className="grid items-center gap-16 lg:grid-cols-2 lg:gap-24">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
+        <div className="grid items-center gap-10 sm:gap-12 lg:grid-cols-2 lg:gap-24">
           {/* Left Content */}
           <div className="relative z-10">
             <motion.span
@@ -29,7 +29,7 @@ export function AgentBuilder() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="heading-display mb-8 text-4xl md:text-5xl lg:text-6xl"
+              className="heading-display mb-4 sm:mb-6 lg:mb-8 text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl"
             >
               Create powerful AI agents by simply describing what you want
             </motion.h2>
@@ -39,7 +39,7 @@ export function AgentBuilder() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="mb-10 text-lg font-light leading-relaxed text-muted-foreground md:text-xl"
+              className="mb-6 sm:mb-8 lg:mb-10 text-base sm:text-lg lg:text-xl font-light leading-relaxed text-muted-foreground"
             >
               The AI Agent Builder lets you create intelligent agents using
               natural language — no coding, no technical setup.
@@ -51,7 +51,7 @@ export function AgentBuilder() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
-              className="mb-10 border-l-2 border-foreground bg-muted/50 p-5"
+              className="mb-6 sm:mb-8 lg:mb-10 border-l-2 border-foreground bg-muted/50 p-3 sm:p-4 lg:p-5"
             >
               <h5 className="mb-3 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 From conversation to automation in minutes
@@ -115,7 +115,7 @@ export function AgentBuilder() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            className="relative"
+            className="relative hidden lg:block"
           >
             <div className="terminal-card group relative p-6 lg:p-10">
               {/* Neural Mesh */}
