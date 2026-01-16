@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { FaSlack, FaLinkedin, FaSalesforce, FaGoogle } from "react-icons/fa"
+import { FaSlack, FaLinkedin, FaSalesforce, FaGoogle, FaHubspot } from "react-icons/fa"
 import { CheckCircle } from "lucide-react"
 
 export function IntegrationBrain() {
