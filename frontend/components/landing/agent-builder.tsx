@@ -3,16 +3,16 @@
 import { motion } from "framer-motion"
 import { FaLinkedin, FaSlack } from "react-icons/fa"
 import { SiNotion, SiGmail, SiGooglecalendar } from "react-icons/si"
-import { Sparkles, Users } from "lucide-react"
+import { Sparkles, Users, Zap, Bot } from "lucide-react"
 
 export function AgentBuilder() {
   return (
     <section
       id="workflow"
-      className="scroll-mt-20 border-y border-border bg-background flex items-center py-12 sm:py-16 lg:min-h-screen"
+      className="scroll-mt-20 border-y border-border bg-background flex items-center py-16 sm:py-20 lg:py-24 lg:min-h-screen"
     >
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
-        <div className="grid items-center gap-10 sm:gap-12 lg:grid-cols-2 lg:gap-24">
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-12 w-full">
+        <div className="grid items-center gap-12 sm:gap-16 lg:grid-cols-2 lg:gap-24">
           {/* Left Content */}
           <div className="relative z-10">
             <motion.span
@@ -108,6 +108,133 @@ export function AgentBuilder() {
               </motion.div>
             </div>
           </div>
+
+          {/* Mobile Visual - Agent Animation */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="relative lg:hidden"
+          >
+            <div className="relative bg-black/95 dark:bg-black border border-border dark:border-white/10 rounded-xl p-6 overflow-hidden">
+              {/* Neural Mesh Background */}
+              <div className="neural-mesh absolute inset-0 opacity-10" />
+
+              {/* Header */}
+              <div className="relative z-10 mb-6">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">
+                    Agent_Builder
+                  </span>
+                  <div className="flex gap-1.5">
+                    <div className="h-2 w-2 rounded-full bg-white/10" />
+                    <div className="h-2 w-2 rounded-full bg-white/10" />
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="h-2 w-2 rounded-full bg-accent-green"
+                    />
+                  </div>
+                </div>
+
+                {/* Input Area */}
+                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <div className="mb-2 font-mono text-[10px] uppercase tracking-tighter text-accent-green">
+                    Agent Intent:
+                  </div>
+                  <div className="font-mono text-sm leading-relaxed text-white/90">
+                    Find decision makers on{" "}
+                    <span className="text-blue-400">LinkedIn</span> and{" "}
+                    <span className="text-blue-400">send personalized outreach</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Animated Connection Visualization */}
+              <div className="relative z-10 flex items-center justify-center py-8">
+                {/* Central AI Core with pulse */}
+                <motion.div
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative"
+                >
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/20 bg-black">
+                    <Bot className="h-7 w-7 text-accent-green" />
+                  </div>
+                  <motion.div
+                    animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="absolute inset-0 rounded-full border border-accent-green"
+                  />
+                </motion.div>
+
+                {/* Orbiting Icons */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                  className="absolute h-36 w-36"
+                >
+                  <motion.div
+                    animate={{ rotate: -360 }}
+                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                    className="absolute -top-3 left-1/2 -translate-x-1/2"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a] border border-white/10">
+                      <FaSlack className="text-lg text-[#4A154B]" />
+                    </div>
+                  </motion.div>
+                  <motion.div
+                    animate={{ rotate: -360 }}
+                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                    className="absolute top-1/2 -right-3 -translate-y-1/2"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a] border border-white/10">
+                      <SiGmail className="text-lg text-[#EA4335]" />
+                    </div>
+                  </motion.div>
+                  <motion.div
+                    animate={{ rotate: -360 }}
+                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                    className="absolute -bottom-3 left-1/2 -translate-x-1/2"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a] border border-white/10">
+                      <FaLinkedin className="text-lg text-[#0077b5]" />
+                    </div>
+                  </motion.div>
+                  <motion.div
+                    animate={{ rotate: -360 }}
+                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                    className="absolute top-1/2 -left-3 -translate-y-1/2"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1a1a1a] border border-white/10">
+                      <SiNotion className="text-lg text-white" />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              </div>
+
+              {/* Status Badge */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.6 }}
+                className="relative z-10 flex justify-center"
+              >
+                <div className="flex items-center gap-2 border border-accent-green/30 bg-black px-4 py-2 rounded-full">
+                  <motion.span
+                    animate={{ opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="h-2 w-2 rounded-full bg-accent-green"
+                  />
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-accent-green">
+                    Multi-Platform Ready
+                  </span>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
 
           {/* Right Content - Visual Constructor */}
           <motion.div

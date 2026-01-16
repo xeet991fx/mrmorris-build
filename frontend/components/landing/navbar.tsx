@@ -51,46 +51,40 @@ export function Navbar() {
       transition={{ duration: 0.5 }}
       className={`fixed top-0 z-[100] w-full transition-all duration-500 ${
         isScrolled
-          ? "border-b border-white/10 bg-black/95 shadow-lg shadow-black/20 backdrop-blur-2xl"
-          : "border-b border-border/30 bg-white/80 dark:bg-black/80 backdrop-blur-sm"
+          ? "border-b border-border/20 bg-background/95 shadow-lg shadow-black/5 dark:shadow-black/20 backdrop-blur-xl dark:border-white/10 dark:bg-black/95"
+          : "border-b border-border/30 bg-background/90 dark:bg-black/80 backdrop-blur-sm"
       }`}
     >
-      <div className="mx-auto max-w-7xl px-6 lg:px-12">
-        <div className="flex h-16 items-center justify-between">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
+        <div className="flex h-14 sm:h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="group flex items-center gap-3">
+          <Link href="/" className="group flex items-center gap-2 sm:gap-3">
             <motion.div
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.3 }}
-              className="flex h-10 w-10 items-center justify-center"
+              className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center"
             >
               <Image
                 src="/Clianta-logo-removebg-preview.png"
                 alt="Clianta Logo"
                 width={40}
                 height={40}
-                className="object-contain"
+                className="object-contain w-8 h-8 sm:w-10 sm:h-10"
               />
             </motion.div>
-            <span className={`font-display text-2xl font-bold tracking-tight transition-colors duration-500 ${
-              isScrolled ? "text-white" : "text-foreground dark:text-white"
-            }`}>
+            <span className="font-display text-lg sm:text-xl lg:text-2xl font-bold tracking-tight transition-colors duration-500 text-foreground dark:text-white">
               Clianta
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden items-center gap-8 md:flex">
+          <div className="hidden items-center gap-6 lg:gap-8 md:flex">
             {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
                 onClick={(e) => handleNavClick(e, link.href)}
-                className={`relative cursor-pointer text-[11px] font-semibold uppercase tracking-wider transition-colors after:absolute after:-bottom-1 after:left-0 after:h-px after:w-0 after:bg-accent-green after:transition-all after:duration-300 hover:after:w-full ${
-                  isScrolled
-                    ? "text-white/70 hover:text-white"
-                    : "text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white"
-                }`}
+                className="relative cursor-pointer text-xs font-medium tracking-wide transition-colors text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-0 after:bg-accent-green after:transition-all after:duration-300 hover:after:w-full"
               >
                 {link.label}
               </a>
@@ -98,15 +92,11 @@ export function Navbar() {
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 sm:gap-4">
             <ThemeToggle />
             <Button
               asChild
-              className={`hidden px-5 py-2 text-[10px] font-bold uppercase tracking-widest shadow-md transition-all hover:shadow-lg md:flex ${
-                isScrolled
-                  ? "bg-accent-green text-black hover:bg-white"
-                  : "bg-foreground text-background hover:bg-accent-green hover:text-black"
-              }`}
+              className="hidden px-4 lg:px-6 py-2 text-[10px] font-semibold uppercase tracking-wider shadow-md transition-all hover:shadow-lg md:flex bg-foreground text-background hover:bg-accent-green hover:text-black"
             >
               <Link href="/register">Get Early Access</Link>
             </Button>
@@ -114,15 +104,13 @@ export function Navbar() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`flex h-10 w-10 items-center justify-center transition-colors md:hidden ${
-                isScrolled ? "text-white" : "text-foreground dark:text-white"
-              }`}
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border border-border/50 bg-background/50 transition-all hover:bg-muted md:hidden dark:border-white/10 dark:bg-white/5"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4 sm:h-5 sm:w-5" />
               ) : (
-                <Menu className="h-5 w-5" />
+                <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
           </div>
@@ -135,25 +123,30 @@ export function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden border-t border-white/10 bg-black py-6 md:hidden"
+              className="overflow-hidden border-t border-border/30 dark:border-white/10 bg-background dark:bg-black/95 py-4 sm:py-6 md:hidden"
             >
-              <div className="flex flex-col space-y-4">
-                {navLinks.map((link) => (
-                  <a
+              <div className="flex flex-col space-y-1">
+                {navLinks.map((link, index) => (
+                  <motion.a
                     key={link.href}
                     href={link.href}
                     onClick={(e) => handleNavClick(e, link.href)}
-                    className="cursor-pointer text-xs font-bold uppercase tracking-widest text-white/70 transition-colors hover:text-white"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="cursor-pointer px-2 py-3 text-sm font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-muted/50 rounded-lg dark:text-white/70 dark:hover:text-white dark:hover:bg-white/5"
                   >
                     {link.label}
-                  </a>
+                  </motion.a>
                 ))}
-                <Button
-                  asChild
-                  className="mt-4 w-full bg-accent-green text-xs font-bold uppercase tracking-widest text-black hover:bg-white"
-                >
-                  <Link href="/register">Get Early Access</Link>
-                </Button>
+                <div className="pt-4 px-2">
+                  <Button
+                    asChild
+                    className="w-full bg-accent-green text-sm font-semibold text-black hover:bg-accent-green/90"
+                  >
+                    <Link href="/register">Get Early Access</Link>
+                  </Button>
+                </div>
               </div>
             </motion.div>
           )}

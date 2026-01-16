@@ -6,9 +6,9 @@ import { CheckCircle } from "lucide-react"
 
 export function IntegrationBrain() {
   return (
-    <section className="bg-background flex items-center py-12 sm:py-16 lg:min-h-screen">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
-        <div className="grid items-center gap-10 sm:gap-16 lg:gap-24 lg:grid-cols-2">
+    <section className="bg-background flex items-center py-16 sm:py-20 lg:py-24 lg:min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12 w-full">
+        <div className="grid items-center gap-12 sm:gap-16 lg:gap-24 lg:grid-cols-2">
           {/* Left - Terminal Demo */}
           <motion.div
             initial={{ opacity: 0, x: -40 }}
@@ -132,6 +132,83 @@ export function IntegrationBrain() {
               </div>
               <div className="integration-icon">
                 <FaGoogle className="text-xl sm:text-2xl lg:text-3xl text-[#4285F4]" />
+              </div>
+            </motion.div>
+
+            {/* Mobile Terminal Demo */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4 }}
+              className="mt-8 lg:hidden"
+            >
+              <div className="relative border border-border dark:border-white/10 bg-black/95 dark:bg-black rounded-xl p-5 shadow-xl overflow-hidden">
+                {/* Neural Mesh Background */}
+                <div className="neural-mesh absolute inset-0 opacity-10" />
+
+                {/* Header */}
+                <div className="relative z-10 mb-5 flex items-center gap-2">
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="h-2.5 w-2.5 rounded-full bg-accent-green"
+                  />
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">
+                    Global_Brain_Active
+                  </span>
+                </div>
+
+                {/* Action Logs */}
+                <div className="relative z-10 space-y-3">
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.5 }}
+                    className="flex items-center justify-between border border-white/10 bg-white/5 p-3 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FaHubspot className="text-lg text-orange-500" />
+                      <span className="font-mono text-xs text-white/60">
+                        HubSpot updated
+                      </span>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-accent-green" />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.6 }}
+                    className="flex items-center justify-between border border-white/10 bg-white/5 p-3 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FaSlack className="text-lg text-purple-500" />
+                      <span className="font-mono text-xs text-white/60">
+                        Slack notified
+                      </span>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-accent-green" />
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.7 }}
+                    className="flex items-center justify-between border border-white/10 bg-white/5 p-3 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FaLinkedin className="text-lg text-[#0077b5]" />
+                      <span className="font-mono text-xs text-white/60">
+                        Profile enriched
+                      </span>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-accent-green" />
+                  </motion.div>
+                </div>
               </div>
             </motion.div>
           </div>

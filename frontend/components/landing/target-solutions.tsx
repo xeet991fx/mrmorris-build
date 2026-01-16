@@ -29,8 +29,8 @@ const targetProfiles = [
 
 export function TargetSolutions() {
   return (
-    <section id="target" className="scroll-mt-20 bg-black flex items-center py-12 sm:py-16 lg:min-h-screen text-white relative overflow-hidden">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
+    <section id="target" className="scroll-mt-20 bg-black flex items-center py-16 sm:py-20 lg:py-24 lg:min-h-screen text-white relative overflow-hidden">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-12 w-full">
         {/* Header */}
         <div className="mb-10 sm:mb-16 lg:mb-20 text-center">
           <motion.span

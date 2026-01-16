@@ -27,12 +27,12 @@ const stats = [
 
 export function ProblemStatement() {
   return (
-    <section id="problem" className="scroll-mt-20 bg-black flex items-center py-12 sm:py-16 lg:min-h-screen text-white relative overflow-hidden">
+    <section id="problem" className="scroll-mt-20 bg-black flex items-center py-16 sm:py-20 lg:py-24 lg:min-h-screen text-white relative overflow-hidden">
       {/* Neural Mesh Background */}
       <div className="neural-mesh absolute inset-0 opacity-5" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-12">
-        <div className="grid items-center gap-10 sm:gap-16 lg:gap-20 lg:grid-cols-2">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-12 w-full">
+        <div className="grid items-center gap-12 sm:gap-16 lg:gap-20 lg:grid-cols-2">
           {/* Left Content */}
           <div>
             <motion.span

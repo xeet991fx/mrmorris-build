@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 
 export function FinalCTA() {
   return (
-    <section className="cta-section flex items-center py-12 sm:py-16 lg:min-h-screen">
-      <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 text-center lg:px-12">
+    <section className="cta-section flex items-center py-16 sm:py-20 lg:py-24 lg:min-h-screen">
+      <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 text-center lg:px-12 w-full">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
