@@ -1,95 +1,165 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ArrowRight, Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen pt-32 pb-20">
-      {/* Gradient Background */}
-      <div className="absolute inset-0 -z-10 h-full w-full bg-background">
-        <div className="absolute h-full w-full bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(154,205,50,0.2),rgba(138,184,46,0.1))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(154,205,50,0.15),rgba(138,184,46,0.05))]"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#9ACD32]/50 to-transparent"></div>
-      </div>
+    <section className="relative flex min-h-screen items-center overflow-hidden bg-background pb-20 pt-32">
+      {/* Grid Background */}
+      <div className="absolute inset-0 grid-bg-subtle" />
 
-      <div className="container">
-        <div className="flex flex-col items-center text-center">
-          {/* Badge */}
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-6 lg:px-12">
+        <div className="grid items-center gap-16 lg:grid-cols-12">
+          {/* Left Content */}
+          <div className="relative lg:col-span-7">
+            {/* Status Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mb-8 inline-flex items-center gap-3 border border-border-muted bg-background/50 px-4 py-1.5 backdrop-blur-md"
+            >
+              <span className="h-2 w-2 animate-ping rounded-full bg-accent-green" />
+              <span className="text-2xs font-bold uppercase tracking-mega">
+                Neural CRM Engine Active
+              </span>
+            </motion.div>
+
+            {/* Main Headline */}
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="heading-display mb-10 text-6xl text-foreground md:text-7xl lg:text-8xl xl:text-9xl"
+            >
+              AI That Runs Your Sales Engine.
+            </motion.h1>
+
+            {/* Subheadline */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="mb-12 max-w-xl text-xl font-light leading-relaxed text-muted-foreground md:text-2xl"
+            >
+              The AI-native CRM where a conversational agent automates your
+              entire sales process — from first touch to closed deal.
+            </motion.p>
+
+            {/* CTA Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.3 }}
+              className="flex flex-col items-center gap-6 sm:flex-row"
+            >
+              <Button
+                asChild
+                className="w-full bg-foreground px-12 py-5 text-2xs font-bold uppercase tracking-widest text-background shadow-2xl transition-all hover:bg-accent-green hover:text-black sm:w-auto"
+              >
+                <Link href="/register">Get Early Access</Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full border-border-muted bg-background px-12 py-5 text-2xs font-bold uppercase tracking-widest transition-all hover:bg-foreground hover:text-background sm:w-auto"
+              >
+                <Link href="#how-it-works">Book a Demo</Link>
+              </Button>
+            </motion.div>
+          </div>
+
+          {/* Right Content - Terminal UI */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="relative lg:col-span-5"
           >
-            <Badge className="mb-6 px-4 py-2 text-sm bg-gradient-to-r from-[#9ACD32]/20 to-[#8AB82E]/20 border-[#9ACD32]/30" variant="secondary">
-              <Sparkles className="mr-2 h-4 w-4 text-[#9ACD32]" />
-              AI-Native CRM
-            </Badge>
-          </motion.div>
+            <div className="group relative">
+              {/* Glow Effect */}
+              <div className="absolute -inset-4 rounded-full bg-accent-green/5 blur-3xl transition-colors group-hover:bg-accent-green/10" />
 
-          {/* Main Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.1 }}
-            className="mb-6 max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl lg:text-8xl"
-          >
-            Your CRM,{" "}
-            <span className="bg-gradient-to-r from-[#9ACD32] via-[#8AB82E] to-[#7BA628] bg-clip-text text-transparent">
-              Built by AI
-            </span>
-          </motion.h1>
+              {/* Terminal Card */}
+              <div className="terminal-card relative p-8">
+                {/* Header */}
+                <div className="mb-8 flex items-center justify-between border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-accent-green" />
+                    <span className="font-mono text-[9px] uppercase tracking-widest opacity-40">
+                      Agent.process.log
+                    </span>
+                  </div>
+                  <span className="font-mono text-[9px] italic opacity-20">
+                    v2.0.4-stable
+                  </span>
+                </div>
 
-          {/* Subheadline */}
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.2 }}
-            className="mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl md:text-2xl"
-          >
-            Describe how you sell. Clianta builds personalized workflows
-            and automations in minutes.
-          </motion.p>
+                {/* Input Query */}
+                <div className="mb-10">
+                  <div className="mb-3 font-mono text-2xs uppercase tracking-tighter opacity-40">
+                    &gt; input_query
+                  </div>
+                  <div className="typing-indicator font-mono text-lg leading-snug text-white">
+                    Follow up with new leads from the enterprise campaign and
+                    schedule intros.
+                  </div>
+                </div>
 
-          {/* CTA Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.3 }}
-            className="flex flex-col gap-4 sm:flex-row"
-          >
-            <Button asChild size="xl" className="group">
-              <Link href="/register">
-                Start Free
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </Button>
-            <Button asChild size="xl" variant="outline">
-              <Link href="#how-it-works">
-                How It Works
-              </Link>
-            </Button>
-          </motion.div>
+                {/* Process Steps */}
+                <div className="space-y-4">
+                  {/* Active Step */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, delay: 0.6 }}
+                    className="group/line relative flex items-center justify-between border border-white/5 bg-white/5 p-4"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="material-symbols-outlined text-[14px] text-accent-green">
+                        insights
+                      </span>
+                      <div>
+                        <div className="font-mono text-2xs text-accent-green">
+                          ENRICHING_DATA
+                        </div>
+                        <div className="font-mono text-[8px] opacity-40">
+                          Scanning 124 leads via Clearbit...
+                        </div>
+                      </div>
+                    </div>
+                    <div className="progress-bar w-12">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: "66%" }}
+                        transition={{ duration: 1, delay: 0.8 }}
+                        className="progress-bar-fill"
+                      />
+                    </div>
+                  </motion.div>
 
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.4 }}
-            className="mt-20 grid w-full max-w-3xl grid-cols-3 gap-8"
-          >
-            {[
-              { value: "5 min", label: "Setup", color: "from-[#9ACD32] to-[#8AB82E]" },
-              { value: "Zero", label: "Config", color: "from-[#8AB82E] to-[#7BA628]" },
-              { value: "AI", label: "Workflows", color: "from-[#7BA628] to-[#6C9420]" },
-            ].map((stat, index) => (
-              <div key={index} className="flex flex-col items-center">
-                <div className={`text-3xl font-bold md:text-4xl bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>{stat.value}</div>
-                <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
+                  {/* Pending Step */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 0.5, x: 0 }}
+                    transition={{ duration: 0.3, delay: 0.7 }}
+                    className="flex items-center justify-between border border-white/5 bg-white/5 p-4"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="material-symbols-outlined text-[14px] text-white/40">
+                        mail
+                      </span>
+                      <div className="font-mono text-2xs uppercase">
+                        Drafting_Sequences
+                      </div>
+                    </div>
+                    <span className="font-mono text-[9px]">Pending</span>
+                  </motion.div>
+                </div>
               </div>
-            ))}
+            </div>
           </motion.div>
         </div>
       </div>

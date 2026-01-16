@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: "1.5rem",
       screens: {
         "2xl": "1400px",
       },
@@ -18,8 +18,10 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-        heading: ["var(--font-heading)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        heading: ["var(--font-display)", "system-ui", "sans-serif"],
         body: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "Fira Code", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -58,6 +60,7 @@ const config: Config = {
         surface: {
           DEFAULT: "hsl(var(--surface))",
           hover: "hsl(var(--surface-hover))",
+          dark: "#0a0a0a",
         },
         success: {
           DEFAULT: "hsl(var(--success))",
@@ -80,11 +83,24 @@ const config: Config = {
           foreground: "hsl(var(--primary-foreground))",
           hover: "hsl(var(--primary) / 0.9)",
         },
+        // New accent green for landing page
+        "accent-green": "#22c55e",
+        "border-muted": "rgba(0,0,0,0.06)",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      letterSpacing: {
+        widest: "0.2em",
+        mega: "0.3em",
+        ultra: "0.4em",
+      },
+      fontSize: {
+        "2xs": ["0.625rem", { lineHeight: "1" }], // 10px
+        "9xl": ["8rem", { lineHeight: "0.85" }],
+        "10xl": ["10rem", { lineHeight: "0.85" }],
       },
       keyframes: {
         "accordion-down": {
@@ -95,10 +111,28 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "dash": {
+          to: { strokeDashoffset: "-100" },
+        },
+        "pulse-dash": {
+          to: { strokeDashoffset: "-20" },
+        },
+        "data-flow": {
+          from: { strokeDashoffset: "1000" },
+          to: { strokeDashoffset: "0" },
+        },
+        "typing-cursor": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "dash": "dash 20s linear infinite",
+        "pulse-dash": "pulse-dash 2s linear infinite",
+        "data-flow": "data-flow 3s ease-in-out infinite",
+        "typing-cursor": "typing-cursor 1s step-end infinite",
       },
     },
   },

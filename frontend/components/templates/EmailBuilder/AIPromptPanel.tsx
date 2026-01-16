@@ -119,14 +119,14 @@ export default function AIPromptPanel({
                 }
 
                 // Try to get current design from editor
-                if (editorRef?.current?.exportHtml) {
+                if (editorRef && editorRef.current && typeof editorRef.current.exportHtml === 'function') {
                     try {
                         await new Promise<void>((resolve, reject) => {
                             const timeout = setTimeout(() => {
                                 reject(new Error("Timeout getting template design"));
                             }, 5000);
 
-                            editorRef.current.exportHtml((data: any) => {
+                            editorRef.current!.exportHtml((data: any) => {
                                 clearTimeout(timeout);
                                 currentDesign = data.design;
                                 resolve();

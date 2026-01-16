@@ -485,3 +485,234 @@
     stroke-dashoffset: -506;
   }
 }
+
+/* ========================================
+   LANDING PAGE DESIGN SYSTEM
+   Tech-forward, editorial aesthetic
+   ======================================== */
+
+/* Grid Background - Subtle geometric pattern */
+.grid-bg-subtle {
+  background-size: 80px 80px;
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+}
+
+.dark .grid-bg-subtle {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+/* Neural Mesh - Dot pattern background */
+.neural-mesh {
+  background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+/* Geometric Conduit - Horizontal glowing line */
+.geometric-conduit {
+  @apply absolute pointer-events-none;
+  background-image: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.2) 20%, rgba(34, 197, 94, 0.4) 50%, rgba(34, 197, 94, 0.2) 80%, transparent);
+  height: 2px;
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+}
+
+/* Geometric Conduit Vertical */
+.geometric-conduit-v {
+  @apply absolute pointer-events-none;
+  background-image: linear-gradient(180deg, transparent, rgba(34, 197, 94, 0.2) 20%, rgba(34, 197, 94, 0.4) 50%, rgba(34, 197, 94, 0.2) 80%, transparent);
+  width: 2px;
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+}
+
+/* Typing Indicator */
+.typing-indicator::after {
+  content: '_';
+  @apply text-accent-green;
+  animation: blink-cursor 1s step-end infinite;
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Circuit Line */
+.circuit-line {
+  @apply absolute pointer-events-none;
+  background-color: rgba(34, 197, 94, 0.2);
+}
+
+/* Node Connect Animation */
+.node-connect {
+  stroke-dasharray: 4;
+  animation: node-dash 20s linear infinite;
+}
+
+@keyframes node-dash {
+  to { stroke-dashoffset: -100; }
+}
+
+/* Connection Pulse Animation */
+.connection-pulse {
+  stroke-dasharray: 5, 5;
+  animation: pulse-dash-anim 2s linear infinite;
+}
+
+@keyframes pulse-dash-anim {
+  to { stroke-dashoffset: -20; }
+}
+
+/* Data Flow Line Animation */
+.data-flow-line {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: flow-anim 3s ease-in-out infinite;
+}
+
+@keyframes flow-anim {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* App Icon Float */
+.app-icon-float {
+  @apply flex items-center justify-center w-12 h-12 border border-white/10 transition-all duration-500 shadow-xl;
+  background-color: #1a1a1a;
+}
+
+.app-icon-float:hover {
+  @apply border-white/20;
+  transform: translateY(-2px);
+}
+
+/* Brand Colors */
+.linkedin-color { color: #0077b5; }
+.slack-color { color: #4A154B; }
+.notion-color { color: #000000; }
+.gmail-color { color: #EA4335; }
+.calendar-color { color: #4285F4; }
+.hubspot-color { color: #FF7A59; }
+.salesforce-color { color: #00A1E0; }
+
+/* Spotlight Effect - Mouse following */
+.spotlight-dark {
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(34, 197, 94, 0.12),
+    transparent 80%
+  );
+}
+
+/* Terminal Card Style */
+.terminal-card {
+  @apply bg-black text-white border border-white/10;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.3);
+}
+
+/* Progress Bar */
+.progress-bar {
+  @apply h-[2px] bg-white/10 overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply h-full bg-accent-green transition-all duration-500;
+}
+
+/* Landing Section Styles */
+.landing-section-dark {
+  @apply bg-black text-white relative overflow-hidden;
+}
+
+.landing-section-light {
+  @apply bg-white text-black relative overflow-hidden;
+}
+
+/* Hover Card Effect */
+.hover-card-effect {
+  @apply transition-all duration-500 cursor-pointer;
+}
+
+.hover-card-effect:hover {
+  @apply bg-black;
+}
+
+.hover-card-effect:hover .hover-card-icon {
+  @apply text-accent-green;
+}
+
+.hover-card-effect:hover .hover-card-title,
+.hover-card-effect:hover .hover-card-text {
+  @apply text-white;
+}
+
+/* Feature Grid */
+.feature-grid {
+  @apply grid gap-px;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.feature-grid > * {
+  @apply bg-white;
+}
+
+/* Stats Card */
+.stats-card {
+  @apply p-8 border border-white/10 backdrop-blur-sm transition-all duration-500;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.stats-card:hover {
+  @apply border-accent-green/50;
+}
+
+/* Target Profile Card */
+.target-card {
+  @apply p-12 border border-white/5 transition-all;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.target-card:hover {
+  @apply border-accent-green;
+}
+
+/* Integration Icon */
+.integration-icon {
+  @apply grayscale opacity-30 transition-all cursor-pointer;
+}
+
+.integration-icon:hover {
+  @apply grayscale-0 opacity-100;
+}
+
+/* Uppercase Label */
+.label-uppercase {
+  @apply text-2xs font-bold uppercase tracking-widest;
+}
+
+/* Section Label */
+.section-label {
+  @apply text-accent-green font-bold tracking-ultra uppercase text-2xs mb-6 block;
+}
+
+/* Large Display Heading */
+.heading-display {
+  @apply font-display font-bold tracking-tighter leading-[0.85];
+}
+
+/* CTA Section Background */
+.cta-section {
+  @apply bg-black text-white relative overflow-hidden;
+}
+
+.cta-section::before {
+  content: '';
+  @apply absolute inset-0;
+  background-size: 80px 80px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  opacity: 0.1;
+}
