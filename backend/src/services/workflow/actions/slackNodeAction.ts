@@ -216,7 +216,8 @@ export class SlackNodeExecutor extends BaseActionExecutor {
             blocks: blocks,
             thread_ts: threadTs,
             as_user: asUser,
-        });
+            reply_broadcast: false,
+        } as any);
 
         return {
             ts: result.ts,
@@ -440,7 +441,7 @@ export class SlackNodeExecutor extends BaseActionExecutor {
 
         return {
             channel: finalChannel,
-            topic: result.topic,
+            topic: (result as any).topic,
             updated: true,
         };
     }

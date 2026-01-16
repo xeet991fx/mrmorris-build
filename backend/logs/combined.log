@@ -1,0 +1,317 @@
+2026-01-15 19:48:28 +05:30: ✅ Email service is ready (using Resend)
+2026-01-15 19:48:28 +05:30: 📧 Sending from: work.admin@clianta.online
+2026-01-15 19:48:30 +05:30: ✅ Google credentials loaded from GOOGLE_CREDENTIALS_BASE64
+2026-01-15 19:48:30 +05:30: ⚠️  Sentry DSN not configured - error tracking disabled
+2026-01-15 19:48:30 +05:30:    Add SENTRY_DSN to .env to enable error tracking
+2026-01-15 19:48:30 +05:30: ⚠️  Rate limiting disabled in development
+2026-01-15 19:48:30 +05:30: 📊 Bull Board dashboard available at /admin/queues
+2026-01-15 19:48:30 +05:30: 🔄 Creating new database connection...
+2026-01-15 19:48:30 +05:30: (node:30160) [MONGOOSE] Warning: Duplicate schema index on {"referralCode":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-15 19:48:30 +05:30: (node:30160) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-15 19:48:30 +05:30: (node:30160) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-15 19:48:31 +05:30: ✅ Database connected successfully
+2026-01-15 19:48:31 +05:30: MongoDB Connected: ac-1wbakvp-shard-00-00.el3m88h.mongodb.net
+2026-01-15 19:48:31 +05:30: 🚀 Chat Socket.IO initialized
+2026-01-15 19:48:31 +05:30: 💬 Chat Socket.IO initialized
+2026-01-15 19:48:31 +05:30: 🚀 Server is running
+2026-01-15 19:48:31 +05:30: 📍 Port: 5000
+2026-01-15 19:48:31 +05:30: 🔗 Backend URL: http://localhost:5000
+2026-01-15 19:48:31 +05:30: 🌐 Frontend URL: http://localhost:3000
+2026-01-15 19:48:31 +05:30: 🔑 Auth endpoints: http://localhost:5000/api/auth
+2026-01-15 19:48:31 +05:30: 📋 Waitlist endpoints: http://localhost:5000/api/waitlist
+2026-01-15 19:48:31 +05:30: 📁 Project endpoints: http://localhost:5000/api/projects
+2026-01-15 19:48:31 +05:30: 🚀 Starting WorkflowScheduler...
+2026-01-15 19:48:31 +05:30: 🚀 Email queue worker started (concurrency: 5)
+2026-01-15 19:48:31 +05:30: ✅ WorkflowScheduler started (runs every 30 seconds)
+2026-01-15 19:48:31 +05:30: ✅ Campaign scheduler started successfully
+2026-01-15 19:48:31 +05:30: ✅ Warmup scheduler started successfully
+2026-01-15 19:48:31 +05:30: ⚡ Workflow scheduler: Running
+2026-01-15 19:48:31 +05:30: ⚠️  Some background jobs disabled to prevent Redis rate limit
+2026-01-15 19:48:31 +05:30: 🔄 Initializing event consumers...
+2026-01-15 19:48:31 +05:30: 🚀 Worker registered for queue: crm-events
+2026-01-15 19:48:31 +05:30: ✅ Initialized 2 event consumers
+2026-01-15 19:48:31 +05:30: ⚡ Event consumers: Running
+2026-01-15 19:48:34 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:49:01 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:49:31 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:50:00 +05:30: 📤 Queuing campaign emails...
+2026-01-15 19:50:01 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:50:31 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:51:01 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:51:09 +05:30: 📥 GET /api/health - Path: /api/health
+2026-01-15 19:51:09 +05:30: ✅ Using cached database connection
+2026-01-15 19:51:09 +05:30: ❌ 404 - Route not found: GET /api/health
+2026-01-15 19:51:13 +05:30: 📥 GET /favicon.ico - Path: /favicon.ico
+2026-01-15 19:51:13 +05:30: ✅ Using cached database connection
+2026-01-15 19:51:13 +05:30: ❌ 404 - Route not found: GET /favicon.ico
+2026-01-15 19:51:31 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:52:01 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:52:31 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:52:52 +05:30: ✅ Email service is ready (using Resend)
+2026-01-15 19:52:52 +05:30: 📧 Sending from: work.admin@clianta.online
+2026-01-15 19:52:55 +05:30: ✅ Google credentials loaded from GOOGLE_CREDENTIALS_BASE64
+2026-01-15 19:52:55 +05:30: ⚠️  Sentry DSN not configured - error tracking disabled
+2026-01-15 19:52:55 +05:30:    Add SENTRY_DSN to .env to enable error tracking
+2026-01-15 19:52:55 +05:30: ⚠️  Rate limiting disabled in development
+2026-01-15 19:52:55 +05:30: 📊 Bull Board dashboard available at /admin/queues
+2026-01-15 19:52:55 +05:30: 🔄 Creating new database connection...
+2026-01-15 19:52:55 +05:30: (node:34236) [MONGOOSE] Warning: Duplicate schema index on {"referralCode":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+2026-01-15 19:52:55 +05:30: (node:34236) [MONGOOSE] Warning: Duplicate schema index on {"slug":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-15 19:52:55 +05:30: (node:34236) [MONGOOSE] Warning: Duplicate schema index on {"expiresAt":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+2026-01-15 19:52:55 +05:30: ✅ Database connected successfully
+2026-01-15 19:52:55 +05:30: MongoDB Connected: ac-1wbakvp-shard-00-00.el3m88h.mongodb.net
+2026-01-15 19:52:55 +05:30: 🚀 Chat Socket.IO initialized
+2026-01-15 19:52:55 +05:30: 💬 Chat Socket.IO initialized
+2026-01-15 19:52:55 +05:30: 🚀 Server is running
+2026-01-15 19:52:55 +05:30: 📍 Port: 5000
+2026-01-15 19:52:55 +05:30: 🔗 Backend URL: http://localhost:5000
+2026-01-15 19:52:55 +05:30: 🌐 Frontend URL: http://localhost:3000
+2026-01-15 19:52:55 +05:30: 🔑 Auth endpoints: http://localhost:5000/api/auth
+2026-01-15 19:52:55 +05:30: 📋 Waitlist endpoints: http://localhost:5000/api/waitlist
+2026-01-15 19:52:55 +05:30: 📁 Project endpoints: http://localhost:5000/api/projects
+2026-01-15 19:52:55 +05:30: 🚀 Starting WorkflowScheduler...
+2026-01-15 19:52:55 +05:30: 🚀 Email queue worker started (concurrency: 5)
+2026-01-15 19:52:55 +05:30: ✅ WorkflowScheduler started (runs every 30 seconds)
+2026-01-15 19:52:55 +05:30: ✅ Campaign scheduler started successfully
+2026-01-15 19:52:55 +05:30: ✅ Warmup scheduler started successfully
+2026-01-15 19:52:55 +05:30: ⚡ Workflow scheduler: Running
+2026-01-15 19:52:55 +05:30: ⚠️  Some background jobs disabled to prevent Redis rate limit
+2026-01-15 19:52:55 +05:30: 🔄 Initializing event consumers...
+2026-01-15 19:52:55 +05:30: 🚀 Worker registered for queue: crm-events
+2026-01-15 19:52:55 +05:30: ✅ Initialized 2 event consumers
+2026-01-15 19:52:55 +05:30: ⚡ Event consumers: Running
+2026-01-15 19:52:59 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:53:24 +05:30: 📥 GET /api/auth/google - Path: /api/auth/google
+2026-01-15 19:53:24 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:53:29 +05:30: 📥 GET /api/auth/google/callback?code=4%2F0ASc3gC35jFu-BW-MAeKr35FWw-dsMnE9brhNfH0kLePqxQiZV3i4LwIiTeMzHr0Y4-Kzpg&scope=email+profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email+openid&authuser=1&prompt=none - Path: /api/auth/google/callback
+2026-01-15 19:53:29 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:30 +05:30: 📥 GET /api/auth/me - Path: /api/auth/me
+2026-01-15 19:53:30 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:32 +05:30: 📥 GET /api/auth/me - Path: /api/auth/me
+2026-01-15 19:53:32 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:32 +05:30: 📥 GET /api/auth/me - Path: /api/auth/me
+2026-01-15 19:53:32 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:32 +05:30: 📥 GET /api/projects - Path: /api/projects
+2026-01-15 19:53:32 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:33 +05:30: 📥 GET /api/projects - Path: /api/projects
+2026-01-15 19:53:33 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:33 +05:30: 📥 GET /api/projects - Path: /api/projects
+2026-01-15 19:53:33 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:33 +05:30: 📥 GET /api/projects - Path: /api/projects
+2026-01-15 19:53:33 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:35 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:53:35 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:35 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:53:35 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:36 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:53:36 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:36 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:53:36 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:36 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing - Path: /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing
+2026-01-15 19:53:36 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:36 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing - Path: /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing
+2026-01-15 19:53:36 +05:30: ✅ Using cached database connection
+2026-01-15 19:53:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:54:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:54:51 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 GET /api/campaigns?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/campaigns
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/workflows - Path: /api/workspaces/695b3540ce6e179542ee6e2b/workflows
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 GET /api/inbox/stats?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox/stats
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 GET /api/inbox/grouped?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox/grouped
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 GET /api/campaigns?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/campaigns
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 GET /api/inbox/stats?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox/stats
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/workflows - Path: /api/workspaces/695b3540ce6e179542ee6e2b/workflows
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:51 +05:30: 📥 GET /api/inbox/grouped?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox/grouped
+2026-01-15 19:54:51 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:54 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:54:54 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:54 +05:30: 📥 PUT /api/inbox/696677a3d36d342d3b3beff3/read - Path: /api/inbox/696677a3d36d342d3b3beff3/read
+2026-01-15 19:54:54 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:54 +05:30: ✅ Message marked as read: 696677a3d36d342d3b3beff3
+2026-01-15 19:54:54 +05:30: 📥 GET /api/inbox?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox
+2026-01-15 19:54:54 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:54 +05:30: 📥 Fetching inbox for workspace: 695b3540ce6e179542ee6e2b, source: all
+2026-01-15 19:54:54 +05:30: 📥 Found 2 inbox messages
+2026-01-15 19:54:54 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/insights?contextType=email&contextId=696677a3d36d342d3b3beff3 - Path: /api/workspaces/695b3540ce6e179542ee6e2b/insights
+2026-01-15 19:54:54 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:54 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/insights?contextType=email&contextId=696677a3d36d342d3b3beff3 - Path: /api/workspaces/695b3540ce6e179542ee6e2b/insights
+2026-01-15 19:54:54 +05:30: ✅ Using cached database connection
+2026-01-15 19:54:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:55:00 +05:30: 📤 Queuing campaign emails...
+2026-01-15 19:55:01 +05:30: 📥 POST /api/inbox/696677a3d36d342d3b3beff3/reply - Path: /api/inbox/696677a3d36d342d3b3beff3/reply
+2026-01-15 19:55:01 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:08 +05:30: 📥 GET /api/auth/me - Path: /api/auth/me
+2026-01-15 19:55:08 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:08 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:55:08 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:08 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:55:08 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:08 +05:30: 📥 GET /api/campaigns?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/campaigns
+2026-01-15 19:55:08 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:08 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/workflows - Path: /api/workspaces/695b3540ce6e179542ee6e2b/workflows
+2026-01-15 19:55:08 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:08 +05:30: 📥 GET /api/inbox/stats?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox/stats
+2026-01-15 19:55:08 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:08 +05:30: 📥 GET /api/projects - Path: /api/projects
+2026-01-15 19:55:08 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:09 +05:30: 📥 GET /api/inbox/grouped?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox/grouped
+2026-01-15 19:55:09 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:09 +05:30: 📥 GET /api/campaigns?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/campaigns
+2026-01-15 19:55:09 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:09 +05:30: 📥 GET /api/inbox/stats?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox/stats
+2026-01-15 19:55:09 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:09 +05:30: 📥 GET /api/projects - Path: /api/projects
+2026-01-15 19:55:09 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:09 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/workflows - Path: /api/workspaces/695b3540ce6e179542ee6e2b/workflows
+2026-01-15 19:55:09 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:09 +05:30: 📥 GET /api/inbox/grouped?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox/grouped
+2026-01-15 19:55:09 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:11 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:55:11 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:11 +05:30: 📥 PUT /api/inbox/696677a3d36d342d3b3beff3/read - Path: /api/inbox/696677a3d36d342d3b3beff3/read
+2026-01-15 19:55:11 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:11 +05:30: ✅ Message marked as read: 696677a3d36d342d3b3beff3
+2026-01-15 19:55:11 +05:30: 📥 GET /api/inbox?workspaceId=695b3540ce6e179542ee6e2b - Path: /api/inbox
+2026-01-15 19:55:11 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:11 +05:30: 📥 Fetching inbox for workspace: 695b3540ce6e179542ee6e2b, source: all
+2026-01-15 19:55:11 +05:30: 📥 Found 2 inbox messages
+2026-01-15 19:55:11 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/insights?contextType=email&contextId=696677a3d36d342d3b3beff3 - Path: /api/workspaces/695b3540ce6e179542ee6e2b/insights
+2026-01-15 19:55:11 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:11 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/insights?contextType=email&contextId=696677a3d36d342d3b3beff3 - Path: /api/workspaces/695b3540ce6e179542ee6e2b/insights
+2026-01-15 19:55:11 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:14 +05:30: 📥 POST /api/inbox/696677a3d36d342d3b3beff3/draft - Path: /api/inbox/696677a3d36d342d3b3beff3/draft
+2026-01-15 19:55:14 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:21 +05:30: 🤖 AI draft generated for message: 696677a3d36d342d3b3beff3
+2026-01-15 19:55:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:55:52 +05:30: 📥 POST /api/inbox/696677a3d36d342d3b3beff3/reply - Path: /api/inbox/696677a3d36d342d3b3beff3/reply
+2026-01-15 19:55:52 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:55:58 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:55:58 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:58 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:55:58 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:58 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing - Path: /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing
+2026-01-15 19:55:58 +05:30: ✅ Using cached database connection
+2026-01-15 19:55:58 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing - Path: /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing
+2026-01-15 19:55:58 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:00 +05:30: 📥 GET /api/auth/me - Path: /api/auth/me
+2026-01-15 19:56:00 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:00 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:56:00 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:00 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:56:00 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:00 +05:30: 📥 GET /api/projects - Path: /api/projects
+2026-01-15 19:56:00 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:00 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing - Path: /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing
+2026-01-15 19:56:00 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:00 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing - Path: /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing
+2026-01-15 19:56:00 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:00 +05:30: 📥 GET /api/projects - Path: /api/projects
+2026-01-15 19:56:00 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:04 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/agents - Path: /api/workspaces/695b3540ce6e179542ee6e2b/agents
+2026-01-15 19:56:04 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:04 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/agents - Path: /api/workspaces/695b3540ce6e179542ee6e2b/agents
+2026-01-15 19:56:04 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:15 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/agents - Path: /api/workspaces/695b3540ce6e179542ee6e2b/agents
+2026-01-15 19:56:15 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:17 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/agents/6968f908f757cfd397b10374 - Path: /api/workspaces/695b3540ce6e179542ee6e2b/agents/6968f908f757cfd397b10374
+2026-01-15 19:56:17 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:17 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/agents/6968f908f757cfd397b10374 - Path: /api/workspaces/695b3540ce6e179542ee6e2b/agents/6968f908f757cfd397b10374
+2026-01-15 19:56:17 +05:30: ✅ Using cached database connection
+2026-01-15 19:56:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:56:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:57:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:57:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:58:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:58:37 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:58:37 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:37 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:58:37 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:37 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/reports/overview - Path: /api/workspaces/695b3540ce6e179542ee6e2b/reports/overview
+2026-01-15 19:58:37 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:37 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/reports/pipeline - Path: /api/workspaces/695b3540ce6e179542ee6e2b/reports/pipeline
+2026-01-15 19:58:37 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:37 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/reports/email - Path: /api/workspaces/695b3540ce6e179542ee6e2b/reports/email
+2026-01-15 19:58:37 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:37 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/reports/overview - Path: /api/workspaces/695b3540ce6e179542ee6e2b/reports/overview
+2026-01-15 19:58:37 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:37 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/reports/email - Path: /api/workspaces/695b3540ce6e179542ee6e2b/reports/email
+2026-01-15 19:58:37 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:37 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/reports/pipeline - Path: /api/workspaces/695b3540ce6e179542ee6e2b/reports/pipeline
+2026-01-15 19:58:37 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/pipeline - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/pipeline
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/email-performance - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/email-performance
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/revenue-trend?interval=month - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/revenue-trend
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/lead-sources - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/lead-sources
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/top-performers - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/top-performers
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/top-performers - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/top-performers
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/revenue-trend?interval=month - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/revenue-trend
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/lead-sources - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/lead-sources
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/email-performance - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/email-performance
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:41 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/analytics/pipeline - Path: /api/workspaces/695b3540ce6e179542ee6e2b/analytics/pipeline
+2026-01-15 19:58:41 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:44 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/tickets - Path: /api/workspaces/695b3540ce6e179542ee6e2b/tickets
+2026-01-15 19:58:44 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:44 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/tickets-stats - Path: /api/workspaces/695b3540ce6e179542ee6e2b/tickets-stats
+2026-01-15 19:58:44 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:44 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/tickets-stats - Path: /api/workspaces/695b3540ce6e179542ee6e2b/tickets-stats
+2026-01-15 19:58:44 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:44 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/tickets - Path: /api/workspaces/695b3540ce6e179542ee6e2b/tickets
+2026-01-15 19:58:44 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:47 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:58:47 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:47 +05:30: 📥 POST /api/workspaces/695b3540ce6e179542ee6e2b/actions/track - Path: /api/workspaces/695b3540ce6e179542ee6e2b/actions/track
+2026-01-15 19:58:47 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:47 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/tasks - Path: /api/workspaces/695b3540ce6e179542ee6e2b/tasks
+2026-01-15 19:58:47 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:47 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/tasks-stats - Path: /api/workspaces/695b3540ce6e179542ee6e2b/tasks-stats
+2026-01-15 19:58:47 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:47 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/tasks - Path: /api/workspaces/695b3540ce6e179542ee6e2b/tasks
+2026-01-15 19:58:47 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:47 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/tasks-stats - Path: /api/workspaces/695b3540ce6e179542ee6e2b/tasks-stats
+2026-01-15 19:58:47 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:50 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:58:50 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:50 +05:30: 📥 GET /api/projects/695b3540ce6e179542ee6e2b - Path: /api/projects/695b3540ce6e179542ee6e2b
+2026-01-15 19:58:50 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:50 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing - Path: /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing
+2026-01-15 19:58:50 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:50 +05:30: 📥 GET /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing - Path: /api/workspaces/695b3540ce6e179542ee6e2b/dashboard/briefing
+2026-01-15 19:58:50 +05:30: ✅ Using cached database connection
+2026-01-15 19:58:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:59:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 19:59:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:00:00 +05:30: 🔥 Starting daily warmup process...
+2026-01-15 20:00:00 +05:30: 📤 Queuing campaign emails...
+2026-01-15 20:00:00 +05:30: No accounts to warm up
+2026-01-15 20:00:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:00:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:01:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:01:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:02:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:02:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:03:26 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:03:56 +05:30: 🔄 Processing 0 ready enrollments...
+2026-01-15 20:04:26 +05:30: 🔄 Processing 0 ready enrollments...

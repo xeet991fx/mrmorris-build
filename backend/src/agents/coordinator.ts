@@ -115,13 +115,14 @@ async function executeSingleAgent(
         let agentState = state;
         if (instruction) {
             // Create a new message with the instruction
+            const lastMessage = state.messages[state.messages.length - 1];
             agentState = {
                 ...state,
                 messages: [
                     {
-                        ...state.messages[state.messages.length - 1],
+                        ...lastMessage,
                         content: instruction,
-                    }
+                    } as any
                 ],
             };
         }

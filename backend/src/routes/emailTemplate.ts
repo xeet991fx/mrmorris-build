@@ -6,7 +6,8 @@ import fs from "fs";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import EmailTemplate from "../models/EmailTemplate";
 import Project from "../models/Project";
-import { templateGeneratorService, GenerateTemplateOptions, generateUnlayerTemplate } from "../services/TemplateGeneratorService";
+import { templateGeneratorService, GenerateTemplateOptions, generateUnlayerTemplate, modifyUnlayerTemplate } from "../services/TemplateGeneratorService";
+import { intelligentTemplateAI, aiConcurrencyLimiter } from "../services/IntelligentTemplateAI";
 import emailService from "../services/email";
 
 const router = express.Router();
@@ -611,6 +612,388 @@ router.post("/:workspaceId/email-templates/generate-unlayer", authenticate, asyn
         res.status(500).json({
             success: false,
             error: error.message || "Failed to generate Unlayer template with AI",
+        });
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/modify-unlayer
+ * Modify an existing Unlayer email template design using AI
+ */
+router.post("/:workspaceId/email-templates/modify-unlayer", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const { instruction, currentDesign, currentSubject } = req.body;
+
+        if (!instruction || !instruction.trim()) {
+            return res.status(400).json({
+                success: false,
+                error: "Modification instruction is required",
+            });
+        }
+
+        if (!currentDesign) {
+            return res.status(400).json({
+                success: false,
+                error: "Current template design is required",
+            });
+        }
+
+        console.log("🤖 Modifying Unlayer template with AI:", { instruction: instruction.substring(0, 100) + "..." });
+        const modifiedTemplate = await modifyUnlayerTemplate({
+            currentDesign,
+            currentSubject: currentSubject || "Untitled Email",
+            instruction: instruction.trim(),
+        });
+
+        res.json({
+            success: true,
+            data: modifiedTemplate,
+            message: "Template modified successfully",
+        });
+    } catch (error: any) {
+        console.error("Unlayer AI modification error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to modify template with AI",
+        });
+    }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/email-templates/ai/status
+ * Get AI service status and concurrency info
+ */
+router.get("/:workspaceId/email-templates/ai/status", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const stats = aiConcurrencyLimiter.getStats();
+        res.json({
+            success: true,
+            data: {
+                ...stats,
+                available: stats.maxConcurrent - stats.running,
+            },
+        });
+    } catch (error: any) {
+        res.status(500).json({
+            success: false,
+            error: error.message,
+        });
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/ai/modify
+ * Intelligent AI modification with context awareness and conversation history
+ */
+router.post("/:workspaceId/email-templates/ai/modify", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const {
+            instruction,
+            currentDesign,
+            currentSubject,
+            sessionId,
+            templateContext,
+        } = req.body;
+
+        if (!instruction || !instruction.trim()) {
+            return res.status(400).json({
+                success: false,
+                error: "Instruction is required",
+            });
+        }
+
+        if (!currentDesign) {
+            return res.status(400).json({
+                success: false,
+                error: "Current template design is required",
+            });
+        }
+
+        console.log("🧠 Intelligent AI modification:", {
+            instruction: instruction.substring(0, 100) + "...",
+            sessionId: sessionId || "new session",
+            concurrency: aiConcurrencyLimiter.getStats(),
+        });
+
+        const result = await intelligentTemplateAI.modifyTemplate({
+            sessionId,
+            instruction: instruction.trim(),
+            currentDesign,
+            currentSubject: currentSubject || "Untitled Email",
+            templateContext,
+            userId, // Pass userId for per-user rate limiting
+        });
+
+        res.json({
+            success: true,
+            data: result,
+            message: result.aiMessage,
+        });
+    } catch (error: any) {
+        console.error("Intelligent AI modification error:", error);
+
+        // Check if it's a rate limit error
+        if (error.message.includes("Too many concurrent requests")) {
+            return res.status(429).json({
+                success: false,
+                error: error.message,
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to process AI request",
+        });
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/ai/modify-stream
+ * Streaming AI modification with real-time status updates
+ */
+router.post("/:workspaceId/email-templates/ai/modify-stream", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const {
+            instruction,
+            currentDesign,
+            currentSubject,
+            sessionId,
+            templateContext,
+        } = req.body;
+
+        if (!instruction || !instruction.trim()) {
+            return res.status(400).json({
+                success: false,
+                error: "Instruction is required",
+            });
+        }
+
+        if (!currentDesign) {
+            return res.status(400).json({
+                success: false,
+                error: "Current template design is required",
+            });
+        }
+
+        console.log("🧠 Streaming AI modification:", {
+            instruction: instruction.substring(0, 100) + "...",
+            sessionId: sessionId || "new session",
+        });
+
+        // Set up SSE headers
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders();
+
+        // Stream responses
+        const stream = intelligentTemplateAI.modifyTemplateStream({
+            sessionId,
+            instruction: instruction.trim(),
+            currentDesign,
+            currentSubject: currentSubject || "Untitled Email",
+            templateContext,
+        });
+
+        for await (const event of stream) {
+            res.write(`data: ${JSON.stringify(event)}\n\n`);
+        }
+
+        res.write("data: [DONE]\n\n");
+        res.end();
+    } catch (error: any) {
+        console.error("Streaming AI modification error:", error);
+        res.write(`data: ${JSON.stringify({ type: "error", data: { message: error.message } })}\n\n`);
+        res.end();
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/ai/generate
+ * Intelligent AI template generation
+ */
+router.post("/:workspaceId/email-templates/ai/generate", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const { prompt, templateContext } = req.body;
+
+        if (!prompt || !prompt.trim()) {
+            return res.status(400).json({
+                success: false,
+                error: "Prompt is required",
+            });
+        }
+
+        console.log("🧠 Intelligent AI generation:", { prompt: prompt.substring(0, 100) + "..." });
+
+        const result = await intelligentTemplateAI.generateTemplate(prompt.trim(), templateContext);
+
+        res.json({
+            success: true,
+            data: result,
+            message: result.aiMessage,
+        });
+    } catch (error: any) {
+        console.error("Intelligent AI generation error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to generate template",
+        });
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/ai/analyze
+ * Analyze template and get smart suggestions
+ */
+router.post("/:workspaceId/email-templates/ai/analyze", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const { currentDesign, templateContext } = req.body;
+
+        if (!currentDesign) {
+            return res.status(400).json({
+                success: false,
+                error: "Template design is required",
+            });
+        }
+
+        console.log("🔍 Analyzing template for suggestions");
+
+        const suggestions = await intelligentTemplateAI.analyzeDesign(currentDesign, {
+            templateId: templateContext?.templateId || "unknown",
+            templateName: templateContext?.templateName || "Email Template",
+            templateSubject: templateContext?.templateSubject || "Untitled",
+            templateCategory: templateContext?.templateCategory || "custom",
+        });
+
+        res.json({
+            success: true,
+            data: { suggestions },
+        });
+    } catch (error: any) {
+        console.error("AI analyze error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to analyze template",
+        });
+    }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/email-templates/ai/session/:sessionId
+ * Get conversation history for a session
+ */
+router.get("/:workspaceId/email-templates/ai/session/:sessionId", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, sessionId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const history = intelligentTemplateAI.getConversationHistory(sessionId);
+
+        res.json({
+            success: true,
+            data: { history },
+        });
+    } catch (error: any) {
+        console.error("Get session error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to get session",
+        });
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/ai/session/:sessionId/undo
+ * Undo to a previous state in the conversation
+ */
+router.post("/:workspaceId/email-templates/ai/session/:sessionId/undo", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, sessionId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+        const { messageIndex } = req.body;
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const design = intelligentTemplateAI.undoToMessage(sessionId, messageIndex ?? -1);
+
+        if (!design) {
+            return res.status(404).json({
+                success: false,
+                error: "Session not found",
+            });
+        }
+
+        res.json({
+            success: true,
+            data: { design },
+            message: "Reverted to previous state",
+        });
+    } catch (error: any) {
+        console.error("Undo error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to undo",
+        });
+    }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/email-templates/ai/session/:sessionId/reset
+ * Reset to original design
+ */
+router.post("/:workspaceId/email-templates/ai/session/:sessionId/reset", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, sessionId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const design = intelligentTemplateAI.resetToOriginal(sessionId);
+
+        if (!design) {
+            return res.status(404).json({
+                success: false,
+                error: "Session not found",
+            });
+        }
+
+        res.json({
+            success: true,
+            data: { design },
+            message: "Reset to original design",
+        });
+    } catch (error: any) {
+        console.error("Reset error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to reset",
         });
     }
 });

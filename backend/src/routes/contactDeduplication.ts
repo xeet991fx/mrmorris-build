@@ -35,7 +35,7 @@ router.post('/:workspaceId/contacts/find-duplicates', authenticate,
         {
           $match: {
             workspaceId: new Types.ObjectId(workspaceId),
-            email: { $exists: true, $ne: null, $ne: '' },
+            email: { $exists: true, $ne: null },
           },
         },
         {

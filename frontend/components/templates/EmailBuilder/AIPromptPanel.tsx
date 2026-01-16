@@ -7,6 +7,8 @@ import {
     XMarkIcon,
     ArrowPathIcon,
     PaperAirplaneIcon,
+    PencilSquareIcon,
+    PlusCircleIcon,
 } from "@heroicons/react/24/outline";
 import { axiosInstance } from "@/lib/axios";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,12 @@ interface AIPromptPanelProps {
     isOpen: boolean;
     onClose: () => void;
     onGenerate: (html: string, design: any) => void;
+    editorRef?: React.RefObject<{
+        exportHtml: (callback: (data: { design: any; html: string }) => void) => void;
+        loadDesign: (design: any) => void;
+        isReady: () => boolean;
+    } | null>;
+    currentSubject?: string; // Current template subject
 }
 
 interface GeneratedContent {
@@ -29,14 +37,28 @@ interface GeneratedContent {
     design: any;
 }
 
-// Quick prompt suggestions
-const QUICK_PROMPTS = [
+type AIMode = "create" | "modify";
+
+// Quick prompt suggestions for creation
+const CREATE_PROMPTS = [
     "Welcome email for new users",
     "Follow-up after demo call",
     "Product launch announcement",
     "Event invitation email",
     "Thank you for purchase",
     "Re-engagement campaign",
+];
+
+// Quick prompt suggestions for modification
+const MODIFY_PROMPTS = [
+    "Change the color scheme to blue",
+    "Make the CTA button more prominent",
+    "Add a discount section",
+    "Simplify the content",
+    "Make it more professional",
+    "Add a footer with contact info",
+    "Change the header image",
+    "Make it mobile-friendly",
 ];
 
 // ============================================
@@ -48,7 +70,10 @@ export default function AIPromptPanel({
     isOpen,
     onClose,
     onGenerate,
+    editorRef,
+    currentSubject,
 }: AIPromptPanelProps) {
+    const [mode, setMode] = useState<AIMode>("modify");
     const [prompt, setPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -70,19 +95,72 @@ export default function AIPromptPanel({
         setGenerated(null);
 
         try {
-            const response = await axiosInstance.post(
-                `/workspaces/${workspaceId}/email-templates/generate-unlayer`,
-                { prompt: prompt.trim() }
-            );
+            if (mode === "create") {
+                // Generate new template
+                const response = await axiosInstance.post(
+                    `/workspaces/${workspaceId}/email-templates/generate-unlayer`,
+                    { prompt: prompt.trim() }
+                );
 
-            if (response.data.success) {
-                setGenerated(response.data.data);
+                if (response.data.success) {
+                    setGenerated(response.data.data);
+                } else {
+                    setError(response.data.error || "Failed to generate template");
+                }
             } else {
-                setError(response.data.error || "Failed to generate template");
+                // Modify existing template
+                let currentDesign = null;
+
+                // Check if editor is ready
+                if (!editorRef?.current?.isReady?.()) {
+                    setError("Editor is not ready yet. Please wait a moment and try again.");
+                    setIsGenerating(false);
+                    return;
+                }
+
+                // Try to get current design from editor
+                if (editorRef && editorRef.current && typeof editorRef.current.exportHtml === 'function') {
+                    try {
+                        await new Promise<void>((resolve, reject) => {
+                            const timeout = setTimeout(() => {
+                                reject(new Error("Timeout getting template design"));
+                            }, 5000);
+
+                            editorRef.current!.exportHtml((data: any) => {
+                                clearTimeout(timeout);
+                                currentDesign = data.design;
+                                resolve();
+                            });
+                        });
+                    } catch (err) {
+                        console.error("Failed to get current design:", err);
+                    }
+                }
+
+                if (!currentDesign) {
+                    setError("Could not get current template design. Please make sure the editor has loaded, or try creating a new template instead.");
+                    setIsGenerating(false);
+                    return;
+                }
+
+                const response = await axiosInstance.post(
+                    `/workspaces/${workspaceId}/email-templates/modify-unlayer`,
+                    {
+                        instruction: prompt.trim(),
+                        currentDesign,
+                        currentSubject: currentSubject || "Untitled Email",
+                    }
+                );
+
+                if (response.data.success) {
+                    setGenerated(response.data.data);
+                } else {
+                    setError(response.data.error || "Failed to modify template");
+                }
             }
         } catch (err: any) {
-            console.error("AI generation error:", err);
-            setError(err.response?.data?.error || err.message || "Failed to generate template");
+            console.error("AI operation error:", err);
+            setError(err.response?.data?.error || err.message || `Failed to ${mode} template`);
         } finally {
             setIsGenerating(false);
         }
@@ -117,6 +195,8 @@ export default function AIPromptPanel({
         }
     };
 
+    const quickPrompts = mode === "create" ? CREATE_PROMPTS : MODIFY_PROMPTS;
+
     if (!isOpen) return null;
 
     return (
@@ -135,8 +215,10 @@ export default function AIPromptPanel({
                                 <SparklesIcon className="w-4 h-4 text-white" />
                             </div>
                             <div>
-                                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI Template Generator</h3>
-                                <p className="text-xs text-zinc-500">Describe what you want and AI will create it</p>
+                                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI Template Assistant</h3>
+                                <p className="text-xs text-zinc-500">
+                                    {mode === "create" ? "Create a new template from scratch" : "Modify your current template"}
+                                </p>
                             </div>
                         </div>
                         <button
@@ -147,17 +229,47 @@ export default function AIPromptPanel({
                         </button>
                     </div>
 
+                    {/* Mode Toggle */}
+                    <div className="flex gap-2 mb-4">
+                        <button
+                            onClick={() => { setMode("modify"); setGenerated(null); setPrompt(""); }}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                mode === "modify"
+                                    ? "bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-300 dark:border-violet-700"
+                                    : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                            )}
+                        >
+                            <PencilSquareIcon className="w-4 h-4" />
+                            Modify Current
+                        </button>
+                        <button
+                            onClick={() => { setMode("create"); setGenerated(null); setPrompt(""); }}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                                mode === "create"
+                                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                                    : "bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                            )}
+                        >
+                            <PlusCircleIcon className="w-4 h-4" />
+                            Create New
+                        </button>
+                    </div>
+
                     {/* Quick Prompts */}
                     {!generated && (
                         <div className="flex flex-wrap gap-2 mb-3">
-                            {QUICK_PROMPTS.map((qp) => (
+                            {quickPrompts.map((qp) => (
                                 <button
                                     key={qp}
                                     onClick={() => handleQuickPrompt(qp)}
                                     className={cn(
                                         "px-3 py-1.5 text-xs rounded-full border transition-all",
                                         prompt === qp
-                                            ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400"
+                                            ? mode === "modify"
+                                                ? "border-violet-500 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400"
+                                                : "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
                                             : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-600"
                                     )}
                                 >
@@ -176,7 +288,11 @@ export default function AIPromptPanel({
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Describe your email template... e.g., 'Create a professional welcome email for new SaaS customers with a clean modern design'"
+                                    placeholder={
+                                        mode === "create"
+                                            ? "Describe your email template... e.g., 'Create a professional welcome email for new SaaS customers with a clean modern design'"
+                                            : "Describe what you want to change... e.g., 'Change the header color to blue and add a new testimonial section'"
+                                    }
                                     rows={2}
                                     disabled={isGenerating}
                                     className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none disabled:opacity-50"
@@ -185,17 +301,22 @@ export default function AIPromptPanel({
                             <button
                                 onClick={handleGenerate}
                                 disabled={!prompt.trim() || isGenerating}
-                                className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium rounded-xl hover:from-violet-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                className={cn(
+                                    "flex items-center gap-2 px-5 py-3 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                                    mode === "modify"
+                                        ? "bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+                                        : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                                )}
                             >
                                 {isGenerating ? (
                                     <>
                                         <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                        Generating...
+                                        {mode === "modify" ? "Modifying..." : "Generating..."}
                                     </>
                                 ) : (
                                     <>
                                         <SparklesIcon className="w-4 h-4" />
-                                        Generate
+                                        {mode === "modify" ? "Modify" : "Generate"}
                                     </>
                                 )}
                             </button>
@@ -205,13 +326,23 @@ export default function AIPromptPanel({
                         <div className="space-y-3">
                             <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-medium text-zinc-500">Subject:</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            "px-2 py-0.5 text-xs font-medium rounded-full",
+                                            mode === "modify"
+                                                ? "bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
+                                                : "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+                                        )}>
+                                            {mode === "modify" ? "Modified" : "Generated"}
+                                        </span>
+                                        <span className="text-xs font-medium text-zinc-500">Subject:</span>
+                                    </div>
                                     <button
                                         onClick={() => setGenerated(null)}
                                         className="text-xs text-violet-500 hover:text-violet-600 flex items-center gap-1"
                                     >
                                         <ArrowPathIcon className="w-3 h-3" />
-                                        Regenerate
+                                        Try Again
                                     </button>
                                 </div>
                                 <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{generated.subject}</p>
@@ -225,10 +356,15 @@ export default function AIPromptPanel({
                                 </button>
                                 <button
                                     onClick={handleUseTemplate}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-500 text-white text-sm font-medium rounded-lg hover:bg-violet-600 transition-colors"
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-white text-sm font-medium rounded-lg transition-colors",
+                                        mode === "modify"
+                                            ? "bg-violet-500 hover:bg-violet-600"
+                                            : "bg-emerald-500 hover:bg-emerald-600"
+                                    )}
                                 >
                                     <PaperAirplaneIcon className="w-4 h-4" />
-                                    Use This Template
+                                    {mode === "modify" ? "Apply Changes" : "Use Template"}
                                 </button>
                             </div>
                         </div>

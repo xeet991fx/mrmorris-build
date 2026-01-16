@@ -11,6 +11,7 @@ import EmailBuilderToolbar from "@/components/templates/EmailBuilder/EmailBuilde
 import SendTestEmailModal from "@/components/templates/EmailBuilder/SendTestEmailModal";
 import ValidationPanel from "@/components/templates/EmailBuilder/ValidationPanel";
 import TemplateSettingsModal from "@/components/templates/EmailBuilder/TemplateSettingsModal";
+import IntelligentAIPanel from "@/components/templates/EmailBuilder/IntelligentAIPanel";
 import { Mail } from "lucide-react";
 
 export default function EmailBuilderPage() {
@@ -19,11 +20,12 @@ export default function EmailBuilderPage() {
     const templateId = params.templateId as string;
 
     const editorRef = useRef<EmailBuilderEditorRef | null>(null);
-    const { loadTemplate, isLoading, hasUnsavedChanges } = useEmailTemplateStore();
+    const { loadTemplate, isLoading, hasUnsavedChanges, setHasUnsavedChanges } = useEmailTemplateStore();
 
     const [showTestModal, setShowTestModal] = useState(false);
     const [showValidationPanel, setShowValidationPanel] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+    const [showAIPanel, setShowAIPanel] = useState(false);
 
     useEffect(() => {
         if (workspaceId && templateId) {
@@ -49,6 +51,13 @@ export default function EmailBuilderPage() {
                 resolve(data.html);
             });
         });
+    };
+
+    const handleAIApplyDesign = (html: string, design: any) => {
+        if (editorRef.current && design) {
+            editorRef.current.loadDesign(design);
+            setHasUnsavedChanges(true);
+        }
     };
 
     if (isLoading) {
@@ -79,11 +88,25 @@ export default function EmailBuilderPage() {
                 onSendTest={() => setShowTestModal(true)}
                 onValidate={() => setShowValidationPanel(true)}
                 onSettings={() => setShowSettings(true)}
+                onToggleAI={() => setShowAIPanel(!showAIPanel)}
+                isAIPanelOpen={showAIPanel}
             />
 
-            {/* Email Builder - Full Screen */}
-            <div className="flex-1 w-full h-full min-h-0 overflow-hidden">
-                <EmailBuilderEditor ref={editorRef} workspaceId={workspaceId} />
+            {/* Main Content - Editor with optional AI Panel */}
+            <div className="flex-1 flex w-full h-full min-h-0 overflow-hidden relative">
+                {/* Email Builder */}
+                <div className={`flex-1 h-full transition-all duration-300 ${showAIPanel ? 'mr-[400px]' : ''}`}>
+                    <EmailBuilderEditor ref={editorRef} workspaceId={workspaceId} />
+                </div>
+
+                {/* Intelligent AI Panel (Sidebar) */}
+                <IntelligentAIPanel
+                    workspaceId={workspaceId}
+                    isOpen={showAIPanel}
+                    onClose={() => setShowAIPanel(false)}
+                    onApplyDesign={handleAIApplyDesign}
+                    editorRef={editorRef}
+                />
             </div>
 
             {/* Modals */}

@@ -298,7 +298,7 @@ export class FieldFetcherService {
     private async fetchNotionDatabases(notion: NotionClient): Promise<FieldOption[]> {
         const response = await notion.search({
             filter: {
-                value: 'database',
+                value: 'database' as any,
                 property: 'object',
             },
             page_size: 100,
