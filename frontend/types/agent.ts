@@ -152,6 +152,8 @@ export interface IAgent {
   goal: string;
   status: 'Draft' | 'Live' | 'Paused';
   createdBy: string;
+  // Story 1.7: Track who last modified the agent
+  updatedBy?: string;
   createdAt: string; // ISO 8601 date string from API
   updatedAt: string; // ISO 8601 date string from API
 
@@ -190,6 +192,8 @@ export interface UpdateAgentInput {
   memory?: Partial<IAgentMemory>;
   // Story 1.6: Approval configuration
   approvalConfig?: Partial<IAgentApprovalConfig>;
+  // Story 1.7: Optimistic locking - expected updatedAt timestamp (ISO string)
+  expectedUpdatedAt?: string;
 }
 
 export interface UpdateAgentResponse {
@@ -212,3 +216,12 @@ export interface ListAgentsResponse {
   agents: IAgent[];
 }
 
+// Story 1.7: Conflict response for optimistic locking
+export interface ConflictResponse {
+  success: false;
+  error: string;
+  conflict: {
+    updatedBy: string;
+    updatedAt: string;
+  };
+}

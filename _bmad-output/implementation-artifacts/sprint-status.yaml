@@ -48,7 +48,7 @@ development_status:
   1-4-configure-agent-restrictions: done
   1-5-configure-agent-memory: review
   1-6-set-approval-requirements: done
-  1-7-edit-existing-agent: backlog
+  1-7-edit-existing-agent: review
   1-8-duplicate-agent: backlog
   1-9-manage-agent-status: backlog
   1-10-delete-agent: backlog

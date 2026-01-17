@@ -212,7 +212,9 @@ export const updateAgentSchema = z.object({
     // Story 1.5: Memory configuration
     memory: memorySchema,
     // Story 1.6: Approval configuration
-    approvalConfig: approvalConfigSchema
+    approvalConfig: approvalConfigSchema,
+    // Story 1.7: Optimistic locking - expected updatedAt timestamp (ISO string)
+    expectedUpdatedAt: z.string().datetime().optional()
   }).refine(
     (data) => {
       // If triggers is explicitly an empty array, reject it

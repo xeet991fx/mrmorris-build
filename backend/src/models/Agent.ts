@@ -105,6 +105,8 @@ export interface IAgent extends Document {
   goal: string;
   status: 'Draft' | 'Live' | 'Paused';
   createdBy: mongoose.Types.ObjectId;
+  // Story 1.7: Track who last modified the agent
+  updatedBy?: mongoose.Types.ObjectId;
 
   // Story 1.2: Triggers (now properly typed)
   triggers?: ITriggerConfig[];
@@ -156,6 +158,11 @@ const AgentSchema = new Schema<IAgent>(
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'Creator is required']
+    },
+    // Story 1.7: Track who last modified the agent
+    updatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
     },
 
     // Story 1.2: Triggers with proper schema
@@ -306,6 +313,31 @@ AgentSchema.pre('find', function () {
 AgentSchema.pre('findOne', function () {
   if (!this.getQuery().workspace) {
     throw new Error('SECURITY: Workspace filter required for Agent findOne queries');
+  }
+});
+
+// Story 1.7 Fix: Add missing middleware for update/delete operations
+AgentSchema.pre('findOneAndUpdate', function () {
+  if (!this.getQuery().workspace) {
+    throw new Error('SECURITY: Workspace filter required for Agent findOneAndUpdate queries');
+  }
+});
+
+AgentSchema.pre('updateMany', function () {
+  if (!this.getQuery().workspace) {
+    throw new Error('SECURITY: Workspace filter required for Agent updateMany queries');
+  }
+});
+
+AgentSchema.pre('deleteOne', function () {
+  if (!this.getQuery().workspace) {
+    throw new Error('SECURITY: Workspace filter required for Agent deleteOne queries');
+  }
+});
+
+AgentSchema.pre('deleteMany', function () {
+  if (!this.getQuery().workspace) {
+    throw new Error('SECURITY: Workspace filter required for Agent deleteMany queries');
   }
 });
 

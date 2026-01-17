@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import Agent, { RESTRICTIONS_DEFAULTS, MEMORY_DEFAULTS, APPROVAL_DEFAULTS } from '../models/Agent';
 import { CreateAgentInput, UpdateAgentInput } from '../validations/agentValidation';
 import User from '../models/User';
+import TeamMember from '../models/TeamMember';
+import Project from '../models/Project';
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents
@@ -162,12 +164,12 @@ export const getAgent = async (req: Request, res: Response): Promise<void> => {
 /**
  * @route PUT /api/workspaces/:workspaceId/agents/:agentId
  * @desc Update an existing agent
- * @access Private (requires authentication and workspace access)
+ * @access Private (requires authentication, workspace access, and Owner/Admin role)
  */
 export const updateAgent = async (req: Request, res: Response): Promise<void> => {
   try {
     const { workspaceId, agentId } = req.params;
-    const updateData = req.body as UpdateAgentInput;
+    const updateData = req.body as UpdateAgentInput & { expectedUpdatedAt?: string };
     const userId = (req as any).user?._id;
 
     if (!userId) {
@@ -176,6 +178,28 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
         error: 'User not authenticated'
       });
       return;
+    }
+
+    // Story 1.7: RBAC Check - Must be Owner or Admin to edit agents
+    // First check if user is workspace creator (has owner permissions without TeamMember record)
+    const workspace = await Project.findById(workspaceId);
+    const isWorkspaceCreator = workspace && workspace.userId.toString() === userId.toString();
+
+    if (!isWorkspaceCreator) {
+      // If not workspace creator, check TeamMember record
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to edit agents"
+        });
+        return;
+      }
     }
 
     // Find agent with workspace filter for security
@@ -190,6 +214,34 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
         error: 'Agent not found'
       });
       return;
+    }
+
+    // Story 1.7: Optimistic locking check
+    if (updateData.expectedUpdatedAt) {
+      const expectedDate = new Date(updateData.expectedUpdatedAt);
+      const agentUpdatedAt = new Date(agent.updatedAt);
+
+      // Story 1.7 Fix: Tighter timestamp comparison (100ms tolerance for network/serialization variance)
+      if (Math.abs(agentUpdatedAt.getTime() - expectedDate.getTime()) > 100) {
+        // Fetch user who made the change for conflict message
+        let updatedByName = 'Unknown user';
+        if (agent.updatedBy) {
+          const lastUpdater = await User.findById(agent.updatedBy);
+          if (lastUpdater) {
+            updatedByName = lastUpdater.name || lastUpdater.email || 'Unknown user';
+          }
+        }
+
+        res.status(409).json({
+          success: false,
+          error: 'Agent was modified by another user. Please reload to see latest version.',
+          conflict: {
+            updatedBy: updatedByName,
+            updatedAt: agent.updatedAt
+          }
+        });
+        return;
+      }
     }
 
     // Update fields if provided
@@ -269,6 +321,9 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
       } as any;
     }
 
+    // Story 1.7: Track who made the update
+    agent.updatedBy = userId;
+
     await agent.save();
 
     res.status(200).json({
@@ -280,6 +335,7 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
         goal: agent.goal,
         status: agent.status,
         createdBy: agent.createdBy,
+        updatedBy: agent.updatedBy,  // Story 1.7: Include updatedBy in response
         createdAt: agent.createdAt,
         updatedAt: agent.updatedAt,
         triggers: agent.triggers || [],
@@ -312,3 +368,4 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
     });
   }
 };
+

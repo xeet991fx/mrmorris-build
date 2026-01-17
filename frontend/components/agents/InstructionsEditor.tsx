@@ -17,6 +17,11 @@ interface InstructionsEditorProps {
     initialInstructions: string | null;
     onSave?: (instructions: string) => void;
     disabled?: boolean;
+    // Story 1.7 Fix: Props for Live agent warning and optimistic locking
+    agentStatus?: 'Draft' | 'Live' | 'Paused';
+    expectedUpdatedAt?: string | null;
+    onConflict?: (info: { updatedBy: string; updatedAt: string }) => void;
+    onUpdateSuccess?: (newUpdatedAt: string) => void;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -26,7 +31,11 @@ export function InstructionsEditor({
     workspaceId,
     initialInstructions,
     onSave,
-    disabled = false
+    disabled = false,
+    agentStatus,
+    expectedUpdatedAt,
+    onConflict,
+    onUpdateSuccess
 }: InstructionsEditorProps) {
     const [instructions, setInstructions] = useState(initialInstructions || '');
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
@@ -51,11 +60,21 @@ export function InstructionsEditor({
 
             setSaveStatus('saving');
             try {
-                const response = await updateAgent(workspaceId, agentId, { instructions: value });
+                // Story 1.7 Fix: Include expectedUpdatedAt for optimistic locking
+                const saveData: { instructions: string; expectedUpdatedAt?: string } = { instructions: value };
+                if (expectedUpdatedAt) {
+                    saveData.expectedUpdatedAt = expectedUpdatedAt;
+                }
+
+                const response = await updateAgent(workspaceId, agentId, saveData);
                 if (response.success) {
                     setSaveStatus('saved');
                     setLastSaved(new Date());
                     onSave?.(value);
+                    // Story 1.7 Fix: Update parent's originalUpdatedAt
+                    if (response.agent?.updatedAt) {
+                        onUpdateSuccess?.(response.agent.updatedAt);
+                    }
                 } else {
                     setSaveStatus('error');
                     toast.error('Failed to save instructions');
@@ -63,6 +82,13 @@ export function InstructionsEditor({
             } catch (error: any) {
                 console.error('Error saving instructions:', error);
                 setSaveStatus('error');
+
+                // Story 1.7 Fix: Handle 409 conflict error
+                if (error.response?.status === 409 && error.response?.data?.conflict) {
+                    onConflict?.(error.response.data.conflict);
+                    return;
+                }
+
                 toast.error(error.response?.data?.error || 'Failed to save instructions');
             }
         },
@@ -136,6 +162,16 @@ export function InstructionsEditor({
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
                 Describe what this agent should do in plain English. Write step-by-step instructions for automation tasks.
             </p>
+
+            {/* Story 1.7 Fix: Live Agent Warning Banner */}
+            {agentStatus === 'Live' && (
+                <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <ExclamationCircleIcon className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-yellow-700 dark:text-yellow-300">
+                        <strong>This agent is Live.</strong> Changes will affect active executions and auto-save immediately.
+                    </div>
+                </div>
+            )}
 
             {/* Textarea */}
             <div className="relative">
