@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Agent, { RESTRICTIONS_DEFAULTS, MEMORY_DEFAULTS, APPROVAL_DEFAULTS } from '../models/Agent';
-import { CreateAgentInput, UpdateAgentInput } from '../validations/agentValidation';
+import { CreateAgentInput, UpdateAgentInput, DuplicateAgentInput } from '../validations/agentValidation';
 import User from '../models/User';
 import TeamMember from '../models/TeamMember';
 import Project from '../models/Project';
@@ -365,6 +365,136 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
     res.status(500).json({
       success: false,
       error: 'Failed to update agent'
+    });
+  }
+};
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/duplicate
+ * @desc Duplicate an existing agent with new name
+ * @access Private (requires authentication, workspace access, and Owner/Admin role)
+ */
+export const duplicateAgent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const { name } = req.body as DuplicateAgentInput;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Story 1.8: RBAC Check - Must be Owner or Admin to duplicate agents
+    // First check if workspace exists
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+      return;
+    }
+
+    // Check if user is workspace creator (has owner permissions without TeamMember record)
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+
+    if (!isWorkspaceCreator) {
+      // If not workspace creator, check TeamMember record
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to duplicate agents"
+        });
+        return;
+      }
+    }
+
+    // Find original agent with workspace filter for security
+    const originalAgent = await Agent.findOne({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!originalAgent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // Sanitize triggers to ensure config field exists (handles legacy data)
+    const sanitizedTriggers = (originalAgent.triggers || []).map(trigger => ({
+      ...trigger,
+      config: trigger.config ?? {}  // Default to empty object if missing
+    }));
+
+    // Create duplicated agent with copied configuration
+    const duplicatedAgent = await Agent.create({
+      workspace: workspaceId,
+      name: name.trim(),
+      goal: originalAgent.goal,
+      status: 'Draft',  // Always Draft regardless of original status
+      createdBy: userId,
+      // Copy configuration fields (sanitized)
+      triggers: sanitizedTriggers,
+      instructions: originalAgent.instructions || null,
+      restrictions: originalAgent.restrictions || RESTRICTIONS_DEFAULTS,
+      // Copy memory CONFIG but not actual data values (clean slate)
+      memory: {
+        enabled: originalAgent.memory?.enabled ?? false,
+        variables: originalAgent.memory?.variables || [],
+        retentionDays: originalAgent.memory?.retentionDays ?? 30
+      },
+      approvalConfig: originalAgent.approvalConfig || APPROVAL_DEFAULTS
+      // NOT copied: execution history (doesn't exist on Agent model)
+      // NOT copied: memory data values (would be in separate collection)
+    });
+
+    res.status(201).json({
+      success: true,
+      agent: {
+        _id: duplicatedAgent._id,
+        workspace: duplicatedAgent.workspace,
+        name: duplicatedAgent.name,
+        goal: duplicatedAgent.goal,
+        status: duplicatedAgent.status,
+        createdBy: duplicatedAgent.createdBy,
+        createdAt: duplicatedAgent.createdAt,
+        updatedAt: duplicatedAgent.updatedAt,
+        triggers: duplicatedAgent.triggers || [],
+        instructions: duplicatedAgent.instructions || null,
+        restrictions: duplicatedAgent.restrictions || RESTRICTIONS_DEFAULTS,
+        memory: duplicatedAgent.memory || MEMORY_DEFAULTS,
+        approvalConfig: duplicatedAgent.approvalConfig || APPROVAL_DEFAULTS
+      }
+    });
+  } catch (error: any) {
+    console.error('Error duplicating agent:', error);
+
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: Object.values(error.errors).map((err: any) => err.message)
+      });
+      return;
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to duplicate agent'
     });
   }
 };

@@ -225,3 +225,13 @@ export interface ConflictResponse {
     updatedAt: string;
   };
 }
+
+// Story 1.8: Duplicate agent types
+export interface DuplicateAgentInput {
+  name: string;
+}
+
+export interface DuplicateAgentResponse {
+  success: boolean;
+  agent: IAgent;
+}

@@ -1,18 +1,40 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { IAgent } from '@/types/agent';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { ClockIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, BoltIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { Copy } from 'lucide-react';
+import { DuplicateAgentModal } from './DuplicateAgentModal';
 
 interface AgentCardProps {
   agent: IAgent;
   workspaceId: string;
+  onDuplicate?: (newAgent: IAgent) => void;
 }
 
-export function AgentCard({ agent, workspaceId }: AgentCardProps) {
+export function AgentCard({ agent, workspaceId, onDuplicate }: AgentCardProps) {
   const router = useRouter();
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
 
   const getStatusStyles = (status: string) => {
     switch (status) {
@@ -27,43 +49,101 @@ export function AgentCard({ agent, workspaceId }: AgentCardProps) {
 
   const triggerCount = agent.triggers?.length || 0;
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Prevent navigation if clicking on menu or its children
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-menu-trigger]') || target.closest('[data-menu-content]')) {
+      return;
+    }
+    router.push(`/projects/${workspaceId}/agents/${agent._id}`);
+  };
+
+  const handleMenuToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(!showMenu);
+  };
+
+  const handleDuplicateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    setShowDuplicateModal(true);
+  };
+
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      onClick={() => router.push(`/projects/${workspaceId}/agents/${agent._id}`)}
-      className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 cursor-pointer hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-all"
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-100 line-clamp-1">
-          {agent.name}
-        </h3>
-        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusStyles(agent.status)}`}>
-          {agent.status}
-        </span>
-      </div>
-
-      {/* Description */}
-      <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-4">
-        {agent.goal}
-      </p>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
-        <div className="flex items-center gap-1.5 text-zinc-400">
-          <ClockIcon className="w-4 h-4" />
-          <span className="text-xs">
-            {formatDistanceToNow(new Date(agent.createdAt), { addSuffix: true })}
-          </span>
-        </div>
-        {triggerCount > 0 && (
-          <div className="flex items-center gap-1.5 text-zinc-400">
-            <BoltIcon className="w-4 h-4" />
-            <span className="text-xs">{triggerCount} trigger{triggerCount !== 1 ? 's' : ''}</span>
+    <>
+      <motion.div
+        whileHover={{ y: -2 }}
+        onClick={handleCardClick}
+        className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 cursor-pointer hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-all"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-100 line-clamp-1 flex-1 mr-2">
+            {agent.name}
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusStyles(agent.status)}`}>
+              {agent.status}
+            </span>
+            <div className="relative" ref={menuRef}>
+              <button
+                data-menu-trigger
+                className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                onClick={handleMenuToggle}
+                data-testid={`agent-menu-${agent._id}`}
+              >
+                <EllipsisVerticalIcon className="w-4 h-4 text-zinc-400" />
+              </button>
+              {showMenu && (
+                <div
+                  data-menu-content
+                  className="absolute right-0 top-full mt-1 z-50 min-w-[120px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-lg py-1"
+                >
+                  <button
+                    onClick={handleDuplicateClick}
+                    data-testid={`duplicate-agent-${agent._id}`}
+                    className="w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Duplicate
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-    </motion.div>
+        </div>
+
+        {/* Description */}
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 mb-4">
+          {agent.goal}
+        </p>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center gap-1.5 text-zinc-400">
+            <ClockIcon className="w-4 h-4" />
+            <span className="text-xs">
+              {formatDistanceToNow(new Date(agent.createdAt), { addSuffix: true })}
+            </span>
+          </div>
+          {triggerCount > 0 && (
+            <div className="flex items-center gap-1.5 text-zinc-400">
+              <BoltIcon className="w-4 h-4" />
+              <span className="text-xs">{triggerCount} trigger{triggerCount !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Duplicate Agent Modal */}
+      <DuplicateAgentModal
+        open={showDuplicateModal}
+        onOpenChange={setShowDuplicateModal}
+        agent={agent}
+        workspaceId={workspaceId}
+        onSuccess={onDuplicate}
+      />
+    </>
   );
 }
 

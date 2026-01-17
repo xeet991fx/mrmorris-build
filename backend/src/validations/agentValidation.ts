@@ -229,3 +229,16 @@ export const updateAgentSchema = z.object({
 
 export type UpdateAgentInput = z.infer<typeof updateAgentSchema>['body'];
 
+// Story 1.8: Duplicate agent validation schema
+// Note: Only validate body - params are validated by route pattern matching
+export const duplicateAgentSchema = z.object({
+  body: z.object({
+    name: z.string()
+      .min(1, 'Name is required')
+      .max(100, 'Name cannot exceed 100 characters')
+      .trim()
+  })
+});
+
+export type DuplicateAgentInput = z.infer<typeof duplicateAgentSchema>['body'];
+

@@ -5,7 +5,9 @@ import {
   GetAgentResponse,
   ListAgentsResponse,
   UpdateAgentInput,
-  UpdateAgentResponse
+  UpdateAgentResponse,
+  DuplicateAgentInput,
+  DuplicateAgentResponse
 } from '@/types/agent';
 
 /**
@@ -57,6 +59,21 @@ export const updateAgent = async (
 ): Promise<UpdateAgentResponse> => {
   const response = await axios.put(
     `/workspaces/${workspaceId}/agents/${agentId}`,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Duplicate an existing agent (Story 1.8)
+ */
+export const duplicateAgent = async (
+  workspaceId: string,
+  agentId: string,
+  data: DuplicateAgentInput
+): Promise<DuplicateAgentResponse> => {
+  const response = await axios.post(
+    `/workspaces/${workspaceId}/agents/${agentId}/duplicate`,
     data
   );
   return response.data;
