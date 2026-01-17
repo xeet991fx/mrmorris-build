@@ -63,19 +63,11 @@ export default function PipelineKanbanView({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
-    // DEBUG: Log what we're getting
-    console.log("=== DRAG END ===");
-    console.log("active.id:", active.id);
-    console.log("over:", over);
-    console.log("over?.id:", over?.id);
-    console.log("over?.data.current:", over?.data?.current);
-
     // Always clear drag state
     setActiveOpportunity(null);
 
     // If no drop target, card snaps back - do nothing
     if (!over) {
-      console.log("No drop target - snapping back");
       return;
     }
 

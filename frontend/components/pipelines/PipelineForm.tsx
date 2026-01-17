@@ -1,12 +1,18 @@
-// @ts-nocheck
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, FieldValues, FieldErrors } from "react-hook-form";
 import TextInput from "@/components/forms/TextInput";
 import Textarea from "@/components/forms/Textarea";
-import { CreatePipelineInput, UpdatePipelineInput } from "@/lib/validations/pipeline";
 import StageManager from "./StageManager";
 
+// Generic form values that cover both create and update
+interface PipelineFormValues extends FieldValues {
+  name: string;
+  description?: string;
+  stages?: Array<{ name: string; color: string; order: number }>;
+  isDefault?: boolean;
+}
+
 interface PipelineFormProps {
-  form: UseFormReturn<CreatePipelineInput> | UseFormReturn<UpdatePipelineInput>;
+  form: UseFormReturn<PipelineFormValues>;
   isEdit?: boolean;
 }
 
@@ -19,7 +25,7 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
   } = form;
 
   const formValues = watch();
-  const stages = (formValues as any)?.stages || [];
+  const stages = formValues.stages || [];
 
   return (
     <div className="space-y-5">
@@ -31,10 +37,10 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
         <TextInput
           placeholder="e.g., Sales Pipeline, Recruitment Pipeline"
           error={!!errors.name}
-          {...(register as any)("name")}
+          {...register("name")}
         />
         {errors.name && (
-          <p className="mt-1.5 text-xs text-rose-500">{errors.name.message as any}</p>
+          <p className="mt-1.5 text-xs text-rose-500">{errors.name.message as string}</p>
         )}
       </div>
 
@@ -47,10 +53,10 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
           placeholder="What is this pipeline for?"
           rows={2}
           error={!!errors.description}
-          {...(register as any)("description")}
+          {...register("description")}
         />
         {errors.description && (
-          <p className="mt-1.5 text-xs text-rose-500">{errors.description.message as any}</p>
+          <p className="mt-1.5 text-xs text-rose-500">{errors.description.message as string}</p>
         )}
       </div>
 
@@ -58,8 +64,8 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
       {!isEdit && (
         <StageManager
           stages={stages}
-          onChange={(newStages) => (setValue as any)("stages", newStages)}
-          errors={(errors as any).stages}
+          onChange={(newStages) => setValue("stages", newStages)}
+          errors={errors.stages as FieldErrors<{ name: string; color: string; order: number }[]>}
         />
       )}
 
@@ -69,7 +75,7 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
           type="checkbox"
           id="isDefault"
           className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-emerald-600 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
-          {...(register as any)("isDefault")}
+          {...register("isDefault")}
         />
         <label htmlFor="isDefault" className="text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer">
           Set as default pipeline

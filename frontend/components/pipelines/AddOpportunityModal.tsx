@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Fragment, useEffect } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
@@ -11,6 +10,7 @@ import {
   CreateOpportunityInput,
 } from "@/lib/validations/opportunity";
 import { usePipelineStore } from "@/store/usePipelineStore";
+import { CreateOpportunityData } from "@/lib/api/opportunity";
 import OpportunityForm from "./OpportunityForm";
 
 interface AddOpportunityModalProps {
@@ -67,23 +67,17 @@ export default function AddOpportunityModal({
 
   const onSubmit = async (data: CreateOpportunityInput) => {
     try {
-      console.log("Form data before transform:", data);
-
       // Transform null to undefined for API compatibility
       const apiData = {
         ...data,
         probability: data.probability ?? undefined,
       };
 
-      console.log("Transformed API data:", apiData);
-
-      await createOpportunity(workspaceId, apiData as any);
+      await createOpportunity(workspaceId, apiData as CreateOpportunityData);
       toast.success("Opportunity created successfully!");
       reset();
       onClose();
     } catch (error: any) {
-      console.error("Create opportunity error details:", error.response?.data);
-
       // Handle validation errors
       if (error.response?.data?.details && Array.isArray(error.response.data.details)) {
         const validationErrors = error.response.data.details

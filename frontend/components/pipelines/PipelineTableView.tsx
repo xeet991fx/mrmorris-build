@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronUpDownIcon,
@@ -27,8 +26,8 @@ type SortColumn =
   | "status";
 type SortDirection = "asc" | "desc";
 
-const PRIORITY_ORDER = { low: 1, medium: 2, high: 3 };
-const STATUS_ORDER = { open: 1, won: 2, lost: 3, abandoned: 4 };
+const PRIORITY_ORDER: Record<string, number> = { low: 1, medium: 2, high: 3 };
+const STATUS_ORDER: Record<string, number> = { open: 1, won: 2, lost: 3, abandoned: 4 };
 
 export default function PipelineTableView({
   onEditOpportunity,
@@ -102,8 +101,15 @@ export default function PipelineTableView({
           bValue = bStage.name.toLowerCase();
           break;
         case "assignedTo":
-          aValue = a.assignedTo?.toLowerCase() || "";
-          bValue = b.assignedTo?.toLowerCase() || "";
+          // assignedTo is populated as an object with name property
+          const aAssigned = typeof a.assignedTo === 'object' && a.assignedTo !== null
+            ? (a.assignedTo as { name?: string }).name?.toLowerCase() || ""
+            : "";
+          const bAssigned = typeof b.assignedTo === 'object' && b.assignedTo !== null
+            ? (b.assignedTo as { name?: string }).name?.toLowerCase() || ""
+            : "";
+          aValue = aAssigned;
+          bValue = bAssigned;
           break;
         case "priority":
           aValue = PRIORITY_ORDER[a.priority || "low"];
@@ -118,8 +124,8 @@ export default function PipelineTableView({
             : 0;
           break;
         case "status":
-          aValue = STATUS_ORDER[a.status || "active"];
-          bValue = STATUS_ORDER[b.status || "active"];
+          aValue = STATUS_ORDER[a.status || "open"] || 1;
+          bValue = STATUS_ORDER[b.status || "open"] || 1;
           break;
         default:
           return 0;
@@ -159,7 +165,7 @@ export default function PipelineTableView({
     className,
   }: {
     column: SortColumn;
-    children: React.ReactNode;
+    children: ReactNode;
     className?: string;
   }) => (
     <th className={cn("px-4 py-3", className)}>

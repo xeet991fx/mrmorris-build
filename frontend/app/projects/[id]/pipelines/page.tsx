@@ -14,17 +14,15 @@ import { usePipelineStore } from "@/store/usePipelineStore";
 import { Opportunity } from "@/lib/api/opportunity";
 import PipelineKanbanView from "@/components/pipelines/PipelineKanbanView";
 import PipelineTableView from "@/components/pipelines/PipelineTableView";
+import PipelineStats from "@/components/pipelines/PipelineStats";
 import AddOpportunityModal from "@/components/pipelines/AddOpportunityModal";
 import EditOpportunityModal from "@/components/pipelines/EditOpportunityModal";
 import ManagePipelinesModal from "@/components/pipelines/ManagePipelinesModal";
-import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
 
 export default function PipelinesPage() {
     const params = useParams();
     const workspaceId = params.id as string;
-
-    const { currentWorkspace } = useWorkspaceStore();
 
     const {
         pipelines,
@@ -33,6 +31,7 @@ export default function PipelinesPage() {
         isLoading,
         fetchPipelines,
         fetchOpportunitiesByPipeline,
+        deleteOpportunity,
         setViewMode,
         setCurrentPipeline,
     } = usePipelineStore();
@@ -77,6 +76,7 @@ export default function PipelinesPage() {
         }
 
         try {
+            await deleteOpportunity(workspaceId, opportunityId);
             toast.success("Opportunity deleted successfully");
         } catch (error) {
             toast.error("Failed to delete opportunity");
@@ -242,6 +242,9 @@ export default function PipelinesPage() {
                         </div>
                     </div>
                 </motion.div>
+
+                {/* Pipeline Stats */}
+                <PipelineStats />
 
                 {/* View Content */}
                 <motion.div

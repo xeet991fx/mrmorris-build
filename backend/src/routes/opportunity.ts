@@ -57,9 +57,7 @@ router.post(
       }
 
       // Validate input
-      console.log("Received opportunity data:", JSON.stringify(req.body, null, 2));
       const validatedData = createOpportunitySchema.parse(req.body);
-      console.log("Validated opportunity data:", JSON.stringify(validatedData, null, 2));
 
       // Transform empty strings to undefined for ObjectId fields
       const cleanedData = {
@@ -136,7 +134,7 @@ router.post(
         DEAL_EVENTS.CREATED,
         {
           dealId: (opportunityDoc._id as any).toString(),
-          name: (opportunityDoc as any).name,
+          title: opportunityDoc.title,
           value: opportunityDoc.value,
           pipelineId: opportunityDoc.pipelineId.toString(),
           stageId: stage._id.toString(),
@@ -164,7 +162,7 @@ router.post(
             entityId: opportunityDoc.companyId,
             opportunityId: opportunityDoc._id,
             type: 'note',
-            title: `New deal "${(opportunityDoc as any).title || 'Untitled'}" created`,
+            title: `New deal "${opportunityDoc.title}" created`,
             description: opportunityDoc.value
               ? `Deal worth $${opportunityDoc.value.toLocaleString()} was added`
               : 'New deal was added',
@@ -172,7 +170,7 @@ router.post(
             automated: true,
             metadata: {
               dealId: (opportunityDoc._id as any).toString(),
-              dealTitle: (opportunityDoc as any).title,
+              dealTitle: opportunityDoc.title,
               dealValue: opportunityDoc.value,
               stageName: stage.name,
             },
@@ -193,7 +191,6 @@ router.post(
         .catch((err) => console.error("Workflow enrollment error:", err));
     } catch (error: any) {
       if (error.name === "ZodError") {
-        console.error("Validation error:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({
           success: false,
           error: "Validation failed",
@@ -554,11 +551,17 @@ router.patch(
         lostReason: validatedData.lostReason || undefined,
       };
 
-      // If updating pipeline/stage, validate they exist
+      // If updating pipeline/stage, validate they exist and update stage history
       if (cleanedData.pipelineId || cleanedData.stageId) {
-        const pipelineId =
-          cleanedData.pipelineId ||
-          (await Opportunity.findById(id).select("pipelineId"))?.pipelineId;
+        const currentOpportunity = await Opportunity.findById(id).select("pipelineId stageId stageHistory");
+        if (!currentOpportunity) {
+          return res.status(404).json({
+            success: false,
+            error: "Opportunity not found.",
+          });
+        }
+
+        const pipelineId = cleanedData.pipelineId || currentOpportunity.pipelineId;
 
         const pipeline = await Pipeline.findOne({
           _id: pipelineId,
@@ -583,6 +586,27 @@ router.patch(
               success: false,
               error: "Stage not found in pipeline.",
             });
+          }
+
+          // Update stage history if stage is changing
+          if (currentOpportunity.stageId.toString() !== cleanedData.stageId) {
+            // Close out the current stage
+            const stageHistory = [...currentOpportunity.stageHistory];
+            const currentStageIndex = stageHistory.length - 1;
+            if (currentStageIndex >= 0 && !stageHistory[currentStageIndex].exitedAt) {
+              stageHistory[currentStageIndex].exitedAt = new Date();
+              stageHistory[currentStageIndex].duration =
+                new Date().getTime() - new Date(stageHistory[currentStageIndex].enteredAt).getTime();
+            }
+
+            // Add new stage entry
+            stageHistory.push({
+              stageId: stage._id,
+              stageName: stage.name,
+              enteredAt: new Date(),
+            });
+
+            cleanedData.stageHistory = stageHistory;
           }
         }
       }
@@ -759,11 +783,11 @@ router.patch(
             entityId: opportunity.companyId,
             opportunityId: id,
             type: "stage_change",
-            title: `Deal "${(opportunity as any).title || 'Untitled'}" moved to "${stage.name}"`,
+            title: `Deal "${opportunity.title}" moved to "${stage.name}"`,
             description: `Deal stage changed from "${previousStageName}" to "${stage.name}"`,
             metadata: {
               dealId: id,
-              dealTitle: (opportunity as any).title,
+              dealTitle: opportunity.title,
               fromStage: previousStageName,
               toStage: stage.name,
               dealValue: opportunity.value,

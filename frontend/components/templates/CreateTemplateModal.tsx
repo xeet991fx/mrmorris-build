@@ -68,24 +68,25 @@ export default function CreateTemplateModal({
         }
     };
 
-    if (!isOpen) return null;
-
     return (
         <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-                onClick={onClose}
-            >
-                <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.95, opacity: 0 }}
-                    className="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl mx-4"
-                    onClick={(e) => e.stopPropagation()}
-                >
+            {isOpen && (
+                <div className="fixed inset-0 z-[100] flex justify-end">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={onClose}
+                    />
+                    <motion.div
+                        initial={{ x: "100%" }}
+                        animate={{ x: 0 }}
+                        exit={{ x: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        className="relative w-full max-w-lg h-full bg-white dark:bg-zinc-900 shadow-2xl border-l border-zinc-200 dark:border-zinc-800 flex flex-col"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                     {/* Header */}
                     <div className="flex items-center justify-between p-5 border-b border-zinc-100 dark:border-zinc-800">
                         <div className="flex items-center gap-3">
@@ -187,8 +188,9 @@ export default function CreateTemplateModal({
                             </button>
                         </div>
                     </form>
-                </motion.div>
-            </motion.div>
+                    </motion.div>
+                </div>
+            )}
         </AnimatePresence>
     );
 }
