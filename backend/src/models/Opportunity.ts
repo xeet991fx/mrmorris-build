@@ -311,10 +311,20 @@ opportunitySchema.index({
   description: "text",
 });
 
-// Update lastActivityAt on save
+// Update lastActivityAt only when activity-related fields change
 opportunitySchema.pre("save", function (next) {
-  if (this.isModified() && !this.isNew) {
-    this.lastActivityAt = new Date();
+  if (!this.isNew) {
+    // Only update lastActivityAt for activity-related changes
+    const activityFields = [
+      'activityCount', 'emailCount', 'callCount', 'meetingCount',
+      'stageId', 'status', 'nextAction', 'nextActionDueDate'
+    ];
+
+    const hasActivityChange = activityFields.some(field => this.isModified(field));
+
+    if (hasActivityChange) {
+      this.lastActivityAt = new Date();
+    }
   }
   next();
 });

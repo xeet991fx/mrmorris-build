@@ -565,18 +565,35 @@ export const usePipelineStore = create<PipelineState>()(
           if (response.success && response.data) {
             const newOpportunity = response.data.opportunity;
 
-            set((state) => ({
-              opportunities: [...state.opportunities, newOpportunity],
-              isLoading: false,
-            }));
+            set((state) => {
+              // Update opportunities list
+              const updatedOpportunities = [...state.opportunities, newOpportunity];
 
-            // Refresh kanban data if in kanban view
-            if (get().viewMode === "kanban" && get().currentPipeline) {
-              await get().fetchOpportunitiesByPipeline(
-                workspaceId,
-                get().currentPipeline!._id
-              );
-            }
+              // Update kanban data if applicable
+              let updatedKanbanData = state.kanbanData;
+              if (state.viewMode === "kanban" && state.currentPipeline) {
+                const stageIndex = state.kanbanData.stages.findIndex(
+                  (s) => s.stage._id === newOpportunity.stageId
+                );
+                if (stageIndex !== -1) {
+                  const updatedStages = [...state.kanbanData.stages];
+                  updatedStages[stageIndex] = {
+                    ...updatedStages[stageIndex],
+                    opportunities: [...updatedStages[stageIndex].opportunities, newOpportunity],
+                  };
+                  updatedKanbanData = {
+                    ...state.kanbanData,
+                    stages: updatedStages,
+                  };
+                }
+              }
+
+              return {
+                opportunities: updatedOpportunities,
+                kanbanData: updatedKanbanData,
+                isLoading: false,
+              };
+            });
 
             return newOpportunity;
           }
@@ -608,24 +625,62 @@ export const usePipelineStore = create<PipelineState>()(
           if (response.success && response.data) {
             const updatedOpportunity = response.data.opportunity;
 
-            set((state) => ({
-              opportunities: state.opportunities.map((o) =>
+            set((state) => {
+              // Update opportunities list
+              const updatedOpportunities = state.opportunities.map((o) =>
                 o._id === opportunityId ? updatedOpportunity : o
-              ),
-              currentOpportunity:
-                state.currentOpportunity?._id === opportunityId
-                  ? updatedOpportunity
-                  : state.currentOpportunity,
-              isLoading: false,
-            }));
-
-            // Refresh kanban data if in kanban view
-            if (get().viewMode === "kanban" && get().currentPipeline) {
-              await get().fetchOpportunitiesByPipeline(
-                workspaceId,
-                get().currentPipeline!._id
               );
-            }
+
+              // Update kanban data directly (no refetch needed)
+              let updatedKanbanData = state.kanbanData;
+              if (state.kanbanData.stages.length > 0) {
+                const oldStageId = state.kanbanData.stages
+                  .find((s) => s.opportunities.some((o) => o._id === opportunityId))
+                  ?.stage._id;
+                const newStageId = updatedOpportunity.stageId;
+
+                if (oldStageId === newStageId) {
+                  // Same stage - just update the opportunity in place
+                  const updatedStages = state.kanbanData.stages.map((stageData) => ({
+                    ...stageData,
+                    opportunities: stageData.opportunities.map((o) =>
+                      o._id === opportunityId ? updatedOpportunity : o
+                    ),
+                  }));
+                  updatedKanbanData = { ...state.kanbanData, stages: updatedStages };
+                } else {
+                  // Stage changed - remove from old, add to new
+                  const updatedStages = state.kanbanData.stages.map((stageData) => {
+                    if (stageData.stage._id === oldStageId) {
+                      return {
+                        ...stageData,
+                        opportunities: stageData.opportunities.filter(
+                          (o) => o._id !== opportunityId
+                        ),
+                      };
+                    }
+                    if (stageData.stage._id === newStageId) {
+                      return {
+                        ...stageData,
+                        opportunities: [...stageData.opportunities, updatedOpportunity],
+                      };
+                    }
+                    return stageData;
+                  });
+                  updatedKanbanData = { ...state.kanbanData, stages: updatedStages };
+                }
+              }
+
+              return {
+                opportunities: updatedOpportunities,
+                kanbanData: updatedKanbanData,
+                currentOpportunity:
+                  state.currentOpportunity?._id === opportunityId
+                    ? updatedOpportunity
+                    : state.currentOpportunity,
+                isLoading: false,
+              };
+            });
           }
         } catch (error: any) {
           const errorMessage =
@@ -689,22 +744,34 @@ export const usePipelineStore = create<PipelineState>()(
         try {
           await opportunityApi.deleteOpportunity(workspaceId, opportunityId);
 
-          set((state) => ({
-            opportunities: state.opportunities.filter((o) => o._id !== opportunityId),
-            currentOpportunity:
-              state.currentOpportunity?._id === opportunityId
-                ? null
-                : state.currentOpportunity,
-            isLoading: false,
-          }));
-
-          // Refresh kanban data if in kanban view
-          if (get().viewMode === "kanban" && get().currentPipeline) {
-            await get().fetchOpportunitiesByPipeline(
-              workspaceId,
-              get().currentPipeline!._id
+          set((state) => {
+            // Update opportunities list
+            const updatedOpportunities = state.opportunities.filter(
+              (o) => o._id !== opportunityId
             );
-          }
+
+            // Update kanban data directly (no refetch needed)
+            let updatedKanbanData = state.kanbanData;
+            if (state.kanbanData.stages.length > 0) {
+              const updatedStages = state.kanbanData.stages.map((stageData) => ({
+                ...stageData,
+                opportunities: stageData.opportunities.filter(
+                  (o) => o._id !== opportunityId
+                ),
+              }));
+              updatedKanbanData = { ...state.kanbanData, stages: updatedStages };
+            }
+
+            return {
+              opportunities: updatedOpportunities,
+              kanbanData: updatedKanbanData,
+              currentOpportunity:
+                state.currentOpportunity?._id === opportunityId
+                  ? null
+                  : state.currentOpportunity,
+              isLoading: false,
+            };
+          });
         } catch (error: any) {
           const errorMessage =
             error.response?.data?.error || "Failed to delete opportunity. Please try again.";

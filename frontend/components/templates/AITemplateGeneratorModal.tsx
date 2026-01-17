@@ -1,24 +1,63 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     XMarkIcon,
     SparklesIcon,
     ArrowLeftIcon,
     ArrowRightIcon,
-    PhotoIcon,
     DocumentTextIcon,
     CheckIcon,
     ArrowPathIcon,
+    EnvelopeIcon,
+    DevicePhoneMobileIcon,
+    PencilSquareIcon,
+    LightBulbIcon,
+    BuildingOfficeIcon,
+    UserGroupIcon,
+    RocketLaunchIcon,
+    ChatBubbleBottomCenterTextIcon,
 } from "@heroicons/react/24/outline";
+
+// Icon mapping for template types
+const getTemplateTypeIcon = (iconName: string) => {
+    const iconClasses = "w-6 h-6";
+    switch (iconName) {
+        case "email":
+            return <EnvelopeIcon className={iconClasses} />;
+        case "linkedin":
+            return (
+                <svg className={iconClasses} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                </svg>
+            );
+        case "sms":
+            return <DevicePhoneMobileIcon className={iconClasses} />;
+        case "slack":
+            return (
+                <svg className={iconClasses} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+                </svg>
+            );
+        case "proposal":
+            return <DocumentTextIcon className={iconClasses} />;
+        case "other":
+            return <PencilSquareIcon className={iconClasses} />;
+        default:
+            return <DocumentTextIcon className={iconClasses} />;
+    }
+};
+
 import {
     generateTemplate,
-    fileToBase64,
     TEMPLATE_TYPES,
     TEMPLATE_PURPOSES,
     TEMPLATE_TONES,
     TEMPLATE_LENGTHS,
+    INDUSTRIES,
+    TARGET_AUDIENCES,
+    CTA_OPTIONS,
     TemplateType,
     TemplatePurpose,
     TemplateTone,
@@ -37,7 +76,59 @@ interface AITemplateGeneratorModalProps {
     onSave: (template: { name: string; subject: string; body: string; category: string }) => void;
 }
 
-type WizardStep = "type" | "purpose" | "details" | "preview";
+type WizardStep = "type" | "context" | "purpose" | "details" | "preview";
+
+// Prompt suggestions based on purpose
+const PROMPT_SUGGESTIONS: Record<TemplatePurpose, string[]> = {
+    "welcome": [
+        "Include onboarding next steps",
+        "Mention key features to explore",
+        "Add a personal touch with founder message",
+        "Include helpful resources or links",
+    ],
+    "follow-up": [
+        "Reference the previous conversation",
+        "Add a specific value proposition",
+        "Include a clear next step",
+        "Create urgency without being pushy",
+    ],
+    "sales-pitch": [
+        "Highlight the main pain point you solve",
+        "Include social proof or testimonials",
+        "Mention a limited-time offer",
+        "Add ROI or success metrics",
+    ],
+    "announcement": [
+        "Lead with the most exciting news",
+        "Explain what this means for them",
+        "Include a launch date or timeline",
+        "Add exclusive early access offer",
+    ],
+    "thank-you": [
+        "Be specific about what you're thanking them for",
+        "Mention the impact they've made",
+        "Include a small surprise or bonus",
+        "Invite them to stay connected",
+    ],
+    "introduction": [
+        "Keep it brief and memorable",
+        "Mention a mutual connection if any",
+        "Share one compelling fact about your company",
+        "End with a soft call to action",
+    ],
+    "reminder": [
+        "Reference the original context",
+        "Add new value or information",
+        "Create appropriate urgency",
+        "Make it easy to take action",
+    ],
+    "custom": [
+        "Be specific about your goal",
+        "Describe your ideal outcome",
+        "Mention any constraints or requirements",
+        "Include examples if helpful",
+    ],
+};
 
 // ============================================
 // STEP COMPONENTS
@@ -52,10 +143,10 @@ function StepIndicator({ currentStep, steps }: { currentStep: WizardStep; steps:
                 <div key={step} className="flex items-center">
                     <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${index < stepIndex
-                                ? "bg-[#9ACD32] text-background"
-                                : index === stepIndex
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-muted-foreground"
+                            ? "bg-[#9ACD32] text-background"
+                            : index === stepIndex
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
                             }`}
                     >
                         {index < stepIndex ? <CheckIcon className="w-4 h-4" /> : index + 1}
@@ -85,21 +176,123 @@ function TypeStep({
             <p className="text-sm text-muted-foreground mb-6">
                 Choose the platform or format for your template
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
                 {TEMPLATE_TYPES.map((type) => (
                     <button
                         key={type.value}
                         onClick={() => onSelect(type.value)}
                         className={`p-4 rounded-xl border-2 text-left transition-all hover:border-primary ${selectedType === type.value
-                                ? "border-[#9ACD32] bg-[#9ACD32]/10"
-                                : "border-border hover:bg-muted/50"
+                            ? "border-[#9ACD32] bg-[#9ACD32]/10"
+                            : "border-border hover:bg-muted/50"
                             }`}
                     >
-                        <span className="text-2xl mb-2 block">{type.icon}</span>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${selectedType === type.value
+                            ? "bg-[#9ACD32]/20 text-[#9ACD32]"
+                            : "bg-muted text-muted-foreground"
+                            }`}>
+                            {getTemplateTypeIcon(type.icon)}
+                        </div>
                         <span className="font-medium text-foreground">{type.label}</span>
                         <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
                     </button>
                 ))}
+            </div>
+        </div>
+    );
+}
+
+function ContextStep({
+    industry,
+    targetAudience,
+    companyName,
+    productService,
+    onIndustryChange,
+    onAudienceChange,
+    onCompanyChange,
+    onProductChange,
+}: {
+    industry: string;
+    targetAudience: string;
+    companyName: string;
+    productService: string;
+    onIndustryChange: (value: string) => void;
+    onAudienceChange: (value: string) => void;
+    onCompanyChange: (value: string) => void;
+    onProductChange: (value: string) => void;
+}) {
+    return (
+        <div className="space-y-5">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+                <LightBulbIcon className="w-5 h-5 text-violet-600 dark:text-violet-400 flex-shrink-0" />
+                <p className="text-sm text-violet-700 dark:text-violet-300">
+                    Better context = better templates. Help the AI understand your business.
+                </p>
+            </div>
+
+            {/* Company Name */}
+            <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <BuildingOfficeIcon className="w-4 h-4" />
+                    Company / Brand Name
+                </label>
+                <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => onCompanyChange(e.target.value)}
+                    placeholder="e.g., Acme Inc, TechStartup"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+            </div>
+
+            {/* Product/Service */}
+            <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <RocketLaunchIcon className="w-4 h-4" />
+                    Product / Service
+                </label>
+                <input
+                    type="text"
+                    value={productService}
+                    onChange={(e) => onProductChange(e.target.value)}
+                    placeholder="e.g., CRM software, Marketing automation platform"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
+            </div>
+
+            {/* Industry */}
+            <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <BuildingOfficeIcon className="w-4 h-4" />
+                    Industry
+                </label>
+                <select
+                    value={industry}
+                    onChange={(e) => onIndustryChange(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                    <option value="">Select your industry...</option>
+                    {INDUSTRIES.map((ind) => (
+                        <option key={ind.value} value={ind.value}>{ind.label}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* Target Audience */}
+            <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <UserGroupIcon className="w-4 h-4" />
+                    Target Audience
+                </label>
+                <select
+                    value={targetAudience}
+                    onChange={(e) => onAudienceChange(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                    <option value="">Who are you writing to?</option>
+                    {TARGET_AUDIENCES.map((aud) => (
+                        <option key={aud.value} value={aud.value}>{aud.label}</option>
+                    ))}
+                </select>
             </div>
         </div>
     );
@@ -130,8 +323,8 @@ function PurposeStep({
                             key={purpose.value}
                             onClick={() => onSelectPurpose(purpose.value)}
                             className={`p-3 rounded-lg border text-left transition-all ${selectedPurpose === purpose.value
-                                    ? "border-[#9ACD32] bg-[#9ACD32]/10"
-                                    : "border-border hover:bg-muted/50"
+                                ? "border-[#9ACD32] bg-[#9ACD32]/10"
+                                : "border-border hover:bg-muted/50"
                                 }`}
                         >
                             <span className="font-medium text-foreground text-sm">{purpose.label}</span>
@@ -145,18 +338,18 @@ function PurposeStep({
             <div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">What tone?</h3>
                 <p className="text-sm text-muted-foreground mb-4">Choose the voice and style</p>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     {TEMPLATE_TONES.map((tone) => (
                         <button
                             key={tone.value}
                             onClick={() => onSelectTone(tone.value)}
-                            className={`px-4 py-2 rounded-full border transition-all ${selectedTone === tone.value
-                                    ? "border-[#9ACD32] bg-[#9ACD32]/10 text-foreground"
-                                    : "border-border text-muted-foreground hover:bg-muted/50"
+                            className={`p-3 rounded-lg border text-left transition-all ${selectedTone === tone.value
+                                ? "border-[#9ACD32] bg-[#9ACD32]/10"
+                                : "border-border hover:bg-muted/50"
                                 }`}
                         >
-                            <span className="mr-1">{tone.emoji}</span>
-                            {tone.label}
+                            <span className="font-medium text-foreground text-sm">{tone.label}</span>
+                            <p className="text-xs text-muted-foreground">{tone.description}</p>
                         </button>
                     ))}
                 </div>
@@ -168,103 +361,147 @@ function PurposeStep({
 function DetailsStep({
     selectedLength,
     additionalDetails,
-    sampleImage,
+    callToAction,
+    painPoints,
+    uniqueValue,
+    selectedPurpose,
     onSelectLength,
     onDetailsChange,
-    onImageUpload,
-    onImageRemove,
+    onCtaChange,
+    onPainPointsChange,
+    onUniqueValueChange,
 }: {
     selectedLength: TemplateLength | null;
     additionalDetails: string;
-    sampleImage: string | null;
+    callToAction: string;
+    painPoints: string;
+    uniqueValue: string;
+    selectedPurpose: TemplatePurpose | null;
     onSelectLength: (length: TemplateLength) => void;
     onDetailsChange: (details: string) => void;
-    onImageUpload: (file: File) => void;
-    onImageRemove: () => void;
+    onCtaChange: (cta: string) => void;
+    onPainPointsChange: (value: string) => void;
+    onUniqueValueChange: (value: string) => void;
 }) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const suggestions = selectedPurpose ? PROMPT_SUGGESTIONS[selectedPurpose] : [];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             {/* Length */}
             <div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">How long?</h3>
-                <p className="text-sm text-muted-foreground mb-4">Select the desired length</p>
-                <div className="flex gap-3">
+                <h3 className="text-base font-semibold text-foreground mb-2">Template Length</h3>
+                <div className="flex gap-2">
                     {TEMPLATE_LENGTHS.map((length) => (
                         <button
                             key={length.value}
                             onClick={() => onSelectLength(length.value)}
-                            className={`flex-1 p-4 rounded-xl border-2 text-center transition-all ${selectedLength === length.value
-                                    ? "border-[#9ACD32] bg-[#9ACD32]/10"
-                                    : "border-border hover:bg-muted/50"
+                            className={`flex-1 p-3 rounded-xl border-2 text-center transition-all ${selectedLength === length.value
+                                ? "border-[#9ACD32] bg-[#9ACD32]/10"
+                                : "border-border hover:bg-muted/50"
                                 }`}
                         >
-                            <span className="font-medium text-foreground">{length.label}</span>
-                            <p className="text-xs text-muted-foreground mt-1">{length.description}</p>
+                            <span className="font-medium text-foreground text-sm">{length.label}</span>
+                            <p className="text-xs text-muted-foreground mt-0.5">{length.description}</p>
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Additional Details */}
+            {/* Call to Action */}
             <div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">Additional details</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                    Add any specific instructions or context (optional)
-                </p>
-                <textarea
-                    value={additionalDetails}
-                    onChange={(e) => onDetailsChange(e.target.value)}
-                    placeholder="E.g., Include a discount code, mention our new product launch, target tech startups..."
-                    rows={4}
-                    className="w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <RocketLaunchIcon className="w-4 h-4" />
+                    Call to Action
+                </label>
+                <select
+                    value={callToAction}
+                    onChange={(e) => onCtaChange(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                >
+                    <option value="">Select a call to action...</option>
+                    {CTA_OPTIONS.map((cta) => (
+                        <option key={cta.value} value={cta.value}>{cta.label}</option>
+                    ))}
+                </select>
+                {callToAction && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                        Example: "{CTA_OPTIONS.find(c => c.value === callToAction)?.example}"
+                    </p>
+                )}
+            </div>
+
+            {/* Pain Points */}
+            <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <ChatBubbleBottomCenterTextIcon className="w-4 h-4" />
+                    Pain Points to Address
+                    <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <input
+                    type="text"
+                    value={painPoints}
+                    onChange={(e) => onPainPointsChange(e.target.value)}
+                    placeholder="e.g., Time-consuming manual tasks, lack of visibility, high costs"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
             </div>
 
-            {/* Sample Image Upload */}
+            {/* Unique Value */}
             <div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                    Sample screenshot <span className="text-muted-foreground font-normal">(optional)</span>
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                    Upload a screenshot of a template style you like for reference
-                </p>
-
-                {sampleImage ? (
-                    <div className="relative rounded-xl border border-border overflow-hidden">
-                        <img
-                            src={sampleImage}
-                            alt="Sample"
-                            className="w-full max-h-48 object-contain bg-muted/30"
-                        />
-                        <button
-                            onClick={onImageRemove}
-                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/90 text-red-500 hover:bg-background transition-colors"
-                        >
-                            <XMarkIcon className="w-4 h-4" />
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-full p-8 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-muted/30 transition-all"
-                    >
-                        <PhotoIcon className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Click to upload image</p>
-                    </button>
-                )}
-
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <SparklesIcon className="w-4 h-4" />
+                    Unique Value / Key Benefit
+                    <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                </label>
                 <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) onImageUpload(file);
-                    }}
+                    type="text"
+                    value={uniqueValue}
+                    onChange={(e) => onUniqueValueChange(e.target.value)}
+                    placeholder="e.g., 50% time savings, AI-powered automation, 24/7 support"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
+            </div>
+
+            {/* Additional Details with Suggestions */}
+            <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
+                    <PencilSquareIcon className="w-4 h-4" />
+                    Additional Instructions
+                    <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <textarea
+                    value={additionalDetails}
+                    onChange={(e) => onDetailsChange(e.target.value)}
+                    placeholder="Any specific details, context, or requirements..."
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                />
+
+                {/* Smart Suggestions */}
+                {suggestions.length > 0 && (
+                    <div className="mt-3">
+                        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                            <LightBulbIcon className="w-3.5 h-3.5" />
+                            Pro tips for {selectedPurpose} templates:
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {suggestions.map((suggestion, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => {
+                                        const newDetails = additionalDetails
+                                            ? `${additionalDetails}\n- ${suggestion}`
+                                            : `- ${suggestion}`;
+                                        onDetailsChange(newDetails);
+                                    }}
+                                    className="text-xs px-2.5 py-1 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    + {suggestion}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -394,7 +631,7 @@ export default function AITemplateGeneratorModal({
     onClose,
     onSave,
 }: AITemplateGeneratorModalProps) {
-    const STEPS: WizardStep[] = ["type", "purpose", "details", "preview"];
+    const STEPS: WizardStep[] = ["type", "context", "purpose", "details", "preview"];
 
     const [currentStep, setCurrentStep] = useState<WizardStep>("type");
     const [selectedType, setSelectedType] = useState<TemplateType | null>(null);
@@ -402,7 +639,15 @@ export default function AITemplateGeneratorModal({
     const [selectedTone, setSelectedTone] = useState<TemplateTone | null>(null);
     const [selectedLength, setSelectedLength] = useState<TemplateLength | null>(null);
     const [additionalDetails, setAdditionalDetails] = useState("");
-    const [sampleImage, setSampleImage] = useState<string | null>(null);
+
+    // New context fields
+    const [industry, setIndustry] = useState("");
+    const [targetAudience, setTargetAudience] = useState("");
+    const [companyName, setCompanyName] = useState("");
+    const [productService, setProductService] = useState("");
+    const [callToAction, setCallToAction] = useState("");
+    const [painPoints, setPainPoints] = useState("");
+    const [uniqueValue, setUniqueValue] = useState("");
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [generated, setGenerated] = useState<GeneratedTemplate | null>(null);
@@ -412,6 +657,8 @@ export default function AITemplateGeneratorModal({
         switch (currentStep) {
             case "type":
                 return selectedType !== null;
+            case "context":
+                return true; // Context is optional but helpful
             case "purpose":
                 return selectedPurpose !== null && selectedTone !== null;
             case "details":
@@ -455,7 +702,13 @@ export default function AITemplateGeneratorModal({
             tone: selectedTone,
             length: selectedLength,
             additionalDetails: additionalDetails || undefined,
-            sampleImage: sampleImage || undefined,
+            industry: industry || undefined,
+            targetAudience: targetAudience || undefined,
+            companyName: companyName || undefined,
+            productService: productService || undefined,
+            callToAction: callToAction || undefined,
+            painPoints: painPoints || undefined,
+            uniqueValue: uniqueValue || undefined,
         });
 
         setIsGenerating(false);
@@ -464,15 +717,6 @@ export default function AITemplateGeneratorModal({
             setGenerated(result.data.generated);
         } else {
             setError(result.error || "Failed to generate template");
-        }
-    };
-
-    const handleImageUpload = async (file: File) => {
-        try {
-            const base64 = await fileToBase64(file);
-            setSampleImage(base64);
-        } catch (err) {
-            console.error("Failed to read image:", err);
         }
     };
 
@@ -498,26 +742,37 @@ export default function AITemplateGeneratorModal({
         setSelectedTone(null);
         setSelectedLength(null);
         setAdditionalDetails("");
-        setSampleImage(null);
+        setIndustry("");
+        setTargetAudience("");
+        setCompanyName("");
+        setProductService("");
+        setCallToAction("");
+        setPainPoints("");
+        setUniqueValue("");
         setGenerated(null);
         setError(null);
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={currentStep}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="relative w-full max-w-2xl max-h-[90vh] overflow-auto bg-card border border-border rounded-2xl shadow-2xl mx-4"
-                >
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-50 flex justify-end">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute inset-0 bg-black/50"
+                        onClick={handleClose}
+                    />
+                    <motion.div
+                        initial={{ x: "100%" }}
+                        animate={{ x: 0 }}
+                        exit={{ x: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        className="relative w-full max-w-xl h-full overflow-auto bg-card border-l border-border shadow-2xl"
+                    >
                     {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-border">
                         <div className="flex items-center gap-3">
@@ -547,9 +802,21 @@ export default function AITemplateGeneratorModal({
                     </div>
 
                     {/* Content */}
-                    <div className="p-6 min-h-[400px]">
+                    <div className="p-6 min-h-[400px] overflow-y-auto">
                         {currentStep === "type" && (
                             <TypeStep selectedType={selectedType} onSelect={setSelectedType} />
+                        )}
+                        {currentStep === "context" && (
+                            <ContextStep
+                                industry={industry}
+                                targetAudience={targetAudience}
+                                companyName={companyName}
+                                productService={productService}
+                                onIndustryChange={setIndustry}
+                                onAudienceChange={setTargetAudience}
+                                onCompanyChange={setCompanyName}
+                                onProductChange={setProductService}
+                            />
                         )}
                         {currentStep === "purpose" && (
                             <PurposeStep
@@ -563,11 +830,15 @@ export default function AITemplateGeneratorModal({
                             <DetailsStep
                                 selectedLength={selectedLength}
                                 additionalDetails={additionalDetails}
-                                sampleImage={sampleImage}
+                                callToAction={callToAction}
+                                painPoints={painPoints}
+                                uniqueValue={uniqueValue}
+                                selectedPurpose={selectedPurpose}
                                 onSelectLength={setSelectedLength}
                                 onDetailsChange={setAdditionalDetails}
-                                onImageUpload={handleImageUpload}
-                                onImageRemove={() => setSampleImage(null)}
+                                onCtaChange={setCallToAction}
+                                onPainPointsChange={setPainPoints}
+                                onUniqueValueChange={setUniqueValue}
                             />
                         )}
                         {currentStep === "preview" && (
@@ -629,8 +900,9 @@ export default function AITemplateGeneratorModal({
                             )}
                         </div>
                     </div>
-                </motion.div>
-            </AnimatePresence>
-        </div>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
     );
 }

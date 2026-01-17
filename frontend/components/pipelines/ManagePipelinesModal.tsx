@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { Fragment, useState, useEffect } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import {
@@ -10,7 +9,7 @@ import {
   CheckCircleIcon,
   ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
-import { useForm } from "react-hook-form";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -339,7 +338,7 @@ export default function ManagePipelinesModal({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                       >
-                        <PipelineForm form={createForm as any} />
+                      <PipelineForm form={createForm} />
                       </motion.div>
                     )}
 
@@ -351,7 +350,7 @@ export default function ManagePipelinesModal({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                       >
-                        <PipelineForm form={editForm as any} isEdit />
+                        <PipelineForm form={editForm} isEdit />
                       </motion.div>
                     )}
 

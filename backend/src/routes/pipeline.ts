@@ -63,6 +63,14 @@ router.post(
         order: stage.order !== undefined ? stage.order : index,
       }));
 
+      // If creating as default, remove default from other pipelines first
+      if (validatedData.isDefault === true) {
+        await Pipeline.updateMany(
+          { workspaceId, isDefault: true },
+          { isDefault: false }
+        );
+      }
+
       // Create pipeline
       const pipeline = await Pipeline.create({
         ...validatedData,
@@ -129,10 +137,10 @@ router.get(
       const limit = parseInt(queryParams.limit);
       const skip = (page - 1) * limit;
 
-      // Build filter
-      const filter: any = { workspaceId };
-      if (queryParams.isActive) {
-        filter.isActive = queryParams.isActive === "true";
+      // Build filter - exclude inactive pipelines by default
+      const filter: any = { workspaceId, isActive: true };
+      if (queryParams.isActive === "false") {
+        filter.isActive = false;
       }
 
       // Get pipelines with pagination
@@ -249,6 +257,14 @@ router.patch(
 
       // Validate input
       const validatedData = updatePipelineSchema.parse(req.body);
+
+      // If setting as default, remove default from other pipelines first
+      if (validatedData.isDefault === true) {
+        await Pipeline.updateMany(
+          { workspaceId, _id: { $ne: id }, isDefault: true },
+          { isDefault: false }
+        );
+      }
 
       // Update pipeline
       const pipeline = await Pipeline.findOneAndUpdate(
