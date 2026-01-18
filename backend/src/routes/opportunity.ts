@@ -539,7 +539,7 @@ router.patch(
       const validatedData = updateOpportunitySchema.parse(req.body);
 
       // Clean data: convert empty strings to undefined for optional ObjectId fields
-      const cleanedData = {
+      const cleanedData: Record<string, any> = {
         ...validatedData,
         contactId: validatedData.contactId || undefined,
         companyId: validatedData.companyId || undefined,

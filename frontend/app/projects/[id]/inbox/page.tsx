@@ -658,8 +658,8 @@ export default function InboxPage() {
                                     <div className="max-w-3xl mx-auto space-y-4">
                                         {/* Show all messages in conversation */}
                                         {(selectedConversation?.messages || (selectedMessage ? [selectedMessage] : [])).map((msg, idx) => {
-                                            const isFromYou = !msg.replied && msg.fromEmail !== (selectedConversation?.contactEmail || getContactEmail(selectedMessage!));
-                                            const isReply = msg.replied && msg.replyBody;
+                                            const isFromYou = !msg.repliedAt && msg.fromEmail !== (selectedConversation?.contactEmail || getContactEmail(selectedMessage!));
+                                            const isReply = msg.repliedAt && msg.replyBody;
 
                                             return (
                                                 <div key={msg._id || idx}>

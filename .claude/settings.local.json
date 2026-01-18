@@ -84,7 +84,16 @@
       "Bash(npm test:*)",
       "Bash(npx eslint:*)",
       "Bash(npx --prefix \"C:\\\\app\\\\morrisB\\\\frontend\" tsc:*)",
-      "Bash(npx --prefix \"C:\\\\app\\\\morrisB\\\\backend\" tsc --noEmit)"
+      "Bash(npx --prefix \"C:\\\\app\\\\morrisB\\\\backend\" tsc --noEmit)",
+      "Bash(npm cache clean:*)",
+      "Bash(npm --version:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npx npm-check-updates:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm install\" 2>&1:*)",
+      "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm audit\":*)",
+      "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm run build\":*)"
     ],
     "deny": [],
     "ask": []

@@ -49,7 +49,7 @@ const connectDB = async (): Promise<typeof mongoose> => {
       retryWrites: true,
       retryReads: true,
       maxIdleTimeMS: 60000, // Close idle connections after 60s
-      compressors: ['zlib'], // Enable compression for large payloads
+      compressors: ['zlib'] as ('zlib' | 'none' | 'snappy' | 'zstd')[], // Enable compression for large payloads
     };
 
     console.log("🔄 Creating new database connection...");

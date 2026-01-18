@@ -6,6 +6,7 @@
  */
 
 import { Queue, Worker } from 'bullmq';
+import mongoose from 'mongoose';
 import { defaultQueueOptions, defaultWorkerOptions } from '../events/queue/queue.config';
 import {
     queueReadySequenceEnrollments,
@@ -60,6 +61,13 @@ const sequenceSchedulerWorker = new Worker(
     'sequence-scheduler',
     async (job) => {
         console.log(`📧 Running sequence scheduler job ${job.id}`);
+
+        // Wait for database connection before processing
+        if (mongoose.connection.readyState !== 1) {
+            console.log('⏳ Waiting for database connection...');
+            // Skip this run, will retry on next scheduled interval
+            return { queued: 0, skipped: 0, reason: 'database_not_ready' };
+        }
 
         try {
             const result = await queueReadySequenceEnrollments(200);
