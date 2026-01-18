@@ -15,8 +15,8 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateWorkspaceAccess } from '../middleware/workspace';
-import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent } from '../controllers/agentController';
-import { createAgentSchema, updateAgentSchema, duplicateAgentSchema } from '../validations/agentValidation';
+import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus } from '../controllers/agentController';
+import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
 const router = express.Router();
@@ -27,12 +27,6 @@ const router = express.Router();
 const validate = (schema: any) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // Debug logging
-      console.log('=== VALIDATION DEBUG ===');
-      console.log('req.body:', JSON.stringify(req.body));
-      console.log('req.params:', JSON.stringify(req.params));
-      console.log('========================');
-
       await schema.parseAsync({
         body: req.body,
         query: req.query,
@@ -40,10 +34,6 @@ const validate = (schema: any) => {
       });
       next();
     } catch (error: any) {
-      console.log('=== VALIDATION ERROR ===');
-      console.log('Zod errors:', JSON.stringify(error.errors));
-      console.log('========================');
-
       res.status(400).json({
         success: false,
         error: 'Validation failed',
@@ -119,4 +109,18 @@ router.post(
   duplicateAgent
 );
 
+/**
+ * @route PATCH /api/workspaces/:workspaceId/agents/:agentId/status
+ * @desc Update agent status (Draft, Live, Paused) (Story 1.9)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+router.patch(
+  '/workspaces/:workspaceId/agents/:agentId/status',
+  authenticate,
+  validateWorkspaceAccess,
+  validate(updateAgentStatusSchema),
+  updateAgentStatus
+);
+
 export default router;
+

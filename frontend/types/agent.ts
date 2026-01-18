@@ -235,3 +235,50 @@ export interface DuplicateAgentResponse {
   success: boolean;
   agent: IAgent;
 }
+
+// Story 1.9: Agent status types
+export type AgentStatus = 'Draft' | 'Live' | 'Paused';
+
+// Story 1.9: Update agent status input
+export interface UpdateAgentStatusInput {
+  status: AgentStatus;
+}
+
+// Story 1.9: Update agent status response
+export interface UpdateAgentStatusResponse {
+  success: boolean;
+  agent: IAgent;
+}
+
+// Story 1.9: Status validation error response
+export interface StatusValidationErrorResponse {
+  success: false;
+  error: string;
+  validationErrors: {
+    field: string;
+    message: string;
+  }[];
+}
+
+// Story 1.9: Status display info
+export const AGENT_STATUS_INFO = {
+  Draft: {
+    label: 'Draft',
+    color: 'bg-zinc-500',
+    description: 'Agent is in development. Only manual testing available.',
+    icon: 'edit'
+  },
+  Live: {
+    label: 'Live',
+    color: 'bg-emerald-500',
+    description: 'Agent is active and executing automatically.',
+    icon: 'play'
+  },
+  Paused: {
+    label: 'Paused',
+    color: 'bg-amber-500',
+    description: 'Agent is temporarily stopped. Resume to continue.',
+    icon: 'pause'
+  }
+} as const;
+

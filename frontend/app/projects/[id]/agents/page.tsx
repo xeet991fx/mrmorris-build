@@ -103,6 +103,14 @@ export default function AgentsPage() {
                       // Add new agent to list and refresh
                       setAgents((prev) => [newAgent, ...prev]);
                     }}
+                    onStatusChange={(updatedAgent) => {
+                      // Update agent in list with new status
+                      setAgents((prev) =>
+                        prev.map((a) =>
+                          a._id === updatedAgent._id ? updatedAgent : a
+                        )
+                      );
+                    }}
                   />
                 </motion.div>
               ))}

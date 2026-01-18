@@ -8,14 +8,17 @@ import { useRouter } from 'next/navigation';
 import { ClockIcon, BoltIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 import { Copy } from 'lucide-react';
 import { DuplicateAgentModal } from './DuplicateAgentModal';
+import { AgentStatusBadge } from './AgentStatusBadge';
+import { AgentStatusControls } from './AgentStatusControls';
 
 interface AgentCardProps {
   agent: IAgent;
   workspaceId: string;
   onDuplicate?: (newAgent: IAgent) => void;
+  onStatusChange?: (updatedAgent: IAgent) => void;
 }
 
-export function AgentCard({ agent, workspaceId, onDuplicate }: AgentCardProps) {
+export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange }: AgentCardProps) {
   const router = useRouter();
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -36,23 +39,12 @@ export function AgentCard({ agent, workspaceId, onDuplicate }: AgentCardProps) {
     };
   }, [showMenu]);
 
-  const getStatusStyles = (status: string) => {
-    switch (status) {
-      case 'Live':
-        return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
-      case 'Paused':
-        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400';
-      default:
-        return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400';
-    }
-  };
-
   const triggerCount = agent.triggers?.length || 0;
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Prevent navigation if clicking on menu or its children
     const target = e.target as HTMLElement;
-    if (target.closest('[data-menu-trigger]') || target.closest('[data-menu-content]')) {
+    if (target.closest('[data-menu-trigger]') || target.closest('[data-menu-content]') || target.closest('[data-status-controls]')) {
       return;
     }
     router.push(`/projects/${workspaceId}/agents/${agent._id}`);
@@ -82,9 +74,8 @@ export function AgentCard({ agent, workspaceId, onDuplicate }: AgentCardProps) {
             {agent.name}
           </h3>
           <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusStyles(agent.status)}`}>
-              {agent.status}
-            </span>
+            {/* Story 1.9: Use AgentStatusBadge instead of inline styling */}
+            <AgentStatusBadge status={agent.status} size="sm" />
             <div className="relative" ref={menuRef}>
               <button
                 data-menu-trigger
@@ -118,6 +109,16 @@ export function AgentCard({ agent, workspaceId, onDuplicate }: AgentCardProps) {
           {agent.goal}
         </p>
 
+        {/* Story 1.9: Status Controls */}
+        <div className="mb-4" data-status-controls onClick={(e) => e.stopPropagation()}>
+          <AgentStatusControls
+            agent={agent}
+            workspaceId={workspaceId}
+            onStatusChange={onStatusChange}
+            variant="compact"
+          />
+        </div>
+
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-1.5 text-zinc-400">
@@ -146,6 +147,3 @@ export function AgentCard({ agent, workspaceId, onDuplicate }: AgentCardProps) {
     </>
   );
 }
-
-
-

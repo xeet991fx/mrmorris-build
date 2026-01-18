@@ -50,7 +50,7 @@ development_status:
   1-6-set-approval-requirements: done
   1-7-edit-existing-agent: review
   1-8-duplicate-agent: done
-  1-9-manage-agent-status: backlog
+  1-9-manage-agent-status: done
   1-10-delete-agent: backlog
   1-11-list-all-workspace-agents: backlog
   epic-1-retrospective: optional

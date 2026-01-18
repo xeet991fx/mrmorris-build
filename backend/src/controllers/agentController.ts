@@ -499,3 +499,136 @@ export const duplicateAgent = async (req: Request, res: Response): Promise<void>
   }
 };
 
+/**
+ * @route PATCH /api/workspaces/:workspaceId/agents/:agentId/status
+ * @desc Update agent status (Draft, Live, Paused)
+ * @access Private (requires authentication, workspace access, and Owner/Admin role)
+ */
+export const updateAgentStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const { status } = req.body;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Story 1.9: RBAC Check - Must be Owner or Admin to change agent status
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+      return;
+    }
+
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+
+    if (!isWorkspaceCreator) {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to change agent status"
+        });
+        return;
+      }
+    }
+
+    // Find agent with workspace filter for security
+    const agent = await Agent.findOne({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!agent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // Validate status transition
+    const currentStatus = agent.status;
+    const validationErrors: { field: string; message: string }[] = [];
+
+    // Story 1.9: Block Draft → Paused transition (must go Live first)
+    if (status === 'Paused' && currentStatus === 'Draft') {
+      res.status(400).json({
+        success: false,
+        error: 'Cannot pause a Draft agent. Publish to Live first.'
+      });
+      return;
+    }
+
+    // Validation for transitioning TO Live status
+    if (status === 'Live' && currentStatus !== 'Live') {
+      // Check required fields
+      if (!agent.name || agent.name.trim() === '') {
+        validationErrors.push({ field: 'name', message: 'Agent name is required to go Live' });
+      }
+      if (!agent.goal || agent.goal.trim() === '') {
+        validationErrors.push({ field: 'goal', message: 'Agent goal is required to go Live' });
+      }
+      if (!agent.triggers || agent.triggers.length === 0) {
+        validationErrors.push({ field: 'triggers', message: 'At least one trigger is required to go Live' });
+      }
+      if (!agent.instructions || agent.instructions.trim() === '') {
+        validationErrors.push({ field: 'instructions', message: 'Instructions are required to go Live' });
+      }
+
+      if (validationErrors.length > 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Cannot activate agent: Missing required fields',
+          validationErrors
+        });
+        return;
+      }
+    }
+
+    // Update agent status
+    agent.status = status;
+    agent.updatedBy = userId;
+    await agent.save();
+
+    res.status(200).json({
+      success: true,
+      agent: {
+        _id: agent._id,
+        workspace: agent.workspace,
+        name: agent.name,
+        goal: agent.goal,
+        status: agent.status,
+        createdBy: agent.createdBy,
+        updatedBy: agent.updatedBy,
+        createdAt: agent.createdAt,
+        updatedAt: agent.updatedAt,
+        triggers: agent.triggers || [],
+        instructions: agent.instructions || null,
+        restrictions: agent.restrictions || RESTRICTIONS_DEFAULTS,
+        memory: agent.memory || MEMORY_DEFAULTS,
+        approvalConfig: agent.approvalConfig || APPROVAL_DEFAULTS
+      }
+    });
+  } catch (error: any) {
+    console.error('Error updating agent status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update agent status'
+    });
+  }
+};
+

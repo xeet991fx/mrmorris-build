@@ -242,3 +242,14 @@ export const duplicateAgentSchema = z.object({
 
 export type DuplicateAgentInput = z.infer<typeof duplicateAgentSchema>['body'];
 
+// Story 1.9: Update agent status validation schema
+export const updateAgentStatusSchema = z.object({
+  body: z.object({
+    status: z.enum(['Draft', 'Live', 'Paused'], {
+      errorMap: () => ({ message: "Status must be 'Draft', 'Live', or 'Paused'" })
+    })
+  })
+});
+
+export type UpdateAgentStatusInput = z.infer<typeof updateAgentStatusSchema>['body'];
+
