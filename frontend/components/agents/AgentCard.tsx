@@ -6,8 +6,9 @@ import { IAgent } from '@/types/agent';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { ClockIcon, BoltIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
-import { Copy } from 'lucide-react';
+import { Copy, Trash2 } from 'lucide-react';
 import { DuplicateAgentModal } from './DuplicateAgentModal';
+import { DeleteAgentModal } from './DeleteAgentModal';
 import { AgentStatusBadge } from './AgentStatusBadge';
 import { AgentStatusControls } from './AgentStatusControls';
 
@@ -16,11 +17,13 @@ interface AgentCardProps {
   workspaceId: string;
   onDuplicate?: (newAgent: IAgent) => void;
   onStatusChange?: (updatedAgent: IAgent) => void;
+  onDelete?: () => void;
 }
 
-export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange }: AgentCardProps) {
+export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange, onDelete }: AgentCardProps) {
   const router = useRouter();
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +64,12 @@ export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange }: A
     setShowDuplicateModal(true);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    setShowDeleteModal(true);
+  };
+
   return (
     <>
       <motion.div
@@ -97,6 +106,14 @@ export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange }: A
                   >
                     <Copy className="w-4 h-4" />
                     Duplicate
+                  </button>
+                  <button
+                    onClick={handleDeleteClick}
+                    data-testid={`delete-agent-${agent._id}`}
+                    className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
                   </button>
                 </div>
               )}
@@ -143,6 +160,15 @@ export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange }: A
         agent={agent}
         workspaceId={workspaceId}
         onSuccess={onDuplicate}
+      />
+
+      {/* Delete Agent Modal */}
+      <DeleteAgentModal
+        open={showDeleteModal}
+        onOpenChange={setShowDeleteModal}
+        agent={agent}
+        workspaceId={workspaceId}
+        onSuccess={onDelete}
       />
     </>
   );

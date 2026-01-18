@@ -260,6 +260,12 @@ export interface StatusValidationErrorResponse {
   }[];
 }
 
+// Story 1.10: Delete agent response
+export interface DeleteAgentResponse {
+  success: boolean;
+  message: string;
+}
+
 // Story 1.9: Status display info
 export const AGENT_STATUS_INFO = {
   Draft: {

@@ -72,7 +72,6 @@ export function AgentStatusControls({
 
     const renderStatusButton = () => {
         const { status } = agent;
-        const isCompact = variant === 'compact';
 
         // Pill button base styles
         const pillBase = "inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all disabled:opacity-50";

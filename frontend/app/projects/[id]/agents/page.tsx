@@ -111,6 +111,10 @@ export default function AgentsPage() {
                         )
                       );
                     }}
+                    onDelete={() => {
+                      // Remove deleted agent from list
+                      setAgents((prev) => prev.filter((a) => a._id !== agent._id));
+                    }}
                   />
                 </motion.div>
               ))}

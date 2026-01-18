@@ -6,16 +6,18 @@
  * This file contains routes specific to the new Agent Builder feature (Epic 1).
  *
  * Routes:
- * - POST   /api/workspaces/:workspaceId/agents          Create agent
- * - GET    /api/workspaces/:workspaceId/agents          List agents
- * - GET    /api/workspaces/:workspaceId/agents/:agentId Get agent
- * - PUT    /api/workspaces/:workspaceId/agents/:agentId Update agent
+ * - POST   /api/workspaces/:workspaceId/agents                   Create agent
+ * - GET    /api/workspaces/:workspaceId/agents                   List agents
+ * - GET    /api/workspaces/:workspaceId/agents/:agentId          Get agent
+ * - PUT    /api/workspaces/:workspaceId/agents/:agentId          Update agent
  * - POST   /api/workspaces/:workspaceId/agents/:agentId/duplicate  Duplicate agent (Story 1.8)
+ * - PATCH  /api/workspaces/:workspaceId/agents/:agentId/status   Update agent status (Story 1.9)
+ * - DELETE /api/workspaces/:workspaceId/agents/:agentId          Delete agent (Story 1.10)
  */
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateWorkspaceAccess } from '../middleware/workspace';
-import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus } from '../controllers/agentController';
+import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus, deleteAgent } from '../controllers/agentController';
 import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
@@ -120,6 +122,18 @@ router.patch(
   validateWorkspaceAccess,
   validate(updateAgentStatusSchema),
   updateAgentStatus
+);
+
+/**
+ * @route DELETE /api/workspaces/:workspaceId/agents/:agentId
+ * @desc Delete an agent from the workspace
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+router.delete(
+  '/workspaces/:workspaceId/agents/:agentId',
+  authenticate,
+  validateWorkspaceAccess,
+  deleteAgent
 );
 
 export default router;

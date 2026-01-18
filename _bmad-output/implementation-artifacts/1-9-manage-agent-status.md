@@ -1057,12 +1057,14 @@ Amelia (BMad Dev Agent) - dev-story workflow
 - `frontend/types/agent.ts`
 - `frontend/lib/api/agents.ts`
 - `frontend/components/agents/AgentCard.tsx`
+- `frontend/components/agents/AgentStatusControls.tsx`
 - `frontend/app/projects/[id]/agents/page.tsx`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 #### New:
 - `frontend/components/agents/AgentStatusBadge.tsx`
 - `frontend/components/agents/AgentStatusControls.tsx`
+- `backend/src/tests/agentStatus.test.ts`
 
 ### Code Review Fixes Applied
 
@@ -1071,3 +1073,10 @@ Amelia (BMad Dev Agent) - dev-story workflow
 3. **MEDIUM FIX**: Removed debug console.log statements from `agentBuilder.ts` validation middleware
 4. **LOW FIX**: Removed unused imports (Play, Pause, Edit) from `AgentCard.tsx`
 5. **DOCS FIX**: Added `sprint-status.yaml` to File List
+
+### Code Review #2 Fixes Applied
+
+6. **HIGH FIX**: Created `backend/src/tests/agentStatus.test.ts` with 9 comprehensive unit tests covering all status transitions, validation errors, and updatedBy tracking
+7. **MEDIUM FIX**: Updated route documentation header in `agentBuilder.ts` to include PATCH /status and DELETE routes
+8. **LOW FIX**: Removed unused `isCompact` variable in `AgentStatusControls.tsx`
+

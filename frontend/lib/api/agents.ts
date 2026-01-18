@@ -9,7 +9,8 @@ import {
   DuplicateAgentInput,
   DuplicateAgentResponse,
   UpdateAgentStatusInput,
-  UpdateAgentStatusResponse
+  UpdateAgentStatusResponse,
+  DeleteAgentResponse
 } from '@/types/agent';
 
 /**
@@ -104,4 +105,17 @@ export const updateAgentStatus = async (
     }
     throw error;
   }
+};
+
+/**
+ * Delete an agent (Story 1.10)
+ */
+export const deleteAgent = async (
+  workspaceId: string,
+  agentId: string
+): Promise<DeleteAgentResponse> => {
+  const response = await axios.delete(
+    `/workspaces/${workspaceId}/agents/${agentId}`
+  );
+  return response.data;
 };

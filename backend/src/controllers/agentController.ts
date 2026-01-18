@@ -632,3 +632,79 @@ export const updateAgentStatus = async (req: Request, res: Response): Promise<vo
   }
 };
 
+/**
+ * @route DELETE /api/workspaces/:workspaceId/agents/:agentId
+ * @desc Delete an agent from the workspace
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+export const deleteAgent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Story 1.10: RBAC Check - Must be Owner or Admin to delete agents
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+      return;
+    }
+
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+
+    if (!isWorkspaceCreator) {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to delete agents"
+        });
+        return;
+      }
+    }
+
+    // Find and delete agent with workspace filter for security
+    const agent = await Agent.findOneAndDelete({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!agent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // TODO (Future Epic 3): Cancel scheduled BullMQ jobs for this agent
+    // TODO (Future Epic 3): Mark execution logs with agentDeleted: true
+
+    res.status(200).json({
+      success: true,
+      message: 'Agent deleted successfully'
+    });
+  } catch (error: any) {
+    console.error('Error deleting agent:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete agent'
+    });
+  }
+};
+
