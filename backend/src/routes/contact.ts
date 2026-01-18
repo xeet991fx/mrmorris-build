@@ -16,6 +16,7 @@ import { aiDataExtractor } from "../services/AIDataExtractor";
 import { eventPublisher } from "../events/publisher/EventPublisher";
 import { CONTACT_EVENTS } from "../events/types/contact.events";
 import { escapeRegex } from "../utils/sanitize";
+import { logger } from "../utils/logger";
 
 const router = express.Router();
 
@@ -80,9 +81,9 @@ router.post(
           currentScore: leadScore.currentScore,
           grade: leadScore.grade,
         };
-        console.log(`📊 Lead score initialized for contact ${contactDoc._id}: ${leadScore.currentScore} (${leadScore.grade})`);
+        logger.debug("Lead score initialized for contact", { contactId: contactDoc._id, score: leadScore.currentScore, grade: leadScore.grade });
       } catch (leadErr) {
-        console.error("Failed to initialize lead score:", leadErr);
+        logger.error("Failed to initialize lead score", { error: leadErr });
         // Don't fail contact creation if lead score init fails
       }
 
@@ -108,11 +109,11 @@ router.post(
           userId: (req.user?._id as any)?.toString(),
           source: 'api',
         }
-      ).catch(err => console.error('Event publish error:', err));
+      ).catch(err => logger.error("Event publish error", { error: err }));
 
       // Trigger workflow enrollment (async, don't wait) - kept for backward compatibility
       workflowService.checkAndEnroll("contact:created", contactDoc, workspaceId)
-        .catch((err) => console.error("Workflow enrollment error:", err));
+        .catch((err) => logger.error("Workflow enrollment error", { error: err }));
 
       res.status(201).json({
         success: true,
@@ -130,7 +131,7 @@ router.post(
         });
       }
 
-      console.error("Create contact error:", error);
+      logger.error("Create contact error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to create contact. Please try again.",
@@ -266,7 +267,7 @@ router.get(
         });
       }
 
-      console.error("Get contacts error:", error);
+      logger.error("Get contacts error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to fetch contacts. Please try again.",
@@ -337,7 +338,7 @@ router.get(
         });
       }
 
-      console.error("Get contact error:", error);
+      logger.error("Get contact error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to fetch contact. Please try again.",
@@ -447,7 +448,7 @@ router.patch(
             });
           }
         } catch (activityError) {
-          console.error("Failed to log contact linking activity:", activityError);
+          logger.error("Failed to log contact linking activity", { error: activityError });
         }
       }
 
@@ -474,7 +475,7 @@ router.patch(
         });
       }
 
-      console.error("Update contact error:", error);
+      logger.error("Update contact error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to update contact. Please try again.",
@@ -541,7 +542,7 @@ router.delete(
         },
       });
     } catch (error: any) {
-      console.error("Bulk delete contacts error:", error);
+      logger.error("Bulk delete contacts error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to delete contacts. Please try again.",
@@ -604,7 +605,7 @@ router.delete(
         });
       }
 
-      console.error("Delete contact error:", error);
+      logger.error("Delete contact error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to delete contact. Please try again.",
@@ -674,7 +675,7 @@ router.post(
         });
       }
 
-      console.log(`📤 Previewing file: ${file.originalname} (${file.mimetype})`);
+      logger.debug("Previewing file", { filename: file.originalname, mimetype: file.mimetype });
 
       // Parse the file
       const parseResult = await fileParserService.parseFile(
@@ -683,7 +684,7 @@ router.post(
         file.originalname
       );
 
-      console.log(`📊 Parsed ${parseResult.rowCount} rows from file`);
+      logger.debug("Parsed rows from file", { rowCount: parseResult.rowCount });
 
       // Get AI column mappings
       const extractionResult = await aiDataExtractor.extractContacts(parseResult);
@@ -727,7 +728,7 @@ router.post(
         },
       });
     } catch (error: any) {
-      console.error("Preview contacts error:", error);
+      logger.error("Preview contacts error", { error: error.message });
       res.status(500).json({
         success: false,
         error: error.message || "Failed to analyze file. Please try again.",
@@ -773,7 +774,7 @@ router.post(
         });
       }
 
-      console.log(`📤 Processing file upload: ${file.originalname} (${file.mimetype})`);
+      logger.debug("Processing file upload", { filename: file.originalname, mimetype: file.mimetype });
 
       // Parse the file
       const parseResult = await fileParserService.parseFile(
@@ -782,12 +783,12 @@ router.post(
         file.originalname
       );
 
-      console.log(`📊 Parsed ${parseResult.rowCount} rows from file`);
+      logger.debug("Parsed rows from file", { rowCount: parseResult.rowCount });
 
       // Extract contacts using AI
       const extractionResult = await aiDataExtractor.extractContacts(parseResult);
 
-      console.log(`🤖 AI extracted ${extractionResult.validRows} valid contacts`);
+      logger.debug("AI extracted valid contacts", { validRows: extractionResult.validRows });
 
       // Import contacts with duplicate detection
       const results = {
@@ -857,7 +858,7 @@ router.post(
           try {
             await LeadScore.getOrCreate(workspaceId, (contact._id as any).toString());
           } catch (leadErr) {
-            console.error("Failed to initialize lead score:", leadErr);
+            logger.error("Failed to initialize lead score", { error: leadErr });
           }
 
           results.imported.push({
@@ -873,7 +874,7 @@ router.post(
         }
       }
 
-      console.log(`✅ Import complete: ${results.imported.length} imported, ${results.skipped.length} skipped, ${results.errors.length} errors`);
+      logger.info("Import complete", { imported: results.imported.length, skipped: results.skipped.length, errors: results.errors.length });
 
       res.status(200).json({
         success: true,
@@ -892,7 +893,7 @@ router.post(
         },
       });
     } catch (error: any) {
-      console.error("Import contacts error:", error);
+      logger.error("Import contacts error", { error: error.message });
       res.status(500).json({
         success: false,
         error: error.message || "Failed to import contacts. Please try again.",
@@ -971,7 +972,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error("Get contact emails error:", error);
+      logger.error("Get contact emails error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to fetch emails. Please try again.",

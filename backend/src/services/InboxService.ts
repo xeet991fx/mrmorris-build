@@ -1,6 +1,6 @@
 /**
  * Inbox Service (Unibox)
- * 
+ *
  * Manages unified inbox for all campaign replies.
  * Aggregates replies from all email accounts in one view.
  */
@@ -10,6 +10,7 @@ import Campaign from "../models/Campaign";
 import Contact from "../models/Contact";
 import CampaignEnrollment from "../models/CampaignEnrollment";
 import { Types } from "mongoose";
+import { logger } from "../utils/logger";
 
 // ============================================
 // INBOX SERVICE
@@ -135,21 +136,46 @@ class InboxService {
 
     /**
      * Get inbox messages grouped by source with subdivisions
+     * Now groups emails by contact within each campaign/workflow to create conversations
      */
     async getGroupedInbox(workspaceId: Types.ObjectId): Promise<{
         campaigns: Array<{
             id: string;
             name: string;
             count: number;
-            emails: any[];
+            conversations: Array<{
+                contactId: string;
+                contactName: string;
+                contactEmail: string;
+                messageCount: number;
+                unreadCount: number;
+                latestMessage: any;
+                messages: any[];
+            }>;
         }>;
         workflows: Array<{
             id: string;
             name: string;
             count: number;
-            emails: any[];
+            conversations: Array<{
+                contactId: string;
+                contactName: string;
+                contactEmail: string;
+                messageCount: number;
+                unreadCount: number;
+                latestMessage: any;
+                messages: any[];
+            }>;
         }>;
-        direct: any[];
+        direct: Array<{
+            contactId: string;
+            contactName: string;
+            contactEmail: string;
+            messageCount: number;
+            unreadCount: number;
+            latestMessage: any;
+            messages: any[];
+        }>;
     }> {
         // Get all inbox messages
         const allMessages = await EmailMessage.find({ workspaceId })
@@ -159,12 +185,50 @@ class InboxService {
             .sort({ sentAt: -1 })
             .lean();
 
-        // Group by campaigns
-        const campaignGroups = new Map<string, any>();
-        const workflowGroups = new Map<string, any>();
-        const directEmails: any[] = [];
+        // Helper to get contact key (use contactId or email as fallback)
+        const getContactKey = (msg: any): string => {
+            if (msg.contactId && typeof msg.contactId === 'object') {
+                return msg.contactId._id.toString();
+            }
+            if (msg.contactId) {
+                return msg.contactId.toString();
+            }
+            return msg.toEmail || msg.fromEmail || 'unknown';
+        };
+
+        // Helper to get contact info
+        const getContactInfo = (msg: any): { name: string; email: string } => {
+            if (msg.contactId && typeof msg.contactId === 'object') {
+                const c = msg.contactId;
+                const name = `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.email || 'Unknown';
+                return { name, email: c.email || msg.toEmail || '' };
+            }
+            return {
+                name: msg.toEmail || msg.fromEmail || 'Unknown',
+                email: msg.toEmail || msg.fromEmail || ''
+            };
+        };
+
+        // Group by campaigns -> then by contact
+        const campaignGroups = new Map<string, {
+            id: string;
+            name: string;
+            contactConversations: Map<string, any[]>;
+        }>();
+
+        // Group by workflows -> then by contact
+        const workflowGroups = new Map<string, {
+            id: string;
+            name: string;
+            contactConversations: Map<string, any[]>;
+        }>();
+
+        // Direct emails grouped by contact
+        const directConversations = new Map<string, any[]>();
 
         for (const msg of allMessages) {
+            const contactKey = getContactKey(msg);
+
             if (msg.source === 'campaign' && msg.campaignId) {
                 const campaign = msg.campaignId as any;
                 const campaignId = campaign._id.toString();
@@ -173,14 +237,16 @@ class InboxService {
                     campaignGroups.set(campaignId, {
                         id: campaignId,
                         name: campaign.name || 'Unnamed Campaign',
-                        count: 0,
-                        emails: []
+                        contactConversations: new Map()
                     });
                 }
 
                 const group = campaignGroups.get(campaignId)!;
-                group.count++;
-                group.emails.push(msg);
+                if (!group.contactConversations.has(contactKey)) {
+                    group.contactConversations.set(contactKey, []);
+                }
+                group.contactConversations.get(contactKey)!.push(msg);
+
             } else if (msg.source === 'workflow' && msg.workflowId) {
                 const workflow = msg.workflowId as any;
                 const workflowId = workflow._id.toString();
@@ -189,24 +255,77 @@ class InboxService {
                     workflowGroups.set(workflowId, {
                         id: workflowId,
                         name: workflow.name || 'Unnamed Workflow',
-                        count: 0,
-                        emails: []
+                        contactConversations: new Map()
                     });
                 }
 
                 const group = workflowGroups.get(workflowId)!;
-                group.count++;
-                group.emails.push(msg);
+                if (!group.contactConversations.has(contactKey)) {
+                    group.contactConversations.set(contactKey, []);
+                }
+                group.contactConversations.get(contactKey)!.push(msg);
+
             } else if (msg.source === 'direct') {
-                directEmails.push(msg);
+                if (!directConversations.has(contactKey)) {
+                    directConversations.set(contactKey, []);
+                }
+                directConversations.get(contactKey)!.push(msg);
             }
         }
 
-        return {
-            campaigns: Array.from(campaignGroups.values()),
-            workflows: Array.from(workflowGroups.values()),
-            direct: directEmails
+        // Helper to build conversation object from messages
+        const buildConversation = (contactKey: string, messages: any[]) => {
+            // Sort messages chronologically (oldest first) for display
+            const sortedMessages = [...messages].sort((a, b) =>
+                new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime()
+            );
+
+            // Latest message for preview (most recent)
+            const latestMessage = messages[0]; // Already sorted desc from query
+            const contactInfo = getContactInfo(latestMessage);
+            const unreadCount = messages.filter(m => !m.isRead && m.replied).length;
+
+            return {
+                contactId: contactKey,
+                contactName: contactInfo.name,
+                contactEmail: contactInfo.email,
+                messageCount: messages.length,
+                unreadCount,
+                latestMessage,
+                messages: sortedMessages,
+            };
         };
+
+        // Build final response
+        const campaigns = Array.from(campaignGroups.values()).map(group => ({
+            id: group.id,
+            name: group.name,
+            count: Array.from(group.contactConversations.values()).reduce((sum, msgs) => sum + msgs.length, 0),
+            conversations: Array.from(group.contactConversations.entries()).map(([key, msgs]) =>
+                buildConversation(key, msgs)
+            ).sort((a, b) =>
+                new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
+            ),
+        }));
+
+        const workflows = Array.from(workflowGroups.values()).map(group => ({
+            id: group.id,
+            name: group.name,
+            count: Array.from(group.contactConversations.values()).reduce((sum, msgs) => sum + msgs.length, 0),
+            conversations: Array.from(group.contactConversations.entries()).map(([key, msgs]) =>
+                buildConversation(key, msgs)
+            ).sort((a, b) =>
+                new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
+            ),
+        }));
+
+        const direct = Array.from(directConversations.entries()).map(([key, msgs]) =>
+            buildConversation(key, msgs)
+        ).sort((a, b) =>
+            new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
+        );
+
+        return { campaigns, workflows, direct };
     }
 
     /**
@@ -218,7 +337,7 @@ class InboxService {
             $set: { "metadata.isRead": true },
         });
 
-        console.log(`✅ Message marked as read: ${messageId}`);
+        logger.info("Message marked as read", { messageId });
     }
 
     /**
@@ -230,7 +349,7 @@ class InboxService {
             $set: { "metadata.assignedTo": new Types.ObjectId(userId) },
         });
 
-        console.log(`✅ Message assigned to user: ${userId}`);
+        logger.info("Message assigned to user", { messageId, userId });
     }
 
     /**
@@ -242,7 +361,7 @@ class InboxService {
             $addToSet: { "metadata.labels": label },
         });
 
-        console.log(`🏷️ Message labeled: ${label}`);
+        logger.info("Message labeled", { messageId, label });
     }
 
     /**
@@ -258,13 +377,13 @@ class InboxService {
     ): Promise<void> {
         const message = await EmailMessage.findOne({ messageId });
         if (!message) {
-            console.warn(`Message not found: ${messageId}`);
+            logger.warn("Message not found", { messageId });
             return;
         }
 
         // If already replied, check if this is a newer reply
         if (message.replied && message.repliedAt && new Date(replyData.receivedAt) <= new Date(message.repliedAt)) {
-            console.log(`⏭️ Skipping older reply for ${messageId}`);
+            logger.debug("Skipping older reply", { messageId });
             return;
         }
 
@@ -281,7 +400,7 @@ class InboxService {
             status: "replied",
         });
 
-        console.log(`✅ Reply processed for message: ${messageId}`);
+        logger.info("Reply processed for message", { messageId });
     }
 
     /**
@@ -357,62 +476,117 @@ class InboxService {
         error?: string;
     }> {
         try {
+            logger.debug("Starting AI draft generation", { messageId });
+
             const message = await EmailMessage.findById(messageId)
-                .populate("contactId", "firstName lastName email company jobTitle tags")
                 .populate("campaignId", "name description");
 
             if (!message) {
                 return { success: false, error: "Message not found" };
             }
 
-            // Build context for AI
-            const contact = message.contactId as any;
+            // Check if GEMINI_API_KEY is configured
+            if (!process.env.GEMINI_API_KEY) {
+                logger.error("GEMINI_API_KEY is not configured");
+                return { success: false, error: "AI service is not configured. Please add GEMINI_API_KEY to environment variables." };
+            }
+
+            // Fetch full contact data with all fields
+            const Contact = (await import("../models/Contact")).default;
+            const contact = message.contactId
+                ? await Contact.findById(message.contactId).populate("companyId").lean()
+                : null;
+
             const campaign = message.campaignId as any;
 
-            const contextInfo = `
-Contact Information:
-- Name: ${contact?.firstName || ""} ${contact?.lastName || ""}
-- Company: ${contact?.company || "Unknown"}
-- Job Title: ${contact?.jobTitle || "Unknown"}
-- Email: ${contact?.email || ""}
-- Tags: ${contact?.tags?.join(", ") || "None"}
+            const contactName = contact?.firstName || message.toEmail?.split('@')[0] || "there";
 
-Campaign: ${campaign?.name || "Unknown Campaign"}
-Campaign Description: ${campaign?.description || "N/A"}
+            logger.debug("Building context for contact", { contactName });
 
-Original Email Subject: ${message.subject}
-Original Email Body: ${(message.bodyText || message.bodyHtml || "").substring(0, 500)}
+            // Build rich contact profile
+            let contactProfile = "";
+            if (contact) {
+                contactProfile = `
+CONTACT PROFILE FROM CRM:
+- Full Name: ${contact.firstName || ""} ${contact.lastName || ""}
+- Email: ${contact.email || ""}
+- Phone: ${contact.phone || "Not available"}
+- Company: ${contact.company || "Unknown"}
+- Job Title: ${contact.jobTitle || contact.title || "Unknown"}
+- Status: ${contact.status || "lead"} | Lifecycle Stage: ${contact.lifecycleStage || "lead"}
+- Location: ${[contact.city, contact.state, contact.country].filter(Boolean).join(", ") || "Unknown"}
+- Source: ${contact.source || "Unknown"}
+- Tags: ${contact.tags?.join(", ") || "None"}
+${contact.linkedin ? `- LinkedIn: ${contact.linkedin}` : ""}
+${contact.website ? `- Website: ${contact.website}` : ""}
 
-Reply Subject: ${message.replySubject || message.subject}
-Reply Body: ${message.replyBody || ""}
-Reply Sentiment: ${message.replySentiment || "neutral"}
-            `.trim();
+ENGAGEMENT DATA:
+- Quality Score: ${contact.qualityScore || "N/A"}/100 (Grade: ${contact.qualityGrade || "N/A"})
+- Intent Score: ${contact.intentScore || 0} (buying signals)
+- Last Contacted: ${contact.lastContactedAt ? new Date(contact.lastContactedAt).toLocaleDateString() : "Never"}
+${contact.aiInsights?.sentiment ? `- AI Sentiment: ${contact.aiInsights.sentiment}` : ""}
+${contact.aiInsights?.engagementScore ? `- Engagement Score: ${contact.aiInsights.engagementScore}/100` : ""}
+${contact.aiInsights?.recommendedActions?.length ? `- Recommended Actions: ${contact.aiInsights.recommendedActions.join(", ")}` : ""}
+
+${contact.notes ? `NOTES:\n${contact.notes}` : ""}
+`.trim();
+            } else {
+                contactProfile = `LIMITED CONTACT INFO (not in CRM yet):
+- Email: ${message.toEmail || "Unknown"}`;
+            }
 
             // Use Gemini to generate draft
             const { GoogleGenerativeAI } = require("@google/generative-ai");
-            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-            const prompt = `You are a helpful sales assistant drafting a professional email response.
+            const prompt = `You are an expert sales representative writing a highly personalized email reply. You have access to the contact's full CRM profile - use this information to make your response relevant and valuable to them.
 
-Based on the following context, draft a concise and professional response to the incoming email.
+${contactProfile}
 
-${contextInfo}
+CAMPAIGN INFO:
+- Campaign Name: ${campaign?.name || "Direct Email"}
+- Campaign Description: ${campaign?.description || "N/A"}
 
-Guidelines:
-- Be professional but friendly
-- Keep the response concise (under 150 words)
-- If the sentiment is positive, build on their interest
-- If the sentiment is negative/unsubscribe, politely acknowledge
-- If out of office, draft a follow-up for when they return
-- Use their first name if available
-- Do NOT include subject line, just the email body
-- End with a clear call-to-action when appropriate
+ORIGINAL EMAIL YOU SENT:
+Subject: ${message.subject}
+Body: ${(message.bodyText || message.bodyHtml?.replace(/<[^>]*>/g, '') || "").substring(0, 1000)}
 
-Draft the email response:`;
+THEIR REPLY TO YOU:
+Subject: ${message.replySubject || "Re: " + message.subject}
+Body: ${message.replyBody || "(No reply content)"}
 
+Detected Sentiment: ${message.replySentiment || "neutral"}
+
+INSTRUCTIONS:
+1. Write ONLY the email body - no subject line, no "Subject:" prefix
+2. Address them by their first name: "${contactName}"
+3. Reference something specific from THEIR reply to show you read it
+4. Use their CRM data to personalize (job title, company, interests from tags, location, etc.)
+5. If they're a high-intent lead (intent score > 50), be more direct about next steps
+6. If they're early stage (lead/subscriber), focus on providing value first
+7. Be conversational and human, not robotic or templated
+8. Keep it concise (3-5 sentences max)
+9. Include a clear next step or question to keep the conversation going
+10. Sign off with just your first name or naturally (no formal signature block)
+
+${message.replySentiment === 'positive' ? "Their tone is positive - capitalize on their interest! Suggest a concrete next step like a call, demo, or specific resource." : ""}
+${message.replySentiment === 'negative' || message.replySentiment === 'unsubscribe' ? "They seem uninterested - be respectful, acknowledge their position, and leave the door open. Don't be pushy." : ""}
+${message.replySentiment === 'out_of_office' ? "They're out of office - note when they return and offer to follow up then." : ""}
+${contact?.qualityGrade === 'A' || contact?.qualityGrade === 'B' ? "This is a high-quality lead - prioritize moving them to the next stage." : ""}
+${(contact?.intentScore || 0) > 50 ? "High intent detected - they're showing buying signals. Be more direct about solutions." : ""}
+
+Write the email reply now (body only, no subject):`;
+
+            logger.debug("Calling Gemini API with enriched context");
             const result = await model.generateContent(prompt);
-            const draft = result.response.text();
+            let draft = result.response.text();
+
+            // Clean up the response - remove any subject line if AI included it
+            draft = draft.replace(/^Subject:.*\n/i, '').trim();
+            draft = draft.replace(/^Re:.*\n/i, '').trim();
+
+            logger.debug("Received draft from AI", { draftLength: draft.length });
 
             // Store the draft on the message
             await EmailMessage.findByIdAndUpdate(messageId, {
@@ -422,14 +596,14 @@ Draft the email response:`;
                 },
             });
 
-            console.log(`🤖 AI draft generated for message: ${messageId}`);
+            logger.info("AI draft generated for message", { messageId });
 
             return {
                 success: true,
                 draft,
             };
         } catch (err: any) {
-            console.error("Failed to generate AI draft:", err);
+            logger.error("Failed to generate AI draft", { error: err, messageId });
             return {
                 success: false,
                 error: err.message || "Failed to generate AI draft",
@@ -454,13 +628,402 @@ Draft the email response:`;
     }
 
     /**
+     * Get all messages in a thread (conversation)
+     * Returns the original message plus all replies in chronological order
+     */
+    async getThreadMessages(messageId: string): Promise<{
+        success: boolean;
+        messages: any[];
+        error?: string;
+    }> {
+        try {
+            const originalMessage = await EmailMessage.findById(messageId)
+                .populate("contactId", "firstName lastName email")
+                .lean();
+
+            if (!originalMessage) {
+                return { success: false, messages: [], error: "Message not found" };
+            }
+
+            // Find all messages in the thread using threadId or messageId
+            const threadId = originalMessage.threadId || originalMessage.messageId;
+
+            const threadMessages = await EmailMessage.find({
+                $or: [
+                    { _id: messageId },
+                    { threadId: threadId },
+                    { inReplyTo: originalMessage.messageId },
+                    { messageId: { $in: [originalMessage.inReplyTo].filter(Boolean) } },
+                ]
+            })
+            .populate("contactId", "firstName lastName email")
+            .sort({ sentAt: 1 })
+            .lean();
+
+            return {
+                success: true,
+                messages: threadMessages,
+            };
+        } catch (error: any) {
+            logger.error("Failed to get thread messages", { error, messageId });
+            return { success: false, messages: [], error: error.message };
+        }
+    }
+
+    /**
+     * Send a reply email from the inbox
+     * Uses the email integration to send via Gmail API or SMTP
+     */
+    async sendReply(
+        messageId: string,
+        body: string,
+        subject?: string
+    ): Promise<{
+        success: boolean;
+        message?: string;
+        sentReply?: any;
+        error?: string;
+    }> {
+        try {
+            // Get the original message - first get raw to preserve ObjectIds
+            const originalMessageRaw = await EmailMessage.findById(messageId);
+
+            if (!originalMessageRaw) {
+                return { success: false, error: "Original message not found" };
+            }
+
+            // Store the original contactId before populating
+            const originalContactId = originalMessageRaw.contactId;
+            const originalCampaignId = originalMessageRaw.campaignId;
+            const originalWorkflowId = originalMessageRaw.workflowId;
+            const originalWorkspaceId = originalMessageRaw.workspaceId;
+
+            // Now get populated version for contact info
+            const originalMessage = await EmailMessage.findById(messageId)
+                .populate("contactId", "firstName lastName email")
+                .populate("campaignId", "name workspaceId");
+
+            if (!originalMessage) {
+                return { success: false, error: "Original message not found" };
+            }
+
+            logger.debug("Attempting to send reply for message", { messageId });
+            logger.debug("Original message details", { from: originalMessage.fromEmail, to: originalMessage.toEmail });
+
+            // Import models
+            const EmailAccount = (await import("../models/EmailAccount")).default;
+            const EmailIntegration = (await import("../models/EmailIntegration")).default;
+
+            // Try to find the email account/integration
+            let emailAccount: any = null;
+            let emailIntegration: any = null;
+            let senderEmail = originalMessage.fromEmail;
+
+            // First try EmailAccount (for SMTP-based campaigns)
+            if (originalMessage.fromAccountId) {
+                emailAccount = await EmailAccount.findById(originalMessage.fromAccountId);
+                logger.debug("Found EmailAccount by fromAccountId", { found: !!emailAccount });
+            }
+
+            // If no EmailAccount, try by email
+            if (!emailAccount) {
+                emailAccount = await EmailAccount.findOne({
+                    email: originalMessage.fromEmail,
+                    workspaceId: originalMessage.workspaceId,
+                    status: 'active',
+                });
+                logger.debug("Found EmailAccount by email", { found: !!emailAccount });
+            }
+
+            // If still no EmailAccount, try EmailIntegration (for Gmail API)
+            if (!emailAccount) {
+                if (originalMessage.fromAccountId) {
+                    emailIntegration = await EmailIntegration.findById(originalMessage.fromAccountId)
+                        .select("+accessToken +refreshToken");
+                }
+
+                if (!emailIntegration) {
+                    emailIntegration = await EmailIntegration.findOne({
+                        email: originalMessage.fromEmail,
+                        workspaceId: originalMessage.workspaceId,
+                        isActive: true,
+                    }).select("+accessToken +refreshToken");
+                }
+                logger.debug("Found EmailIntegration", { found: !!emailIntegration });
+            }
+
+            if (!emailAccount && !emailIntegration) {
+                return { success: false, error: "Email account not found. Please reconnect your email account." };
+            }
+
+            // Determine sender email
+            if (emailAccount) {
+                senderEmail = emailAccount.email;
+            } else if (emailIntegration) {
+                senderEmail = emailIntegration.email;
+            }
+
+            // Prepare reply subject
+            const replySubject = subject || (originalMessage.replySubject
+                ? `Re: ${originalMessage.replySubject.replace(/^re:\s*/i, "")}`
+                : `Re: ${originalMessage.subject.replace(/^re:\s*/i, "")}`);
+
+            // Get the recipient email (the person who replied to us - the contact)
+            const contact = originalMessage.contactId as any;
+            const recipientEmail = contact?.email || originalMessage.toEmail;
+
+            if (!recipientEmail) {
+                return { success: false, error: "Recipient email not found" };
+            }
+
+            logger.debug("Sending reply", { from: senderEmail, to: recipientEmail });
+            logger.debug("Reply subject", { subject: replySubject });
+
+            // Generate a unique message ID for this reply
+            const domain = senderEmail.split("@")[1] || "localhost";
+            const replyMessageId = `<reply-${Date.now()}-${Math.random().toString(36).substring(2)}@${domain}>`;
+
+            // Send via appropriate method
+            // Priority: EmailIntegration (Gmail API) > EmailAccount (Gmail) > EmailAccount (SMTP)
+            try {
+                if (emailIntegration && emailIntegration.provider === "gmail") {
+                    logger.debug("Sending via EmailIntegration (Gmail API)");
+                    await this.sendReplyViaGmail(emailIntegration, recipientEmail, replySubject, body, originalMessage, replyMessageId);
+                } else if (emailAccount && emailAccount.provider === "gmail" && emailAccount.accessToken) {
+                    logger.debug("Sending via EmailAccount (Gmail)");
+                    await this.sendReplyViaGmailAccount(emailAccount, recipientEmail, replySubject, body, originalMessage, replyMessageId);
+                } else if (emailAccount && emailAccount.provider === "smtp") {
+                    logger.debug("Sending via EmailAccount (SMTP)");
+                    await this.sendReplyViaSMTPAccount(emailAccount, recipientEmail, replySubject, body, originalMessage, replyMessageId);
+                } else {
+                    // Last resort - try to find any active EmailIntegration for the workspace
+                    logger.debug("Trying to find any active EmailIntegration for workspace");
+                    const fallbackIntegration = await EmailIntegration.findOne({
+                        workspaceId: originalMessage.workspaceId,
+                        isActive: true,
+                        provider: "gmail",
+                    }).select("+accessToken +refreshToken");
+
+                    if (fallbackIntegration) {
+                        logger.debug("Found fallback EmailIntegration", { email: fallbackIntegration.email });
+                        senderEmail = fallbackIntegration.email;
+                        await this.sendReplyViaGmail(fallbackIntegration, recipientEmail, replySubject, body, originalMessage, replyMessageId);
+                    } else {
+                        return { success: false, error: `No valid email provider found. EmailAccount provider: ${emailAccount?.provider}, has tokens: ${!!emailAccount?.accessToken}` };
+                    }
+                }
+            } catch (sendError: any) {
+                logger.error("Error sending email", { error: sendError });
+                return { success: false, error: `Failed to send: ${sendError.message}` };
+            }
+
+            // Create a new EmailMessage record for the sent reply
+            // Use the preserved ObjectIds from before population
+            const sentReply = await EmailMessage.create({
+                source: originalMessage.source || 'direct',
+                campaignId: originalCampaignId,
+                workflowId: originalWorkflowId,
+                contactId: originalContactId,
+                workspaceId: originalWorkspaceId,
+                fromAccountId: emailAccount?._id || emailIntegration?._id,
+                fromEmail: senderEmail,
+                toEmail: recipientEmail,
+                subject: replySubject,
+                bodyHtml: body.includes('<p>') ? body : `<p>${body.replace(/\n/g, '<br>')}</p>`,
+                bodyText: body,
+                messageId: replyMessageId,
+                threadId: originalMessage.threadId || originalMessage.messageId,
+                inReplyTo: originalMessage.replyBody ? undefined : originalMessage.messageId,
+                sentAt: new Date(),
+                opened: false,
+                clicked: false,
+                replied: false,
+                bounced: false,
+                isRead: true, // Mark our own sent message as read
+            });
+
+            logger.info("Reply sent from inbox", { subject: replySubject, to: recipientEmail });
+
+            return {
+                success: true,
+                message: "Reply sent successfully",
+                sentReply: sentReply.toObject(),
+            };
+        } catch (error: any) {
+            logger.error("Failed to send reply", { error, messageId });
+            return { success: false, error: error.message || "Failed to send reply" };
+        }
+    }
+
+    /**
+     * Send reply via Gmail API (using EmailIntegration)
+     */
+    private async sendReplyViaGmail(
+        integration: any,
+        recipientEmail: string,
+        subject: string,
+        body: string,
+        originalMessage: any,
+        replyMessageId: string
+    ): Promise<void> {
+        const { google } = await import("googleapis");
+
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            `${process.env.BACKEND_URL || "http://localhost:5000"}/api/email/callback/gmail`
+        );
+
+        oauth2Client.setCredentials({
+            access_token: integration.getAccessToken(),
+            refresh_token: integration.getRefreshToken(),
+        });
+
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+        // Build the HTML body
+        const htmlBody = body.includes('<p>') ? body : `<p>${body.replace(/\n/g, '<br>')}</p>`;
+
+        // Build email with proper reply headers
+        const emailLines = [
+            `From: ${integration.email}`,
+            `To: ${recipientEmail}`,
+            `Subject: ${subject}`,
+            `Message-ID: ${replyMessageId}`,
+        ];
+
+        // Add In-Reply-To header if replying to original message
+        if (originalMessage.messageId) {
+            emailLines.push(`In-Reply-To: ${originalMessage.messageId}`);
+            emailLines.push(`References: ${originalMessage.messageId}`);
+        }
+
+        emailLines.push('Content-Type: text/html; charset=utf-8');
+        emailLines.push('');
+        emailLines.push(htmlBody);
+
+        const rawMessage = emailLines.join('\r\n');
+        const encodedMessage = Buffer.from(rawMessage)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+
+        await gmail.users.messages.send({
+            userId: 'me',
+            requestBody: { raw: encodedMessage },
+        });
+    }
+
+    /**
+     * Send reply via Gmail API (using EmailAccount)
+     */
+    private async sendReplyViaGmailAccount(
+        account: any,
+        recipientEmail: string,
+        subject: string,
+        body: string,
+        originalMessage: any,
+        replyMessageId: string
+    ): Promise<void> {
+        const { google } = await import("googleapis");
+
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            `${process.env.BACKEND_URL || "http://localhost:5000"}/api/email/callback/gmail`
+        );
+
+        oauth2Client.setCredentials({
+            access_token: account.accessToken,
+            refresh_token: account.refreshToken,
+        });
+
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+        // Build the HTML body
+        const htmlBody = body.includes('<p>') ? body : `<p>${body.replace(/\n/g, '<br>')}</p>`;
+
+        // Build email with proper reply headers
+        const emailLines = [
+            `From: ${account.email}`,
+            `To: ${recipientEmail}`,
+            `Subject: ${subject}`,
+            `Message-ID: ${replyMessageId}`,
+        ];
+
+        // Add In-Reply-To header if replying to original message
+        if (originalMessage.messageId) {
+            emailLines.push(`In-Reply-To: ${originalMessage.messageId}`);
+            emailLines.push(`References: ${originalMessage.messageId}`);
+        }
+
+        emailLines.push('Content-Type: text/html; charset=utf-8');
+        emailLines.push('');
+        emailLines.push(htmlBody);
+
+        const rawMessage = emailLines.join('\r\n');
+        const encodedMessage = Buffer.from(rawMessage)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+
+        await gmail.users.messages.send({
+            userId: 'me',
+            requestBody: { raw: encodedMessage },
+        });
+    }
+
+    /**
+     * Send reply via SMTP (using EmailAccount)
+     */
+    private async sendReplyViaSMTPAccount(
+        account: any,
+        recipientEmail: string,
+        subject: string,
+        body: string,
+        originalMessage: any,
+        replyMessageId: string
+    ): Promise<void> {
+        const nodemailer = await import("nodemailer");
+
+        const transporter = nodemailer.createTransport({
+            host: account.smtpHost,
+            port: account.smtpPort,
+            secure: account.smtpPort === 465,
+            auth: {
+                user: account.smtpUser || account.email,
+                pass: account.smtpPassword,
+            },
+        });
+
+        const htmlBody = body.includes('<p>') ? body : `<p>${body.replace(/\n/g, '<br>')}</p>`;
+
+        const mailOptions: any = {
+            from: account.email,
+            to: recipientEmail,
+            subject: subject,
+            text: body,
+            html: htmlBody,
+            messageId: replyMessageId,
+        };
+
+        // Add reply headers
+        if (originalMessage.messageId) {
+            mailOptions.inReplyTo = originalMessage.messageId;
+            mailOptions.references = originalMessage.messageId;
+        }
+
+        await transporter.sendMail(mailOptions);
+    }
+
+    /**
      * Fetch new replies from email accounts
      * Called by cron job every 10 minutes or manually for a specific workspace
      */
     async fetchNewReplies(workspaceId?: string): Promise<number> {
-        console.log(workspaceId
-            ? `📥 Fetching new replies for workspace: ${workspaceId}`
-            : "📥 Fetching new replies from Gmail...");
+        logger.info("Fetching new replies from Gmail", { workspaceId: workspaceId || "all" });
 
         let totalRepliesProcessed = 0;
 
@@ -478,10 +1041,10 @@ Draft the email response:`;
 
             const integrations = await EmailIntegration.find(query).select("+accessToken +refreshToken");
 
-            console.log(`📥 Found ${integrations.length} Gmail integration(s)${workspaceId ? ' for this workspace' : ''}`);
+            logger.debug("Found Gmail integrations", { count: integrations.length, workspaceId: workspaceId || "all" });
 
             if (integrations.length === 0) {
-                console.log("📥 No active Gmail integrations found");
+                logger.debug("No active Gmail integrations found");
                 return 0;
             }
 
@@ -489,7 +1052,7 @@ Draft the email response:`;
 
             for (const integration of integrations) {
                 try {
-                    console.log(`📥 Processing integration: ${integration.email}, workspace: ${integration.workspaceId}`);
+                    logger.debug("Processing integration", { email: integration.email, workspaceId: integration.workspaceId });
 
                     // Setup OAuth client
                     const oauth2Client = new google.auth.OAuth2(
@@ -507,7 +1070,7 @@ Draft the email response:`;
 
                     // Get messages from inbox - look at last 7 days for testing
                     const query = `in:inbox -from:me newer_than:7d`;
-                    console.log(`📥 Gmail query: ${query}`);
+                    logger.debug("Gmail query", { query });
 
                     const listResponse = await gmail.users.messages.list({
                         userId: "me",
@@ -516,7 +1079,7 @@ Draft the email response:`;
                     });
 
                     const messages = listResponse.data.messages || [];
-                    console.log(`📬 Found ${messages.length} emails in inbox for ${integration.email}`);
+                    logger.debug("Found emails in inbox", { count: messages.length, email: integration.email });
 
                     // Get all campaign emails we've sent from this workspace
                     const sentEmails = await EmailMessage.find({
@@ -528,7 +1091,7 @@ Draft the email response:`;
                         workspaceId: integration.workspaceId,
                     }).select("email firstName lastName").lean();
 
-                    console.log(`📧 Found ${sentEmails.length} sent campaign emails and ${contacts.length} contacts in workspace`);
+                    logger.debug("Found sent campaign emails and contacts", { sentEmails: sentEmails.length, contacts: contacts.length });
 
                     // Create maps for matching
                     const sentToEmails = new Map<string, any>();
@@ -551,7 +1114,7 @@ Draft the email response:`;
                         }
                     }
 
-                    console.log(`📧 Tracking ${sentToEmails.size} recipients, ${sentSubjects.size} subjects, ${contactEmails.size} contacts`);
+                    logger.debug("Tracking recipients, subjects, and contacts", { recipients: sentToEmails.size, subjects: sentSubjects.size, contacts: contactEmails.size });
 
                     for (const msg of messages) {
                         try {
@@ -576,7 +1139,7 @@ Draft the email response:`;
                             const fromEmail = from.match(/<(.+?)>/)?.[1] || from.split(" ")[0];
                             const cleanSubject = subject.replace(/^re:\s*/i, "").toLowerCase().trim();
 
-                            console.log(`📧 Checking email from: ${fromEmail}, subject: ${subject.substring(0, 50)}`);
+                            logger.debug("Checking email", { fromEmail, subject: subject.substring(0, 50) });
 
                             // Try to match by sender email first (sent campaign email)
                             let originalEmail = sentToEmails.get(fromEmail.toLowerCase());
@@ -594,13 +1157,13 @@ Draft the email response:`;
                                 matchedContact = contactEmails.get(fromEmail.toLowerCase());
                                 if (matchedContact) {
                                     matchedBy = "contact";
-                                    console.log(`✅ Email from known contact: ${matchedContact.firstName} ${matchedContact.lastName} (${fromEmail})`);
+                                    logger.debug("Email from known contact", { firstName: matchedContact.firstName, lastName: matchedContact.lastName, email: fromEmail });
                                 } else {
                                     // Not a known contact or campaign recipient - skip
                                     continue;
                                 }
                             } else {
-                                console.log(`✅ Matched by ${matchedBy}! Original email ID: ${originalEmail._id}`);
+                                logger.debug("Matched original email", { matchedBy, originalEmailId: originalEmail._id });
                             }
 
                             // Check if this is actually a reply
@@ -609,7 +1172,7 @@ Draft the email response:`;
                                 references;
 
                             if (!isReply) {
-                                console.log(`⏭️ Not a reply (no Re: prefix or headers)`);
+                                logger.debug("Not a reply - skipping", { subject, hasRePrefix: subject.toLowerCase().startsWith("re:") });
                                 continue;
                             }
 
@@ -636,16 +1199,16 @@ Draft the email response:`;
                                     receivedAt: new Date(date),
                                 });
                                 totalRepliesProcessed++;
-                                console.log(`✅ Reply processed from ${fromEmail}: ${subject}`);
+                                logger.info("Reply processed", { fromEmail, subject });
                             } else if (matchedContact) {
                                 // Reply from a known contact (no original campaign email)
                                 // Log for visibility but don't process as there's no original message
-                                console.log(`📬 Reply from contact ${matchedContact.firstName} - no original campaign email to update`);
+                                logger.debug("Reply from contact with no original campaign email", { contactName: matchedContact.firstName });
                                 totalRepliesProcessed++;
                             }
 
                         } catch (msgError: any) {
-                            console.error(`Error processing message ${msg.id}:`, msgError.message);
+                            logger.error("Error processing message", { messageId: msg.id, error: msgError.message });
                         }
                     }
 
@@ -654,15 +1217,15 @@ Draft the email response:`;
                     await integration.save();
 
                 } catch (integrationError: any) {
-                    console.error(`Error fetching replies for ${integration.email}:`, integrationError.message);
+                    logger.error("Error fetching replies for integration", { email: integration.email, error: integrationError.message });
                 }
             }
 
         } catch (error: any) {
-            console.error("Error in fetchNewReplies:", error.message);
+            logger.error("Error in fetchNewReplies", { error: error.message });
         }
 
-        console.log(`📥 Processed ${totalRepliesProcessed} new replies`);
+        logger.info("Processed new replies", { count: totalRepliesProcessed });
         return totalRepliesProcessed;
     }
 }

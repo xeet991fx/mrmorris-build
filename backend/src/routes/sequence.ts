@@ -4,6 +4,7 @@ import { authenticate, AuthRequest } from "../middleware/auth";
 import Sequence from "../models/Sequence";
 import Contact from "../models/Contact";
 import Project from "../models/Project";
+import { logger } from "../utils/logger";
 
 const router = express.Router();
 
@@ -73,7 +74,7 @@ router.get("/:workspaceId/sequences", authenticate, async (req: AuthRequest, res
             data: { sequences },
         });
     } catch (error: any) {
-        console.error("Get sequences error:", error);
+        logger.error("Get sequences error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to fetch sequences",
@@ -107,7 +108,7 @@ router.get("/:workspaceId/sequences/:id", authenticate, async (req: AuthRequest,
             data: { sequence },
         });
     } catch (error: any) {
-        console.error("Get sequence error:", error);
+        logger.error("Get sequence error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to fetch sequence",
@@ -156,7 +157,7 @@ router.post("/:workspaceId/sequences", authenticate, async (req: AuthRequest, re
             message: "Sequence created successfully",
         });
     } catch (error: any) {
-        console.error("Create sequence error:", error);
+        logger.error("Create sequence error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to create sequence",
@@ -204,7 +205,7 @@ router.put("/:workspaceId/sequences/:id", authenticate, async (req: AuthRequest,
             message: "Sequence updated successfully",
         });
     } catch (error: any) {
-        console.error("Update sequence error:", error);
+        logger.error("Update sequence error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to update sequence",
@@ -237,7 +238,7 @@ router.delete("/:workspaceId/sequences/:id", authenticate, async (req: AuthReque
             message: "Sequence deleted successfully",
         });
     } catch (error: any) {
-        console.error("Delete sequence error:", error);
+        logger.error("Delete sequence error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to delete sequence",
@@ -285,7 +286,7 @@ router.post("/:workspaceId/sequences/:id/activate", authenticate, async (req: Au
             message: "Sequence activated",
         });
     } catch (error: any) {
-        console.error("Activate sequence error:", error);
+        logger.error("Activate sequence error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to activate sequence",
@@ -323,7 +324,7 @@ router.post("/:workspaceId/sequences/:id/pause", authenticate, async (req: AuthR
             message: "Sequence paused",
         });
     } catch (error: any) {
-        console.error("Pause sequence error:", error);
+        logger.error("Pause sequence error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to pause sequence",
@@ -420,7 +421,7 @@ router.post("/:workspaceId/sequences/:id/enroll", authenticate, async (req: Auth
             data: { nextEmailAt },
         });
     } catch (error: any) {
-        console.error("Enroll in sequence error:", error);
+        logger.error("Enroll in sequence error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to enroll contact",
@@ -470,10 +471,200 @@ router.post("/:workspaceId/sequences/:id/unenroll", authenticate, async (req: Au
             message: "Contact unenrolled from sequence",
         });
     } catch (error: any) {
-        console.error("Unenroll error:", error);
+        logger.error("Unenroll error", { error: error.message });
         res.status(500).json({
             success: false,
             error: error.message || "Failed to unenroll contact",
+        });
+    }
+});
+
+// ============================================
+// BULK ENROLLMENT
+// ============================================
+
+/**
+ * POST /api/workspaces/:workspaceId/sequences/:id/enroll-bulk
+ * Enroll multiple contacts in a sequence
+ */
+router.post("/:workspaceId/sequences/:id/enroll-bulk", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, id } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+        const { contactIds } = req.body;
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: "contactIds array is required",
+            });
+        }
+
+        // Get sequence
+        const sequence = await Sequence.findOne({ _id: id, workspaceId });
+        if (!sequence) {
+            return res.status(404).json({
+                success: false,
+                error: "Sequence not found",
+            });
+        }
+
+        if (sequence.status !== "active") {
+            return res.status(400).json({
+                success: false,
+                error: "Can only enroll in active sequences",
+            });
+        }
+
+        // Verify contacts exist
+        const contacts = await Contact.find({
+            _id: { $in: contactIds },
+            workspaceId,
+        });
+
+        const validContactIds = new Set(contacts.map((c) => c._id.toString()));
+
+        // Get already enrolled contact IDs
+        const alreadyEnrolled = new Set(
+            sequence.enrollments
+                .filter((e) => e.status === "active")
+                .map((e) => e.contactId.toString())
+        );
+
+        // Calculate first email time
+        const firstStep = sequence.steps.find((s) => s.order === 0);
+        const delayMs = firstStep ? getDelayMs(firstStep.delay.value, firstStep.delay.unit) : 0;
+
+        let enrolled = 0;
+        let skipped = 0;
+        const errors: string[] = [];
+
+        for (const contactId of contactIds) {
+            if (!validContactIds.has(contactId)) {
+                errors.push(`Contact ${contactId} not found`);
+                skipped++;
+                continue;
+            }
+
+            if (alreadyEnrolled.has(contactId)) {
+                skipped++;
+                continue;
+            }
+
+            const nextEmailAt = new Date(Date.now() + delayMs);
+
+            sequence.enrollments.push({
+                contactId: new mongoose.Types.ObjectId(contactId),
+                currentStepIndex: 0,
+                status: "active",
+                enrolledAt: new Date(),
+                nextEmailAt,
+                emailsSent: 0,
+                emailsOpened: 0,
+                emailsClicked: 0,
+            });
+
+            sequence.stats.totalEnrolled++;
+            sequence.stats.currentlyActive++;
+            enrolled++;
+        }
+
+        await sequence.save();
+
+        res.json({
+            success: true,
+            message: `Enrolled ${enrolled} contacts, skipped ${skipped}`,
+            data: {
+                enrolled,
+                skipped,
+                errors: errors.length > 0 ? errors : undefined,
+            },
+        });
+    } catch (error: any) {
+        logger.error("Bulk enroll error", { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to bulk enroll contacts",
+        });
+    }
+});
+
+// ============================================
+// SEQUENCE PROCESSING (MANUAL TRIGGER)
+// ============================================
+
+/**
+ * POST /api/workspaces/:workspaceId/sequences/process
+ * Manually trigger sequence email processing (for testing)
+ */
+router.post("/:workspaceId/sequences/process", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        // Import the trigger function
+        const { triggerSequenceProcessing } = await import("../jobs/sequenceEmailJob");
+        const result = await triggerSequenceProcessing();
+
+        res.json({
+            success: true,
+            message: `Processed sequences: ${result.queued} queued, ${result.skipped} skipped`,
+            data: result,
+        });
+    } catch (error: any) {
+        logger.error("Sequence processing error", { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to process sequences",
+        });
+    }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/sequences/:id/enrollments
+ * Get all enrollments for a sequence with contact details
+ */
+router.get("/:workspaceId/sequences/:id/enrollments", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, id } = req.params;
+        const userId = (req.user?._id as any)?.toString();
+        const { status } = req.query;
+
+        if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+        const sequence = await Sequence.findOne({ _id: id, workspaceId })
+            .populate("enrollments.contactId", "firstName lastName email company");
+
+        if (!sequence) {
+            return res.status(404).json({
+                success: false,
+                error: "Sequence not found",
+            });
+        }
+
+        let enrollments = sequence.enrollments;
+
+        // Filter by status if provided
+        if (status && typeof status === "string") {
+            enrollments = enrollments.filter((e) => e.status === status);
+        }
+
+        res.json({
+            success: true,
+            data: {
+                enrollments,
+                stats: sequence.stats,
+            },
+        });
+    } catch (error: any) {
+        logger.error("Get enrollments error", { error: error.message });
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to fetch enrollments",
         });
     }
 });

@@ -212,3 +212,75 @@ export const unenrollFromSequence = async (
     );
     return response.data;
 };
+
+/**
+ * Bulk enroll multiple contacts in a sequence
+ */
+export const bulkEnrollInSequence = async (
+    workspaceId: string,
+    sequenceId: string,
+    contactIds: string[]
+): Promise<{ success: boolean; data: { enrolled: number; skipped: number; errors?: string[] }; message: string }> => {
+    const response = await axiosInstance.post(
+        `/workspaces/${workspaceId}/sequences/${sequenceId}/enroll-bulk`,
+        { contactIds }
+    );
+    return response.data;
+};
+
+/**
+ * Get enrollments for a sequence
+ */
+export const getSequenceEnrollments = async (
+    workspaceId: string,
+    sequenceId: string,
+    status?: string
+): Promise<{
+    success: boolean;
+    data: {
+        enrollments: Array<{
+            _id: string;
+            contactId: {
+                _id: string;
+                firstName?: string;
+                lastName?: string;
+                email: string;
+                company?: string;
+            };
+            currentStepIndex: number;
+            status: 'active' | 'completed' | 'unenrolled' | 'replied' | 'bounced';
+            enrolledAt: string;
+            nextEmailAt?: string;
+            lastEmailAt?: string;
+            emailsSent: number;
+            emailsOpened: number;
+            emailsClicked: number;
+        }>;
+        stats: {
+            totalEnrolled: number;
+            currentlyActive: number;
+            completed: number;
+            replied: number;
+            unenrolled: number;
+        };
+    };
+}> => {
+    const response = await axiosInstance.get(
+        `/workspaces/${workspaceId}/sequences/${sequenceId}/enrollments`,
+        { params: { status } }
+    );
+    return response.data;
+};
+
+/**
+ * Manually trigger sequence processing (admin/testing)
+ */
+export const triggerSequenceProcessing = async (
+    workspaceId: string
+): Promise<{ success: boolean; data: { queued: number; skipped: number }; message: string }> => {
+    const response = await axiosInstance.post(
+        `/workspaces/${workspaceId}/sequences/process`
+    );
+    return response.data;
+};
+

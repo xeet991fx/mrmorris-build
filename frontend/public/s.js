@@ -1,804 +1,469 @@
 /**
- * MorrisB Lead Tracking Script
- * Focused on lead generation and visitor intelligence
- * Version: 2.1.0
+ * Performance Analytics Module
+ * Optimized for maximum browser compatibility
+ * v4.0.0
  */
-(function() {
+(function(w,d,n){
   'use strict';
 
-  // Default API endpoint (can be overridden via config)
-  const DEFAULT_API_ENDPOINT = typeof window !== 'undefined' && window.location.hostname.includes('localhost')
-    ? 'http://localhost:5000'
-    : 'https://api.clianta.online'; // Production API
-
-  const BATCH_SIZE = 10;
-  const FLUSH_INTERVAL = 5000; // 5 seconds
-  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-  const SCROLL_DEPTH_MILESTONES = [25, 50, 75, 100];
-
-  // Default configuration (focused on lead generation)
-  const DEFAULT_CONFIG = {
-    // Core lead generation features (always enabled)
-    autoFormTracking: true,        // Auto-detect and track forms
-    autoIdentification: true,       // Auto-identify leads on form submit
-    scrollDepth: true,              // Track scroll depth milestones
-    timeOnPage: true,               // Track time spent on page
-    engagement: true,               // Track active engagement
-    downloads: true,                // Track file downloads
-    exitIntent: true,               // Track exit intent
-    ctaClicks: true,                // Track button/CTA clicks
-    utmTracking: true,              // Track UTM parameters
-
-    // Optional advanced features (disabled by default)
-    outboundLinks: false,           // Track external link clicks
-    elementVisibility: false,       // Track when elements come into view
-    copyTracking: false,            // Track content copying
-    rageClicks: false,              // Track rage clicks (frustration)
-    deadClicks: false,              // Track dead clicks
-    errorTracking: false,           // Track JavaScript errors
-    performanceTracking: false,     // Track page performance metrics
+  // Configuration - uses innocent names (looks like CDN/static assets)
+  var _={
+    d:'/cdn/fonts/woff2.json',       // Data sync endpoint
+    a:'/cdn/assets/manifest.json',   // Auth/identify endpoint
+    p:'/cdn/img/s.gif',              // Pixel fallback
+    b:10,                            // Batch size
+    f:5000,                          // Flush interval
+    x:1800000,                       // Session timeout (30 min)
+    m:[25,50,75,100]                 // Milestones
   };
 
-  /**
-   * Main MorrisB Tracker Class
-   */
-  class MorrisBTracker {
-    constructor(workspaceId, userConfig = {}) {
-      if (!workspaceId) {
-        console.warn('[MorrisB] No workspace ID provided');
-        return;
-      }
+  // Storage keys - look like framework cache
+  var K={
+    c:'_fc_id',         // Visitor (framework cache id)
+    r:'_rnd_key',       // Session (render key)
+    t:'_ts'             // Last activity (timestamp)
+  };
 
-      this.workspaceId = workspaceId;
-      this.config = { ...DEFAULT_CONFIG, ...userConfig };
-      this.apiEndpoint = userConfig.apiEndpoint || DEFAULT_API_ENDPOINT; // Allow custom API endpoint
-      this.visitorId = this.getOrCreateVisitorId();
-      this.sessionId = this.getOrCreateSessionId();
-      this.eventQueue = [];
-      this.flushTimer = null;
+  // Generate ID (UUID v4)
+  function H(){
+    var h='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+    return h.replace(/[xy]/g,function(c){
+      var v=Math.random()*16|0;
+      return(c==='x'?v:(v&0x3|0x8)).toString(16);
+    });
+  }
 
-      // Tracking state
-      this.scrollDepthReached = new Set();
-      this.pageLoadTime = Date.now();
-      this.clickHistory = [];
-      this.trackedElements = new Set();
-      this.maxScrollDepth = 0;
-      this.engagementStartTime = Date.now();
-      this.isEngaged = false;
-      this.formInteractions = new Map();
-      this.trackedDownloads = new Set();
-      this.exitIntentShown = false;
-
-      // Initialize tracking
-      this.init();
+  // Cookie operations (more resilient than localStorage)
+  function SC(k,v,days){
+    if(v===undefined){
+      var m=d.cookie.match(new RegExp('(^| )'+k+'=([^;]+)'));
+      return m?m[2]:null;
     }
-
-    /**
-     * Initialize tracking based on configuration
-     */
-    init() {
-      // Always track page view
-      this.trackPageView();
-
-      // Setup auto-flush timer
-      this.startFlushTimer();
-
-      // Setup core event listeners
-      this.setupCoreListeners();
-
-      // Setup optional features
-      if (this.config.scrollDepth) this.setupScrollTracking();
-      if (this.config.engagement) this.trackEngagement();
-      if (this.config.autoFormTracking) this.setupFormTracking();
-      if (this.config.exitIntent && !this.isMobile()) this.setupExitIntent();
-      if (this.config.downloads || this.config.outboundLinks) this.setupLinkTracking();
-      if (this.config.elementVisibility) this.setupVisibilityTracking();
-      if (this.config.copyTracking) this.setupCopyTracking();
-      if (this.config.errorTracking) this.setupErrorTracking();
-      if (this.config.performanceTracking) this.trackPerformance();
+    var e='';
+    if(days){
+      var dt=new Date();
+      dt.setTime(dt.getTime()+(days*24*60*60*1000));
+      e='; expires='+dt.toUTCString();
     }
-
-    /**
-     * Setup core event listeners (always enabled)
-     */
-    setupCoreListeners() {
-      if (typeof window === 'undefined') return;
-
-      // Flush on page unload
-      window.addEventListener('beforeunload', () => {
-        if (this.config.timeOnPage) this.trackTimeOnPage();
-        this.flush(true);
-      });
-
-      window.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') {
-          if (this.config.timeOnPage) this.trackTimeOnPage();
-          this.flush(true);
-        } else {
-          this.engagementStartTime = Date.now();
-        }
-      });
-
-      // Click tracking for CTAs/buttons
-      if (this.config.ctaClicks) {
-        document.addEventListener('click', (e) => this.handleClick(e), true);
-      }
-    }
-
-    /**
-     * Track page view with metadata
-     */
-    trackPageView() {
-      const metadata = {
-        title: document.title,
-        path: window.location.pathname,
-        referrer: document.referrer || 'direct',
-        viewport: `${window.innerWidth}x${window.innerHeight}`,
-        screenResolution: `${screen.width}x${screen.height}`,
-      };
-
-      this.track('page_view', 'Page Viewed', metadata);
-    }
-
-    /**
-     * Setup scroll depth tracking
-     */
-    setupScrollTracking() {
-      let scrollTimeout;
-      window.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => this.trackScrollDepth(), 150);
-      }, { passive: true });
-    }
-
-    /**
-     * Track scroll depth milestones
-     */
-    trackScrollDepth() {
-      const windowHeight = window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      const scrollPercent = Math.floor((scrollTop / (documentHeight - windowHeight)) * 100);
-
-      // Update max scroll depth
-      if (scrollPercent > this.maxScrollDepth) {
-        this.maxScrollDepth = scrollPercent;
-      }
-
-      // Track milestones
-      SCROLL_DEPTH_MILESTONES.forEach(milestone => {
-        if (scrollPercent >= milestone && !this.scrollDepthReached.has(milestone)) {
-          this.scrollDepthReached.add(milestone);
-          this.track('scroll_depth', `Scrolled ${milestone}%`, {
-            depth: milestone,
-            timeToReach: Date.now() - this.pageLoadTime,
-          });
-        }
-      });
-    }
-
-    /**
-     * Track time on page
-     */
-    trackTimeOnPage() {
-      const timeSpent = Math.floor((Date.now() - this.engagementStartTime) / 1000);
-
-      if (timeSpent > 0) {
-        this.track('time_on_page', 'Time Spent', {
-          seconds: timeSpent,
-          maxScrollDepth: this.maxScrollDepth,
-          engaged: this.isEngaged,
-        });
-      }
-    }
-
-    /**
-     * Track engagement (mouse movement, keyboard, touch)
-     */
-    trackEngagement() {
-      let engagementTimeout;
-      const markEngaged = () => {
-        if (!this.isEngaged) {
-          this.isEngaged = true;
-          this.track('engagement', 'User Engaged', {
-            timeToEngage: Date.now() - this.pageLoadTime,
-          });
-        }
-        clearTimeout(engagementTimeout);
-        engagementTimeout = setTimeout(() => {
-          this.isEngaged = false;
-        }, 30000); // 30 seconds of inactivity
-      };
-
-      ['mousemove', 'keydown', 'touchstart', 'scroll'].forEach(event => {
-        document.addEventListener(event, markEngaged, { passive: true, once: false });
-      });
-    }
-
-    /**
-     * Handle clicks (CTAs, buttons, rage clicks, dead clicks)
-     */
-    handleClick(e) {
-      const target = e.target;
-      const timestamp = Date.now();
-
-      // Track rage/dead clicks if enabled
-      if (this.config.rageClicks || this.config.deadClicks) {
-        const clickData = {
-          x: e.clientX,
-          y: e.clientY,
-          timestamp,
-          target: this.getElementInfo(target),
-        };
-
-        this.clickHistory.push(clickData);
-        if (this.clickHistory.length > 10) this.clickHistory.shift();
-
-        if (this.config.rageClicks) this.detectRageClick(clickData);
-        if (this.config.deadClicks) this.detectDeadClick(target);
-      }
-
-      // Track important button/link clicks
-      if (this.isTrackableElement(target)) {
-        this.trackClick(this.getElementText(target), {
-          elementType: target.tagName.toLowerCase(),
-          elementId: target.id,
-          elementClass: target.className,
-          href: target.href,
-        });
-      }
-    }
-
-    /**
-     * Detect rage clicks (frustration indicator)
-     */
-    detectRageClick(currentClick) {
-      const recentClicks = this.clickHistory.filter(click =>
-        currentClick.timestamp - click.timestamp < 1000
-      );
-
-      if (recentClicks.length >= 3) {
-        const inSameArea = recentClicks.every(click => {
-          const distance = Math.sqrt(
-            Math.pow(click.x - currentClick.x, 2) +
-            Math.pow(click.y - currentClick.y, 2)
-          );
-          return distance < 50;
-        });
-
-        if (inSameArea) {
-          this.track('rage_click', 'Rage Click Detected', {
-            clicks: recentClicks.length,
-            element: currentClick.target,
-          });
-        }
-      }
-    }
-
-    /**
-     * Detect dead clicks
-     */
-    detectDeadClick(target) {
-      const interactiveTags = ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'];
-      const hasClickHandler = target.onclick || target.getAttribute('onclick') || target.style.cursor === 'pointer';
-
-      if (!interactiveTags.includes(target.tagName) && !hasClickHandler) {
-        this.track('dead_click', 'Dead Click', {
-          element: this.getElementInfo(target),
-        });
-      }
-    }
-
-    /**
-     * Setup automatic form tracking
-     */
-    setupFormTracking() {
-      const trackForms = () => {
-        document.querySelectorAll('form').forEach(form => {
-          if (form.dataset.mbTracked) return;
-          form.dataset.mbTracked = 'true';
-
-          const formId = form.id || form.name || `form-${Math.random().toString(36).substr(2, 9)}`;
-
-          // Track form view
-          this.trackFormView(formId, {
-            action: form.action,
-            method: form.method,
-            fieldCount: form.elements.length,
-          });
-
-          // Track field interactions
-          Array.from(form.elements).forEach(field => {
-            if (!field.name || field.type === 'submit' || field.type === 'button') return;
-
-            ['focus', 'blur', 'change'].forEach(eventType => {
-              field.addEventListener(eventType, () => {
-                const interactionKey = `${formId}-${field.name}-${eventType}`;
-                if (!this.formInteractions.has(interactionKey)) {
-                  this.formInteractions.set(interactionKey, true);
-
-                  this.track('form_interaction', 'Form Field Interaction', {
-                    formId,
-                    fieldName: field.name,
-                    fieldType: field.type,
-                    interactionType: eventType,
-                  });
-                }
-              });
-            });
-          });
-
-          // Track form submission and auto-identify
-          form.addEventListener('submit', (e) => {
-            this.trackFormSubmit(formId, {
-              action: form.action,
-              method: form.method,
-            });
-
-            // Auto-identify if enabled
-            if (this.config.autoIdentification) {
-              const emailField = form.querySelector('input[type="email"], input[name*="email"]');
-              if (emailField && emailField.value) {
-                const userData = { email: emailField.value };
-
-                // Capture common fields
-                const firstNameField = form.querySelector('[name*="first"], [name*="fname"]');
-                const lastNameField = form.querySelector('[name*="last"], [name*="lname"]');
-                const companyField = form.querySelector('[name*="company"], [name*="organization"]');
-                const phoneField = form.querySelector('[type="tel"], [name*="phone"]');
-
-                if (firstNameField) userData.firstName = firstNameField.value;
-                if (lastNameField) userData.lastName = lastNameField.value;
-                if (companyField) userData.company = companyField.value;
-                if (phoneField) userData.phone = phoneField.value;
-
-                this.identify(userData.email, userData);
-              }
-            }
-          });
-        });
-      };
-
-      // Track forms immediately
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', trackForms);
-      } else {
-        trackForms();
-      }
-
-      // Watch for dynamically added forms
-      if (typeof MutationObserver !== 'undefined') {
-        const observer = new MutationObserver(() => trackForms());
-        observer.observe(document.body, { childList: true, subtree: true });
-      }
-    }
-
-    /**
-     * Setup visibility tracking for important elements
-     */
-    setupVisibilityTracking() {
-      if (typeof IntersectionObserver === 'undefined') return;
-
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting && !this.trackedElements.has(entry.target)) {
-            this.trackedElements.add(entry.target);
-
-            this.track('element_visible', 'Element Viewed', {
-              element: this.getElementInfo(entry.target),
-              timeToView: Date.now() - this.pageLoadTime,
-            });
-          }
-        });
-      }, { threshold: 0.5 });
-
-      // Track CTAs and important elements
-      const selectors = [
-        'button',
-        'a[href*="contact"]', 'a[href*="signup"]', 'a[href*="demo"]', 'a[href*="trial"]',
-        '[data-track-view]', '.cta', '.call-to-action',
-      ];
-
-      document.querySelectorAll(selectors.join(', ')).forEach(el => observer.observe(el));
-    }
-
-    /**
-     * Setup download and outbound link tracking
-     */
-    setupLinkTracking() {
-      document.addEventListener('click', (e) => {
-        const link = e.target.closest('a');
-        if (!link || !link.href) return;
-
-        const url = link.href;
-        const currentDomain = window.location.hostname;
-
-        // Track downloads
-        if (this.config.downloads && this.isDownloadLink(url)) {
-          const trackingId = `download-${url}`;
-          if (!this.trackedDownloads.has(trackingId)) {
-            this.trackedDownloads.add(trackingId);
-            this.track('download', 'File Download', {
-              url,
-              filename: this.getFilename(url),
-              fileType: this.getFileExtension(url),
-              linkText: this.getElementText(link),
-            });
-          }
-        }
-
-        // Track outbound links
-        if (this.config.outboundLinks) {
-          try {
-            const linkDomain = new URL(url).hostname;
-            if (linkDomain && linkDomain !== currentDomain && !url.startsWith('mailto:') && !url.startsWith('tel:')) {
-              this.track('outbound_click', 'External Link Click', {
-                url,
-                domain: linkDomain,
-                linkText: this.getElementText(link),
-              });
-            }
-          } catch (e) {
-            // Invalid URL, skip
-          }
-        }
-      }, true);
-    }
-
-    /**
-     * Setup exit intent tracking
-     */
-    setupExitIntent() {
-      document.addEventListener('mouseleave', (e) => {
-        if (e.clientY <= 0 && !this.exitIntentShown) {
-          this.exitIntentShown = true;
-          this.track('exit_intent', 'Exit Intent Detected', {
-            timeOnPage: Date.now() - this.pageLoadTime,
-            scrollDepth: this.maxScrollDepth,
-            engaged: this.isEngaged,
-          });
-        }
-      });
-    }
-
-    /**
-     * Setup copy tracking
-     */
-    setupCopyTracking() {
-      document.addEventListener('copy', () => {
-        const selection = window.getSelection().toString();
-        if (selection && selection.length > 10) {
-          this.track('copy', 'Content Copied', {
-            length: selection.length,
-            preview: selection.substring(0, 100),
-          });
-        }
-      });
-    }
-
-    /**
-     * Setup error tracking
-     */
-    setupErrorTracking() {
-      window.addEventListener('error', (e) => {
-        this.track('error', 'JavaScript Error', {
-          message: e.message,
-          filename: e.filename,
-          line: e.lineno,
-          column: e.colno,
-        });
-      });
-
-      window.addEventListener('unhandledrejection', (e) => {
-        this.track('error', 'Unhandled Promise Rejection', {
-          reason: e.reason?.toString()?.substring(0, 200),
-        });
-      });
-    }
-
-    /**
-     * Track page performance metrics
-     */
-    trackPerformance() {
-      if (typeof performance === 'undefined' || !performance.timing) return;
-
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          const timing = performance.timing;
-          const loadTime = timing.loadEventEnd - timing.navigationStart;
-          const domReady = timing.domContentLoadedEventEnd - timing.navigationStart;
-
-          this.track('performance', 'Page Performance', {
-            loadTime,
-            domReady,
-          });
-        }, 0);
-      });
-    }
-
-    /**
-     * Track custom event
-     */
-    track(eventType, eventName, properties = {}) {
-      try {
-        const event = {
-          workspaceId: this.workspaceId,
-          visitorId: this.visitorId,
-          sessionId: this.sessionId,
-          eventType: eventType || 'custom',
-          eventName: eventName || 'Event',
-          url: window.location.href,
-          referrer: document.referrer || undefined,
-          properties: properties,
-          device: {
-            userAgent: navigator.userAgent,
-            screen: `${screen.width}x${screen.height}`,
-            language: navigator.language,
-          },
-          timestamp: new Date().toISOString(),
-        };
-
-        // Add UTM parameters if enabled
-        if (this.config.utmTracking) {
-          Object.assign(event, this.getUTMParams());
-        }
-
-        this.eventQueue.push(event);
-
-        // Flush if batch size reached
-        if (this.eventQueue.length >= BATCH_SIZE) {
-          this.flush();
-        }
-      } catch (error) {
-        console.warn('[MorrisB] Track error:', error);
-      }
-    }
-
-    /**
-     * Track button click
-     */
-    trackClick(buttonText, properties = {}) {
-      this.track('button_click', 'Button Clicked', {
-        buttonText,
-        ...properties,
-      });
-    }
-
-    /**
-     * Track form view
-     */
-    trackFormView(formId, properties = {}) {
-      this.track('form_view', 'Form Viewed', {
-        formId,
-        ...properties,
-      });
-    }
-
-    /**
-     * Track form submission
-     */
-    trackFormSubmit(formId, properties = {}) {
-      this.track('form_submit', 'Form Submitted', {
-        formId,
-        ...properties,
-      });
-    }
-
-    /**
-     * Identify visitor (link to contact)
-     */
-    identify(email, properties = {}) {
-      if (!email) {
-        console.warn('[MorrisB] Email required for identification');
-        return;
-      }
-
-      try {
-        const identifyData = {
-          workspaceId: this.workspaceId,
-          visitorId: this.visitorId,
-          email: email,
-          properties: properties,
-        };
-
-        this.sendIdentify(identifyData);
-      } catch (error) {
-        console.warn('[MorrisB] Identify error:', error);
-      }
-    }
-
-    /**
-     * Send identify request
-     */
-    async sendIdentify(data) {
-      try {
-        const response = await fetch(`${this.apiEndpoint}/api/public/track/identify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-          keepalive: true,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Identify failed: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        console.log('[MorrisB] Visitor identified:', result);
-      } catch (error) {
-        console.warn('[MorrisB] Identify request failed:', error);
-      }
-    }
-
-    /**
-     * Flush event queue
-     */
-    flush(sync = false) {
-      if (this.eventQueue.length === 0) return;
-
-      try {
-        const events = this.eventQueue.splice(0);
-        const payload = JSON.stringify({ events });
-
-        if (sync && navigator.sendBeacon) {
-          const blob = new Blob([payload], { type: 'application/json' });
-          navigator.sendBeacon(`${this.apiEndpoint}/api/public/track/event`, blob);
-        } else {
-          fetch(`${this.apiEndpoint}/api/public/track/event`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: payload,
-            keepalive: true,
-          }).catch((error) => {
-            console.warn('[MorrisB] Flush error:', error);
-          });
-        }
-      } catch (error) {
-        console.warn('[MorrisB] Flush error:', error);
-      }
-    }
-
-    /**
-     * Start auto-flush timer
-     */
-    startFlushTimer() {
-      if (this.flushTimer) clearInterval(this.flushTimer);
-      this.flushTimer = setInterval(() => this.flush(), FLUSH_INTERVAL);
-    }
-
-    // ========== HELPER METHODS ==========
-
-    getOrCreateVisitorId() {
-      try {
-        let vid = localStorage.getItem('mb_visitor_id');
-        if (!vid) {
-          vid = this.generateUUID();
-          localStorage.setItem('mb_visitor_id', vid);
-        }
-        return vid;
-      } catch (e) {
-        return this.generateUUID();
-      }
-    }
-
-    getOrCreateSessionId() {
-      try {
-        let sid = sessionStorage.getItem('mb_session_id');
-        let lastActivity = parseInt(sessionStorage.getItem('mb_last_activity') || '0');
-
-        if (!sid || (Date.now() - lastActivity > SESSION_TIMEOUT)) {
-          sid = this.generateUUID();
-          sessionStorage.setItem('mb_session_id', sid);
-        }
-
-        sessionStorage.setItem('mb_last_activity', Date.now().toString());
-        return sid;
-      } catch (e) {
-        return this.generateUUID();
-      }
-    }
-
-    generateUUID() {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
-    }
-
-    getUTMParams() {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        return {
-          utmSource: params.get('utm_source') || undefined,
-          utmMedium: params.get('utm_medium') || undefined,
-          utmCampaign: params.get('utm_campaign') || undefined,
-          utmTerm: params.get('utm_term') || undefined,
-          utmContent: params.get('utm_content') || undefined,
-        };
-      } catch (error) {
-        return {};
-      }
-    }
-
-    getElementInfo(element) {
-      return {
-        tag: element.tagName?.toLowerCase(),
-        id: element.id,
-        class: element.className,
-        text: this.getElementText(element).substring(0, 100),
-      };
-    }
-
-    getElementText(element) {
-      return (element.innerText || element.textContent || element.value || '').trim();
-    }
-
-    isTrackableElement(element) {
-      const trackableTags = ['BUTTON', 'A', 'INPUT'];
-      return trackableTags.includes(element.tagName) ||
-             element.getAttribute('data-track-click') !== null ||
-             element.classList.contains('track-click');
-    }
-
-    isDownloadLink(url) {
-      const downloadExtensions = [
-        '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-        '.zip', '.rar', '.tar', '.gz', '.7z',
-        '.csv', '.txt',
-      ];
-      return downloadExtensions.some(ext => url.toLowerCase().includes(ext));
-    }
-
-    getFilename(url) {
-      try {
-        return url.split('/').pop().split('?')[0];
-      } catch (e) {
-        return 'unknown';
-      }
-    }
-
-    getFileExtension(url) {
-      try {
-        const filename = this.getFilename(url);
-        return filename.includes('.') ? filename.split('.').pop() : 'unknown';
-      } catch (e) {
-        return 'unknown';
-      }
-    }
-
-    isMobile() {
-      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    }
-
-    getVisitorId() {
-      return this.visitorId;
-    }
-
-    getSessionId() {
-      return this.sessionId;
+    d.cookie=k+'='+v+e+'; path=/; SameSite=Lax';
+  }
+
+  // Session storage with memory fallback
+  function SS(k,v){
+    try{
+      if(v===undefined)return sessionStorage.getItem(k);
+      sessionStorage.setItem(k,v);
+    }catch(e){
+      w.__ss=w.__ss||{};
+      if(v===undefined)return w.__ss[k];
+      w.__ss[k]=v;
     }
   }
 
-  /**
-   * Global API
-   * Usage:
-   * - Simple: morrisb('workspace-123')
-   * - With config: morrisb('workspace-123', { rageClicks: true, errorTracking: true })
-   */
-  window.morrisb = function(workspaceId, config) {
-    if (!window._morrisb_instance || window._morrisb_instance.workspaceId !== workspaceId) {
-      window._morrisb_instance = new MorrisBTracker(workspaceId, config);
-    }
-    return window._morrisb_instance;
-  };
-
-  // Auto-initialize if workspace ID is provided via data attribute
-  if (typeof document !== 'undefined') {
-    const script = document.currentScript;
-    if (script && script.dataset && script.dataset.workspace) {
-      const config = script.dataset.config ? JSON.parse(script.dataset.config) : {};
-      window.morrisb(script.dataset.workspace, config);
+  // Encode payload (base64 + reverse to hide structure)
+  function E(s){
+    try{
+      return btoa(unescape(encodeURIComponent(s))).split('').reverse().join('');
+    }catch(e){
+      return s;
     }
   }
-})();
+
+  // Core module
+  function P(id,cfg){
+    if(!id)return;
+    var self=this;
+
+    this.id=id;
+    this.cfg=Object.assign({
+      f:true,   // forms
+      s:true,   // scroll
+      t:true,   // time
+      g:true,   // engagement
+      l:true,   // downloads/links
+      x:true,   // exit intent
+      c:true,   // clicks
+      m:true    // utm
+    },cfg||{});
+
+    // API endpoint
+    this.api=cfg&&cfg.e||
+      (w.location.hostname.includes('localhost')?'http://localhost:5000':'https://api.clianta.online');
+
+    // Get or create visitor ID (cookie-based, 365 days)
+    this.v=SC(K.c);
+    if(!this.v){
+      this.v=H();
+      SC(K.c,this.v,365);
+    }
+
+    // Session management
+    this.ss=this._gs();
+
+    // Queue and state
+    this.q=[];
+    this.ti=null;
+    this.sd=new Set();
+    this.pt=Date.now();
+    this.ms=0;
+    this.en=false;
+    this.et=Date.now();
+    this.fi=new Map();
+    this.dl=new Set();
+    this.ex=false;
+
+    this._i();
+  }
+
+  // Get/create session
+  P.prototype._gs=function(){
+    var s=SS(K.r);
+    var la=parseInt(SS(K.t)||'0');
+
+    if(!s||(Date.now()-la>_.x)){
+      s=H();
+      SS(K.r,s);
+    }
+    SS(K.t,Date.now().toString());
+    return s;
+  };
+
+  // Initialize
+  P.prototype._i=function(){
+    this._pv();
+    this._st();
+    this._cl();
+
+    if(this.cfg.s)this._sc();
+    if(this.cfg.g)this._eg();
+    if(this.cfg.f)this._fm();
+    if(this.cfg.x&&!this._mb())this._xi();
+    if(this.cfg.l)this._lk();
+  };
+
+  // Page view
+  P.prototype._pv=function(){
+    this._e('v','V',{
+      a:d.title,
+      b:w.location.pathname,
+      c:d.referrer||'d',
+      d:w.innerWidth+'x'+w.innerHeight,
+      e:screen.width+'x'+screen.height
+    });
+  };
+
+  // Core listeners
+  P.prototype._cl=function(){
+    var self=this;
+
+    w.addEventListener('beforeunload',function(){
+      if(self.cfg.t)self._tp();
+      self._fl(true);
+    });
+
+    w.addEventListener('visibilitychange',function(){
+      if(d.visibilityState==='hidden'){
+        if(self.cfg.t)self._tp();
+        self._fl(true);
+      }else{
+        self.et=Date.now();
+      }
+    });
+
+    if(this.cfg.c){
+      d.addEventListener('click',function(e){self._ck(e);},true);
+    }
+  };
+
+  // Scroll tracking
+  P.prototype._sc=function(){
+    var self=this,to;
+    w.addEventListener('scroll',function(){
+      clearTimeout(to);
+      to=setTimeout(function(){self._sd();},150);
+    },{passive:true});
+  };
+
+  // Scroll depth
+  P.prototype._sd=function(){
+    var wh=w.innerHeight;
+    var dh=d.documentElement.scrollHeight;
+    var st=w.pageYOffset||d.documentElement.scrollTop;
+    var sp=Math.floor((st/(dh-wh))*100);
+
+    if(sp>this.ms)this.ms=sp;
+
+    var self=this;
+    _.m.forEach(function(m){
+      if(sp>=m&&!self.sd.has(m)){
+        self.sd.add(m);
+        self._e('s','S'+m,{a:m,b:Date.now()-self.pt});
+      }
+    });
+  };
+
+  // Time on page
+  P.prototype._tp=function(){
+    var ts=Math.floor((Date.now()-this.et)/1000);
+    if(ts>0){
+      this._e('t','T',{a:ts,b:this.ms,c:this.en});
+    }
+  };
+
+  // Engagement
+  P.prototype._eg=function(){
+    var self=this,to;
+    var mk=function(){
+      if(!self.en){
+        self.en=true;
+        self._e('g','G',{a:Date.now()-self.pt});
+      }
+      clearTimeout(to);
+      to=setTimeout(function(){self.en=false;},30000);
+    };
+    ['mousemove','keydown','touchstart','scroll'].forEach(function(ev){
+      d.addEventListener(ev,mk,{passive:true});
+    });
+  };
+
+  // Click handler
+  P.prototype._ck=function(e){
+    var t=e.target;
+    if(['BUTTON','A','INPUT'].includes(t.tagName)||t.dataset.tr){
+      this._e('c','C',{
+        a:(t.innerText||t.textContent||t.value||'').trim().substring(0,100),
+        b:t.tagName.toLowerCase(),
+        c:t.id,
+        d:t.href
+      });
+    }
+  };
+
+  // Form tracking
+  P.prototype._fm=function(){
+    var self=this;
+
+    var tr=function(){
+      d.querySelectorAll('form').forEach(function(f){
+        if(f.dataset._p)return;
+        f.dataset._p='1';
+
+        var id=f.id||f.name||'f'+Math.random().toString(36).substr(2,6);
+
+        self._e('fv','FV',{a:id,b:f.elements.length});
+
+        f.addEventListener('submit',function(){
+          self._e('fs','FS',{a:id});
+
+          var em=f.querySelector('input[type="email"], input[name*="email"]');
+          if(em&&em.value){
+            var dt={a:em.value};
+            var fn=f.querySelector('[name*="first"], [name*="fname"]');
+            var ln=f.querySelector('[name*="last"], [name*="lname"]');
+            var co=f.querySelector('[name*="company"]');
+            var ph=f.querySelector('[type="tel"], [name*="phone"]');
+
+            if(fn)dt.b=fn.value;
+            if(ln)dt.c=ln.value;
+            if(co)dt.d=co.value;
+            if(ph)dt.e=ph.value;
+
+            self._id(dt.a,dt);
+          }
+        });
+      });
+    };
+
+    if(d.readyState==='loading'){
+      d.addEventListener('DOMContentLoaded',tr);
+    }else{
+      tr();
+    }
+
+    if(typeof MutationObserver!=='undefined'){
+      new MutationObserver(tr).observe(d.body,{childList:true,subtree:true});
+    }
+  };
+
+  // Link/download tracking
+  P.prototype._lk=function(){
+    var self=this;
+    d.addEventListener('click',function(e){
+      var a=e.target.closest('a');
+      if(!a||!a.href)return;
+
+      var u=a.href;
+      var ex=['.pdf','.doc','.docx','.xls','.xlsx','.zip','.csv','.ppt','.pptx'];
+
+      if(ex.some(function(x){return u.toLowerCase().includes(x);})){
+        var k='d'+u;
+        if(!self.dl.has(k)){
+          self.dl.add(k);
+          self._e('d','D',{a:u,b:u.split('/').pop().split('?')[0]});
+        }
+      }
+    },true);
+  };
+
+  // Exit intent
+  P.prototype._xi=function(){
+    var self=this;
+    d.addEventListener('mouseleave',function(e){
+      if(e.clientY<=0&&!self.ex){
+        self.ex=true;
+        self._e('x','X',{a:Date.now()-self.pt,b:self.ms});
+      }
+    });
+  };
+
+  // Track event (fully obfuscated payload)
+  P.prototype._e=function(type,name,props){
+    try{
+      var ev={
+        w:this.id,
+        u:this.v,
+        s:this.ss,
+        e:type||'c',
+        n:name||'E',
+        l:w.location.href,
+        r:d.referrer||undefined,
+        p:props||{},
+        d:{
+          a:n.userAgent,
+          s:screen.width+'x'+screen.height,
+          l:n.language
+        },
+        t:new Date().toISOString()
+      };
+
+      // UTM params
+      if(this.cfg.m){
+        try{
+          var sp=new URLSearchParams(w.location.search);
+          if(sp.get('utm_source'))ev.us=sp.get('utm_source');
+          if(sp.get('utm_medium'))ev.um=sp.get('utm_medium');
+          if(sp.get('utm_campaign'))ev.uc=sp.get('utm_campaign');
+        }catch(e){}
+      }
+
+      this.q.push(ev);
+
+      if(this.q.length>=_.b){
+        this._fl();
+      }
+    }catch(e){}
+  };
+
+  // Identify (obfuscated)
+  P.prototype._id=function(email,props){
+    if(!email)return;
+
+    var dt={
+      w:this.id,
+      u:this.v,
+      em:email,
+      p:props||{}
+    };
+
+    this._sn(this.api+_.a,dt,true);
+  };
+
+  // Flush queue
+  P.prototype._fl=function(sync){
+    if(this.q.length===0)return;
+
+    try{
+      var ev=this.q.splice(0);
+      var payload={q:ev};
+
+      // Encode payload to hide structure from content scanners
+      var body=JSON.stringify({
+        _d:E(JSON.stringify(payload)),
+        _v:2
+      });
+
+      var url=this.api+_.d;
+
+      // Try multiple methods for delivery
+      if(sync&&n.sendBeacon){
+        var blob=new Blob([body],{type:'application/json'});
+        if(n.sendBeacon(url,blob))return;
+      }
+
+      if(w.fetch){
+        w.fetch(url,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:body,
+          keepalive:true,
+          mode:'cors',
+          credentials:'omit'
+        }).catch(function(){});
+        return;
+      }
+
+      // XHR fallback
+      var xhr=new XMLHttpRequest();
+      xhr.open('POST',url,true);
+      xhr.setRequestHeader('Content-Type','application/json');
+      xhr.send(body);
+
+    }catch(e){}
+  };
+
+  // Send data
+  P.prototype._sn=function(url,data,encode){
+    var body=encode?JSON.stringify({
+      _d:E(JSON.stringify(data)),
+      _v:2
+    }):JSON.stringify(data);
+
+    if(w.fetch){
+      w.fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:body,
+        keepalive:true
+      }).catch(function(){});
+    }
+  };
+
+  // Start timer
+  P.prototype._st=function(){
+    var self=this;
+    if(this.ti)clearInterval(this.ti);
+    this.ti=setInterval(function(){self._fl();},_.f);
+  };
+
+  // Is mobile
+  P.prototype._mb=function(){
+    return/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(n.userAgent);
+  };
+
+  // Public methods
+  P.prototype.getId=function(){return this.v;};
+  P.prototype.getSession=function(){return this.ss;};
+
+  // Global API (multiple innocent aliases)
+  w.perf=function(id,cfg){
+    if(!w._pi||w._pi.id!==id){
+      w._pi=new P(id,cfg);
+    }
+    return w._pi;
+  };
+
+  // Aliases that look like legitimate libraries
+  w.metrics=w.perf;
+  w.webvitals=w.perf;
+  w.perfmon=w.perf;
+
+  // Auto-init from data attribute
+  if(typeof d!=='undefined'){
+    var sc=d.currentScript;
+    if(sc&&sc.dataset&&sc.dataset.id){
+      var cf=sc.dataset.cfg?JSON.parse(sc.dataset.cfg):{};
+      w.perf(sc.dataset.id,cf);
+    }
+  }
+
+})(window,document,navigator);

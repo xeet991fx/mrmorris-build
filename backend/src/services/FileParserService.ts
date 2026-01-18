@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import pdf from "pdf-parse";
 
 export interface RawRow {
@@ -31,7 +31,7 @@ export class FileParserService {
             extension === "xlsx" ||
             extension === "xls"
         ) {
-            return this.parseExcel(buffer);
+            return await this.parseExcel(buffer);
         }
 
         if (mimeType === "application/pdf" || extension === "pdf") {
@@ -112,16 +112,34 @@ export class FileParserService {
     /**
      * Parse Excel file (.xlsx, .xls)
      */
-    parseExcel(buffer: Buffer): ParseResult {
-        const workbook = XLSX.read(buffer, { type: "buffer" });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
+    async parseExcel(buffer: Buffer): Promise<ParseResult> {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
 
-        // Convert to JSON array
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-            header: 1,
-            defval: "",
-        }) as unknown as (string | number)[][];
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+            return { headers: [], rows: [], rowCount: 0 };
+        }
+
+        const jsonData: (string | number)[][] = [];
+        worksheet.eachRow((row, rowNumber) => {
+            const rowValues: (string | number)[] = [];
+            row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const value = cell.value;
+                if (value === null || value === undefined) {
+                    rowValues.push("");
+                } else if (typeof value === "object" && "text" in value) {
+                    // Handle rich text
+                    rowValues.push(String(value.text || ""));
+                } else if (typeof value === "object" && "result" in value) {
+                    // Handle formula results
+                    rowValues.push(String(value.result || ""));
+                } else {
+                    rowValues.push(typeof value === "number" ? value : String(value));
+                }
+            });
+            jsonData.push(rowValues);
+        });
 
         if (jsonData.length === 0) {
             return { headers: [], rows: [], rowCount: 0 };

@@ -84,7 +84,11 @@ import { startLifecycleProgressionJob } from "./jobs/lifecycleProgressionJob";
 import { startLeadRecyclingJob } from "./jobs/leadRecyclingJob";
 import { initializeProactiveAIJobs } from "./jobs/proactiveAI";
 import { startGoogleSheetFormSyncJob } from "./jobs/googleSheetFormSyncJob";
+import { startSequenceEmailJob } from "./jobs/sequenceEmailJob";
 import aiNotificationsRoutes from "./routes/aiNotifications";
+import businessProfileRoutes from "./routes/businessProfile";
+import { logger, httpLoggerMiddleware } from "./utils/logger";
+import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 import fs from "fs";
 
@@ -106,27 +110,27 @@ const setupGoogleCredentials = () => {
       const credentials = Buffer.from(process.env.GOOGLE_CREDENTIALS_BASE64, 'base64').toString('utf-8');
       fs.writeFileSync(tempKeyPath, credentials);
       process.env.GOOGLE_APPLICATION_CREDENTIALS = tempKeyPath;
-      console.log("✅ Google credentials loaded from GOOGLE_CREDENTIALS_BASE64");
+      logger.info("Google credentials loaded from GOOGLE_CREDENTIALS_BASE64");
       return;
     } catch (error) {
-      console.error("❌ Failed to decode GOOGLE_CREDENTIALS_BASE64:", error);
+      logger.error("Failed to decode GOOGLE_CREDENTIALS_BASE64", { error });
     }
   }
 
   // Option 2: Local file (development)
   if (fs.existsSync(localKeyPath)) {
     process.env.GOOGLE_APPLICATION_CREDENTIALS = localKeyPath;
-    console.log("✅ Google credentials loaded from local vertex-key.json");
+    logger.info("Google credentials loaded from local vertex-key.json");
     return;
   }
 
   // Option 3: Already set via env
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    console.log("✅ Google credentials already configured via GOOGLE_APPLICATION_CREDENTIALS");
+    logger.info("Google credentials already configured via GOOGLE_APPLICATION_CREDENTIALS");
     return;
   }
 
-  console.warn("⚠️ No Google credentials found. Vertex AI features may not work.");
+  logger.warn("No Google credentials found - Vertex AI features may not work");
 };
 
 setupGoogleCredentials();
@@ -148,13 +152,12 @@ if (process.env.SENTRY_DSN) {
     // Note: In Sentry v8+, request/tracing handling is automatic via Sentry.init()
     // The Handlers API was deprecated and removed
 
-    console.log('📊 Sentry error tracking enabled');
+    logger.info('Sentry error tracking enabled');
   } catch (error) {
-    console.log('⚠️  Sentry initialization failed:', error);
+    logger.warn('Sentry initialization failed', { error });
   }
 } else {
-  console.log('⚠️  Sentry DSN not configured - error tracking disabled');
-  console.log('   Add SENTRY_DSN to .env to enable error tracking');
+  logger.warn('Sentry DSN not configured - error tracking disabled');
 }
 
 // Trust proxy - Required for Railway/cloud deployments
@@ -217,9 +220,9 @@ if (process.env.NODE_ENV === 'production') {
   app.use('/api/auth/register', authLimiter);
   app.use('/api/auth/forgot-password', authLimiter);
   app.use('/api/auth/reset-password', authLimiter);
-  console.log('🛡️  Global rate limiting enabled (production)');
+  logger.info('Global rate limiting enabled (production)');
 } else {
-  console.log('⚠️  Rate limiting disabled in development');
+  logger.debug('Rate limiting disabled in development');
 }
 
 // Initialize Passport
@@ -272,6 +275,23 @@ app.get('/s.js', (req: Request, res: Response) => {
   }
 });
 
+// Serve stealth analytics script (anti-ad-blocker)
+// Using generic name 'a.js' to avoid detection
+app.get('/a.js', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const baseDir = process.cwd().endsWith('backend') ? path.join(process.cwd(), '..') : process.cwd();
+  const scriptPath = path.join(baseDir, 'frontend', 'public', 'a.js');
+
+  if (fs.existsSync(scriptPath)) {
+    res.sendFile(scriptPath);
+  } else {
+    res.status(404).send('// Script not found');
+  }
+});
+
 // Serve form embed script (public, cacheable)
 app.get('/forms/embed.js', (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/javascript');
@@ -307,11 +327,8 @@ app.get("/debug", (req: Request, res: Response) => {
   });
 });
 
-// Request logger middleware
-app.use((req: Request, res: Response, next: any) => {
-  console.log(`📥 ${req.method} ${req.url} - Path: ${req.path}`);
-  next();
-});
+// Request logger middleware - use structured HTTP logger
+app.use(httpLoggerMiddleware);
 
 // Middleware to ensure database connection in serverless environment
 app.use(async (req: Request, res: Response, next: any) => {
@@ -319,7 +336,7 @@ app.use(async (req: Request, res: Response, next: any) => {
     await connectDB();
     next();
   } catch (error) {
-    console.error("Database connection error:", error);
+    logger.error("Database connection error", { error });
     res.status(500).json({
       success: false,
       error: "Database connection failed",
@@ -341,7 +358,7 @@ const bullBoardInstance = createBullBoard({
 });
 
 app.use("/admin/queues", serverAdapter.getRouter());
-console.log("📊 Bull Board dashboard available at /admin/queues");
+logger.info("Bull Board dashboard available at /admin/queues");
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -409,6 +426,7 @@ app.use("/api/lead-magnets", leadMagnetRoutes); // Gated content library
 app.use("/api/voice-drops", voiceDropRoutes); // Ringless voicemail campaigns
 app.use("/api/form-templates", formTemplateRoutes); // Smart form templates with conversion optimization
 app.use("/api", aiNotificationsRoutes); // AI proactive notifications and insights
+app.use("/api/workspaces", businessProfileRoutes); // Business profile for AI context
 
 // AI Memory routes for viewing/managing learned knowledge
 import aiMemoryRoutes from "./routes/aiMemory";
@@ -426,83 +444,16 @@ if (process.env.SENTRY_DSN) {
     // Sentry v8+ uses setupExpressErrorHandler instead of Handlers.errorHandler()
     Sentry.setupExpressErrorHandler(app);
   } catch (error) {
-    console.log('⚠️  Sentry error handler not available');
+    logger.warn('Sentry error handler not available', { error });
   }
 }
 
-// 404 handler
-app.use((req: Request, res: Response) => {
-  console.log(`❌ 404 - Route not found: ${req.method} ${req.url}`);
-  res.status(404).json({ success: false, error: "Route not found" });
-});
-
 // ============================================
-// GLOBAL ERROR HANDLER
-// Must be after all routes and other error handlers
+// GLOBAL ERROR HANDLERS
+// Must be after all routes - uses centralized error handling
 // ============================================
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  // Log error for debugging
-  console.error('❌ Unhandled Error:', {
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    url: req.url,
-    method: req.method,
-  });
-
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation error',
-      details: err.errors,
-    });
-  }
-
-  // Mongoose duplicate key error
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue || {})[0];
-    return res.status(400).json({
-      success: false,
-      error: `Duplicate value for field: ${field}`,
-    });
-  }
-
-  // JWT errors
-  if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid token',
-    });
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    return res.status(401).json({
-      success: false,
-      error: 'Token expired',
-    });
-  }
-
-  // Zod validation error
-  if (err.name === 'ZodError') {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation failed',
-      details: err.errors,
-    });
-  }
-
-  // Default error response
-  const statusCode = err.statusCode || err.status || 500;
-  const message = process.env.NODE_ENV === 'production'
-    ? 'Internal server error'
-    : err.message || 'Internal server error';
-
-  res.status(statusCode).json({
-    success: false,
-    error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
-});
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
 
 // Initialize database connection and start server
 const startServer = async () => {
@@ -515,73 +466,37 @@ const startServer = async () => {
 
     // Initialize Socket.IO for real-time chat
     initializeChatSocket(httpServer);
-    console.log('💬 Chat Socket.IO initialized');
+    logger.info('Chat Socket.IO initialized');
 
     httpServer.listen(PORT, () => {
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
-      console.log("🚀 Server is running");
-      console.log(`📍 Port: ${PORT}`);
-      console.log(`🔗 Backend URL: ${backendUrl}`);
-      console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:3000"}`);
-      console.log(`🔑 Auth endpoints: ${backendUrl}/api/auth`);
-      console.log(`📋 Waitlist endpoints: ${backendUrl}/api/waitlist`);
-      console.log(`📁 Project endpoints: ${backendUrl}/api/projects`);
-
-      // ⚠️ BACKGROUND JOBS TEMPORARILY DISABLED - Redis limit exceeded
-      // Uncomment these when Redis issue is resolved or using local Redis
+      logger.info("Server started", {
+        port: PORT,
+        backendUrl,
+        frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+        authEndpoints: `${backendUrl}/api/auth`,
+        projectEndpoints: `${backendUrl}/api/projects`,
+      });
 
       // Start workflow scheduler (runs every 30 seconds - uses node-cron, NOT Redis)
       workflowScheduler.start();
-      console.log(`⚡ Workflow scheduler: Running`);
+      logger.info('Workflow scheduler started');
 
-      // Start contact sync scheduler (runs daily at 2 AM)
-      // startContactSyncScheduler();
-      // console.log(`⚡ Contact sync scheduler: Running`);
+      // Start sequence email job (runs every 2 minutes)
+      startSequenceEmailJob().catch((error) => {
+        logger.error('Failed to start sequence email job', { error });
+      });
+      logger.info('Sequence email job started');
 
-      // Start email sync job (runs every 5 minutes)
-      // startEmailSyncJob().catch((error) => {
-      //   console.error('❌ Failed to start email sync job:', error);
-      // });
+      logger.warn('Some background jobs disabled to prevent Redis rate limit');
 
-      // Start intent score decay job (runs daily at 2 AM)
-      // startIntentScoreDecayJob().catch((error) => {
-      //   console.error('❌ Failed to start intent score decay job:', error);
-      // });
-
-      // Start Salesforce sync job (runs every 15 minutes)
-      // startSalesforceSyncJob().catch((error) => {
-      //   console.error('❌ Failed to start Salesforce sync job:', error);
-      // });
-
-      // Start lifecycle progression job (runs every 2 hours)
-      // startLifecycleProgressionJob();
-      // console.log('⚡ Lifecycle progression job: Running');
-
-      // Start lead recycling job (runs daily at 9 AM)
-      // startLeadRecyclingJob();
-      // console.log('⚡ Lead recycling job: Running');
-
-      // Start proactive AI jobs (meeting prep, stale deal alerts, daily insights)
-      // initializeProactiveAIJobs().catch((error) => {
-      //   console.error('❌ Failed to start proactive AI jobs:', error);
-      // });
-      // console.log('🤖 Proactive AI jobs: Running');
-
-      // Start Google Sheet form sync job (runs every hour for batch sync)
-      // startGoogleSheetFormSyncJob().catch((error) => {
-      //   console.error('❌ Failed to start Google Sheet form sync job:', error);
-      // });
-      // console.log('📊 Google Sheet form sync job: Running');
-
-      console.log('⚠️  Some background jobs disabled to prevent Redis rate limit');
-
-      // Initialize event consumers (NEW)
+      // Initialize event consumers
       (async () => {
         try {
           const { initializeConsumers } = await import('./events/consumers');
           const { queueManager } = await import('./events/queue/QueueManager');
           initializeConsumers();
-          console.log(`⚡ Event consumers: Running`);
+          logger.info('Event consumers initialized');
 
           // Add all BullMQ queues to Bull Board for monitoring
           const queues = Array.from((queueManager as any).queues.values());
@@ -589,16 +504,16 @@ const startServer = async () => {
             queues.forEach((queue: any) => {
               bullBoardInstance.addQueue(new BullMQAdapter(queue));
             });
-            console.log(`📊 Bull Board monitoring ${queues.length} queue(s)`);
+            logger.info('Bull Board monitoring queues', { queueCount: queues.length });
           }
         } catch (eventError) {
-          console.error('❌ Failed to initialize event consumers:', eventError);
+          logger.error('Failed to initialize event consumers', { error: eventError });
           // Don't crash server - events are non-critical
         }
       })();
     });
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
+    logger.error("Failed to start server", { error });
     // In serverless environment, don't exit - just log the error
     if (process.env.NODE_ENV !== 'production') {
       process.exit(1);
@@ -606,7 +521,7 @@ const startServer = async () => {
   }
 };
 
-console.log(`DEBUG: Server loading. NODE_ENV in server.ts: '${process.env.NODE_ENV}', VERCEL: '${process.env.VERCEL}'`);
+logger.debug("Server loading", { nodeEnv: process.env.NODE_ENV, vercel: process.env.VERCEL });
 // Only start server if not in serverless environment (Vercel) and not in test mode
 if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
   startServer();
@@ -614,7 +529,7 @@ if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
 
 // Graceful shutdown handlers
 process.on('SIGTERM', async () => {
-  console.log('🔄 SIGTERM received, shutting down gracefully...');
+  logger.info('SIGTERM received, shutting down gracefully');
 
   try {
     const { queueManager } = await import('./events/queue/QueueManager');
@@ -623,14 +538,14 @@ process.on('SIGTERM', async () => {
     await queueManager.shutdown();
     await closeRedisConnection();
   } catch (error) {
-    console.error('Error during graceful shutdown:', error);
+    logger.error('Error during graceful shutdown', { error });
   }
 
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('🔄 SIGINT received, shutting down gracefully...');
+  logger.info('SIGINT received, shutting down gracefully');
 
   try {
     const { queueManager } = await import('./events/queue/QueueManager');
@@ -639,7 +554,7 @@ process.on('SIGINT', async () => {
     await queueManager.shutdown();
     await closeRedisConnection();
   } catch (error) {
-    console.error('Error during graceful shutdown:', error);
+    logger.error('Error during graceful shutdown', { error });
   }
 
   process.exit(0);

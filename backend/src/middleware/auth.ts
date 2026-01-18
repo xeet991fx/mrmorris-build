@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User, { IUser } from "../models/User";
+import { logger } from "../utils/logger";
 
 // Validate JWT_SECRET at startup
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -11,7 +12,7 @@ if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
 // Use a development-only fallback (will warn in console)
 const getJwtSecret = (): string => {
   if (JWT_SECRET) return JWT_SECRET;
-  console.warn("⚠️  WARNING: Using default JWT secret. Set JWT_SECRET in production!");
+  logger.warn("Using default JWT secret - set JWT_SECRET in production");
   return "dev-only-secret-do-not-use-in-production";
 };
 

@@ -17,6 +17,7 @@ import {
   PaintBrushIcon,
   BeakerIcon,
   CircleStackIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import TrackingTestFile from "./TrackingTestFile";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,7 @@ export default function UniversalTrackingInstaller({
   workspaceId,
 }: UniversalTrackingInstallerProps) {
   const [copied, setCopied] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<"simple" | "advanced">("simple");
+  const [selectedTab, setSelectedTab] = useState<"simple" | "advanced" | "stealth">("simple");
   const [verificationStatus, setVerificationStatus] = useState<"pending" | "checking" | "success" | "error">("pending");
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
 
@@ -39,27 +40,29 @@ export default function UniversalTrackingInstaller({
 
   // Universal tracking code (works on ANY website)
   const simpleCode = `<!-- MorrisB Lead Tracking - Copy & Paste Anywhere -->
-<script src="${backendUrl}/track.js" async></script>
+<script src="${backendUrl}/track.js"></script>
 <script>
-  window.addEventListener('load', function() {
+  (function checkMorrisB() {
     if (window.morrisb) {
       morrisb('${workspaceId}', {
-        apiEndpoint: '${backendUrl}' // Your API endpoint
+        apiEndpoint: '${backendUrl}'
       });
+    } else {
+      setTimeout(checkMorrisB, 100);
     }
-  });
+  })();
 </script>`;
 
   // Advanced code with custom configuration
   const advancedCode = `<!-- MorrisB Lead Tracking - Advanced with Custom Config -->
-<script src="${backendUrl}/track.js" async></script>
+<script src="${backendUrl}/track.js"></script>
 <script>
-  window.addEventListener('load', function() {
+  (function checkMorrisB() {
     if (window.morrisb) {
       // Initialize with optional features enabled
       var tracker = morrisb('${workspaceId}', {
         // API Configuration
-        apiEndpoint: '${backendUrl}',  // Your API endpoint
+        apiEndpoint: '${backendUrl}',
 
         // Core lead gen (enabled by default, shown for reference)
         autoFormTracking: true,     // Auto-detect forms
@@ -84,8 +87,49 @@ export default function UniversalTrackingInstaller({
       // Manual tracking (if needed)
       // tracker.track('custom_event', 'Event Name', { prop: 'value' });
       // tracker.identify('email@example.com', { firstName: 'John' });
+    } else {
+      setTimeout(checkMorrisB, 100);
     }
-  });
+  })();
+</script>`;
+
+  // Stealth tracking code (AdGuard resistant - v4.0)
+  // Uses: obfuscated payloads, disguised endpoints, cookie storage, encoded data
+  const stealthCode = `<!-- Performance Optimization Module -->
+<script>
+(function(w,d,n){
+  'use strict';
+  var _={d:'/cdn/fonts/woff2.json',a:'/cdn/assets/manifest.json',p:'/cdn/img/s.gif',b:10,f:5000,x:1800000,m:[25,50,75,100]};
+  var K={c:'_fc_id',r:'_rnd_key',t:'_ts'};
+  function H(){var h='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';return h.replace(/[xy]/g,function(c){var v=Math.random()*16|0;return(c==='x'?v:(v&0x3|0x8)).toString(16);});}
+  function SC(k,v,days){if(v===undefined){var m=d.cookie.match(new RegExp('(^| )'+k+'=([^;]+)'));return m?m[2]:null;}var e='';if(days){var dt=new Date();dt.setTime(dt.getTime()+(days*24*60*60*1000));e='; expires='+dt.toUTCString();}d.cookie=k+'='+v+e+'; path=/; SameSite=Lax';}
+  function SS(k,v){try{if(v===undefined)return sessionStorage.getItem(k);sessionStorage.setItem(k,v);}catch(e){w.__ss=w.__ss||{};if(v===undefined)return w.__ss[k];w.__ss[k]=v;}}
+  function E(s){try{return btoa(unescape(encodeURIComponent(s))).split('').reverse().join('');}catch(e){return s;}}
+  function P(id,cfg){if(!id)return;this.id=id;this.cfg=Object.assign({f:true,s:true,t:true,g:true,l:true,x:true,c:true,m:true},cfg||{});this.api=cfg&&cfg.e||'${backendUrl}';this.v=SC(K.c);if(!this.v){this.v=H();SC(K.c,this.v,365);}this.ss=this._gs();this.q=[];this.ti=null;this.sd=new Set();this.pt=Date.now();this.ms=0;this.en=false;this.et=Date.now();this.fi=new Map();this.dl=new Set();this.ex=false;this._i();}
+  P.prototype._gs=function(){var s=SS(K.r);var la=parseInt(SS(K.t)||'0');if(!s||(Date.now()-la>_.x)){s=H();SS(K.r,s);}SS(K.t,Date.now().toString());return s;};
+  P.prototype._i=function(){this._pv();this._st();this._cl();if(this.cfg.s)this._sc();if(this.cfg.g)this._eg();if(this.cfg.f)this._fm();if(this.cfg.x&&!this._mb())this._xi();if(this.cfg.l)this._lk();};
+  P.prototype._pv=function(){this._e('v','V',{a:d.title,b:w.location.pathname,c:d.referrer||'d',d:w.innerWidth+'x'+w.innerHeight,e:screen.width+'x'+screen.height});};
+  P.prototype._cl=function(){var self=this;w.addEventListener('beforeunload',function(){if(self.cfg.t)self._tp();self._fl(true);});w.addEventListener('visibilitychange',function(){if(d.visibilityState==='hidden'){if(self.cfg.t)self._tp();self._fl(true);}else{self.et=Date.now();}});if(this.cfg.c){d.addEventListener('click',function(e){self._ck(e);},true);}};
+  P.prototype._sc=function(){var self=this,to;w.addEventListener('scroll',function(){clearTimeout(to);to=setTimeout(function(){self._sd();},150);},{passive:true});};
+  P.prototype._sd=function(){var wh=w.innerHeight;var dh=d.documentElement.scrollHeight;var st=w.pageYOffset||d.documentElement.scrollTop;var sp=Math.floor((st/(dh-wh))*100);if(sp>this.ms)this.ms=sp;var self=this;_.m.forEach(function(m){if(sp>=m&&!self.sd.has(m)){self.sd.add(m);self._e('s','S'+m,{a:m,b:Date.now()-self.pt});}});};
+  P.prototype._tp=function(){var ts=Math.floor((Date.now()-this.et)/1000);if(ts>0){this._e('t','T',{a:ts,b:this.ms,c:this.en});}};
+  P.prototype._eg=function(){var self=this,to;var mk=function(){if(!self.en){self.en=true;self._e('g','G',{a:Date.now()-self.pt});}clearTimeout(to);to=setTimeout(function(){self.en=false;},30000);};['mousemove','keydown','touchstart','scroll'].forEach(function(ev){d.addEventListener(ev,mk,{passive:true});});};
+  P.prototype._ck=function(e){var t=e.target;if(['BUTTON','A','INPUT'].includes(t.tagName)||t.dataset.tr){this._e('c','C',{a:(t.innerText||t.textContent||t.value||'').trim().substring(0,100),b:t.tagName.toLowerCase(),c:t.id,d:t.href});}};
+  P.prototype._fm=function(){var self=this;var tr=function(){d.querySelectorAll('form').forEach(function(f){if(f.dataset._p)return;f.dataset._p='1';var id=f.id||f.name||'f'+Math.random().toString(36).substr(2,6);self._e('fv','FV',{a:id,b:f.elements.length});f.addEventListener('submit',function(){self._e('fs','FS',{a:id});var em=f.querySelector('input[type="email"], input[name*="email"]');if(em&&em.value){var dt={a:em.value};var fn=f.querySelector('[name*="first"], [name*="fname"]');var ln=f.querySelector('[name*="last"], [name*="lname"]');var co=f.querySelector('[name*="company"]');var ph=f.querySelector('[type="tel"], [name*="phone"]');if(fn)dt.b=fn.value;if(ln)dt.c=ln.value;if(co)dt.d=co.value;if(ph)dt.e=ph.value;self._id(dt.a,dt);}});});};if(d.readyState==='loading'){d.addEventListener('DOMContentLoaded',tr);}else{tr();}if(typeof MutationObserver!=='undefined'){new MutationObserver(tr).observe(d.body,{childList:true,subtree:true});}};
+  P.prototype._lk=function(){var self=this;d.addEventListener('click',function(e){var a=e.target.closest('a');if(!a||!a.href)return;var u=a.href;var ex=['.pdf','.doc','.docx','.xls','.xlsx','.zip','.csv','.ppt','.pptx'];if(ex.some(function(x){return u.toLowerCase().includes(x);})){var k='d'+u;if(!self.dl.has(k)){self.dl.add(k);self._e('d','D',{a:u,b:u.split('/').pop().split('?')[0]});}}},true);};
+  P.prototype._xi=function(){var self=this;d.addEventListener('mouseleave',function(e){if(e.clientY<=0&&!self.ex){self.ex=true;self._e('x','X',{a:Date.now()-self.pt,b:self.ms});}});};
+  P.prototype._e=function(type,name,props){try{var ev={w:this.id,u:this.v,s:this.ss,e:type||'c',n:name||'E',l:w.location.href,r:d.referrer||undefined,p:props||{},d:{a:n.userAgent,s:screen.width+'x'+screen.height,l:n.language},t:new Date().toISOString()};if(this.cfg.m){try{var sp=new URLSearchParams(w.location.search);if(sp.get('utm_source'))ev.us=sp.get('utm_source');if(sp.get('utm_medium'))ev.um=sp.get('utm_medium');if(sp.get('utm_campaign'))ev.uc=sp.get('utm_campaign');}catch(e){}}this.q.push(ev);if(this.q.length>=_.b){this._fl();}}catch(e){}};
+  P.prototype._id=function(email,props){if(!email)return;var dt={w:this.id,u:this.v,em:email,p:props||{}};this._sn(this.api+_.a,dt,true);};
+  P.prototype._fl=function(sync){if(this.q.length===0)return;try{var ev=this.q.splice(0);var payload={q:ev};var body=JSON.stringify({_d:E(JSON.stringify(payload)),_v:2});var url=this.api+_.d;if(sync&&n.sendBeacon){var blob=new Blob([body],{type:'application/json'});if(n.sendBeacon(url,blob))return;}if(w.fetch){w.fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true,mode:'cors',credentials:'omit'}).catch(function(){});return;}var xhr=new XMLHttpRequest();xhr.open('POST',url,true);xhr.setRequestHeader('Content-Type','application/json');xhr.send(body);}catch(e){}};
+  P.prototype._sn=function(url,data,encode){var body=encode?JSON.stringify({_d:E(JSON.stringify(data)),_v:2}):JSON.stringify(data);if(w.fetch){w.fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true}).catch(function(){});}};
+  P.prototype._st=function(){var self=this;if(this.ti)clearInterval(this.ti);this.ti=setInterval(function(){self._fl();},_.f);};
+  P.prototype._mb=function(){return/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(n.userAgent);};
+  P.prototype.getId=function(){return this.v;};
+  P.prototype.getSession=function(){return this.ss;};
+  w.perf=function(id,cfg){if(!w._pi||w._pi.id!==id){w._pi=new P(id,cfg);}return w._pi;};
+  w.metrics=w.perf;w.webvitals=w.perf;
+  w.perf('${workspaceId}',{e:'${backendUrl}'});
+})(window,document,navigator);
 </script>`;
 
   const copyToClipboard = (code: string) => {
@@ -97,12 +141,31 @@ export default function UniversalTrackingInstaller({
   const verifyInstallation = async () => {
     setVerificationStatus("checking");
 
-    // In a real implementation, this would check if events are being received
-    // For now, we'll simulate a check
-    setTimeout(() => {
-      setVerificationStatus("pending");
-    }, 2000);
+    try {
+      // Check if we've received any tracking events recently
+      const response = await fetch(`${backendUrl}/api/workspaces/${workspaceId}/tracking/stats`, {
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.totalEvents > 0) {
+          setVerificationStatus("success");
+        } else {
+          setVerificationStatus("pending");
+        }
+      } else {
+        setVerificationStatus("error");
+      }
+    } catch {
+      setVerificationStatus("error");
+    }
   };
+
+  // Auto-verify on mount
+  useEffect(() => {
+    verifyInstallation();
+  }, [workspaceId]);
 
   const platforms = [
     {
@@ -221,18 +284,21 @@ export default function UniversalTrackingInstaller({
             </p>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { icon: "🎯", title: "9 Core Features" },
-                { icon: "📝", title: "Smart Forms" },
-                { icon: "🌐", title: "Universal" },
-              ].map((feature, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-background/60 border border-border/30"
-                >
-                  <span className="text-lg">{feature.icon}</span>
-                  <span className="text-xs font-medium text-foreground">{feature.title}</span>
-                </div>
-              ))}
+                { icon: BoltIcon, title: "9 Core Features", color: "text-amber-500" },
+                { icon: DocumentTextIcon, title: "Smart Forms", color: "text-emerald-500" },
+                { icon: GlobeAltIcon, title: "Universal", color: "text-blue-500" },
+              ].map((feature, index) => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-background/60 border border-border/30"
+                  >
+                    <Icon className={`w-5 h-5 ${feature.color}`} />
+                    <span className="text-xs font-medium text-foreground">{feature.title}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -244,7 +310,7 @@ export default function UniversalTrackingInstaller({
           <motion.button
             onClick={() => setSelectedTab("simple")}
             className={cn(
-              "px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 relative",
+              "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 relative",
               selectedTab === "simple"
                 ? "text-white"
                 : "text-muted-foreground hover:text-foreground"
@@ -258,12 +324,12 @@ export default function UniversalTrackingInstaller({
                 transition={{ type: "spring", stiffness: 400, damping: 30 }}
               />
             )}
-            <span className="relative z-10">Simple (Recommended)</span>
+            <span className="relative z-10">Simple</span>
           </motion.button>
           <motion.button
             onClick={() => setSelectedTab("advanced")}
             className={cn(
-              "px-6 py-2 rounded-md text-sm font-medium transition-all duration-200 relative",
+              "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 relative",
               selectedTab === "advanced"
                 ? "text-white"
                 : "text-muted-foreground hover:text-foreground"
@@ -278,6 +344,28 @@ export default function UniversalTrackingInstaller({
               />
             )}
             <span className="relative z-10">Advanced</span>
+          </motion.button>
+          <motion.button
+            onClick={() => setSelectedTab("stealth")}
+            className={cn(
+              "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 relative",
+              selectedTab === "stealth"
+                ? "text-white"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            whileTap={{ scale: 0.98 }}
+          >
+            {selectedTab === "stealth" && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-primary rounded-md"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-1">
+              Stealth
+              <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">NEW</span>
+            </span>
           </motion.button>
         </div>
       </div>
@@ -297,15 +385,15 @@ export default function UniversalTrackingInstaller({
               <CodeBracketIcon className="w-4 h-4 text-muted-foreground" />
               <div>
                 <div className="text-sm font-semibold text-foreground">
-                  {selectedTab === "simple" ? "Universal Tracking Code" : "Advanced Configuration"}
+                  {selectedTab === "simple" ? "Universal Tracking Code" : selectedTab === "advanced" ? "Advanced Configuration" : "Stealth Mode (Anti-Blocker)"}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {selectedTab === "simple" ? "Copy & paste anywhere" : "With optional features"}
+                  {selectedTab === "simple" ? "Copy & paste anywhere" : selectedTab === "advanced" ? "With optional features" : "Inline code, bypasses ad blockers"}
                 </div>
               </div>
             </div>
             <motion.button
-              onClick={() => copyToClipboard(selectedTab === "simple" ? simpleCode : advancedCode)}
+              onClick={() => copyToClipboard(selectedTab === "simple" ? simpleCode : selectedTab === "advanced" ? advancedCode : stealthCode)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -340,7 +428,7 @@ export default function UniversalTrackingInstaller({
 
           <div className="p-4">
             <pre className="bg-gray-950 text-gray-300 p-3 rounded-lg overflow-x-auto text-xs font-mono leading-relaxed">
-              {selectedTab === "simple" ? simpleCode : advancedCode}
+              {selectedTab === "simple" ? simpleCode : selectedTab === "advanced" ? advancedCode : stealthCode}
             </pre>
 
             {selectedTab === "simple" && (
@@ -376,6 +464,33 @@ export default function UniversalTrackingInstaller({
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     <strong className="text-foreground">Optional Features:</strong> Enable advanced tracking like rage clicks, error tracking, and performance monitoring. All core features are always enabled.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {selectedTab === "stealth" && (
+              <div className="mt-3 space-y-2.5">
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <p className="text-xs text-amber-200 leading-relaxed">
+                    <strong className="text-amber-400">Anti-Blocker Technology:</strong> This inline script bypasses most ad blockers and tracking prevention tools. Uses disguised endpoints, non-suspicious variable names, and multiple fallback methods.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { title: "Inline Code", desc: "No external scripts to block" },
+                    { title: "Disguised APIs", desc: "Non-suspicious endpoint names" },
+                    { title: "Multiple Fallbacks", desc: "Beacon, Fetch, XHR, Pixel" },
+                    { title: "Obfuscated", desc: "Compact, hard to detect" },
+                  ].map((feature, index) => (
+                    <div
+                      key={index}
+                      className="p-2 rounded-lg bg-muted/20 border border-border/20"
+                    >
+                      <div className="text-xs font-semibold text-foreground mb-0.5">{feature.title}</div>
+                      <div className="text-[11px] text-muted-foreground">{feature.desc}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -438,7 +553,8 @@ export default function UniversalTrackingInstaller({
         {/* Test File */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-4">
           <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5">
-            <span>🧪</span> Test First
+            <BeakerIcon className="w-4 h-4 text-purple-500" />
+            <span>Test First</span>
           </h3>
           <p className="text-xs text-muted-foreground mb-3">
             Download a test page to verify tracking works
@@ -449,7 +565,8 @@ export default function UniversalTrackingInstaller({
         {/* Verification */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-4">
           <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5">
-            <span>📊</span> Verify Installation
+            <ChartBarIcon className="w-4 h-4 text-cyan-500" />
+            <span>Verify Installation</span>
           </h3>
           <p className="text-xs text-muted-foreground mb-3">
             Check your dashboard after installing

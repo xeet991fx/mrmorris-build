@@ -135,7 +135,7 @@ export const sendReply = async (
     messageId: string,
     body: string,
     subject?: string
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; sentReply?: any }> => {
     const response = await axiosInstance.post(`/inbox/${messageId}/reply`, {
         body,
         subject,
@@ -230,5 +230,16 @@ export const syncInbox = async (workspaceId: string): Promise<{
     repliesFound: number;
 }> => {
     const response = await axiosInstance.post(`/inbox/sync`, { workspaceId });
+    return response.data;
+};
+
+/**
+ * Get all messages in a thread (conversation)
+ */
+export const getThreadMessages = async (messageId: string): Promise<{
+    success: boolean;
+    messages: any[];
+}> => {
+    const response = await axiosInstance.get(`/inbox/${messageId}/thread`);
     return response.data;
 };

@@ -2,8 +2,26 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronRight, Target, Workflow as WorkflowIcon, Mail, MailOpen } from "lucide-react";
+import {
+    ChevronDownIcon,
+    ChevronRightIcon,
+    RocketLaunchIcon,
+    BoltIcon,
+    EnvelopeIcon,
+    EnvelopeOpenIcon,
+    ChatBubbleLeftRightIcon,
+} from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+
+interface Conversation {
+    contactId: string;
+    contactName: string;
+    contactEmail: string;
+    messageCount: number;
+    unreadCount: number;
+    latestMessage: any;
+    messages: any[];
+}
 
 interface GroupedInboxViewProps {
     groupedData: {
@@ -11,20 +29,22 @@ interface GroupedInboxViewProps {
             id: string;
             name: string;
             count: number;
-            emails: any[];
+            conversations?: Conversation[];
+            emails?: any[]; // Backwards compatibility
         }>;
         workflows: Array<{
             id: string;
             name: string;
             count: number;
-            emails: any[];
+            conversations?: Conversation[];
+            emails?: any[];
         }>;
-        direct: any[];
+        direct: Conversation[] | any[];
     };
-    onEmailClick: (email: any) => void;
+    onConversationClick: (conversation: Conversation) => void;
 }
 
-export function GroupedInboxView({ groupedData, onEmailClick }: GroupedInboxViewProps) {
+export function GroupedInboxView({ groupedData, onConversationClick }: GroupedInboxViewProps) {
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['campaigns', 'workflows', 'direct']));
     const [expandedSubdivisions, setExpandedSubdivisions] = useState<Set<string>>(new Set());
 
@@ -61,87 +81,159 @@ export function GroupedInboxView({ groupedData, onEmailClick }: GroupedInboxView
         return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
-    const getContactName = (email: any): string => {
-        if (!email.contactId) return email.toEmail || email.fromEmail || "Unknown";
-        if (typeof email.contactId === "string") return email.toEmail || email.fromEmail || "Unknown";
-        return `${email.contactId.firstName || ''} ${email.contactId.lastName || ''}`.trim() || email.contactId.email || "Unknown";
-    };
-
-    const EmailItem = ({ email, index }: { email: any; index: number }) => {
+    // Conversation Row Component
+    const ConversationItem = ({ conversation, index }: { conversation: Conversation; index: number }) => {
         const colors = ['from-blue-500 to-cyan-500', 'from-violet-500 to-purple-500', 'from-amber-500 to-orange-500', 'from-emerald-500 to-teal-500'];
         const colorClass = colors[index % colors.length];
-        const initials = getContactName(email).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const initials = conversation.contactName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        const latestMsg = conversation.latestMessage;
+        const hasReplied = latestMsg?.replied;
 
         return (
             <motion.button
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.02 }}
-                onClick={() => onEmailClick(email)}
+                onClick={() => onConversationClick(conversation)}
                 className="w-full px-4 py-3 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors text-left group rounded-lg"
             >
-                <div className={cn("w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white font-semibold text-xs flex-shrink-0", colorClass)}>
-                    {initials || '?'}
+                {/* Avatar */}
+                <div className="relative">
+                    <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm flex-shrink-0", colorClass)}>
+                        {initials || '?'}
+                    </div>
+                    {conversation.unreadCount > 0 && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {conversation.unreadCount}
+                        </div>
+                    )}
                 </div>
 
+                {/* Content */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-medium text-zinc-900 dark:text-zinc-100 text-sm truncate">{getContactName(email)}</span>
+                        <span className={cn(
+                            "font-medium text-sm truncate",
+                            conversation.unreadCount > 0
+                                ? "text-zinc-900 dark:text-zinc-100"
+                                : "text-zinc-700 dark:text-zinc-300"
+                        )}>
+                            {conversation.contactName}
+                        </span>
 
-                        {/* Tracking Indicators */}
-                        <div className="flex items-center gap-1">
-                            {email.opened && (
-                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 rounded text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                                    <MailOpen className="w-2.5 h-2.5" />
-                                    Opened
-                                </div>
-                            )}
-                            {email.clicked && (
-                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 rounded text-[10px] text-purple-600 dark:text-purple-400 font-medium">
-                                    <Target className="w-2.5 h-2.5" />
-                                    Clicked
-                                </div>
-                            )}
-                            {email.replied && (
-                                <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                    <Mail className="w-2.5 h-2.5" />
-                                    Replied
-                                </div>
-                            )}
-                        </div>
+                        {/* Message count badge */}
+                        {conversation.messageCount > 1 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-700 rounded text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+                                <ChatBubbleLeftRightIcon className="w-2.5 h-2.5" />
+                                {conversation.messageCount}
+                            </div>
+                        )}
 
-                        <span className="ml-auto text-xs text-zinc-400">{formatDate(email.repliedAt || email.sentAt)}</span>
+                        {/* Replied badge */}
+                        {hasReplied && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                Replied
+                            </div>
+                        )}
+
+                        <span className="ml-auto text-xs text-zinc-400">{formatDate(latestMsg?.sentAt || latestMsg?.repliedAt)}</span>
                     </div>
-                    <p className="text-xs text-zinc-500 truncate">{email.replySubject || email.subject}</p>
+                    <p className="text-xs text-zinc-500 truncate">
+                        {latestMsg?.replySubject || latestMsg?.subject || 'No subject'}
+                    </p>
+                    <p className="text-xs text-zinc-400 truncate">
+                        {latestMsg?.replyBody?.substring(0, 60) || latestMsg?.bodyText?.substring(0, 60) || ''}...
+                    </p>
                 </div>
 
-                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 flex-shrink-0 transition-colors" />
+                <ChevronRightIcon className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 flex-shrink-0 transition-colors" />
             </motion.button>
         );
     };
 
-    const totalCampaigns = groupedData.campaigns.reduce((sum, c) => sum + c.count, 0);
-    const totalWorkflows = groupedData.workflows.reduce((sum, w) => sum + w.count, 0);
-    const totalDirect = groupedData.direct.length;
+    // Helper to get conversations from data (handles both old and new format)
+    const getConversations = (item: any): Conversation[] => {
+        if (item.conversations) return item.conversations;
+        // Backwards compatibility: convert emails to conversations
+        if (item.emails) {
+            const byContact = new Map<string, any[]>();
+            for (const email of item.emails) {
+                const key = email.contactId?._id?.toString() || email.toEmail || 'unknown';
+                if (!byContact.has(key)) byContact.set(key, []);
+                byContact.get(key)!.push(email);
+            }
+            return Array.from(byContact.entries()).map(([key, emails]) => ({
+                contactId: key,
+                contactName: emails[0].contactId?.firstName
+                    ? `${emails[0].contactId.firstName} ${emails[0].contactId.lastName || ''}`.trim()
+                    : emails[0].toEmail || 'Unknown',
+                contactEmail: emails[0].contactId?.email || emails[0].toEmail || '',
+                messageCount: emails.length,
+                unreadCount: emails.filter((e: any) => !e.isRead && e.replied).length,
+                latestMessage: emails[0],
+                messages: emails,
+            }));
+        }
+        return [];
+    };
+
+    const getDirectConversations = (): Conversation[] => {
+        const data = groupedData.direct;
+        if (Array.isArray(data) && data.length > 0) {
+            // Check if it's already in conversation format
+            if (data[0].contactId !== undefined && data[0].messages !== undefined) {
+                return data as Conversation[];
+            }
+            // Old format: array of emails
+            const byContact = new Map<string, any[]>();
+            for (const email of data) {
+                const key = email.contactId?._id?.toString() || email.toEmail || 'unknown';
+                if (!byContact.has(key)) byContact.set(key, []);
+                byContact.get(key)!.push(email);
+            }
+            return Array.from(byContact.entries()).map(([key, emails]) => ({
+                contactId: key,
+                contactName: emails[0].contactId?.firstName
+                    ? `${emails[0].contactId.firstName} ${emails[0].contactId.lastName || ''}`.trim()
+                    : emails[0].toEmail || 'Unknown',
+                contactEmail: emails[0].contactId?.email || emails[0].toEmail || '',
+                messageCount: emails.length,
+                unreadCount: emails.filter((e: any) => !e.isRead && e.replied).length,
+                latestMessage: emails[0],
+                messages: emails,
+            }));
+        }
+        return [];
+    };
+
+    const totalCampaignConversations = groupedData.campaigns.reduce((sum, c) =>
+        sum + getConversations(c).length, 0);
+    const totalWorkflowConversations = groupedData.workflows.reduce((sum, w) =>
+        sum + getConversations(w).length, 0);
+    const totalDirectConversations = getDirectConversations().length;
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-3">
             {/* Campaigns Section */}
             {groupedData.campaigns.length > 0 && (
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                <div className="bg-white dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/50 overflow-hidden">
                     <button
                         onClick={() => toggleSection('campaigns')}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                        className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                     >
                         <motion.div
                             animate={{ rotate: expandedSections.has('campaigns') ? 90 : 0 }}
                             transition={{ duration: 0.2 }}
                         >
-                            <ChevronRight className="w-4 h-4 text-zinc-400" />
+                            <ChevronRightIcon className="w-4 h-4 text-zinc-400" />
                         </motion.div>
-                        <Target className="w-5 h-5 text-blue-500" />
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                            <RocketLaunchIcon className="w-4 h-4 text-white" />
+                        </div>
                         <span className="font-semibold text-zinc-900 dark:text-zinc-100">Campaigns</span>
-                        <span className="ml-auto text-sm text-zinc-500">{totalCampaigns} emails</span>
+                        <span className="ml-auto px-2 py-0.5 text-xs font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-700 rounded-full">
+                            {totalCampaignConversations} conversations
+                        </span>
                     </button>
 
                     <AnimatePresence>
@@ -151,40 +243,43 @@ export function GroupedInboxView({ groupedData, onEmailClick }: GroupedInboxView
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 transition={{ duration: 0.2 }}
-                                className="overflow-hidden border-t border-zinc-100 dark:border-zinc-800"
+                                className="overflow-hidden border-t border-zinc-100 dark:border-zinc-700/50"
                             >
-                                {groupedData.campaigns.map((campaign) => (
-                                    <div key={campaign.id} className="border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-                                        <button
-                                            onClick={() => toggleSubdivision(campaign.id)}
-                                            className="w-full px-6 py-2.5 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors text-left"
-                                        >
-                                            <motion.div
-                                                animate={{ rotate: expandedSubdivisions.has(campaign.id) ? 90 : 0 }}
-                                                transition={{ duration: 0.2 }}
+                                {groupedData.campaigns.map((campaign) => {
+                                    const conversations = getConversations(campaign);
+                                    return (
+                                        <div key={campaign.id} className="border-b border-zinc-100 dark:border-zinc-700/50 last:border-0">
+                                            <button
+                                                onClick={() => toggleSubdivision(campaign.id)}
+                                                className="w-full px-6 py-2.5 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors text-left"
                                             >
-                                                <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-                                            </motion.div>
-                                            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{campaign.name}</span>
-                                            <span className="ml-auto text-xs text-zinc-400">{campaign.count}</span>
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {expandedSubdivisions.has(campaign.id) && (
                                                 <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="bg-zinc-50/50 dark:bg-zinc-900/50 px-2 py-2"
+                                                    animate={{ rotate: expandedSubdivisions.has(campaign.id) ? 90 : 0 }}
+                                                    transition={{ duration: 0.2 }}
                                                 >
-                                                    {campaign.emails.map((email, idx) => (
-                                                        <EmailItem key={email._id} email={email} index={idx} />
-                                                    ))}
+                                                    <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-400" />
                                                 </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                ))}
+                                                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{campaign.name}</span>
+                                                <span className="ml-auto text-xs text-zinc-400">{conversations.length}</span>
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {expandedSubdivisions.has(campaign.id) && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        className="bg-zinc-50/50 dark:bg-zinc-900/50 px-2 py-2"
+                                                    >
+                                                        {conversations.map((conv, idx) => (
+                                                            <ConversationItem key={conv.contactId} conversation={conv} index={idx} />
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    );
+                                })}
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -193,20 +288,24 @@ export function GroupedInboxView({ groupedData, onEmailClick }: GroupedInboxView
 
             {/* Workflows Section */}
             {groupedData.workflows.length > 0 && (
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                <div className="bg-white dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/50 overflow-hidden">
                     <button
                         onClick={() => toggleSection('workflows')}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                        className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                     >
                         <motion.div
                             animate={{ rotate: expandedSections.has('workflows') ? 90 : 0 }}
                             transition={{ duration: 0.2 }}
                         >
-                            <ChevronRight className="w-4 h-4 text-zinc-400" />
+                            <ChevronRightIcon className="w-4 h-4 text-zinc-400" />
                         </motion.div>
-                        <WorkflowIcon className="w-5 h-5 text-violet-500" />
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
+                            <BoltIcon className="w-4 h-4 text-white" />
+                        </div>
                         <span className="font-semibold text-zinc-900 dark:text-zinc-100">Workflows</span>
-                        <span className="ml-auto text-sm text-zinc-500">{totalWorkflows} emails</span>
+                        <span className="ml-auto px-2 py-0.5 text-xs font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-700 rounded-full">
+                            {totalWorkflowConversations} conversations
+                        </span>
                     </button>
 
                     <AnimatePresence>
@@ -216,40 +315,43 @@ export function GroupedInboxView({ groupedData, onEmailClick }: GroupedInboxView
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 transition={{ duration: 0.2 }}
-                                className="overflow-hidden border-t border-zinc-100 dark:border-zinc-800"
+                                className="overflow-hidden border-t border-zinc-100 dark:border-zinc-700/50"
                             >
-                                {groupedData.workflows.map((workflow) => (
-                                    <div key={workflow.id} className="border-b border-zinc-100 dark:border-zinc-800 last:border-0">
-                                        <button
-                                            onClick={() => toggleSubdivision(workflow.id)}
-                                            className="w-full px-6 py-2.5 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors text-left"
-                                        >
-                                            <motion.div
-                                                animate={{ rotate: expandedSubdivisions.has(workflow.id) ? 90 : 0 }}
-                                                transition={{ duration: 0.2 }}
+                                {groupedData.workflows.map((workflow) => {
+                                    const conversations = getConversations(workflow);
+                                    return (
+                                        <div key={workflow.id} className="border-b border-zinc-100 dark:border-zinc-700/50 last:border-0">
+                                            <button
+                                                onClick={() => toggleSubdivision(workflow.id)}
+                                                className="w-full px-6 py-2.5 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors text-left"
                                             >
-                                                <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-                                            </motion.div>
-                                            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{workflow.name}</span>
-                                            <span className="ml-auto text-xs text-zinc-400">{workflow.count}</span>
-                                        </button>
-
-                                        <AnimatePresence>
-                                            {expandedSubdivisions.has(workflow.id) && (
                                                 <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="bg-zinc-50/50 dark:bg-zinc-900/50 px-2 py-2"
+                                                    animate={{ rotate: expandedSubdivisions.has(workflow.id) ? 90 : 0 }}
+                                                    transition={{ duration: 0.2 }}
                                                 >
-                                                    {workflow.emails.map((email, idx) => (
-                                                        <EmailItem key={email._id} email={email} index={idx} />
-                                                    ))}
+                                                    <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-400" />
                                                 </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                ))}
+                                                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{workflow.name}</span>
+                                                <span className="ml-auto text-xs text-zinc-400">{conversations.length}</span>
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {expandedSubdivisions.has(workflow.id) && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        className="bg-zinc-50/50 dark:bg-zinc-900/50 px-2 py-2"
+                                                    >
+                                                        {conversations.map((conv, idx) => (
+                                                            <ConversationItem key={conv.contactId} conversation={conv} index={idx} />
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    );
+                                })}
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -257,21 +359,25 @@ export function GroupedInboxView({ groupedData, onEmailClick }: GroupedInboxView
             )}
 
             {/* Direct Section */}
-            {groupedData.direct.length > 0 && (
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+            {getDirectConversations().length > 0 && (
+                <div className="bg-white dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/50 overflow-hidden">
                     <button
                         onClick={() => toggleSection('direct')}
-                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
+                        className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
                     >
                         <motion.div
                             animate={{ rotate: expandedSections.has('direct') ? 90 : 0 }}
                             transition={{ duration: 0.2 }}
                         >
-                            <ChevronRight className="w-4 h-4 text-zinc-400" />
+                            <ChevronRightIcon className="w-4 h-4 text-zinc-400" />
                         </motion.div>
-                        <Mail className="w-5 h-5 text-zinc-500" />
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-zinc-500 to-zinc-600 flex items-center justify-center">
+                            <EnvelopeIcon className="w-4 h-4 text-white" />
+                        </div>
                         <span className="font-semibold text-zinc-900 dark:text-zinc-100">Direct</span>
-                        <span className="ml-auto text-sm text-zinc-500">{totalDirect} emails</span>
+                        <span className="ml-auto px-2 py-0.5 text-xs font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-700 rounded-full">
+                            {totalDirectConversations} conversations
+                        </span>
                     </button>
 
                     <AnimatePresence>
@@ -281,10 +387,10 @@ export function GroupedInboxView({ groupedData, onEmailClick }: GroupedInboxView
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 transition={{ duration: 0.2 }}
-                                className="overflow-hidden border-t border-zinc-100 dark:border-zinc-800 px-2 py-2"
+                                className="overflow-hidden border-t border-zinc-100 dark:border-zinc-700/50 px-2 py-2"
                             >
-                                {groupedData.direct.map((email, idx) => (
-                                    <EmailItem key={email._id} email={email} index={idx} />
+                                {getDirectConversations().map((conv, idx) => (
+                                    <ConversationItem key={conv.contactId} conversation={conv} index={idx} />
                                 ))}
                             </motion.div>
                         )}

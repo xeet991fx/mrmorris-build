@@ -41,12 +41,15 @@ const connectDB = async (): Promise<typeof mongoose> => {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      maxPoolSize: 10,
+      maxPoolSize: 50, // Increased for high-concurrency tracking (was 10)
+      minPoolSize: 5, // Keep minimum connections ready
       serverSelectionTimeoutMS: 30000, // Timeout after 30s
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
       connectTimeoutMS: 30000, // Give up initial connection after 30s
       retryWrites: true,
       retryReads: true,
+      maxIdleTimeMS: 60000, // Close idle connections after 60s
+      compressors: ['zlib'] as ('zlib' | 'none' | 'snappy' | 'zstd')[], // Enable compression for large payloads
     };
 
     console.log("🔄 Creating new database connection...");

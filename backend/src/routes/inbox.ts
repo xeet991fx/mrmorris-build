@@ -1,12 +1,13 @@
 /**
  * Inbox Routes (Unibox)
- * 
+ *
  * API routes for managing unified inbox
  */
 
 import express from "express";
 import InboxService from "../services/InboxService";
 import { authenticate } from "../middleware/auth";
+import { logger } from "../utils/logger";
 
 const router = express.Router();
 
@@ -28,7 +29,7 @@ router.get("/", async (req: any, res) => {
             });
         }
 
-        console.log(`📥 Fetching inbox for workspace: ${workspaceId}, source: ${source || 'all'}`);
+        logger.debug("Fetching inbox", { workspaceId, source: source || "all" });
 
         const result = await InboxService.getInboxMessages(
             workspaceId,
@@ -45,14 +46,14 @@ router.get("/", async (req: any, res) => {
             parseInt(limit)
         );
 
-        console.log(`📥 Found ${result.messages?.length || 0} inbox messages`);
+        logger.debug("Found inbox messages", { count: result.messages?.length || 0 });
 
         res.json({
             success: true,
             ...result,
         });
     } catch (error: any) {
-        console.error("Get inbox error:", error);
+        logger.error("Get inbox error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -82,7 +83,7 @@ router.get("/stats", async (req: any, res) => {
             data: stats,
         });
     } catch (error: any) {
-        console.error("Get inbox stats error:", error);
+        logger.error("Get inbox stats error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -112,7 +113,7 @@ router.get("/grouped", async (req: any, res) => {
             data: grouped,
         });
     } catch (error: any) {
-        console.error("Get grouped inbox error:", error);
+        logger.error("Get grouped inbox error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -135,7 +136,7 @@ router.post("/sync", async (req: any, res) => {
             });
         }
 
-        console.log(`📥 Manual sync triggered for workspace: ${workspaceId}`);
+        logger.info("Manual sync triggered", { workspaceId });
         const count = await InboxService.fetchNewReplies(workspaceId);
 
         res.json({
@@ -144,7 +145,7 @@ router.post("/sync", async (req: any, res) => {
             repliesFound: count,
         });
     } catch (error: any) {
-        console.error("Sync inbox error:", error);
+        logger.error("Sync inbox error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -167,7 +168,7 @@ router.put("/:id/read", async (req: any, res) => {
             message: "Message marked as read",
         });
     } catch (error: any) {
-        console.error("Mark as read error:", error);
+        logger.error("Mark as read error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -198,7 +199,7 @@ router.put("/:id/assign", async (req: any, res) => {
             message: "Message assigned",
         });
     } catch (error: any) {
-        console.error("Assign message error:", error);
+        logger.error("Assign message error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -229,7 +230,40 @@ router.put("/:id/label", async (req: any, res) => {
             message: "Label added",
         });
     } catch (error: any) {
-        console.error("Label message error:", error);
+        logger.error("Label message error", { error });
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
+/**
+ * GET /api/inbox/:id/thread
+ * Get all messages in a conversation thread
+ */
+router.get("/:id/thread", async (req: any, res) => {
+    try {
+        const { id } = req.params;
+        logger.debug("Getting thread messages", { messageId: id });
+
+        const result = await InboxService.getThreadMessages(id);
+
+        if (!result.success) {
+            logger.warn("Thread fetch failed", { error: result.error });
+            return res.status(400).json({
+                success: false,
+                message: result.error,
+            });
+        }
+
+        logger.debug("Found thread messages", { count: result.messages.length });
+        res.json({
+            success: true,
+            messages: result.messages,
+        });
+    } catch (error: any) {
+        logger.error("Get thread messages error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -240,12 +274,14 @@ router.put("/:id/label", async (req: any, res) => {
 /**
  * POST /api/inbox/:id/reply
  * Send manual reply to message
- * NOTE: This is a placeholder for manual reply functionality
  */
 router.post("/:id/reply", async (req: any, res) => {
     try {
         const { id } = req.params;
         const { body, subject } = req.body;
+
+        logger.debug("Reply request received", { messageId: id });
+        logger.debug("Reply details", { subject, bodyLength: body?.length || 0 });
 
         if (!body) {
             return res.status(400).json({
@@ -254,19 +290,25 @@ router.post("/:id/reply", async (req: any, res) => {
             });
         }
 
-        // TODO: Implement actual reply sending
-        // This would involve:
-        // 1. Get original EmailMessage
-        // 2. Get fromAccount
-        // 3. Send reply email via nodemailer
-        // 4. Track sent reply
+        // Use InboxService to send the reply
+        const result = await InboxService.sendReply(id, body, subject);
+
+        logger.info("Reply result", { success: result.success, error: result.error });
+
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                message: result.error || "Failed to send reply",
+            });
+        }
 
         res.json({
             success: true,
-            message: "Reply sent (TODO: Implement actual sending)",
+            message: result.message,
+            sentReply: result.sentReply,
         });
     } catch (error: any) {
-        console.error("Send reply error:", error);
+        logger.error("Send reply error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -281,22 +323,25 @@ router.post("/:id/reply", async (req: any, res) => {
 router.post("/:id/draft", async (req: any, res) => {
     try {
         const { id } = req.params;
+        logger.debug("Generating AI draft", { messageId: id });
 
         const result = await InboxService.generateAIDraft(id);
 
         if (!result.success) {
+            logger.warn("AI draft generation failed", { error: result.error });
             return res.status(400).json({
                 success: false,
                 message: result.error,
             });
         }
 
+        logger.debug("AI draft generated successfully");
         res.json({
             success: true,
             draft: result.draft,
         });
     } catch (error: any) {
-        console.error("Generate AI draft error:", error);
+        logger.error("Generate AI draft error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
@@ -320,7 +365,7 @@ router.get("/:id/draft", async (req: any, res) => {
             generatedAt: result.generatedAt,
         });
     } catch (error: any) {
-        console.error("Get AI draft error:", error);
+        logger.error("Get AI draft error", { error });
         res.status(500).json({
             success: false,
             message: error.message,
