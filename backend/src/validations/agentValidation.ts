@@ -212,7 +212,9 @@ export const updateAgentSchema = z.object({
     // Story 1.5: Memory configuration
     memory: memorySchema,
     // Story 1.6: Approval configuration
-    approvalConfig: approvalConfigSchema
+    approvalConfig: approvalConfigSchema,
+    // Story 1.7: Optimistic locking - expected updatedAt timestamp (ISO string)
+    expectedUpdatedAt: z.string().datetime().optional()
   }).refine(
     (data) => {
       // If triggers is explicitly an empty array, reject it
@@ -226,4 +228,17 @@ export const updateAgentSchema = z.object({
 });
 
 export type UpdateAgentInput = z.infer<typeof updateAgentSchema>['body'];
+
+// Story 1.8: Duplicate agent validation schema
+// Note: Only validate body - params are validated by route pattern matching
+export const duplicateAgentSchema = z.object({
+  body: z.object({
+    name: z.string()
+      .min(1, 'Name is required')
+      .max(100, 'Name cannot exceed 100 characters')
+      .trim()
+  })
+});
+
+export type DuplicateAgentInput = z.infer<typeof duplicateAgentSchema>['body'];
 

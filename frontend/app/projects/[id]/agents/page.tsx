@@ -96,7 +96,14 @@ export default function AgentsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                 >
-                  <AgentCard agent={agent} workspaceId={workspaceId} />
+                  <AgentCard
+                    agent={agent}
+                    workspaceId={workspaceId}
+                    onDuplicate={(newAgent) => {
+                      // Add new agent to list and refresh
+                      setAgents((prev) => [newAgent, ...prev]);
+                    }}
+                  />
                 </motion.div>
               ))}
             </div>

@@ -10,12 +10,13 @@
  * - GET    /api/workspaces/:workspaceId/agents          List agents
  * - GET    /api/workspaces/:workspaceId/agents/:agentId Get agent
  * - PUT    /api/workspaces/:workspaceId/agents/:agentId Update agent
+ * - POST   /api/workspaces/:workspaceId/agents/:agentId/duplicate  Duplicate agent (Story 1.8)
  */
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateWorkspaceAccess } from '../middleware/workspace';
-import { createAgent, listAgents, getAgent, updateAgent } from '../controllers/agentController';
-import { createAgentSchema, updateAgentSchema } from '../validations/agentValidation';
+import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent } from '../controllers/agentController';
+import { createAgentSchema, updateAgentSchema, duplicateAgentSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
 const router = express.Router();
@@ -26,6 +27,12 @@ const router = express.Router();
 const validate = (schema: any) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      // Debug logging
+      console.log('=== VALIDATION DEBUG ===');
+      console.log('req.body:', JSON.stringify(req.body));
+      console.log('req.params:', JSON.stringify(req.params));
+      console.log('========================');
+
       await schema.parseAsync({
         body: req.body,
         query: req.query,
@@ -33,6 +40,10 @@ const validate = (schema: any) => {
       });
       next();
     } catch (error: any) {
+      console.log('=== VALIDATION ERROR ===');
+      console.log('Zod errors:', JSON.stringify(error.errors));
+      console.log('========================');
+
       res.status(400).json({
         success: false,
         error: 'Validation failed',
@@ -93,6 +104,19 @@ router.put(
   validateWorkspaceAccess,
   validate(updateAgentSchema),
   updateAgent
+);
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/duplicate
+ * @desc Duplicate an existing agent with new name (Story 1.8)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+router.post(
+  '/workspaces/:workspaceId/agents/:agentId/duplicate',
+  authenticate,
+  validateWorkspaceAccess,
+  validate(duplicateAgentSchema),
+  duplicateAgent
 );
 
 export default router;

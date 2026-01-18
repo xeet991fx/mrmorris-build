@@ -25,6 +25,12 @@ interface RestrictionsConfigurationProps {
     initialRestrictions: IAgentRestrictions | null;
     onSave?: (restrictions: IAgentRestrictions) => void;
     disabled?: boolean;
+    // Story 1.7 Fix: Props for Live agent warning and optimistic locking
+    agentStatus?: 'Draft' | 'Live' | 'Paused';
+    expectedUpdatedAt?: string | null;
+    onConflict?: (info: { updatedBy: string; updatedAt: string }) => void;
+    onUpdateSuccess?: (newUpdatedAt: string) => void;
+    onLiveWarningRequired?: () => Promise<boolean>;
 }
 
 export function RestrictionsConfiguration({
@@ -32,7 +38,12 @@ export function RestrictionsConfiguration({
     agentId,
     initialRestrictions,
     onSave,
-    disabled = false
+    disabled = false,
+    agentStatus,
+    expectedUpdatedAt,
+    onConflict,
+    onUpdateSuccess,
+    onLiveWarningRequired
 }: RestrictionsConfigurationProps) {
     // Initialize with defaults merged with initial values
     const getInitialState = useCallback(() => {
@@ -185,18 +196,43 @@ export function RestrictionsConfiguration({
             return;
         }
 
+        // Story 1.7 Fix: Check for Live agent and show warning
+        if (agentStatus === 'Live' && onLiveWarningRequired) {
+            const confirmed = await onLiveWarningRequired();
+            if (!confirmed) {
+                return; // User cancelled
+            }
+        }
+
         setIsSaving(true);
         try {
-            const response = await updateAgent(workspaceId, agentId, { restrictions });
+            // Story 1.7 Fix: Include expectedUpdatedAt for optimistic locking
+            const saveData: { restrictions: IAgentRestrictions; expectedUpdatedAt?: string } = { restrictions };
+            if (expectedUpdatedAt) {
+                saveData.expectedUpdatedAt = expectedUpdatedAt;
+            }
+
+            const response = await updateAgent(workspaceId, agentId, saveData);
             if (response.success) {
                 toast.success('Restrictions saved successfully!');
                 setHasChanges(false);
                 if (onSave && response.agent.restrictions) {
                     onSave(response.agent.restrictions);
                 }
+                // Story 1.7 Fix: Update parent's originalUpdatedAt
+                if (response.agent?.updatedAt) {
+                    onUpdateSuccess?.(response.agent.updatedAt);
+                }
             }
         } catch (error: any) {
             console.error('Error saving restrictions:', error);
+
+            // Story 1.7 Fix: Handle 409 conflict error
+            if (error.response?.status === 409 && error.response?.data?.conflict) {
+                onConflict?.(error.response.data.conflict);
+                return;
+            }
+
             // Extract detailed validation errors from response if available
             const details = error.response?.data?.details;
             const errorMessage = error.response?.data?.error || 'Failed to save restrictions';
