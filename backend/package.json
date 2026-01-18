@@ -88,5 +88,8 @@
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
+  },
+  "overrides": {
+    "gcp-metadata": "^8.1.2"
   }
 }
