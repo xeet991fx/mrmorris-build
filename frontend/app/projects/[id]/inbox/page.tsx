@@ -4,26 +4,26 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Inbox,
-    RefreshCw,
-    Search,
-    Mail,
-    MailOpen,
-    Sparkles,
-    Send,
-    Smile,
-    Frown,
-    Meh,
-    Calendar,
-    Ban,
-    Workflow,
-    Target,
-    ChevronRight,
-    ChevronDown,
-    ArrowLeft,
-    Filter,
-    X,
-} from "lucide-react";
+    InboxIcon,
+    ArrowPathIcon,
+    MagnifyingGlassIcon,
+    EnvelopeIcon,
+    EnvelopeOpenIcon,
+    SparklesIcon,
+    PaperAirplaneIcon,
+    FaceSmileIcon,
+    FaceFrownIcon,
+    MinusCircleIcon,
+    CalendarIcon,
+    NoSymbolIcon,
+    BoltIcon,
+    RocketLaunchIcon,
+    ChevronRightIcon,
+    ChevronDownIcon,
+    ArrowLeftIcon,
+    FunnelIcon,
+    XMarkIcon,
+} from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import {
     getInboxMessages,
@@ -33,6 +33,7 @@ import {
     sendReply,
     syncInbox,
     getGroupedInbox,
+    getThreadMessages,
 } from "@/lib/api/inbox";
 import { getCampaigns } from "@/lib/api/campaign";
 import { getWorkflows } from "@/lib/api/workflow";
@@ -48,7 +49,7 @@ interface LocalInboxMessage {
     workflowId?: { _id: string; name: string } | string;
     sequenceId?: { _id: string; name: string } | string;
     source?: 'campaign' | 'workflow' | 'sequence' | 'direct';
-    contactId?: { _id: string; name: string; email: string; company?: string } | string;
+    contactId?: { _id: string; name: string; email: string; company?: string; firstName?: string; lastName?: string } | string;
     fromEmail: string;
     toEmail?: string;
     subject: string;
@@ -74,6 +75,16 @@ interface LocalInboxMessage {
     contact?: { firstName: string; lastName: string; email: string };
 }
 
+interface Conversation {
+    contactId: string;
+    contactName: string;
+    contactEmail: string;
+    messageCount: number;
+    unreadCount: number;
+    latestMessage: any;
+    messages: LocalInboxMessage[];
+}
+
 export default function InboxPage() {
     const params = useParams();
     const workspaceId = params.id as string;
@@ -83,6 +94,7 @@ export default function InboxPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedMessage, setSelectedMessage] = useState<LocalInboxMessage | null>(null);
+    const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
         source: "all" as 'all' | 'campaign' | 'workflow' | 'direct',
@@ -100,6 +112,7 @@ export default function InboxPage() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [viewMode, setViewMode] = useState<'flat' | 'grouped'>('grouped');
     const [groupedData, setGroupedData] = useState<any>(null);
+    const [threadMessages, setThreadMessages] = useState<any[]>([]);
 
     const fetchMessages = useCallback(async () => {
         try {
@@ -180,6 +193,32 @@ export default function InboxPage() {
     const handleSearch = (e: React.FormEvent) => { e.preventDefault(); fetchMessages(); };
     const handleMarkAsRead = async (messageId: string) => { try { await markMessageAsRead(messageId); fetchMessages(); } catch (err) { console.error("Failed to mark as read:", err); } };
 
+    const loadThreadMessages = async (messageId: string) => {
+        try {
+            const response = await getThreadMessages(messageId);
+            if (response.success) {
+                setThreadMessages(response.messages);
+            } else {
+                // If thread loading fails, just use empty array - conversation still works
+                setThreadMessages([]);
+            }
+        } catch (err) {
+            console.error("Failed to load thread messages:", err);
+            // Non-fatal error - conversation display still works without thread
+            setThreadMessages([]);
+        }
+    };
+
+    const handleSelectMessage = (message: LocalInboxMessage) => {
+        setSelectedMessage(message);
+        handleMarkAsRead(message._id);
+        setAiDraft("");
+        setThreadMessages([]);
+        track('view', 'email', message._id);
+        // Load thread messages in background (non-blocking)
+        loadThreadMessages(message._id);
+    };
+
     const handleGenerateDraft = async () => {
         if (!selectedMessage) return;
         setIsGeneratingDraft(true);
@@ -195,8 +234,20 @@ export default function InboxPage() {
         if (!selectedMessage || !aiDraft.trim()) { toast.error("Write or generate a reply first"); return; }
         setIsSendingReply(true);
         try {
-            const response = await sendReply(selectedMessage._id, aiDraft, `Re: ${selectedMessage.replySubject || selectedMessage.subject}`);
-            if (response.success) { toast.success("Reply sent!"); setAiDraft(""); }
+            const replySubject = `Re: ${selectedMessage.replySubject || selectedMessage.subject}`;
+            const response = await sendReply(selectedMessage._id, aiDraft, replySubject);
+            if (response.success) {
+                toast.success("Reply sent!");
+                setAiDraft("");
+                // Reload thread messages to show the sent reply
+                await loadThreadMessages(selectedMessage._id);
+                // Refresh the inbox data
+                if (viewMode === 'grouped') {
+                    fetchGroupedData();
+                } else {
+                    fetchMessages();
+                }
+            }
             else { toast.error(response.message || "Failed to send"); }
         } catch (err: any) { toast.error(err.message || "Failed to send"); }
         finally { setIsSendingReply(false); }
@@ -204,11 +255,11 @@ export default function InboxPage() {
 
     const getSentimentIcon = (sentiment?: string) => {
         const icons: Record<string, { icon: React.ReactNode; color: string }> = {
-            positive: { icon: <Smile className="w-4 h-4" />, color: "text-emerald-500" },
-            negative: { icon: <Frown className="w-4 h-4" />, color: "text-rose-500" },
-            neutral: { icon: <Meh className="w-4 h-4" />, color: "text-zinc-400" },
-            out_of_office: { icon: <Calendar className="w-4 h-4" />, color: "text-amber-500" },
-            unsubscribe: { icon: <Ban className="w-4 h-4" />, color: "text-rose-500" },
+            positive: { icon: <FaceSmileIcon className="w-4 h-4" />, color: "text-emerald-500" },
+            negative: { icon: <FaceFrownIcon className="w-4 h-4" />, color: "text-rose-500" },
+            neutral: { icon: <MinusCircleIcon className="w-4 h-4" />, color: "text-zinc-400" },
+            out_of_office: { icon: <CalendarIcon className="w-4 h-4" />, color: "text-amber-500" },
+            unsubscribe: { icon: <NoSymbolIcon className="w-4 h-4" />, color: "text-rose-500" },
         };
         return icons[sentiment || "neutral"] || icons.neutral;
     };
@@ -239,146 +290,157 @@ export default function InboxPage() {
     };
 
     const getSourceIcon = (message: LocalInboxMessage) => {
-        if (message.campaignId) return <Target className="w-3 h-3 text-blue-500" />;
-        if (message.workflowId) return <Workflow className="w-3 h-3 text-violet-500" />;
-        return <Mail className="w-3 h-3 text-zinc-400" />;
+        if (message.campaignId) return <RocketLaunchIcon className="w-3.5 h-3.5 text-blue-500" />;
+        if (message.workflowId) return <BoltIcon className="w-3.5 h-3.5 text-violet-500" />;
+        return <EnvelopeIcon className="w-3.5 h-3.5 text-zinc-400" />;
     };
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-900">
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-                    <div className="w-10 h-10 border-2 border-zinc-200 dark:border-zinc-700 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-zinc-500">Loading inbox...</p>
-                </motion.div>
+            <div className="h-full flex items-center justify-center">
+                <div className="flex items-center gap-3 text-zinc-400">
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Loading inbox...</span>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
+        <div className="h-full flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
-                {!selectedMessage ? (
+                {!selectedMessage && !selectedConversation ? (
                     /* LIST VIEW */
                     <motion.div
                         key="list"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0, x: -20 }}
-                        className="h-screen flex flex-col"
+                        className="h-full flex flex-col"
                     >
                         {/* Header */}
-                        <div className="bg-white dark:bg-zinc-900 px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-10">
-                            <div className="flex items-center justify-between mb-4">
+                        <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4 flex-shrink-0">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+                            >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                                        <Inbox className="w-5 h-5 text-white" />
-                                    </div>
-                                    <div>
-                                        <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Inbox</h1>
-                                        <div className="flex items-center gap-2 text-xs text-zinc-500">
-                                            <span>{stats.all} total</span>
-                                            <span className="w-1 h-1 rounded-full bg-zinc-300" />
-                                            <span className="text-emerald-500 font-medium">{stats.unread} unread</span>
-                                        </div>
-                                    </div>
+                                    <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+                                        Inbox
+                                    </h1>
+                                    <span className="px-2.5 py-1 text-sm font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded-full">
+                                        {stats.all}
+                                    </span>
+                                    {stats.unread > 0 && (
+                                        <span className="px-2.5 py-1 text-sm font-medium text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 rounded-full">
+                                            {stats.unread} unread
+                                        </span>
+                                    )}
                                 </div>
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                    {/* Source Filter */}
+                                    <div className="relative">
+                                        <select
+                                            value={filters.source}
+                                            onChange={(e) => {
+                                                setFilters({ ...filters, source: e.target.value as any, campaign: '', workflow: '' });
+                                            }}
+                                            className="appearance-none px-3 py-2 pr-8 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 bg-transparent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                        >
+                                            <option value="all">All Sources</option>
+                                            <option value="campaign">Campaigns</option>
+                                            <option value="workflow">Workflows</option>
+                                            <option value="direct">Direct</option>
+                                        </select>
+                                        <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                                    </div>
 
-                                {/* Actions */}
-                                <div className="flex items-center gap-2">
-                                    {/* Cascading Dropdowns */}
-                                    <div className="flex items-center gap-2">
-                                        {/* Source Type Dropdown */}
+                                    {/* Specific Campaign Dropdown */}
+                                    {filters.source === 'campaign' && campaigns.length > 0 && (
                                         <div className="relative">
                                             <select
-                                                value={filters.source}
-                                                onChange={(e) => {
-                                                    setFilters({ ...filters, source: e.target.value as any, campaign: '', workflow: '' });
-                                                }}
-                                                className="px-4 py-2 pr-8 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-full text-sm font-medium appearance-none cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                                                value={filters.campaign}
+                                                onChange={(e) => setFilters({ ...filters, campaign: e.target.value })}
+                                                className="appearance-none px-3 py-2 pr-8 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 rounded-full cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                                             >
-                                                <option value="all">All Sources</option>
-                                                <option value="campaign">Campaigns</option>
-                                                <option value="workflow">Workflows</option>
-                                                <option value="direct">Direct</option>
+                                                <option value="">All Campaigns</option>
+                                                {campaigns.map((c) => (
+                                                    <option key={c._id} value={c._id}>{c.name}</option>
+                                                ))}
                                             </select>
-                                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+                                            <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 dark:text-emerald-400 pointer-events-none" />
                                         </div>
+                                    )}
 
-                                        {/* Specific Campaign Dropdown */}
-                                        {filters.source === 'campaign' && campaigns.length > 0 && (
-                                            <div className="relative">
-                                                <select
-                                                    value={filters.campaign}
-                                                    onChange={(e) => setFilters({ ...filters, campaign: e.target.value })}
-                                                    className="px-4 py-2 pr-8 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-full text-sm font-medium appearance-none cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                                                >
-                                                    <option value="">All Campaigns</option>
-                                                    {campaigns.map((c) => (
-                                                        <option key={c._id} value={c._id}>{c.name}</option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 dark:text-emerald-400 pointer-events-none" />
-                                            </div>
-                                        )}
-
-                                        {/* Specific Workflow Dropdown */}
-                                        {filters.source === 'workflow' && workflows.length > 0 && (
-                                            <div className="relative">
-                                                <select
-                                                    value={filters.workflow}
-                                                    onChange={(e) => setFilters({ ...filters, workflow: e.target.value })}
-                                                    className="px-4 py-2 pr-8 bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 rounded-full text-sm font-medium appearance-none cursor-pointer hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                                                >
-                                                    <option value="">All Workflows</option>
-                                                    {workflows.map((w) => (
-                                                        <option key={w._id} value={w._id}>{w.name}</option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-600 dark:text-violet-400 pointer-events-none" />
-                                            </div>
-                                        )}
-                                    </div>
+                                    {/* Specific Workflow Dropdown */}
+                                    {filters.source === 'workflow' && workflows.length > 0 && (
+                                        <div className="relative">
+                                            <select
+                                                value={filters.workflow}
+                                                onChange={(e) => setFilters({ ...filters, workflow: e.target.value })}
+                                                className="appearance-none px-3 py-2 pr-8 text-sm font-medium text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/20 rounded-full cursor-pointer hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                                            >
+                                                <option value="">All Workflows</option>
+                                                {workflows.map((w) => (
+                                                    <option key={w._id} value={w._id}>{w.name}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-violet-600 dark:text-violet-400 pointer-events-none" />
+                                        </div>
+                                    )}
 
                                     <button
                                         onClick={() => setShowFilters(!showFilters)}
                                         className={cn(
-                                            "p-2.5 rounded-full transition-colors",
-                                            showFilters ? "bg-emerald-500 text-white" : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500"
+                                            "flex items-center gap-2 px-3 py-2 text-sm rounded-full transition-colors",
+                                            showFilters
+                                                ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
+                                                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                                         )}
                                     >
-                                        <Filter className="w-4 h-4" />
+                                        <FunnelIcon className="w-4 h-4" />
+                                        <span className="hidden sm:inline">Filter</span>
                                     </button>
                                     <button
                                         onClick={async () => {
                                             setIsSyncing(true);
                                             try {
                                                 const result = await syncInbox(workspaceId);
-                                                if (result.success) { toast.success(result.message); viewMode === 'grouped' ? fetchGroupedData() : fetchMessages(); }
-                                            } catch (err: any) { toast.error(err.message || "Failed to sync"); }
-                                            finally { setIsSyncing(false); }
+                                                if (result.success) {
+                                                    toast.success(result.message);
+                                                    viewMode === 'grouped' ? fetchGroupedData() : fetchMessages();
+                                                }
+                                            } catch (err: any) {
+                                                toast.error(err.message || "Failed to sync");
+                                            } finally {
+                                                setIsSyncing(false);
+                                            }
                                         }}
                                         disabled={isSyncing}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 text-white rounded-full text-sm font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm disabled:opacity-50"
                                     >
-                                        <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
-                                        Sync
+                                        <ArrowPathIcon className={cn("w-4 h-4", isSyncing && "animate-spin")} />
+                                        <span className="hidden sm:inline">Sync</span>
                                     </button>
                                 </div>
-                            </div>
+                            </motion.div>
+                        </div>
 
-                            {/* Search Bar */}
-                            <form onSubmit={handleSearch} className="w-full">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                                    <input
-                                        type="text"
-                                        value={filters.search}
-                                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                                        placeholder="Search conversations..."
-                                        className="w-full pl-10 pr-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                                    />
-                                </div>
+                        {/* Divider */}
+                        <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
+
+                        {/* Search Bar */}
+                        <div className="px-4 sm:px-6 lg:px-8 py-4 flex-shrink-0">
+                            <form onSubmit={handleSearch} className="relative max-w-md">
+                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                <input
+                                    type="text"
+                                    value={filters.search}
+                                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                                    placeholder="Search conversations..."
+                                    className="w-full pl-10 pr-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 border-0"
+                                />
                             </form>
                         </div>
 
@@ -389,37 +451,22 @@ export default function InboxPage() {
                                     initial={{ height: 0, opacity: 0 }}
                                     animate={{ height: 'auto', opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
-                                    className="bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 overflow-hidden"
+                                    className="px-4 sm:px-6 lg:px-8 overflow-hidden"
                                 >
-                                    <div className="px-6 py-3 flex items-center gap-3 flex-wrap">
-                                        {['all', 'campaign', 'workflow', 'direct'].map((source) => (
-                                            <button
-                                                key={source}
-                                                onClick={() => setFilters({ ...filters, source: source as any, campaign: '', workflow: '' })}
-                                                className={cn(
-                                                    "px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
-                                                    filters.source === source
-                                                        ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
-                                                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                                                )}
-                                            >
-                                                {source === 'all' ? '📬 All' : source === 'campaign' ? '📧 Campaigns' : source === 'workflow' ? '⚡ Workflows' : '✉️ Direct'}
-                                            </button>
-                                        ))}
-                                        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700" />
+                                    <div className="pb-4 flex items-center gap-2 flex-wrap">
                                         {['positive', 'negative', 'neutral'].map((s) => (
                                             <button
                                                 key={s}
                                                 onClick={() => setFilters({ ...filters, sentiment: filters.sentiment === s ? '' : s })}
                                                 className={cn(
-                                                    "px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1",
+                                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
                                                     filters.sentiment === s
                                                         ? s === 'positive' ? 'bg-emerald-500 text-white' : s === 'negative' ? 'bg-rose-500 text-white' : 'bg-zinc-500 text-white'
-                                                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                                                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                                                 )}
                                             >
-                                                {s === 'positive' ? <Smile className="w-3 h-3" /> : s === 'negative' ? <Frown className="w-3 h-3" /> : <Meh className="w-3 h-3" />}
-                                                {s}
+                                                {s === 'positive' ? <FaceSmileIcon className="w-3.5 h-3.5" /> : s === 'negative' ? <FaceFrownIcon className="w-3.5 h-3.5" /> : <MinusCircleIcon className="w-3.5 h-3.5" />}
+                                                {s.charAt(0).toUpperCase() + s.slice(1)}
                                             </button>
                                         ))}
                                     </div>
@@ -428,7 +475,7 @@ export default function InboxPage() {
                         </AnimatePresence>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-4">
+                        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 pb-6">
                             {viewMode === 'grouped' && groupedData ? (
                                 <GroupedInboxView
                                     groupedData={{
@@ -446,16 +493,54 @@ export default function InboxPage() {
                                             ? groupedData.direct
                                             : []
                                     }}
-                                    onEmailClick={(email) => { setSelectedMessage(email); handleMarkAsRead(email._id); setAiDraft(""); track('view', 'email', email._id); }}
+                                    onConversationClick={(conversation) => {
+                                        setSelectedConversation(conversation);
+                                        // Also set the first message as selected for the reply composer
+                                        if (conversation.messages && conversation.messages.length > 0) {
+                                            const latestReply = conversation.messages.find(m => m.replied) || conversation.messages[conversation.messages.length - 1];
+                                            setSelectedMessage(latestReply as LocalInboxMessage);
+                                        }
+                                    }}
                                 />
                             ) : messages.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full p-8">
-                                    <MailOpen className="w-16 h-16 text-zinc-200 dark:text-zinc-700 mb-4" />
-                                    <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">No messages yet</h3>
-                                    <p className="text-sm text-zinc-500 text-center">When contacts reply to your campaigns or workflows, they'll appear here</p>
-                                </div>
+                                /* Empty State */
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex items-center justify-center py-16 px-4"
+                                >
+                                    <div className="text-center max-w-md">
+                                        <EnvelopeOpenIcon className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-4" />
+                                        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+                                            No messages yet
+                                        </h2>
+                                        <p className="text-sm text-zinc-500 mb-6">
+                                            When contacts reply to your campaigns or workflows, they'll appear here. Start a campaign to begin receiving replies.
+                                        </p>
+                                        <button
+                                            onClick={async () => {
+                                                setIsSyncing(true);
+                                                try {
+                                                    const result = await syncInbox(workspaceId);
+                                                    if (result.success) {
+                                                        toast.success(result.message);
+                                                        viewMode === 'grouped' ? fetchGroupedData() : fetchMessages();
+                                                    }
+                                                } catch (err: any) {
+                                                    toast.error(err.message || "Failed to sync");
+                                                } finally {
+                                                    setIsSyncing(false);
+                                                }
+                                            }}
+                                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm"
+                                        >
+                                            <ArrowPathIcon className={cn("w-4 h-4", isSyncing && "animate-spin")} />
+                                            Sync Inbox
+                                        </button>
+                                    </div>
+                                </motion.div>
                             ) : viewMode === 'flat' ? (
-                                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                <div className="space-y-2">
                                     {messages.map((message, index) => {
                                         const sentiment = getSentimentIcon(message.replySentiment);
                                         const initials = getContactName(message).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -468,10 +553,10 @@ export default function InboxPage() {
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: index * 0.02 }}
-                                                onClick={() => { setSelectedMessage(message); handleMarkAsRead(message._id); setAiDraft(""); track('view', 'email', message._id); }}
-                                                className="w-full px-6 py-4 flex items-center gap-4 hover:bg-white dark:hover:bg-zinc-800/50 transition-colors text-left group"
+                                                onClick={() => handleSelectMessage(message)}
+                                                className="w-full p-4 flex items-center gap-4 bg-white dark:bg-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-left group rounded-xl border border-zinc-200 dark:border-zinc-700/50"
                                             >
-                                                <div className={cn("w-11 h-11 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 shadow-sm", colorClass)}>
+                                                <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 shadow-sm", colorClass)}>
                                                     {initials || '?'}
                                                 </div>
 
@@ -484,19 +569,18 @@ export default function InboxPage() {
                                                         <div className="flex items-center gap-1">
                                                             {(message as any).opened && (
                                                                 <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 rounded text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                                                                    <MailOpen className="w-2.5 h-2.5" />
+                                                                    <EnvelopeOpenIcon className="w-2.5 h-2.5" />
                                                                     Opened
                                                                 </div>
                                                             )}
                                                             {(message as any).clicked && (
                                                                 <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 rounded text-[10px] text-purple-600 dark:text-purple-400 font-medium">
-                                                                    <span>🔗</span>
                                                                     Clicked
                                                                 </div>
                                                             )}
                                                             {(message as any).replied && (
                                                                 <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 rounded text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                                                    💬 Replied
+                                                                    Replied
                                                                 </div>
                                                             )}
                                                         </div>
@@ -511,7 +595,7 @@ export default function InboxPage() {
                                                     {sentiment.icon}
                                                 </div>
 
-                                                <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 flex-shrink-0 transition-colors" />
+                                                <ChevronRightIcon className="w-4 h-4 text-zinc-300 group-hover:text-zinc-500 flex-shrink-0 transition-colors" />
                                             </motion.button>
                                         );
                                     })}
@@ -520,107 +604,129 @@ export default function InboxPage() {
                         </div>
                     </motion.div>
                 ) : (
-                    /* DETAIL VIEW - TWO COLUMN LAYOUT */
+                    /* DETAIL VIEW - WHATSAPP STYLE CHAT */
                     <motion.div
                         key="detail"
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0 }}
-                        className="h-screen flex flex-col bg-zinc-50 dark:bg-zinc-900"
+                        className="h-full flex flex-col"
                     >
                         {/* Detail Header */}
-                        <div className="px-6 py-4 flex items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                        <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0 bg-white dark:bg-zinc-900">
                             <button
-                                onClick={() => setSelectedMessage(null)}
+                                onClick={() => {
+                                    setSelectedMessage(null);
+                                    setSelectedConversation(null);
+                                }}
                                 className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
                             >
-                                <ArrowLeft className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
+                                <ArrowLeftIcon className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
                             </button>
 
                             <div className="flex items-center gap-3 flex-1">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-semibold text-sm">
-                                    {getContactName(selectedMessage).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                                    {(selectedConversation?.contactName || getContactName(selectedMessage!))
+                                        .split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">{getContactName(selectedMessage)}</p>
-                                    <p className="text-xs text-zinc-500 truncate">{getContactEmail(selectedMessage)}</p>
+                                    <p className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
+                                        {selectedConversation?.contactName || getContactName(selectedMessage!)}
+                                    </p>
+                                    <p className="text-xs text-zinc-500 truncate">
+                                        {selectedConversation?.contactEmail || getContactEmail(selectedMessage!)}
+                                        {selectedConversation && selectedConversation.messageCount > 1 && (
+                                            <span className="ml-2 text-zinc-400">• {selectedConversation.messageCount} messages</span>
+                                        )}
+                                    </p>
                                 </div>
                             </div>
 
-                            <div className={cn("", getSentimentIcon(selectedMessage.replySentiment).color)}>
-                                {getSentimentIcon(selectedMessage.replySentiment).icon}
-                            </div>
+                            {selectedMessage && (
+                                <div className={cn("", getSentimentIcon(selectedMessage.replySentiment).color)}>
+                                    {getSentimentIcon(selectedMessage.replySentiment).icon}
+                                </div>
+                            )}
                         </div>
 
                         {/* Two Column Layout */}
                         <div className="flex-1 flex overflow-hidden">
-                            {/* LEFT COLUMN - Email Conversation Thread */}
-                            <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800">
-                                <div className="p-6 space-y-4">
-                                    {/* Subject */}
-                                    <div className="pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                                        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{selectedMessage.replySubject || selectedMessage.subject}</h1>
-                                        <p className="text-xs text-zinc-500">Conversation with {getContactName(selectedMessage)}</p>
-                                    </div>
+                            {/* LEFT COLUMN - Chat Thread */}
+                            <div className="flex-1 flex flex-col bg-zinc-50 dark:bg-zinc-900/50">
+                                {/* Chat Messages Area */}
+                                <div className="flex-1 overflow-y-auto p-6">
+                                    <div className="max-w-3xl mx-auto space-y-4">
+                                        {/* Show all messages in conversation */}
+                                        {(selectedConversation?.messages || (selectedMessage ? [selectedMessage] : [])).map((msg, idx) => {
+                                            const isFromYou = !msg.replied && msg.fromEmail !== (selectedConversation?.contactEmail || getContactEmail(selectedMessage!));
+                                            const isReply = msg.replied && msg.replyBody;
 
-                                    {/* Original Email (Your Sent Email) */}
-                                    <div className="space-y-3">
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
-                                                You
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-medium text-zinc-900 dark:text-zinc-100 text-sm">You</span>
-                                                    <span className="text-xs text-zinc-400">to {getContactName(selectedMessage)}</span>
-                                                    <span className="ml-auto text-xs text-zinc-400">{formatDate(selectedMessage.sentAt)}</span>
-                                                </div>
-                                                <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl">
-                                                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">{selectedMessage.subject}</p>
-                                                    <div className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap leading-relaxed">
-                                                        {selectedMessage.bodyText || selectedMessage.bodyHtml?.replace(/<[^>]*>/g, '') || 'No content'}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Reply Email (Their Response) */}
-                                    {selectedMessage.replyBody && (
-                                        <div className="space-y-3">
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
-                                                    {getContactName(selectedMessage).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="font-medium text-zinc-900 dark:text-zinc-100 text-sm">{getContactName(selectedMessage)}</span>
-                                                        <span className="text-xs text-zinc-400">to You</span>
-                                                        <span className="ml-auto text-xs text-zinc-400">{formatDate(selectedMessage.repliedAt)}</span>
-                                                    </div>
-                                                    <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                                                        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">{selectedMessage.replySubject}</p>
-                                                        <div className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                                                            {selectedMessage.replyBody}
+                                            return (
+                                                <div key={msg._id || idx}>
+                                                    {/* Your Sent Email */}
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ delay: idx * 0.05 }}
+                                                        className="flex justify-end mb-4"
+                                                    >
+                                                        <div className="max-w-[75%]">
+                                                            <div className="flex items-center justify-end gap-2 mb-1">
+                                                                <span className="text-xs text-zinc-400">{formatDate(msg.sentAt)}</span>
+                                                                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">You</span>
+                                                            </div>
+                                                            <div className="bg-blue-500 text-white p-4 rounded-2xl rounded-tr-sm shadow-sm">
+                                                                <p className="text-xs font-medium opacity-80 mb-1">{msg.subject}</p>
+                                                                <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                                                                    {(msg.bodyText || msg.bodyHtml?.replace(/<[^>]*>/g, '') || '').substring(0, 500)}
+                                                                    {(msg.bodyText || '').length > 500 && '...'}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                                                    </motion.div>
 
-                                    {/* AI Insights */}
-                                    <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                                        <EmailInsightsPanel workspaceId={workspaceId} emailId={selectedMessage._id} />
+                                                    {/* Their Reply */}
+                                                    {isReply && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ delay: idx * 0.05 + 0.02 }}
+                                                            className="flex justify-start"
+                                                        >
+                                                            <div className="max-w-[75%]">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-semibold text-[10px]">
+                                                                        {(selectedConversation?.contactName || getContactName(selectedMessage!))
+                                                                            .split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                                                                    </div>
+                                                                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                                                                        {selectedConversation?.contactName || getContactName(selectedMessage!)}
+                                                                    </span>
+                                                                    <span className="text-xs text-zinc-400">{formatDate(msg.repliedAt)}</span>
+                                                                </div>
+                                                                <div className="bg-white dark:bg-zinc-800 p-4 rounded-2xl rounded-tl-sm shadow-sm border border-zinc-200 dark:border-zinc-700">
+                                                                    {msg.replySubject && (
+                                                                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">{msg.replySubject}</p>
+                                                                    )}
+                                                                    <div className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                                                                        {msg.replyBody}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
 
                             {/* RIGHT COLUMN - Reply Composer */}
-                            <div className="w-[500px] flex flex-col bg-white dark:bg-zinc-900">
+                            <div className="w-[500px] flex flex-col bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800">
                                 <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
                                     <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                                        <Mail className="w-5 h-5 text-emerald-500" />
+                                        <EnvelopeIcon className="w-5 h-5 text-emerald-500" />
                                         Compose Reply
                                     </h2>
                                 </div>
@@ -633,7 +739,7 @@ export default function InboxPage() {
                                             disabled={isGeneratingDraft}
                                             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl font-medium hover:from-violet-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/25"
                                         >
-                                            <Sparkles className={cn("w-4 h-4", isGeneratingDraft && "animate-spin")} />
+                                            <SparklesIcon className={cn("w-4 h-4", isGeneratingDraft && "animate-spin")} />
                                             {isGeneratingDraft ? "Generating..." : "Generate AI Reply"}
                                         </button>
 
@@ -644,7 +750,7 @@ export default function InboxPage() {
                                                 className="p-4 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-xl border border-violet-200 dark:border-violet-800"
                                             >
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                                                    <SparklesIcon className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                                                     <span className="text-xs font-medium text-violet-600 dark:text-violet-400">AI Generated Draft</span>
                                                 </div>
                                                 <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{aiDraft}</p>
@@ -670,9 +776,9 @@ export default function InboxPage() {
                                     <button
                                         onClick={handleSendReply}
                                         disabled={isSendingReply || !aiDraft.trim()}
-                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-xl font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25"
+                                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                                     >
-                                        <Send className={cn("w-4 h-4", isSendingReply && "animate-pulse")} />
+                                        <PaperAirplaneIcon className={cn("w-4 h-4", isSendingReply && "animate-pulse")} />
                                         {isSendingReply ? "Sending..." : "Send Reply"}
                                     </button>
                                 </div>
@@ -681,6 +787,6 @@ export default function InboxPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div >
+        </div>
     );
 }

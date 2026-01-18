@@ -8,6 +8,7 @@ import {
   UserGroupIcon,
   ChevronLeftIcon,
   CodeBracketIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,12 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       href: `/projects/${workspaceId}/settings`,
       icon: UserCircleIcon,
       match: (path: string) => path === `/projects/${workspaceId}/settings`,
+    },
+    {
+      name: "Business Context",
+      href: `/projects/${workspaceId}/settings/business-context`,
+      icon: SparklesIcon,
+      match: (path: string) => path.includes('/settings/business-context'),
     },
     {
       name: "Team",

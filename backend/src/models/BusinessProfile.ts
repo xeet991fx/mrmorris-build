@@ -67,7 +67,7 @@ const BusinessProfileSchema = new Schema<IBusinessProfile>(
   {
     workspace: {
       type: Schema.Types.ObjectId,
-      ref: "Workspace",
+      ref: "Project",
       required: true,
       unique: true,
       index: true,

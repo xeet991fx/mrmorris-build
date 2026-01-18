@@ -19,9 +19,9 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
     <title>MorrisB Tracking Test Page</title>
 
     <!-- MorrisB Tracking Code -->
-    <script src="${backendUrl}/track.js" async></script>
+    <script src="${backendUrl}/track.js"></script>
     <script>
-      window.addEventListener('load', function() {
+      (function initMorrisB() {
         if (window.morrisb) {
           var tracker = morrisb('${workspaceId}', {
             apiEndpoint: '${backendUrl}'
@@ -30,9 +30,9 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
           console.log('Visitor ID:', tracker.getVisitorId());
           console.log('Session ID:', tracker.getSessionId());
         } else {
-          console.error('❌ MorrisB tracking failed to load');
+          setTimeout(initMorrisB, 100);
         }
-      });
+      })();
     </script>
 
     <style>
@@ -191,25 +191,26 @@ export default function TrackingTestFile({ workspaceId }: TrackingTestFileProps)
         const events = [];
 
         // Check if tracking loaded
+        function checkTrackingStatus() {
+            const statusDiv = document.getElementById('status');
+            const statusText = document.getElementById('status-text');
+
+            if (window.morrisb) {
+                statusDiv.className = 'status success';
+                statusText.textContent = '✅ Tracking is working! All events are being sent to MorrisB.';
+
+                const tracker = window.morrisb('${workspaceId}', { apiEndpoint: '${backendUrl}' });
+                document.getElementById('visitor-id').textContent = tracker.getVisitorId();
+                document.getElementById('session-id').textContent = tracker.getSessionId();
+
+                logEvent('Page view tracked automatically');
+            } else {
+                setTimeout(checkTrackingStatus, 200);
+            }
+        }
+
         window.addEventListener('load', function() {
-            setTimeout(function() {
-                const statusDiv = document.getElementById('status');
-                const statusText = document.getElementById('status-text');
-
-                if (window.morrisb) {
-                    statusDiv.className = 'status success';
-                    statusText.textContent = '✅ Tracking is working! All events are being sent to MorrisB.';
-
-                    const tracker = window.morrisb('${workspaceId}', { apiEndpoint: '${backendUrl}' });
-                    document.getElementById('visitor-id').textContent = tracker.getVisitorId();
-                    document.getElementById('session-id').textContent = tracker.getSessionId();
-
-                    logEvent('Page view tracked automatically');
-                } else {
-                    statusDiv.className = 'status error';
-                    statusText.textContent = '❌ Tracking failed to load. Check console for errors.';
-                }
-            }, 1000);
+            setTimeout(checkTrackingStatus, 500);
         });
 
         function logEvent(message) {

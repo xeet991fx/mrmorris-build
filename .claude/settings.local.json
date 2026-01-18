@@ -82,7 +82,9 @@
       "Bash(tee:*)",
       "Bash(npm run test:*)",
       "Bash(npm test:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(npx --prefix \"C:\\\\app\\\\morrisB\\\\frontend\" tsc:*)",
+      "Bash(npx --prefix \"C:\\\\app\\\\morrisB\\\\backend\" tsc --noEmit)"
     ],
     "deny": [],
     "ask": []

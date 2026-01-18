@@ -14,91 +14,255 @@ import {
   trackCompanyVisitor,
 } from '../middleware/secureTracking';
 import { trackIntentSignal } from '../services/intentScoring';
+import { logger } from '../utils/logger';
 
 const router = express.Router();
 
-// Rate limiter for public tracking endpoints (more aggressive)
+// ============================================
+// PAYLOAD DECODER FOR STEALTH TRACKING
+// Decodes obfuscated payloads from anti-adblock script
+// ============================================
+
+/**
+ * Decode obfuscated payload from stealth tracker
+ * Format: { _d: "encoded_string", _v: 2 }
+ */
+function decodeStealthPayload(body: any): any {
+  try {
+    // Check if this is an encoded payload
+    if (body._d && body._v === 2) {
+      // Decode: reverse + base64 decode
+      const reversed = body._d.split('').reverse().join('');
+      const decoded = Buffer.from(reversed, 'base64').toString('utf-8');
+      return JSON.parse(decoded);
+    }
+    // Return as-is if not encoded
+    return body;
+  } catch (error) {
+    logger.error("Tracking decode error", { error });
+    return body;
+  }
+}
+
+/**
+ * Map obfuscated event fields to standard format
+ * Stealth format uses single letters to avoid detection
+ */
+function mapStealthEvent(event: any, clientIp: string, userAgent: string): any {
+  return {
+    workspaceId: event.w || event.workspaceId,
+    visitorId: event.u || event.visitorId,
+    sessionId: event.s || event.sessionId,
+    eventType: mapEventType(event.e || event.eventType),
+    eventName: mapEventName(event.n || event.eventName),
+    url: event.l || event.url,
+    referrer: event.r || event.referrer,
+    utmSource: event.us || event.utmSource,
+    utmMedium: event.um || event.utmMedium,
+    utmCampaign: event.uc || event.utmCampaign,
+    properties: mapProperties(event.p || event.properties),
+    device: {
+      userAgent: event.d?.a || event.device?.userAgent || userAgent,
+      ip: clientIp,
+      screen: event.d?.s || event.device?.screen,
+      language: event.d?.l || event.device?.language,
+    },
+  };
+}
+
+/**
+ * Map short event types to full names
+ */
+function mapEventType(type: string): string {
+  const typeMap: Record<string, string> = {
+    'v': 'page_view',
+    'pv': 'page_view',
+    's': 'scroll_depth',
+    'sd': 'scroll_depth',
+    't': 'time_on_page',
+    'tp': 'time_on_page',
+    'g': 'engagement',
+    'en': 'engagement',
+    'c': 'button_click',
+    'cl': 'button_click',
+    'fv': 'form_view',
+    'fs': 'form_submit',
+    'd': 'download',
+    'dl': 'download',
+    'x': 'exit_intent',
+    'ex': 'exit_intent',
+    'px': 'pixel',
+  };
+  return typeMap[type] || type || 'custom';
+}
+
+/**
+ * Map short event names to full names
+ */
+function mapEventName(name: string): string {
+  const nameMap: Record<string, string> = {
+    'V': 'Page Viewed',
+    'S25': 'Scrolled 25%',
+    'S50': 'Scrolled 50%',
+    'S75': 'Scrolled 75%',
+    'S100': 'Scrolled 100%',
+    'T': 'Time Spent',
+    'G': 'User Engaged',
+    'C': 'Button Clicked',
+    'FV': 'Form Viewed',
+    'FS': 'Form Submitted',
+    'D': 'File Download',
+    'X': 'Exit Intent',
+    'E': 'Event',
+  };
+  return nameMap[name] || name || 'Event';
+}
+
+/**
+ * Map obfuscated properties to readable format
+ */
+function mapProperties(props: any): any {
+  if (!props) return {};
+
+  const mapped: Record<string, any> = {};
+
+  // Map known short keys
+  const keyMap: Record<string, string> = {
+    'a': 'value1',
+    'b': 'value2',
+    'c': 'value3',
+    'd': 'value4',
+    'e': 'value5',
+    'ti': 'title',
+    'pa': 'path',
+    'rf': 'referrer',
+    'vp': 'viewport',
+    'sr': 'screenResolution',
+    'dp': 'depth',
+    'tm': 'timeToReach',
+    'sc': 'seconds',
+    'mx': 'maxScrollDepth',
+    'eg': 'engaged',
+    'tx': 'text',
+    'ty': 'elementType',
+    'id': 'elementId',
+    'hr': 'href',
+    'fi': 'formId',
+    'fc': 'fieldCount',
+    'ur': 'url',
+    'fl': 'filename',
+  };
+
+  for (const [key, value] of Object.entries(props)) {
+    const mappedKey = keyMap[key] || key;
+    mapped[mappedKey] = value;
+  }
+
+  return mapped;
+}
+
+/**
+ * Map obfuscated identify data
+ */
+function mapStealthIdentify(data: any): any {
+  return {
+    workspaceId: data.w || data.workspaceId,
+    visitorId: data.u || data.visitorId,
+    email: data.em || data.email,
+    properties: {
+      firstName: data.p?.b || data.p?.firstName || data.properties?.firstName,
+      lastName: data.p?.c || data.p?.lastName || data.properties?.lastName,
+      company: data.p?.d || data.p?.company || data.properties?.company,
+      phone: data.p?.e || data.p?.phone || data.properties?.phone,
+    },
+  };
+}
+
+// ============================================
+// HIGH-PERFORMANCE RATE LIMITER
+// Optimized for 1000+ concurrent devices
+// ============================================
 const trackingLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute per IP
+  max: 1000, // 1000 requests per minute per IP (was 100)
   message: 'Too many tracking requests from this IP. Please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false,
-  skipFailedRequests: false,
+  skipFailedRequests: true, // Don't count failed requests against limit
 });
 
+// ============================================
+// ASYNC PROCESSING HELPERS
+// Fire-and-forget pattern for non-blocking operations
+// ============================================
+
 /**
- * POST /api/public/track/event
- * Batch insert tracking events
- * No authentication required (public endpoint with security layers)
- * Security: Domain whitelist, rate limiting, payload validation, data sanitization
+ * Process visitor updates using bulk upsert (MongoDB bulkWrite)
+ * This is MUCH faster than individual findOne + save operations
  */
-router.post('/public/track/event',
-  validateTrackingPayload,
-  sanitizeTrackingData,
-  trackingLimiter,
-  secureTrackingCors,
-  logTrackingRequest,
-  trackCompanyVisitor,
-  async (req, res) => {
+async function processVisitorUpdatesAsync(
+  visitorUpdates: Map<string, any>,
+  pageViewCount: number
+): Promise<void> {
+  if (visitorUpdates.size === 0) return;
+
   try {
-    const { events } = req.body;
-
-    if (!events || !Array.isArray(events)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Events array is required',
-      });
-    }
-
-    if (events.length === 0) {
-      return res.status(200).json({
-        success: true,
-        message: 'No events to track',
-        count: 0,
-      });
-    }
-
-    if (events.length > 50) {
-      return res.status(400).json({
-        success: false,
-        message: 'Maximum 50 events per batch',
-      });
-    }
-
-    // Get client IP
-    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
-
-    // Process each event
-    const trackingEvents = events.map((event: any) => ({
-      workspaceId: event.workspaceId,
-      visitorId: event.visitorId,
-      contactId: event.contactId,
-      sessionId: event.sessionId,
-      eventType: event.eventType || 'custom',
-      eventName: event.eventName,
-      url: event.url,
-      referrer: event.referrer,
-      utmSource: event.utmSource,
-      utmMedium: event.utmMedium,
-      utmCampaign: event.utmCampaign,
-      utmTerm: event.utmTerm,
-      utmContent: event.utmContent,
-      properties: event.properties || {},
-      device: {
-        userAgent: event.device?.userAgent || req.headers['user-agent'],
-        ip: clientIp,
-        screen: event.device?.screen,
-        language: event.device?.language,
+    const bulkOps = Array.from(visitorUpdates.values()).map((update) => ({
+      updateOne: {
+        filter: {
+          workspaceId: new mongoose.Types.ObjectId(update.workspaceId),
+          visitorId: update.visitorId,
+        },
+        update: {
+          $set: {
+            lastSeen: new Date(),
+            lastPageUrl: update.url,
+            lastSource: update.referrer || undefined,
+            lastUtmSource: update.utmSource || undefined,
+            lastUtmMedium: update.utmMedium || undefined,
+            lastUtmCampaign: update.utmCampaign || undefined,
+          },
+          $inc: {
+            eventCount: 1,
+            pageViewCount: pageViewCount,
+          },
+          $addToSet: {
+            websites: update.websiteDomain,
+            devices: {
+              userAgent: update.device?.userAgent,
+              ip: update.device?.ip,
+              screen: update.device?.screen,
+              language: update.device?.language,
+              lastSeen: new Date(),
+            },
+          },
+          $setOnInsert: {
+            firstSeen: new Date(),
+            firstSource: update.referrer,
+            firstUtmSource: update.utmSource,
+            firstUtmMedium: update.utmMedium,
+            firstUtmCampaign: update.utmCampaign,
+            sessionCount: 1,
+          },
+        },
+        upsert: true,
       },
     }));
 
-    // Batch insert
-    const insertedEvents = await TrackingEvent.insertMany(trackingEvents, { ordered: false });
+    await Visitor.bulkWrite(bulkOps, { ordered: false });
+  } catch (error) {
+    logger.error("Bulk visitor update error", { error });
+    // Don't throw - this is fire-and-forget
+  }
+}
 
-    // 🎯 AUTOMATIC INTENT SIGNAL DETECTION
-    // Detect high-intent pages and track signals
+/**
+ * Process intent signals asynchronously
+ * Detects high-intent pages and tracks signals without blocking
+ */
+async function processIntentSignalsAsync(events: any[]): Promise<void> {
+  try {
     for (const event of events) {
       if (event.eventType === 'page_view' && event.url) {
         const url = event.url.toLowerCase();
@@ -127,24 +291,18 @@ router.post('/public/track/event',
           signalName = 'integrations_page';
         }
 
-        // Track intent signal if detected
         if (signalName) {
-          try {
-            await trackIntentSignal(event.workspaceId, signalName, {
-              contactId: event.contactId,
-              visitorId: event.visitorId,
-              signalType: 'page_view',
-              url: event.url,
-              sessionId: event.sessionId,
-              metadata: {
-                scrollDepth: event.properties?.scrollDepth,
-                duration: event.properties?.duration,
-              },
-            });
-          } catch (intentError: any) {
-            console.error('Failed to track intent signal:', intentError.message);
-            // Don't fail the whole tracking request if intent tracking fails
-          }
+          await trackIntentSignal(event.workspaceId, signalName, {
+            contactId: event.contactId,
+            visitorId: event.visitorId,
+            signalType: 'page_view',
+            url: event.url,
+            sessionId: event.sessionId,
+            metadata: {
+              scrollDepth: event.properties?.scrollDepth,
+              duration: event.properties?.duration,
+            },
+          }).catch(() => {}); // Silent fail
         }
       }
 
@@ -162,20 +320,16 @@ router.post('/public/track/event',
         }
 
         if (signalName) {
-          try {
-            await trackIntentSignal(event.workspaceId, signalName, {
-              contactId: event.contactId,
-              visitorId: event.visitorId,
-              signalType: 'download',
-              url: event.url,
-              sessionId: event.sessionId,
-              metadata: {
-                downloadedFile: event.properties?.fileName,
-              },
-            });
-          } catch (intentError: any) {
-            console.error('Failed to track download intent:', intentError.message);
-          }
+          await trackIntentSignal(event.workspaceId, signalName, {
+            contactId: event.contactId,
+            visitorId: event.visitorId,
+            signalType: 'download',
+            url: event.url,
+            sessionId: event.sessionId,
+            metadata: {
+              downloadedFile: event.properties?.fileName,
+            },
+          }).catch(() => {});
         }
       }
 
@@ -193,142 +347,166 @@ router.post('/public/track/event',
         }
 
         if (signalName) {
-          try {
-            await trackIntentSignal(event.workspaceId, signalName, {
-              contactId: event.contactId,
-              visitorId: event.visitorId,
-              signalType: 'video_watch',
-              url: event.url,
-              sessionId: event.sessionId,
-              metadata: {
-                videoPercentage: percentage,
-              },
-            });
-          } catch (intentError: any) {
-            console.error('Failed to track video intent:', intentError.message);
-          }
+          await trackIntentSignal(event.workspaceId, signalName, {
+            contactId: event.contactId,
+            visitorId: event.visitorId,
+            signalType: 'video_watch',
+            url: event.url,
+            sessionId: event.sessionId,
+            metadata: {
+              videoPercentage: percentage,
+            },
+          }).catch(() => {});
         }
       }
     }
+  } catch (error) {
+    logger.error("Intent signal processing error", { error });
+  }
+}
 
-    // Update or create Visitor record for each unique visitor
-    const visitorUpdates = new Map<string, any>();
+/**
+ * Extract visitor updates from events
+ */
+function extractVisitorUpdates(events: any[], clientIp: string, userAgent: string): Map<string, any> {
+  const visitorUpdates = new Map<string, any>();
 
-    for (const event of events) {
-      const key = event.visitorId;
-      if (!visitorUpdates.has(key)) {
-        // Extract website domain from URL
-        let websiteDomain = '';
-        try {
-          const url = new URL(event.url);
-          websiteDomain = url.hostname;
-        } catch (e) {
-          websiteDomain = event.url;
-        }
-
-        visitorUpdates.set(key, {
-          workspaceId: event.workspaceId,
-          visitorId: event.visitorId,
-          sessionId: event.sessionId,
-          url: event.url,
-          websiteDomain,
-          utmSource: event.utmSource,
-          utmMedium: event.utmMedium,
-          utmCampaign: event.utmCampaign,
-          referrer: event.referrer,
-          device: {
-            userAgent: event.device?.userAgent || req.headers['user-agent'],
-            ip: clientIp,
-            screen: event.device?.screen,
-            language: event.device?.language,
-          },
-        });
+  for (const event of events) {
+    const key = event.visitorId;
+    if (!visitorUpdates.has(key)) {
+      let websiteDomain = '';
+      try {
+        const url = new URL(event.url);
+        websiteDomain = url.hostname;
+      } catch {
+        websiteDomain = event.url || '';
       }
+
+      visitorUpdates.set(key, {
+        workspaceId: event.workspaceId,
+        visitorId: event.visitorId,
+        sessionId: event.sessionId,
+        url: event.url,
+        websiteDomain,
+        utmSource: event.utmSource,
+        utmMedium: event.utmMedium,
+        utmCampaign: event.utmCampaign,
+        referrer: event.referrer,
+        device: {
+          userAgent: event.device?.userAgent || userAgent,
+          ip: clientIp,
+          screen: event.device?.screen,
+          language: event.device?.language,
+        },
+      });
+    }
+  }
+
+  return visitorUpdates;
+}
+
+// ============================================
+// PUBLIC TRACKING ENDPOINTS
+// Optimized for high concurrency (1000+ devices)
+// ============================================
+
+/**
+ * POST /api/public/track/event
+ * HIGH-PERFORMANCE batch event tracking
+ * - Responds immediately (fire-and-forget for visitor updates)
+ * - Uses bulk operations instead of individual queries
+ * - Handles 1000+ concurrent devices
+ */
+router.post('/public/track/event',
+  validateTrackingPayload,
+  sanitizeTrackingData,
+  trackingLimiter,
+  secureTrackingCors,
+  logTrackingRequest,
+  trackCompanyVisitor,
+  async (req, res) => {
+  try {
+    const { events } = req.body;
+
+    // Validation
+    if (!events || !Array.isArray(events)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Events array is required',
+      });
     }
 
-    // Update visitors in parallel
-    await Promise.all(
-      Array.from(visitorUpdates.values()).map(async (update) => {
-        const visitor = await Visitor.findOne({
-          workspaceId: update.workspaceId,
-          visitorId: update.visitorId,
-        });
+    if (events.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No events to track',
+        count: 0,
+      });
+    }
 
-        if (visitor) {
-          // Update existing visitor
-          visitor.lastSeen = new Date();
-          visitor.eventCount += 1;
+    if (events.length > 100) { // Increased from 50 to 100
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum 100 events per batch',
+      });
+    }
 
-          // Update last page URL and website tracking
-          if (update.url) visitor.lastPageUrl = update.url;
-          if (update.websiteDomain && !visitor.websites?.includes(update.websiteDomain)) {
-            if (!visitor.websites) visitor.websites = [];
-            visitor.websites.push(update.websiteDomain);
-          }
+    // Get client info
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
 
-          // Update last UTM params
-          if (update.utmSource) visitor.lastUtmSource = update.utmSource;
-          if (update.utmMedium) visitor.lastUtmMedium = update.utmMedium;
-          if (update.utmCampaign) visitor.lastUtmCampaign = update.utmCampaign;
-          if (update.referrer) visitor.lastSource = update.referrer;
+    // Prepare tracking events for batch insert
+    const trackingEvents = events.map((event: any) => ({
+      workspaceId: event.workspaceId,
+      visitorId: event.visitorId,
+      contactId: event.contactId,
+      sessionId: event.sessionId,
+      eventType: event.eventType || 'custom',
+      eventName: event.eventName,
+      url: event.url,
+      referrer: event.referrer,
+      utmSource: event.utmSource,
+      utmMedium: event.utmMedium,
+      utmCampaign: event.utmCampaign,
+      utmTerm: event.utmTerm,
+      utmContent: event.utmContent,
+      properties: event.properties || {},
+      device: {
+        userAgent: event.device?.userAgent || userAgent,
+        ip: clientIp,
+        screen: event.device?.screen,
+        language: event.device?.language,
+      },
+    }));
 
-          // Check if this is a new session (different sessionId)
-          const hasSession = visitor.devices.some((d) => d.ip === update.device.ip);
-          if (!hasSession) {
-            visitor.sessionCount += 1;
-          }
+    // CRITICAL: Batch insert events (fast, ordered: false for parallel inserts)
+    const insertedEvents = await TrackingEvent.insertMany(trackingEvents, {
+      ordered: false,
+      // lean: true, // Faster, returns plain objects
+    });
 
-          // Update or add device
-          const deviceIndex = visitor.devices.findIndex((d) => d.ip === update.device.ip);
-          if (deviceIndex >= 0) {
-            visitor.devices[deviceIndex].lastSeen = new Date();
-            visitor.devices[deviceIndex].userAgent = update.device.userAgent;
-          } else {
-            visitor.devices.push({
-              ...update.device,
-              lastSeen: new Date(),
-            });
-          }
+    // Count page views for visitor update
+    const pageViewCount = events.filter((e: any) => e.eventType === 'page_view' || e.eventType === 'pv').length;
 
-          await visitor.save();
-        } else {
-          // Create new visitor
-          await Visitor.create({
-            workspaceId: update.workspaceId,
-            visitorId: update.visitorId,
-            firstSeen: new Date(),
-            lastSeen: new Date(),
-            firstSource: update.referrer,
-            lastSource: update.referrer,
-            firstUtmSource: update.utmSource,
-            firstUtmMedium: update.utmMedium,
-            firstUtmCampaign: update.utmCampaign,
-            lastUtmSource: update.utmSource,
-            lastUtmMedium: update.utmMedium,
-            lastUtmCampaign: update.utmCampaign,
-            lastPageUrl: update.url,
-            websites: update.websiteDomain ? [update.websiteDomain] : [],
-            sessionCount: 1,
-            eventCount: 1,
-            pageViewCount: events.filter((e: any) => e.eventType === 'page_view').length,
-            devices: [
-              {
-                ...update.device,
-                lastSeen: new Date(),
-              },
-            ],
-          });
-        }
-      })
-    );
+    // Extract visitor updates
+    const visitorUpdates = extractVisitorUpdates(events, clientIp, userAgent);
 
+    // RESPOND IMMEDIATELY - don't wait for visitor updates or intent signals
     res.status(200).json({
       success: true,
       message: 'Events tracked successfully',
       count: insertedEvents.length,
     });
+
+    // FIRE-AND-FORGET: Process visitor updates and intent signals asynchronously
+    // These run AFTER the response is sent
+    setImmediate(() => {
+      processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => {});
+      processIntentSignalsAsync(events).catch(() => {});
+    });
+
   } catch (error: any) {
-    console.error('Tracking error:', error);
+    logger.error("Event tracking error", { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to track events',
@@ -339,9 +517,7 @@ router.post('/public/track/event',
 
 /**
  * POST /api/public/track/identify
- * Link visitorId to contactId
- * Backfill all TrackingEvents with contactId
- * Security: Domain whitelist, rate limiting, payload validation, data sanitization
+ * Link visitorId to contactId with bulk backfill
  */
 router.post('/public/track/identify',
   validateTrackingPayload,
@@ -361,58 +537,62 @@ router.post('/public/track/identify',
       });
     }
 
-    // Find or create contact
-    let contact = await Contact.findOne({ workspaceId, email });
-
-    if (!contact) {
-      // Create new contact
-      contact = await Contact.create({
-        workspaceId,
-        email,
-        firstName: properties?.firstName,
-        lastName: properties?.lastName,
-        company: properties?.company,
-        jobTitle: properties?.jobTitle,
-        phone: properties?.phone,
-        source: properties?.source || 'tracking',
-        status: 'lead',
-      });
-    }
-
-    // Update visitor with contactId
-    await Visitor.findOneAndUpdate(
-      { workspaceId, visitorId },
-      { contactId: contact._id },
-      { new: true }
+    // Find or create contact using findOneAndUpdate (atomic, faster)
+    const contact = await Contact.findOneAndUpdate(
+      { workspaceId, email },
+      {
+        $setOnInsert: {
+          workspaceId,
+          email,
+          firstName: properties?.firstName,
+          lastName: properties?.lastName,
+          company: properties?.company,
+          jobTitle: properties?.jobTitle,
+          phone: properties?.phone,
+          source: properties?.source || 'tracking',
+          status: 'lead',
+        },
+      },
+      { upsert: true, new: true }
     );
 
-    // Backfill all tracking events with contactId
-    const updateResult = await TrackingEvent.updateMany(
-      { workspaceId, visitorId, contactId: null },
-      { $set: { contactId: contact._id } }
-    );
-
-    // Fire webhook
-    try {
-      await WebhookService.trigger(workspaceId, 'visitor.identified', {
-        visitorId,
-        contactId: contact._id,
-        email: contact.email,
-        eventsBackfilled: updateResult.modifiedCount,
-      });
-    } catch (webhookError) {
-      console.error('Webhook error:', webhookError);
-      // Don't fail the request if webhook fails
-    }
-
+    // Respond immediately
     res.status(200).json({
       success: true,
       message: 'Visitor identified successfully',
       contactId: contact._id,
-      eventsBackfilled: updateResult.modifiedCount,
     });
+
+    // FIRE-AND-FORGET: Update visitor and backfill events
+    setImmediate(async () => {
+      try {
+        // Update visitor with contactId
+        await Visitor.findOneAndUpdate(
+          { workspaceId, visitorId },
+          { contactId: contact._id },
+          { new: true }
+        );
+
+        // Backfill all tracking events with contactId
+        const updateResult = await TrackingEvent.updateMany(
+          { workspaceId, visitorId, contactId: null },
+          { $set: { contactId: contact._id } }
+        );
+
+        // Fire webhook
+        await WebhookService.trigger(workspaceId, 'visitor.identified', {
+          visitorId,
+          contactId: contact._id,
+          email: contact.email,
+          eventsBackfilled: updateResult.modifiedCount,
+        }).catch(() => {});
+      } catch (error) {
+        logger.error("Identify async error", { error });
+      }
+    });
+
   } catch (error: any) {
-    console.error('Identify error:', error);
+    logger.error("Identify error", { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to identify visitor',
@@ -421,10 +601,13 @@ router.post('/public/track/identify',
   }
 });
 
+// ============================================
+// AUTHENTICATED ENDPOINTS
+// ============================================
+
 /**
  * GET /api/workspaces/:id/tracking/visitors
  * List anonymous and identified visitors
- * Authentication required
  */
 router.get('/workspaces/:id/tracking/visitors', authenticate, async (req: AuthRequest, res) => {
   try {
@@ -433,25 +616,25 @@ router.get('/workspaces/:id/tracking/visitors', authenticate, async (req: AuthRe
 
     const query: any = { workspaceId };
 
-    // Filter by identified status
     if (identified === 'true') {
       query.contactId = { $exists: true, $ne: null };
     } else if (identified === 'false') {
       query.contactId = { $exists: false };
     }
 
-    // Filter by minimum session count
     if (minSessions) {
       query.sessionCount = { $gte: parseInt(minSessions as string) };
     }
 
-    const visitors = await Visitor.find(query)
-      .populate('contactId', 'firstName lastName email company')
-      .sort({ lastSeen: -1 })
-      .limit(parseInt(limit as string))
-      .skip((parseInt(page as string) - 1) * parseInt(limit as string));
-
-    const total = await Visitor.countDocuments(query);
+    const [visitors, total] = await Promise.all([
+      Visitor.find(query)
+        .populate('contactId', 'firstName lastName email company')
+        .sort({ lastSeen: -1 })
+        .limit(parseInt(limit as string))
+        .skip((parseInt(page as string) - 1) * parseInt(limit as string))
+        .lean(), // Use lean() for faster read-only queries
+      Visitor.countDocuments(query),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -464,7 +647,7 @@ router.get('/workspaces/:id/tracking/visitors', authenticate, async (req: AuthRe
       },
     });
   } catch (error: any) {
-    console.error('Get visitors error:', error);
+    logger.error("Get visitors error", { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to get visitors',
@@ -475,8 +658,7 @@ router.get('/workspaces/:id/tracking/visitors', authenticate, async (req: AuthRe
 
 /**
  * GET /api/workspaces/:id/tracking/events
- * Get tracking events for a visitor or contact
- * Authentication required
+ * Get tracking events with optimized pagination
  */
 router.get('/workspaces/:id/tracking/events', authenticate, async (req: AuthRequest, res) => {
   try {
@@ -485,24 +667,18 @@ router.get('/workspaces/:id/tracking/events', authenticate, async (req: AuthRequ
 
     const query: any = { workspaceId };
 
-    if (visitorId) {
-      query.visitorId = visitorId;
-    }
+    if (visitorId) query.visitorId = visitorId;
+    if (contactId) query.contactId = contactId;
+    if (eventType) query.eventType = eventType;
 
-    if (contactId) {
-      query.contactId = contactId;
-    }
-
-    if (eventType) {
-      query.eventType = eventType;
-    }
-
-    const events = await TrackingEvent.find(query)
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit as string))
-      .skip((parseInt(page as string) - 1) * parseInt(limit as string));
-
-    const total = await TrackingEvent.countDocuments(query);
+    const [events, total] = await Promise.all([
+      TrackingEvent.find(query)
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit as string))
+        .skip((parseInt(page as string) - 1) * parseInt(limit as string))
+        .lean(),
+      TrackingEvent.countDocuments(query),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -515,7 +691,7 @@ router.get('/workspaces/:id/tracking/events', authenticate, async (req: AuthRequ
       },
     });
   } catch (error: any) {
-    console.error('Get events error:', error);
+    logger.error("Get events error", { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to get events',
@@ -526,15 +702,14 @@ router.get('/workspaces/:id/tracking/events', authenticate, async (req: AuthRequ
 
 /**
  * GET /api/workspaces/:id/tracking/stats
- * Get tracking statistics
- * Authentication required
+ * Get tracking statistics with optimized aggregation
  */
 router.get('/workspaces/:id/tracking/stats', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id: workspaceId } = req.params;
-
     const workspaceObjectId = new mongoose.Types.ObjectId(workspaceId);
 
+    // Run all queries in parallel
     const [totalVisitors, identifiedVisitors, totalEvents, eventsByType] = await Promise.all([
       Visitor.countDocuments({ workspaceId: workspaceObjectId }),
       Visitor.countDocuments({ workspaceId: workspaceObjectId, contactId: { $exists: true, $ne: null } }),
@@ -565,12 +740,339 @@ router.get('/workspaces/:id/tracking/stats', authenticate, async (req: AuthReque
       },
     });
   } catch (error: any) {
-    console.error('Get stats error:', error);
+    logger.error("Get stats error", { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Failed to get stats',
       error: error.message,
     });
+  }
+});
+
+// ============================================
+// STEALTH ENDPOINTS (Ad-blocker resistant)
+// Same high-performance optimizations
+// ============================================
+
+/**
+ * POST /api/v1/sync
+ * Disguised high-performance event tracking
+ */
+router.post('/v1/sync',
+  validateTrackingPayload,
+  sanitizeTrackingData,
+  trackingLimiter,
+  secureTrackingCors,
+  async (req, res) => {
+  try {
+    const { events } = req.body;
+
+    if (!events || !Array.isArray(events)) {
+      return res.status(400).json({ success: false, message: 'Events array is required' });
+    }
+
+    if (events.length === 0) {
+      return res.status(200).json({ success: true, message: 'No events to sync', count: 0 });
+    }
+
+    if (events.length > 100) {
+      return res.status(400).json({ success: false, message: 'Maximum 100 events per batch' });
+    }
+
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
+    const trackingEvents = events.map((event: any) => ({
+      workspaceId: event.workspaceId,
+      visitorId: event.visitorId,
+      contactId: event.contactId,
+      sessionId: event.sessionId,
+      eventType: event.eventType || 'custom',
+      eventName: event.eventName,
+      url: event.url,
+      referrer: event.referrer,
+      utmSource: event.utmSource,
+      utmMedium: event.utmMedium,
+      utmCampaign: event.utmCampaign,
+      utmTerm: event.utmTerm,
+      utmContent: event.utmContent,
+      properties: event.properties || {},
+      device: {
+        userAgent: event.device?.userAgent || userAgent,
+        ip: clientIp,
+        screen: event.device?.screen,
+        language: event.device?.language,
+      },
+    }));
+
+    // Fast batch insert
+    await TrackingEvent.insertMany(trackingEvents, { ordered: false });
+
+    // Respond immediately
+    res.status(200).json({ success: true, count: trackingEvents.length });
+
+    // Fire-and-forget visitor updates
+    const visitorUpdates = extractVisitorUpdates(events, clientIp, userAgent);
+    const pageViewCount = events.filter((e: any) => e.eventType === 'pv' || e.eventType === 'page_view').length;
+
+    setImmediate(() => {
+      processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => {});
+    });
+
+  } catch (error: any) {
+    logger.error("Sync error", { error: error.message });
+    res.status(500).json({ success: false, message: 'Sync failed' });
+  }
+});
+
+/**
+ * POST /api/v1/auth
+ * Disguised identify endpoint
+ */
+router.post('/v1/auth',
+  validateTrackingPayload,
+  sanitizeTrackingData,
+  trackingLimiter,
+  secureTrackingCors,
+  async (req, res) => {
+  try {
+    const { workspaceId, visitorId, email, properties } = req.body;
+
+    if (!workspaceId || !visitorId || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields missing',
+      });
+    }
+
+    // Atomic upsert
+    const contact = await Contact.findOneAndUpdate(
+      { workspaceId, email },
+      {
+        $setOnInsert: {
+          workspaceId,
+          email,
+          firstName: properties?.firstName,
+          lastName: properties?.lastName,
+          company: properties?.company,
+          jobTitle: properties?.jobTitle,
+          phone: properties?.phone,
+          source: properties?.source || 'tracking',
+          status: 'lead',
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.status(200).json({ success: true, id: contact._id });
+
+    // Fire-and-forget updates
+    setImmediate(async () => {
+      try {
+        await Visitor.findOneAndUpdate(
+          { workspaceId, visitorId },
+          { contactId: contact._id }
+        );
+        await TrackingEvent.updateMany(
+          { workspaceId, visitorId, contactId: null },
+          { $set: { contactId: contact._id } }
+        );
+      } catch {}
+    });
+
+  } catch (error: any) {
+    logger.error("Auth error", { error: error.message });
+    res.status(500).json({ success: false, message: 'Auth failed' });
+  }
+});
+
+/**
+ * GET /cdn/px.gif
+ * Ultra-fast image pixel fallback
+ */
+const TRANSPARENT_GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+
+router.get('/cdn/px.gif', (req, res) => {
+  // Send response immediately
+  res.setHeader('Content-Type', 'image/gif');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.send(TRANSPARENT_GIF);
+
+  // Fire-and-forget event tracking
+  const { w, v, e, n, u } = req.query;
+  if (w && v) {
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+
+    TrackingEvent.create({
+      workspaceId: w,
+      visitorId: v,
+      sessionId: 'px-' + Date.now(),
+      eventType: e || 'px',
+      eventName: n || 'Pixel',
+      url: u || '',
+      device: {
+        userAgent: req.headers['user-agent'],
+        ip: clientIp,
+      },
+    }).catch(() => {}); // Silent fail
+  }
+});
+
+// ============================================
+// ULTRA-STEALTH CDN ENDPOINTS (AdGuard resistant)
+// Disguised as static asset requests
+// ============================================
+
+/**
+ * POST /cdn/fonts/woff2.json
+ * Disguised as font configuration - actually handles event tracking
+ * Accepts both encoded and plain payloads
+ */
+router.post('/cdn/fonts/woff2.json',
+  trackingLimiter,
+  secureTrackingCors,
+  async (req, res) => {
+  try {
+    // Decode payload if encoded
+    const decoded = decodeStealthPayload(req.body);
+    const events = decoded.q || decoded.events || [];
+
+    if (!Array.isArray(events) || events.length === 0) {
+      return res.status(200).json({ status: 'ok', loaded: 0 });
+    }
+
+    if (events.length > 100) {
+      return res.status(200).json({ status: 'ok', loaded: 100 });
+    }
+
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+
+    // Map stealth events to standard format
+    const trackingEvents = events.map((event: any) => mapStealthEvent(event, clientIp, userAgent));
+
+    // Fast batch insert
+    await TrackingEvent.insertMany(trackingEvents, { ordered: false });
+
+    // Respond with innocent-looking response
+    res.status(200).json({
+      status: 'ok',
+      loaded: trackingEvents.length,
+      cache: 'hit'
+    });
+
+    // Fire-and-forget visitor updates
+    const visitorUpdates = extractVisitorUpdates(
+      trackingEvents.map((e: any) => ({
+        ...e,
+        device: { userAgent, ip: clientIp }
+      })),
+      clientIp,
+      userAgent
+    );
+    const pageViewCount = trackingEvents.filter((e: any) => e.eventType === 'page_view').length;
+
+    setImmediate(() => {
+      processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => {});
+    });
+
+  } catch (error: any) {
+    // Return success even on error to avoid detection
+    res.status(200).json({ status: 'ok', cache: 'miss' });
+  }
+});
+
+/**
+ * POST /cdn/assets/manifest.json
+ * Disguised as asset manifest - actually handles identify requests
+ */
+router.post('/cdn/assets/manifest.json',
+  trackingLimiter,
+  secureTrackingCors,
+  async (req, res) => {
+  try {
+    // Decode payload if encoded
+    const decoded = decodeStealthPayload(req.body);
+    const data = mapStealthIdentify(decoded);
+
+    const { workspaceId, visitorId, email, properties } = data;
+
+    if (!workspaceId || !visitorId || !email) {
+      return res.status(200).json({ status: 'ok', verified: false });
+    }
+
+    // Atomic upsert
+    const contact = await Contact.findOneAndUpdate(
+      { workspaceId, email },
+      {
+        $setOnInsert: {
+          workspaceId,
+          email,
+          firstName: properties?.firstName,
+          lastName: properties?.lastName,
+          company: properties?.company,
+          phone: properties?.phone,
+          source: 'stealth',
+          status: 'lead',
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    // Innocent-looking response
+    res.status(200).json({
+      status: 'ok',
+      verified: true,
+      version: '2.0'
+    });
+
+    // Fire-and-forget updates
+    setImmediate(async () => {
+      try {
+        await Visitor.findOneAndUpdate(
+          { workspaceId, visitorId },
+          { contactId: contact._id }
+        );
+        await TrackingEvent.updateMany(
+          { workspaceId, visitorId, contactId: null },
+          { $set: { contactId: contact._id } }
+        );
+      } catch {}
+    });
+
+  } catch (error: any) {
+    // Return success even on error
+    res.status(200).json({ status: 'ok', verified: false });
+  }
+});
+
+/**
+ * GET /cdn/img/s.gif
+ * Alternative pixel endpoint with innocent path
+ */
+router.get('/cdn/img/s.gif', (req, res) => {
+  res.setHeader('Content-Type', 'image/gif');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(TRANSPARENT_GIF);
+
+  const { w, u, e, n, l } = req.query;
+  if (w && u) {
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+
+    TrackingEvent.create({
+      workspaceId: w,
+      visitorId: u,
+      sessionId: 'px-' + Date.now(),
+      eventType: mapEventType(e as string || 'px'),
+      eventName: mapEventName(n as string || 'P'),
+      url: l || '',
+      device: {
+        userAgent: req.headers['user-agent'],
+        ip: clientIp,
+      },
+    }).catch(() => {});
   }
 });
 

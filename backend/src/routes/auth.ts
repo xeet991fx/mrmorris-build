@@ -17,6 +17,7 @@ import {
   verifyOTPSchema,
   completeRegistrationSchema,
 } from "../validations/auth";
+import { logger } from "../utils/logger";
 
 const router = express.Router();
 
@@ -122,7 +123,7 @@ router.post("/register", authLimiter, async (req: Request, res: Response) => {
         verificationToken
       );
     } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
+      logger.error("Failed to send verification email", { error: emailError });
       // Continue registration even if email fails
     }
 
@@ -150,7 +151,7 @@ router.post("/register", authLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    console.error("Registration error:", error);
+    logger.error("Registration error", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Registration failed. Please try again.",
@@ -234,7 +235,7 @@ router.post("/login", authLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    console.error("Login error:", error);
+    logger.error("Login error", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Login failed. Please try again.",
@@ -275,7 +276,7 @@ router.post("/verify-email", async (req: Request, res: Response) => {
     try {
       await emailService.sendWelcomeEmail(user.email, user.name);
     } catch (emailError) {
-      console.error("Failed to send welcome email:", emailError);
+      logger.error("Failed to send welcome email", { error: emailError });
     }
 
     // Generate token for auto-login
@@ -303,7 +304,7 @@ router.post("/verify-email", async (req: Request, res: Response) => {
       });
     }
 
-    console.error("Email verification error:", error);
+    logger.error("Email verification error", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Email verification failed. Please try again.",
@@ -348,7 +349,7 @@ router.post(
           resetToken
         );
       } catch (emailError) {
-        console.error("Failed to send password reset email:", emailError);
+        logger.error("Failed to send password reset email", { error: emailError });
         // Clear reset token if email fails
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
@@ -374,7 +375,7 @@ router.post(
         });
       }
 
-      console.error("Forgot password error:", error);
+      logger.error("Forgot password error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to process request. Please try again.",
@@ -440,7 +441,7 @@ router.post(
         });
       }
 
-      console.error("Password reset error:", error);
+      logger.error("Password reset error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Password reset failed. Please try again.",
@@ -480,7 +481,7 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("Get user error:", error);
+    logger.error("Get user error", { error });
     res.status(500).json({
       success: false,
       error: "Failed to get user information.",
@@ -540,7 +541,7 @@ router.post(
         });
       }
 
-      console.error("Change password error:", error);
+      logger.error("Change password error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Failed to change password. Please try again.",
@@ -597,7 +598,7 @@ router.post(
           verificationToken
         );
       } catch (emailError) {
-        console.error("Failed to send verification email:", emailError);
+        logger.error("Failed to send verification email", { error: emailError });
         return res.status(500).json({
           success: false,
           error: "Failed to send verification email. Please try again.",
@@ -609,7 +610,7 @@ router.post(
         message: "If an unverified account exists, a verification email has been sent.",
       });
     } catch (error) {
-      console.error("Resend verification error:", error);
+      logger.error("Resend verification error", { error });
       res.status(500).json({
         success: false,
         error: "Failed to resend verification email.",
@@ -697,7 +698,7 @@ router.post("/send-otp", emailLimiter, async (req: Request, res: Response) => {
     try {
       await emailService.sendOTPEmail(email, code, purpose);
     } catch (emailError) {
-      console.error("Failed to send OTP email:", emailError);
+      logger.error("Failed to send OTP email", { error: emailError });
       return res.status(500).json({
         success: false,
         error: "Failed to send OTP email. Please try again.",
@@ -717,7 +718,7 @@ router.post("/send-otp", emailLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    console.error("Send OTP error:", error);
+    logger.error("Send OTP error", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Failed to send OTP. Please try again.",
@@ -791,7 +792,7 @@ router.post("/verify-otp", authLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    console.error("Verify OTP error:", error);
+    logger.error("Verify OTP error", { error: error.message });
     res.status(500).json({
       success: false,
       error: "Failed to verify OTP. Please try again.",
@@ -886,7 +887,7 @@ router.post(
         });
       }
 
-      console.error("Complete registration error:", error);
+      logger.error("Complete registration error", { error: error.message });
       res.status(500).json({
         success: false,
         error: "Registration failed. Please try again.",
@@ -937,7 +938,7 @@ router.get(
         `${process.env.FRONTEND_URL}/auth/callback?token=${token}`
       );
     } catch (error) {
-      console.error("Google callback error:", error);
+      logger.error("Google callback error", { error });
       res.redirect(
         `${process.env.FRONTEND_URL}/login?error=authentication_failed`
       );
