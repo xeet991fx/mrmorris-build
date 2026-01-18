@@ -93,7 +93,8 @@
       "Bash(npm uninstall:*)",
       "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm install\" 2>&1:*)",
       "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm audit\":*)",
-      "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm run build\":*)"
+      "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm run build\":*)",
+      "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; rm package-lock.json; npm install\":*)"
     ],
     "deny": [],
     "ask": []
