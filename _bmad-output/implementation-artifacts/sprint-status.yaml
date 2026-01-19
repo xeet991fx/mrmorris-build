@@ -52,12 +52,12 @@ development_status:
   1-8-duplicate-agent: done
   1-9-manage-agent-status: done
   1-10-delete-agent: done
-  1-11-list-all-workspace-agents: backlog
+  1-11-list-all-workspace-agents: complete
   epic-1-retrospective: optional
 
   # Epic 2: Safe Agent Testing (7 stories)
-  epic-2: backlog
-  2-1-enable-test-mode: backlog
+  epic-2: in-progress
+  2-1-enable-test-mode: review
   2-2-select-test-target: backlog
   2-3-step-by-step-execution-preview: backlog
   2-4-validate-instructions: backlog

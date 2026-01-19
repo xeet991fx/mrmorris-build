@@ -4,13 +4,15 @@ import {
   CreateAgentResponse,
   GetAgentResponse,
   ListAgentsResponse,
+  ListAgentsParams,
   UpdateAgentInput,
   UpdateAgentResponse,
   DuplicateAgentInput,
   DuplicateAgentResponse,
   UpdateAgentStatusInput,
   UpdateAgentStatusResponse,
-  DeleteAgentResponse
+  DeleteAgentResponse,
+  TestRunResponse
 } from '@/types/agent';
 
 /**
@@ -28,14 +30,26 @@ export const createAgent = async (
 };
 
 /**
- * List all agents in a workspace
+ * List agents in a workspace with filtering, sorting, search, and pagination
+ * Story 1.11: Enhanced list endpoint with query parameters
  */
 export const listAgents = async (
-  workspaceId: string
+  workspaceId: string,
+  params?: ListAgentsParams
 ): Promise<ListAgentsResponse> => {
-  const response = await axios.get(
-    `/workspaces/${workspaceId}/agents`
-  );
+  const queryParams = new URLSearchParams();
+
+  if (params?.status) queryParams.set('status', params.status);
+  if (params?.sortBy) queryParams.set('sortBy', params.sortBy);
+  if (params?.sortOrder) queryParams.set('sortOrder', params.sortOrder);
+  if (params?.search) queryParams.set('search', params.search);
+  if (params?.limit !== undefined) queryParams.set('limit', params.limit.toString());
+  if (params?.offset !== undefined) queryParams.set('offset', params.offset.toString());
+
+  const queryString = queryParams.toString();
+  const url = `/workspaces/${workspaceId}/agents${queryString ? `?${queryString}` : ''}`;
+
+  const response = await axios.get(url);
   return response.data;
 };
 
@@ -116,6 +130,20 @@ export const deleteAgent = async (
 ): Promise<DeleteAgentResponse> => {
   const response = await axios.delete(
     `/workspaces/${workspaceId}/agents/${agentId}`
+  );
+  return response.data;
+};
+
+/**
+ * Test agent in dry-run mode (Story 2.1)
+ * Simulates execution without performing real actions
+ */
+export const testAgent = async (
+  workspaceId: string,
+  agentId: string
+): Promise<TestRunResponse> => {
+  const response = await axios.post(
+    `/workspaces/${workspaceId}/agents/${agentId}/test`
   );
   return response.data;
 };

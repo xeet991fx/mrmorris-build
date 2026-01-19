@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import { getAgent, updateAgent } from '@/lib/api/agents';
 import { IAgent, ITriggerConfig, IAgentRestrictions, IAgentMemory, IAgentApprovalConfig, MEMORY_DEFAULTS, APPROVAL_DEFAULTS, UpdateAgentInput } from '@/types/agent';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { MemoryConfiguration } from '@/components/agents/MemoryConfiguration';
 import { ApprovalConfiguration } from '@/components/agents/ApprovalConfiguration';
 import { LiveAgentWarningModal } from '@/components/agents/LiveAgentWarningModal';
 import { ConflictWarningModal } from '@/components/agents/ConflictWarningModal';
+import { TestModePanel } from '@/components/agents/TestModePanel';
 
 export default function AgentBuilderPage() {
   const params = useParams();
@@ -49,6 +50,9 @@ export default function AgentBuilderPage() {
 
   // Story 1.7 Fix: Pending Live warning resolve callback for section saves
   const [pendingLiveWarningResolve, setPendingLiveWarningResolve] = useState<((confirmed: boolean) => void) | null>(null);
+
+  // Story 2.1: Test Mode panel state
+  const [isTestModePanelOpen, setIsTestModePanelOpen] = useState(false);
 
   useEffect(() => {
     fetchAgent();
@@ -337,14 +341,27 @@ export default function AgentBuilderPage() {
               · {formatDistanceToNow(new Date(agent.createdAt), { addSuffix: true })}
             </span>
           </div>
-          <button
-            onClick={handleSaveTriggers}
-            disabled={isSaving || triggers.length === 0}
-            className="px-4 py-2 text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            data-testid="save-triggers-btn"
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Story 2.1: Test Mode Button (AC1) - Only show when instructions exist */}
+            {(agent.instructions && agent.instructions.trim()) && (
+              <button
+                onClick={() => setIsTestModePanelOpen(true)}
+                className="px-4 py-2 text-sm font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-2"
+                data-testid="test-mode-btn"
+              >
+                <BeakerIcon className="h-4 w-4" />
+                Test Mode
+              </button>
+            )}
+            <button
+              onClick={handleSaveTriggers}
+              disabled={isSaving || triggers.length === 0}
+              className="px-4 py-2 text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              data-testid="save-triggers-btn"
+            >
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         </motion.div>
       </div>
 
@@ -449,6 +466,16 @@ export default function AgentBuilderPage() {
           updatedAt={conflictInfo.updatedAt}
         />
       )}
+
+      {/* Story 2.1: Test Mode Panel */}
+      <TestModePanel
+        open={isTestModePanelOpen}
+        onOpenChange={setIsTestModePanelOpen}
+        workspaceId={workspaceId}
+        agentId={agentId}
+        agentName={agent.name}
+        hasInstructions={Boolean(agent.instructions && agent.instructions.trim())}
+      />
     </div>
   );
 }

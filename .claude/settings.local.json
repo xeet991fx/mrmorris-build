@@ -95,7 +95,8 @@
       "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm audit\":*)",
       "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; npm run build\":*)",
       "Bash(powershell.exe -Command \"cd C:/app/morrisB/backend; rm package-lock.json; npm install\":*)",
-      "Bash(npx shadcn@latest:*)"
+      "Bash(npx shadcn@latest:*)",
+      "Bash(npx jest:*)"
     ],
     "deny": [],
     "ask": []

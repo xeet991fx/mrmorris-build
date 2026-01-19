@@ -13,11 +13,12 @@
  * - POST   /api/workspaces/:workspaceId/agents/:agentId/duplicate  Duplicate agent (Story 1.8)
  * - PATCH  /api/workspaces/:workspaceId/agents/:agentId/status   Update agent status (Story 1.9)
  * - DELETE /api/workspaces/:workspaceId/agents/:agentId          Delete agent (Story 1.10)
+ * - POST   /api/workspaces/:workspaceId/agents/:agentId/test     Test agent in dry-run mode (Story 2.1)
  */
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateWorkspaceAccess } from '../middleware/workspace';
-import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus, deleteAgent } from '../controllers/agentController';
+import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus, deleteAgent, testAgent } from '../controllers/agentController';
 import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
@@ -134,6 +135,18 @@ router.delete(
   authenticate,
   validateWorkspaceAccess,
   deleteAgent
+);
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/test
+ * @desc Run agent in Test Mode (dry-run simulation) (Story 2.1)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+router.post(
+  '/workspaces/:workspaceId/agents/:agentId/test',
+  authenticate,
+  validateWorkspaceAccess,
+  testAgent
 );
 
 export default router;
