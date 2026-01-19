@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * TestModePanel - Story 2.1 & 2.2: Enable Test Mode with Target Selection
+ * TestModePanel - Story 2.1, 2.2 & 2.3: Test Mode with Enhanced Previews
  *
  * A sliding panel that allows users to test their agent in dry-run mode.
  * - AC1: Opens from right side with "Run Test" button
@@ -11,6 +11,11 @@
  * Story 2.2:
  * - AC1: Test button with selected target initiates test
  * - AC7: Trigger-based default target type and required target validation
+ *
+ * Story 2.3:
+ * - Enhanced step-by-step preview with rich previews
+ * - Summary banner with stats
+ * - Expandable step cards with type-specific previews
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
@@ -22,7 +27,8 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { TestResultsDisplay } from './TestResultsDisplay';
+import { TestResultsList } from './TestResultsList';
+import { TestSummaryBanner } from './TestSummaryBanner';
 import { TestTargetSelector } from './TestTargetSelector';
 import { ManualTestDataInput } from './ManualTestDataInput';
 import { testAgent } from '@/lib/api/agents';
@@ -266,9 +272,63 @@ export function TestModePanel({
             </div>
           )}
 
-          {/* Test Results (AC2, AC3, AC4, AC5) */}
+          {/* Test Results (Story 2.3: Enhanced step-by-step preview) */}
           {testResult && (
-            <TestResultsDisplay result={testResult} />
+            <div className="space-y-4">
+              {/* Summary Banner */}
+              <TestSummaryBanner
+                steps={testResult.steps}
+                executionTime={testResult.totalEstimatedDuration}
+                totalCredits={testResult.totalEstimatedCredits}
+              />
+
+              {/* Warnings */}
+              {testResult.warnings.length > 0 && (
+                <div className="space-y-2">
+                  {testResult.warnings.map((warning, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-start gap-3 p-3 rounded-lg ${
+                        warning.severity === 'error'
+                          ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                          : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                      }`}
+                    >
+                      <ExclamationTriangleIcon
+                        className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+                          warning.severity === 'error' ? 'text-red-500' : 'text-amber-500'
+                        }`}
+                      />
+                      <div>
+                        <p
+                          className={`text-sm font-medium ${
+                            warning.severity === 'error'
+                              ? 'text-red-700 dark:text-red-300'
+                              : 'text-amber-700 dark:text-amber-300'
+                          }`}
+                        >
+                          {warning.message}
+                        </p>
+                        {warning.suggestion && (
+                          <p
+                            className={`mt-1 text-xs ${
+                              warning.severity === 'error'
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-amber-600 dark:text-amber-400'
+                            }`}
+                          >
+                            Suggestion: {warning.suggestion}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Step-by-Step Results */}
+              <TestResultsList steps={testResult.steps} />
+            </div>
           )}
         </div>
       </SheetContent>

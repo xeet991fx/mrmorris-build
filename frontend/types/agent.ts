@@ -290,18 +290,140 @@ export interface DeleteAgentResponse {
   message: string;
 }
 
-// Story 2.1: Test Mode types
+// Story 2.1 & 2.3: Enhanced Test Mode types
+export type TestStepStatus = 'success' | 'warning' | 'error' | 'skipped' | 'not_executed';
+
+export type StepIcon =
+  | 'search'
+  | 'email'
+  | 'wait'
+  | 'conditional'
+  | 'linkedin'
+  | 'task'
+  | 'tag'
+  | 'update'
+  | 'enrich'
+  | 'handoff'
+  | 'web_search';
+
+// Story 2.3: Type-specific preview content
+export interface SearchPreview {
+  type: 'search';
+  matchedCount: number;
+  matches: Array<{
+    id: string;
+    name: string;
+    subtitle: string;
+    company?: string;
+  }>;
+  hasMore: boolean;
+}
+
+export interface EmailPreview {
+  type: 'email';
+  recipient: string;
+  subject: string;
+  bodyPreview: string;
+  templateName?: string;
+  variablesResolved: Record<string, string>;
+  isDryRun: true;
+}
+
+export interface ConditionalPreview {
+  type: 'conditional';
+  condition: string;
+  evaluatedTo: boolean;
+  explanation: string;
+  trueBranchSteps: number[];
+  falseBranchSteps: number[];
+}
+
+export interface WaitPreview {
+  type: 'wait';
+  duration: number;
+  unit: 'seconds' | 'minutes' | 'hours' | 'days';
+  resumeNote: string;
+}
+
+export interface LinkedInPreview {
+  type: 'linkedin';
+  recipient: string;
+  messagePreview?: string;
+  connectionNote?: string;
+  isDryRun: true;
+}
+
+export interface TaskPreview {
+  type: 'task';
+  taskTitle: string;
+  assignee?: string;
+  dueDate?: string;
+}
+
+export interface TagPreview {
+  type: 'tag';
+  tagName: string;
+  operation: 'add' | 'remove';
+  targetCount: number;
+}
+
+export interface UpdatePreview {
+  type: 'update';
+  fieldName: string;
+  oldValue?: string;
+  newValue: string;
+  targetCount: number;
+}
+
+export interface EnrichPreview {
+  type: 'enrich';
+  source: string;
+  fieldsToEnrich: string[];
+  targetCount: number;
+}
+
+export interface WebSearchPreview {
+  type: 'web_search';
+  query: string;
+  isDryRun: true;
+}
+
+export type StepPreview =
+  | SearchPreview
+  | EmailPreview
+  | ConditionalPreview
+  | WaitPreview
+  | LinkedInPreview
+  | TaskPreview
+  | TagPreview
+  | UpdatePreview
+  | EnrichPreview
+  | WebSearchPreview;
+
+// Story 2.1 & 2.3: Enhanced test step result
 export interface TestStepResult {
   stepNumber: number;
   action: string;
-  status: 'simulated' | 'skipped' | 'error';
+  actionLabel: string;
+  icon: StepIcon;
+  status: TestStepStatus;
   preview: {
     description: string;
     details?: Record<string, any>;
   };
+  richPreview?: StepPreview;
+  isExpandable: boolean;
   duration: number;
   estimatedCredits: number;
   note: string;
+  conditionResult?: boolean;
+  conditionExplanation?: string;
+  skipReason?: string;
+  suggestions?: string[];
+  errorContext?: {
+    lineNumber?: number;
+    instructionText?: string;
+  };
 }
 
 export interface TestRunResponse {

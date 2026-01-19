@@ -59,7 +59,7 @@ development_status:
   epic-2: in-progress
   2-1-enable-test-mode: done
   2-2-select-test-target: done
-  2-3-step-by-step-execution-preview: backlog
+  2-3-step-by-step-execution-preview: review
   2-4-validate-instructions: backlog
   2-5-show-execution-estimates: backlog
   2-6-test-result-performance: backlog
