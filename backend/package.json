@@ -16,7 +16,10 @@
     "stop:pm2": "pm2 stop morrisB-api",
     "restart:pm2": "pm2 restart morrisB-api",
     "logs:pm2": "pm2 logs morrisB-api",
-    "status:pm2": "pm2 status"
+    "status:pm2": "pm2 status",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@bull-board/api": "^6.16.1",

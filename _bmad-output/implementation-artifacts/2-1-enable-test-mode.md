@@ -2,7 +2,7 @@
 
 **Epic:** Epic 2 - Safe Agent Testing
 **Story Key:** 2-1-enable-test-mode
-**Status:** ready-for-dev
+**Status:** done
 **Priority:** High - First story of Epic 2, foundational for all testing capabilities
 **FRs Covered:** FR35, FR36, FR38, FR39, FR40, FR41
 
@@ -606,6 +606,8 @@ Claude Opus 4.5 (claude-opus-4-5-20251101)
 **Backend (UPDATED):**
 - `backend/src/controllers/agentController.ts` - Added testAgent controller
 - `backend/src/routes/agentBuilder.ts` - Added test endpoint route
+- `backend/src/models/Agent.ts` - [Note: Contains Story 1.11 changes bundled in commit]
+- `backend/package.json` - Added test scripts (npm test, test:watch, test:coverage)
 
 **Frontend (NEW):**
 - `frontend/components/ui/sheet.tsx` - Sheet (sliding panel) component
@@ -616,4 +618,15 @@ Claude Opus 4.5 (claude-opus-4-5-20251101)
 - `frontend/types/agent.ts` - Added TestStepResult, TestRunResponse types
 - `frontend/lib/api/agents.ts` - Added testAgent API function
 - `frontend/app/projects/[id]/agents/[agentId]/page.tsx` - Added Test Mode button and panel
+- `frontend/app/projects/[id]/agents/page.tsx` - Minor updates
+- `frontend/components/agents/AgentCard.tsx` - Minor updates
+- `frontend/components/pipelines/PipelineForm.tsx` - Unrelated changes bundled
+- `frontend/components/providers/theme-provider.tsx` - Unrelated changes bundled
+- `frontend/lib/utils/date.ts` - Utility updates
+
+### Review Follow-ups (Code Review)
+
+- [ ] [CR][HIGH] Write frontend component tests for TestModePanel.tsx
+- [ ] [CR][HIGH] Write frontend component tests for TestResultsDisplay.tsx
+- [ ] [CR][MEDIUM] Verify backend tests pass with `npm test` after test script addition
 

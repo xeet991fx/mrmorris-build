@@ -1,15 +1,19 @@
 'use client';
 
 /**
- * TestModePanel - Story 2.1: Enable Test Mode
+ * TestModePanel - Story 2.1 & 2.2: Enable Test Mode with Target Selection
  *
  * A sliding panel that allows users to test their agent in dry-run mode.
  * - AC1: Opens from right side with "Run Test" button
  * - AC2: Simulates execution without real actions
  * - AC5: Displays errors with actionable suggestions
+ *
+ * Story 2.2:
+ * - AC1: Test button with selected target initiates test
+ * - AC7: Trigger-based default target type and required target validation
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -19,8 +23,10 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { TestResultsDisplay } from './TestResultsDisplay';
+import { TestTargetSelector } from './TestTargetSelector';
+import { ManualTestDataInput } from './ManualTestDataInput';
 import { testAgent } from '@/lib/api/agents';
-import { TestRunResponse } from '@/types/agent';
+import { TestRunResponse, TestTarget, ITriggerConfig } from '@/types/agent';
 import { toast } from 'sonner';
 import {
   PlayIcon,
@@ -35,6 +41,8 @@ interface TestModePanelProps {
   agentId: string;
   agentName: string;
   hasInstructions: boolean;
+  instructions?: string | null;
+  triggers?: ITriggerConfig[];
 }
 
 export function TestModePanel({
@@ -44,10 +52,52 @@ export function TestModePanel({
   agentId,
   agentName,
   hasInstructions,
+  instructions,
+  triggers,
 }: TestModePanelProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [testResult, setTestResult] = useState<TestRunResponse | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+  // Story 2.2: Test target state
+  const [testTarget, setTestTarget] = useState<TestTarget | null>(null);
+  const [manualData, setManualData] = useState<Record<string, any>>({});
+
+  // Story 2.2 AC7: Determine default target type based on trigger
+  const defaultTargetType = useMemo(() => {
+    if (!triggers || triggers.length === 0) return 'none';
+    for (const trigger of triggers) {
+      if (trigger.type === 'event') {
+        const event = (trigger.config as any).event;
+        if (event === 'contact.created' || event === 'form.submitted') {
+          return 'contact';
+        }
+        if (event === 'deal.stage_updated') {
+          return 'deal';
+        }
+      }
+    }
+    return 'none';
+  }, [triggers]);
+
+  // Story 2.2: Determine if target is required based on @contact.* or @deal.* in instructions
+  const targetRequired = useMemo(() => {
+    if (!instructions) return false;
+    return instructions.includes('@contact.') || instructions.includes('@deal.');
+  }, [instructions]);
+
+  // Story 2.2: Check if test can run (target selected if required)
+  const canRunTest = useMemo(() => {
+    if (!hasInstructions) return false;
+    if (!targetRequired) return true;
+    // If target is required, check if a valid target is selected
+    if (!testTarget) return false;
+    if (testTarget.type === 'none') {
+      // Manual mode - check if any data entered
+      return Object.keys(manualData).length > 0;
+    }
+    // Contact or deal selected
+    return !!testTarget.id;
+  }, [hasInstructions, targetRequired, testTarget, manualData]);
 
   const handleRunTest = useCallback(async () => {
     setIsLoading(true);
@@ -55,7 +105,21 @@ export function TestModePanel({
     setTestResult(null);
 
     try {
-      const result = await testAgent(workspaceId, agentId);
+      // Story 2.2: Build test target with optional manual data
+      let targetToSend: TestTarget | undefined;
+      if (testTarget) {
+        if (testTarget.type === 'none') {
+          // Manual mode - include manual data
+          targetToSend = {
+            type: 'none',
+            manualData: Object.keys(manualData).length > 0 ? manualData : undefined,
+          };
+        } else {
+          targetToSend = testTarget;
+        }
+      }
+
+      const result = await testAgent(workspaceId, agentId, targetToSend ? { testTarget: targetToSend } : undefined);
       setTestResult(result);
 
       if (result.success) {
@@ -75,7 +139,7 @@ export function TestModePanel({
     } finally {
       setIsLoading(false);
     }
-  }, [workspaceId, agentId]);
+  }, [workspaceId, agentId, testTarget, manualData]);
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
@@ -83,6 +147,8 @@ export function TestModePanel({
     setTimeout(() => {
       setTestResult(null);
       setTestError(null);
+      setTestTarget(null);
+      setManualData({});
     }, 300); // Wait for close animation
   }, [onOpenChange]);
 
@@ -133,10 +199,43 @@ export function TestModePanel({
             </div>
           )}
 
+          {/* Story 2.2: Test Target Selection */}
+          {hasInstructions && (
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg space-y-4">
+              <TestTargetSelector
+                workspaceId={workspaceId}
+                value={testTarget}
+                onChange={setTestTarget}
+                disabled={isLoading}
+                defaultType={defaultTargetType}
+              />
+
+              {/* Show ManualTestDataInput when manual mode is selected */}
+              {testTarget?.type === 'none' && (
+                <ManualTestDataInput
+                  value={manualData}
+                  onChange={setManualData}
+                  disabled={isLoading}
+                  instructions={instructions}
+                />
+              )}
+
+              {/* Story 2.2: Warning when target is required but not selected */}
+              {targetRequired && !canRunTest && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <ExclamationTriangleIcon className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    This agent uses @contact or @deal variables. Please select a test target or enter manual data.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Run Test Button (AC1) */}
           <Button
             onClick={handleRunTest}
-            disabled={isLoading || !hasInstructions}
+            disabled={isLoading || !canRunTest}
             className="w-full"
             size="lg"
             data-testid="run-test-button"

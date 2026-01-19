@@ -14,12 +14,15 @@
  * - PATCH  /api/workspaces/:workspaceId/agents/:agentId/status   Update agent status (Story 1.9)
  * - DELETE /api/workspaces/:workspaceId/agents/:agentId          Delete agent (Story 1.10)
  * - POST   /api/workspaces/:workspaceId/agents/:agentId/test     Test agent in dry-run mode (Story 2.1)
+ * - GET    /api/workspaces/:workspaceId/test-targets/contacts    Search contacts for test target selection (Story 2.2)
+ * - GET    /api/workspaces/:workspaceId/test-targets/deals       Search deals for test target selection (Story 2.2)
  */
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateWorkspaceAccess } from '../middleware/workspace';
 import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus, deleteAgent, testAgent } from '../controllers/agentController';
-import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema } from '../validations/agentValidation';
+import { searchContacts, searchDeals } from '../controllers/testTargetController';
+import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
 const router = express.Router();
@@ -139,14 +142,39 @@ router.delete(
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents/:agentId/test
- * @desc Run agent in Test Mode (dry-run simulation) (Story 2.1)
+ * @desc Run agent in Test Mode (dry-run simulation) (Story 2.1, 2.2)
  * @access Private (requires authentication, workspace access, Owner/Admin role)
  */
 router.post(
   '/workspaces/:workspaceId/agents/:agentId/test',
   authenticate,
   validateWorkspaceAccess,
+  validate(testAgentSchema),
   testAgent
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/test-targets/contacts
+ * @desc Search contacts for test target selection (Story 2.2)
+ * @access Private (requires authentication and workspace access)
+ */
+router.get(
+  '/workspaces/:workspaceId/test-targets/contacts',
+  authenticate,
+  validateWorkspaceAccess,
+  searchContacts
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/test-targets/deals
+ * @desc Search deals (opportunities) for test target selection (Story 2.2)
+ * @access Private (requires authentication and workspace access)
+ */
+router.get(
+  '/workspaces/:workspaceId/test-targets/deals',
+  authenticate,
+  validateWorkspaceAccess,
+  searchDeals
 );
 
 export default router;

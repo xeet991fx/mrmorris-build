@@ -253,3 +253,25 @@ export const updateAgentStatusSchema = z.object({
 
 export type UpdateAgentStatusInput = z.infer<typeof updateAgentStatusSchema>['body'];
 
+// Story 2.2: Test target validation schema
+export const testAgentSchema = z.object({
+  body: z.object({
+    testTarget: z.object({
+      type: z.enum(['contact', 'deal', 'none']),
+      id: z.string().optional(),
+      manualData: z.record(z.any()).optional()
+    }).optional().refine(
+      (data) => {
+        // If type is contact or deal, id is required
+        if (data && (data.type === 'contact' || data.type === 'deal')) {
+          return data.id && data.id.length > 0;
+        }
+        return true;
+      },
+      { message: 'Target ID is required when type is contact or deal' }
+    )
+  })
+});
+
+export type TestAgentInput = z.infer<typeof testAgentSchema>['body'];
+

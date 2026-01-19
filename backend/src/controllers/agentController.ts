@@ -786,7 +786,7 @@ export const deleteAgent = async (req: Request, res: Response): Promise<void> =>
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents/:agentId/test
- * @desc Run agent in Test Mode (dry-run simulation)
+ * @desc Run agent in Test Mode (dry-run simulation) with optional target selection
  * @access Private (requires authentication, workspace access, Owner/Admin role)
  *
  * Story 2.1: Enable Test Mode
@@ -794,11 +794,18 @@ export const deleteAgent = async (req: Request, res: Response): Promise<void> =>
  * - AC3: Email action simulation with preview
  * - AC4: CRM update simulation with preview
  * - AC5: Error display at specific step
+ *
+ * Story 2.2: Select Test Target
+ * - AC1: Test button initiates with selected target
+ * - AC3: Variable resolution with real/simulated data
+ * - AC7: Dry-run with real data, no execution
  */
 export const testAgent = async (req: Request, res: Response): Promise<void> => {
   try {
     const { workspaceId, agentId } = req.params;
     const userId = (req as any).user?._id;
+    // Story 2.2: Extract testTarget from request body
+    const { testTarget } = req.body || {};
 
     if (!userId) {
       res.status(401).json({
@@ -836,8 +843,8 @@ export const testAgent = async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // Execute test mode simulation
-    const result = await TestModeService.simulateExecution(agentId, workspaceId);
+    // Story 2.2: Execute test mode simulation with optional test target
+    const result = await TestModeService.simulateExecution(agentId, workspaceId, testTarget);
 
     // Return 404 if agent not found
     if (!result.success && result.error === 'Agent not found') {

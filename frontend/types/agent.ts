@@ -341,3 +341,24 @@ export const AGENT_STATUS_INFO = {
   }
 } as const;
 
+// Story 2.2: Test Target types
+export type TestTargetType = 'contact' | 'deal' | 'none';
+
+export interface TestTarget {
+  type: TestTargetType;
+  id?: string;
+  manualData?: Record<string, any>;
+}
+
+export interface TestAgentInput {
+  testTarget?: TestTarget;
+}
+
+// Story 2.2: Test target search result
+export interface TestTargetOption {
+  id: string;
+  name: string;
+  subtitle: string;
+  company?: string;
+}
+

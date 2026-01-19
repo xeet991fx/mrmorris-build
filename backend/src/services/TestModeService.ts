@@ -1,12 +1,32 @@
 /**
- * TestModeService - Story 2.1: Enable Test Mode
+ * TestModeService - Story 2.1 & 2.2: Enable Test Mode with Target Selection
  *
  * CRITICAL: 0% false positives - NEVER execute real actions
  * This service simulates agent execution without performing any actual actions.
  * All actions are dry-run simulated and return preview results.
+ *
+ * Story 2.2: Adds test target selection for realistic data resolution
  */
 import mongoose from 'mongoose';
 import Agent, { IAgent } from '../models/Agent';
+import Contact, { IContact } from '../models/Contact';
+import Opportunity, { IOpportunity } from '../models/Opportunity';
+
+// Story 2.2: Test target types
+export type TestTargetType = 'contact' | 'deal' | 'none';
+
+export interface TestTarget {
+  type: TestTargetType;
+  id?: string;
+  manualData?: Record<string, any>;
+}
+
+// Story 2.2: Test context with resolved data
+export interface TestContext {
+  contact?: IContact;
+  deal?: IOpportunity;
+  variables: Record<string, any>;
+}
 
 // Story 2.1: Test step result structure
 export interface TestStepResult {
@@ -231,20 +251,121 @@ function getActionDescription(actionType: string): string {
 }
 
 /**
+ * Story 2.2: Resolve test context from target selection
+ * Loads contact/deal data and builds variables map for @contact.* / @deal.* resolution
+ */
+async function resolveTestContext(
+  testTarget: TestTarget | undefined,
+  workspaceId: string
+): Promise<TestContext> {
+  const context: TestContext = { variables: {} };
+
+  if (!testTarget || testTarget.type === 'none') {
+    // Manual mode - use manual data as variables
+    if (testTarget?.manualData) {
+      context.variables = { ...testTarget.manualData };
+    }
+    return context;
+  }
+
+  if (testTarget.type === 'contact' && testTarget.id) {
+    // Load contact with company populated
+    const contact = await Contact.findOne({
+      _id: testTarget.id,
+      workspaceId: workspaceId,
+    }).populate('companyId', 'name');
+
+    if (contact) {
+      context.contact = contact;
+      // Build @contact.* variables
+      context.variables['contact.firstName'] = contact.firstName || '';
+      context.variables['contact.lastName'] = contact.lastName || '';
+      context.variables['contact.email'] = contact.email || '';
+      context.variables['contact.title'] = contact.jobTitle || contact.title || '';
+      context.variables['contact.phone'] = contact.phone || '';
+      context.variables['contact.company'] = (contact as any).companyId?.name || contact.company || '';
+    }
+  }
+
+  if (testTarget.type === 'deal' && testTarget.id) {
+    // Load deal (opportunity) with company and contact populated
+    const deal = await Opportunity.findOne({
+      _id: testTarget.id,
+      workspaceId: workspaceId,
+    })
+      .populate('companyId', 'name')
+      .populate('contactId', 'firstName lastName');
+
+    if (deal) {
+      context.deal = deal;
+      // Build @deal.* variables
+      context.variables['deal.name'] = deal.title || '';
+      context.variables['deal.value'] = deal.value || 0;
+      context.variables['deal.stage'] = (deal as any).stageName || '';
+      context.variables['deal.company'] = (deal as any).companyId?.name || '';
+
+      const contactRef = deal.contactId as any;
+      if (contactRef) {
+        context.variables['deal.contact'] = [contactRef.firstName, contactRef.lastName].filter(Boolean).join(' ');
+      } else {
+        context.variables['deal.contact'] = '';
+      }
+    }
+  }
+
+  return context;
+}
+
+/**
+ * Story 2.2: Resolve @variable references in action fields
+ * Replaces @contact.* and @deal.* references with actual values
+ */
+function resolveVariables(value: any, context: TestContext): any {
+  if (typeof value !== 'string') return value;
+
+  // Replace @contact.* and @deal.* references
+  return value.replace(/@(contact|deal)\.(\w+)/g, (match, type, field) => {
+    const key = `${type}.${field}`;
+    const resolved = context.variables[key];
+    return resolved !== undefined ? String(resolved) : match;
+  });
+}
+
+/**
+ * Story 2.2: Resolve variables in entire action object
+ */
+function resolveActionVariables(action: any, context: TestContext): any {
+  const resolved: any = {};
+  for (const [key, value] of Object.entries(action)) {
+    if (typeof value === 'string') {
+      resolved[key] = resolveVariables(value, context);
+    } else if (typeof value === 'object' && value !== null) {
+      resolved[key] = resolveActionVariables(value, context);
+    } else {
+      resolved[key] = value;
+    }
+  }
+  return resolved;
+}
+
+/**
  * TestModeService - Main service for dry-run agent execution
  */
 export class TestModeService {
   /**
    * Simulate agent execution without performing real actions
    * Story 2.1: AC2, AC3, AC4, AC5
+   * Story 2.2: AC3, AC5 - Test target support for variable resolution
    *
    * @param agentId - The agent ID to test
    * @param workspaceId - The workspace ID (for isolation)
+   * @param testTarget - Optional test target for variable resolution
    * @returns TestRunResult with step-by-step simulation results
    */
   static async simulateExecution(
     agentId: string,
-    workspaceId: string
+    workspaceId: string,
+    testTarget?: TestTarget
   ): Promise<TestRunResult> {
     const startTime = Date.now();
     const steps: TestStepResult[] = [];
@@ -267,6 +388,9 @@ export class TestModeService {
           error: 'Agent not found',
         };
       }
+
+      // Story 2.2: Resolve test context for variable substitution
+      const testContext = await resolveTestContext(testTarget, workspaceId);
 
       // Get parsed actions from agent (use stored parsedActions)
       // Story 2.1 Dev Notes: Use existing agent.parsedActions - DO NOT reimplement parsing
@@ -296,8 +420,11 @@ export class TestModeService {
       for (let i = 0; i < parsedActions.length; i++) {
         const action = parsedActions[i];
 
+        // Story 2.2: Resolve variables in action before simulation
+        const resolvedAction = resolveActionVariables(action, testContext);
+
         // Handle conditional actions (Story 2.1 Dev Notes: evaluate conditions)
-        if (action.condition) {
+        if (resolvedAction.condition) {
           // For test mode, we simulate the condition as true by default
           // In production, this would evaluate actual contact/deal data
           const conditionMet = true; // Simulate condition met for dry run
@@ -305,11 +432,11 @@ export class TestModeService {
           if (!conditionMet) {
             steps.push({
               stepNumber: i + 1,
-              action: action.type || action.action || 'unknown',
+              action: resolvedAction.type || resolvedAction.action || 'unknown',
               status: 'skipped',
               preview: {
-                description: `Condition not met: ${action.condition}`,
-                details: { condition: action.condition },
+                description: `Condition not met: ${resolvedAction.condition}`,
+                details: { condition: resolvedAction.condition },
               },
               duration: 0,
               estimatedCredits: 0,
@@ -319,8 +446,8 @@ export class TestModeService {
           }
         }
 
-        // Simulate the action
-        const result = await simulateAction(action, i, workspaceId);
+        // Simulate the action with resolved variables
+        const result = await simulateAction(resolvedAction, i, workspaceId);
         steps.push(result);
 
         // If action resulted in error, record it and stop (AC5)

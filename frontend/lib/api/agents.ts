@@ -12,7 +12,9 @@ import {
   UpdateAgentStatusInput,
   UpdateAgentStatusResponse,
   DeleteAgentResponse,
-  TestRunResponse
+  TestRunResponse,
+  TestAgentInput,
+  TestTargetOption
 } from '@/types/agent';
 
 /**
@@ -135,15 +137,56 @@ export const deleteAgent = async (
 };
 
 /**
- * Test agent in dry-run mode (Story 2.1)
+ * Test agent in dry-run mode (Story 2.1, 2.2)
  * Simulates execution without performing real actions
+ * Story 2.2: Accepts optional testTarget for variable resolution
  */
 export const testAgent = async (
   workspaceId: string,
-  agentId: string
+  agentId: string,
+  data?: TestAgentInput
 ): Promise<TestRunResponse> => {
   const response = await axios.post(
-    `/workspaces/${workspaceId}/agents/${agentId}/test`
+    `/workspaces/${workspaceId}/agents/${agentId}/test`,
+    data || {}
+  );
+  return response.data;
+};
+
+/**
+ * Search contacts for test target selection (Story 2.2)
+ */
+export const searchTestTargetContacts = async (
+  workspaceId: string,
+  search?: string,
+  limit: number = 20
+): Promise<{ success: boolean; targets: TestTargetOption[]; hasMore: boolean }> => {
+  const queryParams = new URLSearchParams();
+  if (search) queryParams.set('search', search);
+  queryParams.set('limit', limit.toString());
+
+  const queryString = queryParams.toString();
+  const response = await axios.get(
+    `/workspaces/${workspaceId}/test-targets/contacts${queryString ? `?${queryString}` : ''}`
+  );
+  return response.data;
+};
+
+/**
+ * Search deals for test target selection (Story 2.2)
+ */
+export const searchTestTargetDeals = async (
+  workspaceId: string,
+  search?: string,
+  limit: number = 20
+): Promise<{ success: boolean; targets: TestTargetOption[]; hasMore: boolean }> => {
+  const queryParams = new URLSearchParams();
+  if (search) queryParams.set('search', search);
+  queryParams.set('limit', limit.toString());
+
+  const queryString = queryParams.toString();
+  const response = await axios.get(
+    `/workspaces/${workspaceId}/test-targets/deals${queryString ? `?${queryString}` : ''}`
   );
   return response.data;
 };
