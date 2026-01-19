@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Agent, { RESTRICTIONS_DEFAULTS, MEMORY_DEFAULTS, APPROVAL_DEFAULTS } from '../models/Agent';
 import { CreateAgentInput, UpdateAgentInput, DuplicateAgentInput } from '../validations/agentValidation';
 import User from '../models/User';
 import TeamMember from '../models/TeamMember';
 import Project from '../models/Project';
+import TestModeService from '../services/TestModeService';
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents
@@ -68,17 +70,82 @@ export const createAgent = async (req: Request, res: Response): Promise<void> =>
 
 /**
  * @route GET /api/workspaces/:workspaceId/agents
- * @desc List all agents in a workspace
+ * @desc List all agents in a workspace with filtering, sorting, search, and pagination
  * @access Private (requires authentication and workspace access)
+ *
+ * Story 1.11: Enhanced list endpoint with query parameters:
+ * - status: Filter by 'Draft' | 'Live' | 'Paused'
+ * - sortBy: 'name' | 'status' | 'createdAt' | 'lastExecutedAt' (default: createdAt)
+ * - sortOrder: 'asc' | 'desc' (default: desc)
+ * - search: Case-insensitive search in name and goal
+ * - limit: Pagination limit (default: 50)
+ * - offset: Pagination offset (default: 0)
  */
 export const listAgents = async (req: Request, res: Response): Promise<void> => {
   try {
     const { workspaceId } = req.params;
+    const {
+      status,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      search,
+      limit = 50,
+      offset = 0
+    } = req.query;
 
-    // Query with workspace filter for security
-    const agents = await Agent.find({
-      workspace: workspaceId
-    }).sort({ createdAt: -1 }); // Most recent first
+    // Build filter query with workspace isolation (AC8)
+    const filter: Record<string, any> = { workspace: workspaceId };
+
+    // Status filter (AC4)
+    if (status && ['Draft', 'Live', 'Paused'].includes(status as string)) {
+      filter.status = status;
+    }
+
+    // Search filter (AC5) - case-insensitive search in name and goal
+    if (search && typeof search === 'string' && search.trim()) {
+      const searchTerm = search.trim();
+      filter.$or = [
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { goal: { $regex: searchTerm, $options: 'i' } }
+      ];
+    }
+
+    // Build sort object (AC3)
+    const validSortFields = ['name', 'status', 'createdAt', 'lastExecutedAt'];
+    const sortField = validSortFields.includes(sortBy as string)
+      ? sortBy as string
+      : 'createdAt';
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    const sortOptions: Record<string, 1 | -1> = { [sortField]: sortDirection };
+
+    // Get total count for pagination (respects filters)
+    const total = await Agent.countDocuments(filter);
+
+    // Get status counts for filter UI (AC4) - always gets total counts for workspace
+    const statusCounts = await Agent.aggregate([
+      { $match: { workspace: new mongoose.Types.ObjectId(workspaceId as string) } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    const statusCountsMap = {
+      all: 0,
+      draft: 0,
+      live: 0,
+      paused: 0
+    };
+
+    statusCounts.forEach(({ _id, count }) => {
+      statusCountsMap.all += count;
+      if (_id === 'Draft') statusCountsMap.draft = count;
+      if (_id === 'Live') statusCountsMap.live = count;
+      if (_id === 'Paused') statusCountsMap.paused = count;
+    });
+
+    // Query with pagination
+    const agents = await Agent.find(filter)
+      .sort(sortOptions)
+      .skip(Number(offset))
+      .limit(Number(limit));
 
     res.status(200).json({
       success: true,
@@ -91,11 +158,20 @@ export const listAgents = async (req: Request, res: Response): Promise<void> => 
         createdBy: agent.createdBy,
         createdAt: agent.createdAt,
         updatedAt: agent.updatedAt,
+        // Story 1.11: Include lastExecutedAt (AC1)
+        lastExecutedAt: agent.lastExecutedAt || null,
         // Story 1.5: Include memory in list response
         memory: agent.memory || MEMORY_DEFAULTS,
         // Story 1.6: Include approvalConfig in list response
         approvalConfig: agent.approvalConfig || APPROVAL_DEFAULTS
-      }))
+      })),
+      // Story 1.11: Include meta with pagination and status counts
+      meta: {
+        total,
+        limit: Number(limit),
+        offset: Number(offset),
+        statusCounts: statusCountsMap
+      }
     });
   } catch (error: any) {
     console.error('Error listing agents:', error);
@@ -704,6 +780,89 @@ export const deleteAgent = async (req: Request, res: Response): Promise<void> =>
     res.status(500).json({
       success: false,
       error: 'Failed to delete agent'
+    });
+  }
+};
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/test
+ * @desc Run agent in Test Mode (dry-run simulation)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ *
+ * Story 2.1: Enable Test Mode
+ * - AC2: Dry run execution without real actions
+ * - AC3: Email action simulation with preview
+ * - AC4: CRM update simulation with preview
+ * - AC5: Error display at specific step
+ */
+export const testAgent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Story 2.1: RBAC Check - Must be Owner or Admin to test agents (same as edit permissions)
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+      return;
+    }
+
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+
+    if (!isWorkspaceCreator) {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to test agents"
+        });
+        return;
+      }
+    }
+
+    // Execute test mode simulation
+    const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+    // Return 404 if agent not found
+    if (!result.success && result.error === 'Agent not found') {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // Return test results
+    res.status(200).json({
+      success: result.success,
+      steps: result.steps,
+      totalEstimatedCredits: result.totalEstimatedCredits,
+      totalEstimatedDuration: result.totalEstimatedDuration,
+      warnings: result.warnings,
+      ...(result.error && { error: result.error }),
+      ...(result.failedAtStep && { failedAtStep: result.failedAtStep })
+    });
+  } catch (error: any) {
+    console.error('Error testing agent:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to execute test'
     });
   }
 };

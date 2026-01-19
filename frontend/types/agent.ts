@@ -156,6 +156,8 @@ export interface IAgent {
   updatedBy?: string;
   createdAt: string; // ISO 8601 date string from API
   updatedAt: string; // ISO 8601 date string from API
+  // Story 1.11: Track last execution time for display
+  lastExecutedAt?: string | null;
 
   // Story 1.2: Triggers (properly typed)
   triggers?: ITriggerConfig[];
@@ -211,9 +213,31 @@ export interface GetAgentResponse {
   agent: IAgent;
 }
 
+// Story 1.11: Enhanced list response with meta and status counts
 export interface ListAgentsResponse {
   success: boolean;
   agents: IAgent[];
+  meta: {
+    total: number;           // Total count of agents matching filters
+    limit: number;           // Current pagination limit
+    offset: number;          // Current pagination offset
+    statusCounts: {          // Counts for filter UI (AC4)
+      all: number;
+      draft: number;
+      live: number;
+      paused: number;
+    };
+  };
+}
+
+// Story 1.11: List agents query parameters for filtering, sorting, search
+export interface ListAgentsParams {
+  status?: 'Draft' | 'Live' | 'Paused';  // Filter by status (AC4)
+  sortBy?: 'name' | 'status' | 'createdAt' | 'lastExecutedAt';  // Sort field (AC3)
+  sortOrder?: 'asc' | 'desc';  // Sort direction (default: desc for dates)
+  search?: string;  // Search in name and goal (AC5)
+  limit?: number;   // Pagination limit (default: 50)
+  offset?: number;  // Pagination offset (default: 0)
 }
 
 // Story 1.7: Conflict response for optimistic locking
@@ -264,6 +288,35 @@ export interface StatusValidationErrorResponse {
 export interface DeleteAgentResponse {
   success: boolean;
   message: string;
+}
+
+// Story 2.1: Test Mode types
+export interface TestStepResult {
+  stepNumber: number;
+  action: string;
+  status: 'simulated' | 'skipped' | 'error';
+  preview: {
+    description: string;
+    details?: Record<string, any>;
+  };
+  duration: number;
+  estimatedCredits: number;
+  note: string;
+}
+
+export interface TestRunResponse {
+  success: boolean;
+  steps: TestStepResult[];
+  totalEstimatedCredits: number;
+  totalEstimatedDuration: number;
+  warnings: Array<{
+    step: number;
+    severity: 'warning' | 'error';
+    message: string;
+    suggestion?: string;
+  }>;
+  error?: string;
+  failedAtStep?: number;
 }
 
 // Story 1.9: Status display info

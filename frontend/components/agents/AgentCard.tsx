@@ -5,22 +5,25 @@ import { motion } from 'framer-motion';
 import { IAgent } from '@/types/agent';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { ClockIcon, BoltIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, BoltIcon, EllipsisVerticalIcon, PlayIcon } from '@heroicons/react/24/outline';
 import { Copy, Trash2 } from 'lucide-react';
 import { DuplicateAgentModal } from './DuplicateAgentModal';
 import { DeleteAgentModal } from './DeleteAgentModal';
 import { AgentStatusBadge } from './AgentStatusBadge';
 import { AgentStatusControls } from './AgentStatusControls';
+import { formatRelativeTime } from '@/lib/utils/date';
 
 interface AgentCardProps {
   agent: IAgent;
   workspaceId: string;
+  // Story 1.11 AC6: Optional click handler for card navigation
+  onClick?: () => void;
   onDuplicate?: (newAgent: IAgent) => void;
   onStatusChange?: (updatedAgent: IAgent) => void;
   onDelete?: () => void;
 }
 
-export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange, onDelete }: AgentCardProps) {
+export function AgentCard({ agent, workspaceId, onClick, onDuplicate, onStatusChange, onDelete }: AgentCardProps) {
   const router = useRouter();
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -50,7 +53,12 @@ export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange, onD
     if (target.closest('[data-menu-trigger]') || target.closest('[data-menu-content]') || target.closest('[data-status-controls]')) {
       return;
     }
-    router.push(`/projects/${workspaceId}/agents/${agent._id}`);
+    // Story 1.11 AC6: Use external onClick handler if provided, otherwise navigate directly
+    if (onClick) {
+      onClick();
+    } else {
+      router.push(`/projects/${workspaceId}/agents/${agent._id}`);
+    }
   };
 
   const handleMenuToggle = (e: React.MouseEvent) => {
@@ -76,6 +84,7 @@ export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange, onD
         whileHover={{ y: -2 }}
         onClick={handleCardClick}
         className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 cursor-pointer hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-all"
+        data-testid={`agent-card-${agent._id}`}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
@@ -138,11 +147,21 @@ export function AgentCard({ agent, workspaceId, onDuplicate, onStatusChange, onD
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
-          <div className="flex items-center gap-1.5 text-zinc-400">
-            <ClockIcon className="w-4 h-4" />
-            <span className="text-xs">
-              {formatDistanceToNow(new Date(agent.createdAt), { addSuffix: true })}
-            </span>
+          <div className="flex items-center gap-3 text-zinc-400">
+            {/* Created date */}
+            <div className="flex items-center gap-1.5">
+              <ClockIcon className="w-4 h-4" />
+              <span className="text-xs">
+                {formatDistanceToNow(new Date(agent.createdAt), { addSuffix: true })}
+              </span>
+            </div>
+            {/* Story 1.11 AC1: Last execution time */}
+            {agent.lastExecutedAt && (
+              <div className="flex items-center gap-1.5" title="Last executed">
+                <PlayIcon className="w-4 h-4" />
+                <span className="text-xs">{formatRelativeTime(agent.lastExecutedAt)}</span>
+              </div>
+            )}
           </div>
           {triggerCount > 0 && (
             <div className="flex items-center gap-1.5 text-zinc-400">

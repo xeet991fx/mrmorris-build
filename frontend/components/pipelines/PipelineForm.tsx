@@ -7,12 +7,15 @@ import StageManager from "./StageManager";
 interface PipelineFormValues extends FieldValues {
   name: string;
   description?: string;
-  stages?: Array<{ name: string; color: string; order: number }>;
+  // order is optional for create (assigned by backend), required for update
+  stages?: Array<{ name: string; color: string; order?: number; _id?: string }>;
   isDefault?: boolean;
 }
 
 interface PipelineFormProps {
-  form: UseFormReturn<PipelineFormValues>;
+  // Using any to allow both CreatePipelineInput and UpdatePipelineInput forms
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: UseFormReturn<any>;
   isEdit?: boolean;
 }
 
@@ -65,7 +68,7 @@ export default function PipelineForm({ form, isEdit = false }: PipelineFormProps
         <StageManager
           stages={stages}
           onChange={(newStages) => setValue("stages", newStages)}
-          errors={errors.stages as FieldErrors<{ name: string; color: string; order: number }[]>}
+          errors={errors.stages as unknown as FieldErrors<{ name: string; color: string; order: number }[]>}
         />
       )}
 

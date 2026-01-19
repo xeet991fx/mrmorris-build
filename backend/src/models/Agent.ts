@@ -107,6 +107,8 @@ export interface IAgent extends Document {
   createdBy: mongoose.Types.ObjectId;
   // Story 1.7: Track who last modified the agent
   updatedBy?: mongoose.Types.ObjectId;
+  // Story 1.11: Track last execution time for sorting
+  lastExecutedAt?: Date | null;
 
   // Story 1.2: Triggers (now properly typed)
   triggers?: ITriggerConfig[];
@@ -163,6 +165,11 @@ const AgentSchema = new Schema<IAgent>(
     updatedBy: {
       type: Schema.Types.ObjectId,
       ref: 'User'
+    },
+    // Story 1.11: Track last execution time for sorting
+    lastExecutedAt: {
+      type: Date,
+      default: null
     },
 
     // Story 1.2: Triggers with proper schema
@@ -302,6 +309,9 @@ AgentSchema.index({ workspace: 1, createdAt: -1 });
 // Story 1.2: Trigger indexes
 AgentSchema.index({ workspace: 1, 'triggers.type': 1 });
 AgentSchema.index({ workspace: 1, 'triggers.enabled': 1 });
+// Story 1.11: Sorting indexes for agents list
+AgentSchema.index({ workspace: 1, name: 1 });
+AgentSchema.index({ workspace: 1, lastExecutedAt: -1 });
 
 // CRITICAL: Workspace isolation middleware - prevents cross-workspace data leaks
 AgentSchema.pre('find', function () {
