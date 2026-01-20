@@ -330,17 +330,6 @@ Daily Insights - Jan 10, 2026
 
 ---
 
-### Legacy Jobs (Not in Active Use)
-
-#### Salesforce Sync Job
-**File**: `jobs/salesforceSyncJob.ts`
-**Status**: Legacy code - not actively used
-**Purpose**: Was intended for Salesforce bi-directional sync
-
-**Note**: Code exists in codebase but Salesforce integration is not in active use.
-
----
-
 ## 3. Queue Configuration (Upstash-Optimized)
 
 ### Redis Connection
@@ -568,7 +557,6 @@ workers:
 ```typescript
 QUEUE_NAMES = {
   EMAIL_SYNC: 'email-sync',
-  SALESFORCE_SYNC: 'salesforce-sync',
   AI_JOBS: 'ai-jobs',
   ANALYTICS: 'analytics'
 };
