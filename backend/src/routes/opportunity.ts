@@ -932,5 +932,645 @@ router.delete(
   }
 );
 
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/opportunities/bulk
+ * @desc    Bulk update multiple opportunities at once
+ * @access  Private
+ */
+router.patch(
+  "/:workspaceId/opportunities/bulk",
+  authenticate,
+  opportunityLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { opportunityIds, updates } = req.body;
+
+      // Validate workspace
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Validate input
+      if (!opportunityIds || !Array.isArray(opportunityIds) || opportunityIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "opportunityIds must be a non-empty array.",
+        });
+      }
+
+      if (!updates || typeof updates !== "object") {
+        return res.status(400).json({
+          success: false,
+          error: "updates must be an object.",
+        });
+      }
+
+      // Enforce maximum batch size for performance
+      if (opportunityIds.length > 500) {
+        return res.status(400).json({
+          success: false,
+          error: "Maximum 500 opportunities can be updated at once.",
+        });
+      }
+
+      // Whitelist allowed fields for bulk update
+      const allowedFields = [
+        'tags',
+        'status',
+        'priority',
+        'assignedTo',
+        'source',
+        'expectedCloseDate',
+        'value',
+        'probability',
+        'lostReason',
+        'description',
+      ];
+
+      // Build update object with only allowed fields
+      const updateData: Record<string, any> = {};
+      for (const field of allowedFields) {
+        if (updates[field] !== undefined) {
+          updateData[field] = updates[field];
+        }
+      }
+
+      // Handle custom fields separately (dot notation for nested updates)
+      if (updates.customFields && typeof updates.customFields === 'object') {
+        for (const [fieldKey, fieldValue] of Object.entries(updates.customFields)) {
+          updateData[`customFields.${fieldKey}`] = fieldValue;
+        }
+      }
+
+      // Ensure there are fields to update
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No valid fields to update.",
+        });
+      }
+
+      // Add lastActivityAt timestamp
+      updateData.lastActivityAt = new Date();
+
+      // Perform bulk update
+      const result = await Opportunity.updateMany(
+        {
+          _id: { $in: opportunityIds },
+          workspaceId,
+        },
+        { $set: updateData }
+      );
+
+      // Get updated opportunities for event publishing
+      const updatedOpportunities = await Opportunity.find({
+        _id: { $in: opportunityIds },
+        workspaceId,
+      })
+        .select('_id title value pipelineId stageId contactId companyId assignedTo')
+        .lean();
+
+      // Publish deal.updated events for workflow triggers (non-blocking)
+      for (const opportunity of updatedOpportunities) {
+        eventPublisher.publish(
+          DEAL_EVENTS.UPDATED,
+          {
+            dealId: (opportunity._id as any).toString(),
+            title: opportunity.title,
+            value: opportunity.value,
+            pipelineId: opportunity.pipelineId?.toString(),
+            stageId: opportunity.stageId?.toString(),
+            contactId: opportunity.contactId?.toString(),
+            companyId: opportunity.companyId?.toString(),
+            assignedTo: opportunity.assignedTo?.toString(),
+            updates: updateData,
+          },
+          {
+            workspaceId,
+            userId: (req.user?._id as any)?.toString(),
+            source: 'api',
+          }
+        ).catch(err => console.error('Event publish error:', err));
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully updated ${result.modifiedCount} of ${result.matchedCount} opportunities.`,
+        data: {
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+          updatedOpportunities: updatedOpportunities.length,
+        },
+      });
+    } catch (error: any) {
+      console.error("Bulk update opportunities error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to update opportunities. Please try again.",
+      });
+    }
+  }
+);
+
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/opportunities/bulk/stage
+ * @desc    Bulk change stage for multiple opportunities (most common bulk operation)
+ * @access  Private
+ */
+router.patch(
+  "/:workspaceId/opportunities/bulk/stage",
+  authenticate,
+  opportunityLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { opportunityIds, stageId, pipelineId } = req.body;
+
+      // Validate workspace
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Validate input
+      if (!opportunityIds || !Array.isArray(opportunityIds) || opportunityIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "opportunityIds must be a non-empty array.",
+        });
+      }
+
+      if (!stageId) {
+        return res.status(400).json({
+          success: false,
+          error: "stageId is required.",
+        });
+      }
+
+      // Enforce maximum batch size
+      if (opportunityIds.length > 500) {
+        return res.status(400).json({
+          success: false,
+          error: "Maximum 500 opportunities can be updated at once.",
+        });
+      }
+
+      // Get opportunities to determine pipeline
+      const opportunities = await Opportunity.find({
+        _id: { $in: opportunityIds },
+        workspaceId,
+      }).select('_id pipelineId stageId stageHistory title value contactId companyId');
+
+      if (opportunities.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "No opportunities found.",
+        });
+      }
+
+      // Determine target pipeline (from request or use first opportunity's pipeline)
+      const targetPipelineId = pipelineId || opportunities[0].pipelineId;
+
+      // Validate pipeline and stage
+      const pipeline = await Pipeline.findOne({
+        _id: targetPipelineId,
+        workspaceId,
+        isActive: true,
+      });
+
+      if (!pipeline) {
+        return res.status(404).json({
+          success: false,
+          error: "Pipeline not found.",
+        });
+      }
+
+      const stage = pipeline.stages.find(
+        (s) => s._id.toString() === stageId
+      );
+
+      if (!stage) {
+        return res.status(404).json({
+          success: false,
+          error: "Stage not found in pipeline.",
+        });
+      }
+
+      // Process each opportunity (update stage history)
+      let successCount = 0;
+      let failedCount = 0;
+      const activities = [];
+
+      for (const opportunity of opportunities) {
+        try {
+          // Skip if already in this stage
+          if (opportunity.stageId.toString() === stageId) {
+            successCount++;
+            continue;
+          }
+
+          // Get previous stage name
+          const currentStageIndex = opportunity.stageHistory.length - 1;
+          let previousStageName = "Unknown";
+          if (currentStageIndex >= 0) {
+            const currentStage = opportunity.stageHistory[currentStageIndex];
+            previousStageName = currentStage.stageName;
+            if (!currentStage.exitedAt) {
+              currentStage.exitedAt = new Date();
+              currentStage.duration =
+                currentStage.exitedAt.getTime() - currentStage.enteredAt.getTime();
+            }
+          }
+
+          // Add new stage history entry
+          opportunity.stageHistory.push({
+            stageId: stage._id,
+            stageName: stage.name,
+            enteredAt: new Date(),
+          });
+
+          // Update opportunity
+          opportunity.pipelineId = targetPipelineId as any;
+          opportunity.stageId = stage._id;
+          opportunity.lastActivityAt = new Date();
+          await opportunity.save();
+
+          // Prepare activity for logging
+          activities.push({
+            workspaceId,
+            userId: req.user?._id,
+            opportunityId: opportunity._id,
+            type: "stage_change",
+            title: `Bulk moved from ${previousStageName} to ${stage.name}`,
+            description: `Stage changed from "${previousStageName}" to "${stage.name}" (bulk operation)`,
+            metadata: {
+              fromStage: previousStageName,
+              toStage: stage.name,
+              bulkOperation: true,
+            },
+            isAutoLogged: true,
+            aiConfidence: 100,
+          });
+
+          // Also prepare company activity if deal has companyId
+          if (opportunity.companyId) {
+            activities.push({
+              workspaceId,
+              userId: req.user?._id,
+              entityType: 'company',
+              entityId: opportunity.companyId,
+              opportunityId: opportunity._id,
+              type: "stage_change",
+              title: `Deal "${opportunity.title}" moved to "${stage.name}"`,
+              description: `Deal stage changed from "${previousStageName}" to "${stage.name}" (bulk operation)`,
+              metadata: {
+                dealId: opportunity._id.toString(),
+                dealTitle: opportunity.title,
+                fromStage: previousStageName,
+                toStage: stage.name,
+                dealValue: opportunity.value,
+                bulkOperation: true,
+              },
+              isAutoLogged: true,
+              automated: true,
+            });
+          }
+
+          // Publish deal.stage_changed event (non-blocking)
+          eventPublisher.publish(
+            DEAL_EVENTS.STAGE_CHANGED,
+            {
+              dealId: opportunity._id.toString(),
+              contactId: opportunity.contactId?.toString(),
+              companyId: opportunity.companyId?.toString(),
+              pipelineId: opportunity.pipelineId.toString(),
+              oldStageId: opportunity.stageHistory[currentStageIndex]?.stageId?.toString() || '',
+              oldStageName: previousStageName,
+              newStageId: stage._id.toString(),
+              newStageName: stage.name,
+              value: opportunity.value,
+              movedAt: new Date(),
+              movedBy: (req.user?._id as any)?.toString(),
+              automated: false,
+              bulkOperation: true,
+              stageHistory: opportunity.stageHistory.map(h => ({
+                stageId: h.stageId.toString(),
+                stageName: h.stageName,
+                enteredAt: h.enteredAt,
+              })),
+            },
+            {
+              workspaceId,
+              userId: (req.user?._id as any)?.toString(),
+              source: 'api',
+            }
+          ).catch(err => console.error('Event publish error:', err));
+
+          successCount++;
+        } catch (error: any) {
+          console.error(`Failed to update opportunity ${opportunity._id}:`, error);
+          failedCount++;
+        }
+      }
+
+      // Batch insert activities
+      if (activities.length > 0) {
+        try {
+          await Activity.insertMany(activities);
+        } catch (activityError) {
+          console.error("Failed to log bulk stage change activities:", activityError);
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully moved ${successCount} opportunities to "${stage.name}".`,
+        data: {
+          totalProcessed: opportunities.length,
+          successCount,
+          failedCount,
+          stageName: stage.name,
+          pipelineName: pipeline.name,
+        },
+      });
+    } catch (error: any) {
+      console.error("Bulk stage change error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to change opportunity stages. Please try again.",
+      });
+    }
+  }
+);
+
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/opportunities/bulk/tags
+ * @desc    Bulk add or remove tags from multiple opportunities
+ * @access  Private
+ */
+router.patch(
+  "/:workspaceId/opportunities/bulk/tags",
+  authenticate,
+  opportunityLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { opportunityIds, tagsToAdd, tagsToRemove } = req.body;
+
+      // Validate workspace
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Validate input
+      if (!opportunityIds || !Array.isArray(opportunityIds) || opportunityIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "opportunityIds must be a non-empty array.",
+        });
+      }
+
+      if (opportunityIds.length > 500) {
+        return res.status(400).json({
+          success: false,
+          error: "Maximum 500 opportunities can be updated at once.",
+        });
+      }
+
+      if (!tagsToAdd && !tagsToRemove) {
+        return res.status(400).json({
+          success: false,
+          error: "Either tagsToAdd or tagsToRemove must be provided.",
+        });
+      }
+
+      // Validate tags arrays
+      if (tagsToAdd && !Array.isArray(tagsToAdd)) {
+        return res.status(400).json({
+          success: false,
+          error: "tagsToAdd must be an array.",
+        });
+      }
+
+      if (tagsToRemove && !Array.isArray(tagsToRemove)) {
+        return res.status(400).json({
+          success: false,
+          error: "tagsToRemove must be an array.",
+        });
+      }
+
+      // Build update operations
+      const updateOps: any = {};
+
+      if (tagsToAdd && tagsToAdd.length > 0) {
+        updateOps.$addToSet = { tags: { $each: tagsToAdd } };
+      }
+
+      if (tagsToRemove && tagsToRemove.length > 0) {
+        updateOps.$pullAll = { tags: tagsToRemove };
+      }
+
+      // Perform bulk tag operation
+      const result = await Opportunity.updateMany(
+        {
+          _id: { $in: opportunityIds },
+          workspaceId,
+        },
+        updateOps
+      );
+
+      // Get updated opportunities for event publishing
+      const updatedOpportunities = await Opportunity.find({
+        _id: { $in: opportunityIds },
+        workspaceId,
+      }).select('_id title tags').lean();
+
+      // Publish events for updated opportunities (non-blocking)
+      for (const opportunity of updatedOpportunities) {
+        eventPublisher.publish(
+          DEAL_EVENTS.UPDATED,
+          {
+            dealId: (opportunity._id as any).toString(),
+            title: opportunity.title,
+            updates: { tags: opportunity.tags },
+          },
+          {
+            workspaceId,
+            userId: (req.user?._id as any)?.toString(),
+            source: 'api',
+          }
+        ).catch(err => console.error('Event publish error:', err));
+      }
+
+      const message = [];
+      if (tagsToAdd && tagsToAdd.length > 0) {
+        message.push(`added ${tagsToAdd.length} tag(s)`);
+      }
+      if (tagsToRemove && tagsToRemove.length > 0) {
+        message.push(`removed ${tagsToRemove.length} tag(s)`);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully ${message.join(' and ')} for ${result.modifiedCount} opportunity(s).`,
+        data: {
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+          tagsAdded: tagsToAdd || [],
+          tagsRemoved: tagsToRemove || [],
+        },
+      });
+    } catch (error: any) {
+      console.error("Bulk tag operation error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to update tags. Please try again.",
+      });
+    }
+  }
+);
+
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/opportunities/bulk/custom-fields
+ * @desc    Bulk update custom fields for multiple opportunities
+ * @access  Private
+ */
+router.patch(
+  "/:workspaceId/opportunities/bulk/custom-fields",
+  authenticate,
+  opportunityLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { opportunityIds, customFields } = req.body;
+
+      // Validate workspace
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Validate input
+      if (!opportunityIds || !Array.isArray(opportunityIds) || opportunityIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "opportunityIds must be a non-empty array.",
+        });
+      }
+
+      if (opportunityIds.length > 500) {
+        return res.status(400).json({
+          success: false,
+          error: "Maximum 500 opportunities can be updated at once.",
+        });
+      }
+
+      if (!customFields || typeof customFields !== 'object' || Object.keys(customFields).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "customFields must be a non-empty object.",
+        });
+      }
+
+      // Build update data with dot notation for nested custom fields
+      const updateData: Record<string, any> = {};
+      for (const [fieldKey, fieldValue] of Object.entries(customFields)) {
+        updateData[`customFields.${fieldKey}`] = fieldValue;
+      }
+
+      // Perform bulk custom field update
+      const result = await Opportunity.updateMany(
+        {
+          _id: { $in: opportunityIds },
+          workspaceId,
+        },
+        { $set: updateData }
+      );
+
+      // Get updated opportunities for event publishing
+      const updatedOpportunities = await Opportunity.find({
+        _id: { $in: opportunityIds },
+        workspaceId,
+      }).select('_id title customFields').lean();
+
+      // Publish events for updated opportunities (non-blocking)
+      for (const opportunity of updatedOpportunities) {
+        eventPublisher.publish(
+          DEAL_EVENTS.UPDATED,
+          {
+            dealId: (opportunity._id as any).toString(),
+            title: opportunity.title,
+            updates: { customFields: opportunity.customFields },
+          },
+          {
+            workspaceId,
+            userId: (req.user?._id as any)?.toString(),
+            source: 'api',
+          }
+        ).catch(err => console.error('Event publish error:', err));
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully updated custom fields for ${result.modifiedCount} opportunity(s).`,
+        data: {
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+          fieldsUpdated: Object.keys(customFields),
+        },
+      });
+    } catch (error: any) {
+      console.error("Bulk custom field update error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to update custom fields. Please try again.",
+      });
+    }
+  }
+);
+
 export default router;
 

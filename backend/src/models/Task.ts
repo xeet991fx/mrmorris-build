@@ -118,6 +118,16 @@ taskSchema.index({ workspaceId: 1, status: 1, dueDate: 1 });
 taskSchema.index({ workspaceId: 1, assignedTo: 1, status: 1 });
 taskSchema.index({ workspaceId: 1, priority: 1, status: 1 });
 
+// Additional performance indexes for task management
+taskSchema.index({ workspaceId: 1, dueDate: 1 }); // Due date sorting
+taskSchema.index({ workspaceId: 1, tags: 1 }); // Tag filtering
+taskSchema.index({ workspaceId: 1, createdAt: -1 }); // Recent tasks
+taskSchema.index({ workspaceId: 1, completedAt: -1 }); // Recently completed
+taskSchema.index({ workspaceId: 1, relatedContactId: 1 }); // Contact tasks
+taskSchema.index({ workspaceId: 1, relatedOpportunityId: 1 }); // Opportunity tasks
+taskSchema.index({ workspaceId: 1, relatedCompanyId: 1 }); // Company tasks
+taskSchema.index({ workspaceId: 1, status: 1, priority: 1, dueDate: 1 }); // Combined sorting
+
 // ============================================
 // MODEL
 // ============================================

@@ -189,7 +189,7 @@ const leadMagnetSchema = new Schema<ILeadMagnet>(
 // Indexes
 leadMagnetSchema.index({ workspaceId: 1, status: 1 });
 leadMagnetSchema.index({ workspaceId: 1, type: 1 });
-leadMagnetSchema.index({ slug: 1 }, { unique: true });
+// Note: slug already has unique: true in field definition
 leadMagnetSchema.index({ workspaceId: 1, downloads: -1 }); // Top performers
 
 // Update conversion rate before save

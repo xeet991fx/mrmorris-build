@@ -136,8 +136,8 @@ const AgentSchema = new Schema<IAgent>(
     workspace: {
       type: Schema.Types.ObjectId,
       ref: 'Project',
-      required: [true, 'Workspace is required'],
-      index: true
+      required: [true, 'Workspace is required']
+      // Note: index: true removed - workspace is indexed via compound indexes below
     },
     name: {
       type: String,

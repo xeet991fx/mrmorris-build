@@ -378,4 +378,309 @@ router.get(
     }
 );
 
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/tasks/bulk/assign
+ * @desc    Bulk assign multiple tasks to a user
+ * @access  Private
+ */
+router.patch(
+    "/:workspaceId/tasks/bulk/assign",
+    authenticate,
+    taskLimiter,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any).toString();
+            const { taskIds, assignedTo } = req.body;
+
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            // Validate input
+            if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: "taskIds must be a non-empty array.",
+                });
+            }
+
+            // Enforce maximum batch size
+            if (taskIds.length > 500) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Maximum 500 tasks can be assigned at once.",
+                });
+            }
+
+            // assignedTo can be a user ID or null to unassign
+            if (assignedTo && typeof assignedTo !== "string") {
+                return res.status(400).json({
+                    success: false,
+                    error: "assignedTo must be a string or null.",
+                });
+            }
+
+            // Perform bulk assignment
+            const result = await Task.updateMany(
+                {
+                    _id: { $in: taskIds },
+                    workspaceId,
+                },
+                { $set: { assignedTo: assignedTo || null } }
+            );
+
+            res.json({
+                success: true,
+                message: assignedTo
+                    ? `Successfully assigned ${result.modifiedCount} tasks.`
+                    : `Successfully unassigned ${result.modifiedCount} tasks.`,
+                data: {
+                    matchedCount: result.matchedCount,
+                    modifiedCount: result.modifiedCount,
+                },
+            });
+        } catch (error: any) {
+            console.error("Bulk assign tasks error:", error);
+            res.status(500).json({ success: false, error: "Failed to assign tasks." });
+        }
+    }
+);
+
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/tasks/bulk/status
+ * @desc    Bulk update status for multiple tasks
+ * @access  Private
+ */
+router.patch(
+    "/:workspaceId/tasks/bulk/status",
+    authenticate,
+    taskLimiter,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any).toString();
+            const { taskIds, status } = req.body;
+
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            // Validate input
+            if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: "taskIds must be a non-empty array.",
+                });
+            }
+
+            if (!status) {
+                return res.status(400).json({
+                    success: false,
+                    error: "status is required.",
+                });
+            }
+
+            // Validate status value
+            const validStatuses = ["todo", "in_progress", "completed", "cancelled"];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    error: `status must be one of: ${validStatuses.join(", ")}.`,
+                });
+            }
+
+            // Enforce maximum batch size
+            if (taskIds.length > 500) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Maximum 500 tasks can be updated at once.",
+                });
+            }
+
+            // Build update data
+            const updateData: any = { status };
+
+            // Set completedAt if marking as completed
+            if (status === "completed") {
+                updateData.completedAt = new Date();
+            }
+
+            // Perform bulk status update
+            const result = await Task.updateMany(
+                {
+                    _id: { $in: taskIds },
+                    workspaceId,
+                },
+                { $set: updateData }
+            );
+
+            res.json({
+                success: true,
+                message: `Successfully updated ${result.modifiedCount} tasks to "${status}".`,
+                data: {
+                    matchedCount: result.matchedCount,
+                    modifiedCount: result.modifiedCount,
+                    status,
+                },
+            });
+        } catch (error: any) {
+            console.error("Bulk update task status error:", error);
+            res.status(500).json({ success: false, error: "Failed to update task status." });
+        }
+    }
+);
+
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/tasks/bulk
+ * @desc    Bulk update multiple tasks with various fields
+ * @access  Private
+ */
+router.patch(
+    "/:workspaceId/tasks/bulk",
+    authenticate,
+    taskLimiter,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any).toString();
+            const { taskIds, updates } = req.body;
+
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            // Validate input
+            if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: "taskIds must be a non-empty array.",
+                });
+            }
+
+            if (!updates || typeof updates !== "object") {
+                return res.status(400).json({
+                    success: false,
+                    error: "updates must be an object.",
+                });
+            }
+
+            // Enforce maximum batch size
+            if (taskIds.length > 500) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Maximum 500 tasks can be updated at once.",
+                });
+            }
+
+            // Whitelist allowed fields for bulk update
+            const allowedFields = [
+                'status',
+                'priority',
+                'assignedTo',
+                'tags',
+                'dueDate',
+                'reminderDate',
+            ];
+
+            // Build update object with only allowed fields
+            const updateData: Record<string, any> = {};
+            for (const field of allowedFields) {
+                if (updates[field] !== undefined) {
+                    updateData[field] = updates[field];
+                }
+            }
+
+            // Convert date strings to Date objects
+            if (updateData.dueDate) {
+                updateData.dueDate = new Date(updateData.dueDate);
+            }
+            if (updateData.reminderDate) {
+                updateData.reminderDate = new Date(updateData.reminderDate);
+            }
+
+            // Set completedAt if marking as completed
+            if (updateData.status === "completed") {
+                updateData.completedAt = new Date();
+            }
+
+            // Ensure there are fields to update
+            if (Object.keys(updateData).length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: "No valid fields to update.",
+                });
+            }
+
+            // Perform bulk update
+            const result = await Task.updateMany(
+                {
+                    _id: { $in: taskIds },
+                    workspaceId,
+                },
+                { $set: updateData }
+            );
+
+            res.json({
+                success: true,
+                message: `Successfully updated ${result.modifiedCount} of ${result.matchedCount} tasks.`,
+                data: {
+                    matchedCount: result.matchedCount,
+                    modifiedCount: result.modifiedCount,
+                },
+            });
+        } catch (error: any) {
+            console.error("Bulk update tasks error:", error);
+            res.status(500).json({ success: false, error: "Failed to update tasks." });
+        }
+    }
+);
+
+/**
+ * @route   DELETE /api/workspaces/:workspaceId/tasks/bulk
+ * @desc    Bulk delete multiple tasks
+ * @access  Private
+ */
+router.delete(
+    "/:workspaceId/tasks/bulk",
+    authenticate,
+    taskLimiter,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any).toString();
+            const { taskIds } = req.body;
+
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            // Validate input
+            if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: "taskIds must be a non-empty array.",
+                });
+            }
+
+            // Enforce maximum batch size
+            if (taskIds.length > 500) {
+                return res.status(400).json({
+                    success: false,
+                    error: "Maximum 500 tasks can be deleted at once.",
+                });
+            }
+
+            // Perform bulk delete
+            const result = await Task.deleteMany({
+                _id: { $in: taskIds },
+                workspaceId,
+            });
+
+            res.json({
+                success: true,
+                message: `Successfully deleted ${result.deletedCount} tasks.`,
+                data: {
+                    deletedCount: result.deletedCount,
+                },
+            });
+        } catch (error: any) {
+            console.error("Bulk delete tasks error:", error);
+            res.status(500).json({ success: false, error: "Failed to delete tasks." });
+        }
+    }
+);
+
 export default router;

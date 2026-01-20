@@ -508,5 +508,56 @@ router.post(
   }
 );
 
+/**
+ * DELETE /api/workspaces/:workspaceId/activities/bulk
+ * Bulk delete multiple activities
+ */
+router.delete(
+  '/workspaces/:workspaceId/activities/bulk',
+  authenticate,
+  async (req: AuthRequest, res) => {
+    try {
+      const { workspaceId } = req.params;
+      const { activityIds } = req.body;
+
+      // Validate input
+      if (!activityIds || !Array.isArray(activityIds) || activityIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'activityIds must be a non-empty array.',
+        });
+      }
+
+      // Enforce maximum batch size
+      if (activityIds.length > 500) {
+        return res.status(400).json({
+          success: false,
+          error: 'Maximum 500 activities can be deleted at once.',
+        });
+      }
+
+      // Perform bulk delete
+      const result = await Activity.deleteMany({
+        _id: { $in: activityIds },
+        workspaceId,
+      });
+
+      res.json({
+        success: true,
+        message: `Successfully deleted ${result.deletedCount} activities.`,
+        data: {
+          deletedCount: result.deletedCount,
+        },
+      });
+    } catch (error: any) {
+      console.error('Bulk delete activities error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to delete activities',
+      });
+    }
+  }
+);
+
 export default router;
 

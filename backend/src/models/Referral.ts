@@ -193,7 +193,7 @@ const referralSchema = new Schema<IReferral>(
 referralSchema.index({ workspaceId: 1, referrerId: 1 });
 referralSchema.index({ workspaceId: 1, status: 1 });
 referralSchema.index({ workspaceId: 1, convertedAt: -1 });
-referralSchema.index({ referralCode: 1 }, { unique: true });
+// Note: referralCode already has unique: true and index: true in field definition
 
 // Static methods
 referralSchema.statics.getLeaderboard = async function (

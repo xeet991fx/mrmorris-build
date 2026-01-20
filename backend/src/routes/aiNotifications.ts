@@ -14,7 +14,7 @@ router.get('/workspaces/:workspaceId/ai-notifications', authenticate, async (req
     try {
         const { workspaceId } = req.params;
         const userId = req.user!._id;
-        const { type, priority, limit = 20, includeShown } = req.query;
+        const { type, priority, page = "1", limit = "20", includeShown } = req.query;
 
         // Build query
         const query: any = {
@@ -26,11 +26,17 @@ router.get('/workspaces/:workspaceId/ai-notifications', authenticate, async (req
         if (type) query.type = type;
         if (priority) query.priority = priority;
 
-        // Fetch notifications
-        const notifications = await AINotification.find(query)
-            .sort({ priority: -1, createdAt: -1 })
-            .limit(parseInt(limit as string))
-            .lean();
+        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+        // Fetch notifications with pagination
+        const [notifications, total] = await Promise.all([
+            AINotification.find(query)
+                .sort({ priority: -1, createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit as string))
+                .lean(),
+            AINotification.countDocuments(query),
+        ]);
 
         // Get counts by type
         const counts = await AINotification.aggregate([
@@ -60,6 +66,12 @@ router.get('/workspaces/:workspaceId/ai-notifications', authenticate, async (req
                 notifications,
                 totalPending: notifications.filter(n => n.status === 'pending').length,
                 countsByType,
+                pagination: {
+                    page: parseInt(page as string),
+                    limit: parseInt(limit as string),
+                    total,
+                    pages: Math.ceil(total / parseInt(limit as string)),
+                },
             },
         });
     } catch (error: any) {

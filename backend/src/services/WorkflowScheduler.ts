@@ -62,11 +62,8 @@ class WorkflowScheduler {
             await EmailAccountService.resetDailyCounters();
         });
 
-        // Fetch new replies (every 6 hours) 
-        cron.schedule("0 */6 * * *", async () => {
-            const InboxService = (await import("./InboxService")).default;
-            await InboxService.fetchNewReplies();
-        });
+        // NOTE: Email sync is now handled by emailSyncJob.ts (runs every 5 min with per-integration parallelization)
+        // Removed duplicate sync that was running here every 6 hours
 
         // Mark as running (even though we're using setInterval now)
         this.cronJob = cron.schedule(cronExpression, () => { }); // Dummy to track running state

@@ -150,8 +150,8 @@ const aiNotificationSchema = new Schema<IAINotification>(
         },
 
         expiresAt: {
-            type: Date,
-            index: true,
+            type: Date
+            // Note: index: true removed - expiresAt has TTL index defined below with expireAfterSeconds
         },
     },
     {

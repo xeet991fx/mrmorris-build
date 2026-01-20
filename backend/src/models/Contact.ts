@@ -392,6 +392,15 @@ contactSchema.index({ workspaceId: 1, email: 1 }, { unique: true, sparse: true }
 contactSchema.index({ workspaceId: 1, assignedTo: 1 });
 contactSchema.index({ workspaceId: 1, companyId: 1 });
 
+// Additional performance indexes for bulk operations and filtering
+contactSchema.index({ workspaceId: 1, tags: 1 }); // Tag filtering
+contactSchema.index({ workspaceId: 1, status: 1, assignedTo: 1 }); // Combined filters
+contactSchema.index({ workspaceId: 1, lifecycleStage: 1, intentScore: -1 }); // Intent-based queries
+contactSchema.index({ workspaceId: 1, intentScore: -1 }); // Intent ranking
+contactSchema.index({ workspaceId: 1, qualityScore: -1 }); // Lead scoring
+contactSchema.index({ workspaceId: 1, lastContactedAt: -1 }); // Recently contacted
+// Note: salesforceId already has index: true in field definition
+
 // Text index for search
 contactSchema.index({
   firstName: "text",
