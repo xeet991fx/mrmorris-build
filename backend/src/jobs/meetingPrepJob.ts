@@ -10,9 +10,10 @@ const getAINotificationModel = () => mongoose.model('AINotification');
 
 /**
  * Meeting Prep Job
- * 
+ *
  * Proactively generates meeting briefings 2 hours before calendar events.
  * Uses the briefingAgent to create comprehensive preparation materials.
+ * Creates individual briefing jobs per meeting for better parallelization.
  */
 
 // Create meeting prep queue
@@ -20,7 +21,7 @@ const meetingPrepQueue = new Queue('meeting-prep', defaultQueueOptions);
 
 /**
  * Start meeting prep job scheduler
- * Runs every 15 minutes to check for upcoming meetings
+ * Creates individual briefing jobs for each upcoming meeting every 15 minutes
  */
 export const startMeetingPrepJob = async () => {
     try {
@@ -30,9 +31,9 @@ export const startMeetingPrepJob = async () => {
             await meetingPrepQueue.removeRepeatableByKey(job.key);
         }
 
-        // Check for upcoming meetings every 15 minutes
+        // Scheduler checks for upcoming meetings every 15 minutes
         await meetingPrepQueue.add(
-            'check-upcoming-meetings',
+            'schedule-meeting-briefings',
             {},
             {
                 repeat: {
@@ -47,7 +48,7 @@ export const startMeetingPrepJob = async () => {
             }
         );
 
-        console.log('✅ Meeting prep job scheduled (every 15 minutes)');
+        console.log('✅ Meeting prep job scheduler started (creates per-meeting briefing jobs every 15 minutes)');
     } catch (error) {
         console.error('❌ Failed to start meeting prep job:', error);
     }
@@ -59,112 +60,183 @@ export const startMeetingPrepJob = async () => {
 const meetingPrepWorker = new Worker(
     'meeting-prep',
     async (job) => {
-        console.log('🎯 Checking for upcoming meetings that need briefings...');
+        // Handle scheduler job - creates individual briefing jobs per meeting
+        if (job.name === 'schedule-meeting-briefings') {
+            console.log('🎯 Scheduling per-meeting briefing jobs...');
 
-        try {
-            const now = new Date();
-            const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-            const threeHoursFromNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+            try {
+                const now = new Date();
+                const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+                const threeHoursFromNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
 
-            // Find meetings starting in 2-3 hours that haven't had briefings generated
-            const upcomingMeetings = await CalendarEvent.find({
-                startTime: {
-                    $gte: twoHoursFromNow,
-                    $lte: threeHoursFromNow,
-                },
-                status: 'confirmed',
-                briefingGenerated: { $ne: true },
-            }).populate('contactId companyId opportunityId');
+                // Find meetings starting in 2-3 hours that haven't had briefings generated
+                const upcomingMeetings = await CalendarEvent.find({
+                    startTime: {
+                        $gte: twoHoursFromNow,
+                        $lte: threeHoursFromNow,
+                    },
+                    status: 'confirmed',
+                    briefingGenerated: { $ne: true },
+                }).populate('contactId companyId opportunityId');
 
-            console.log(`📅 Found ${upcomingMeetings.length} meetings needing briefings`);
+                console.log(`📅 Found ${upcomingMeetings.length} meetings needing briefings`);
 
-            let briefingsGenerated = 0;
-
-            for (const meeting of upcomingMeetings) {
-                try {
-                    // Build meeting context for briefing agent
-                    const attendeeNames = meeting.attendees?.map(a => a.name || a.email).join(', ') || 'Unknown attendees';
-                    const prompt = `Prepare me for my meeting: "${meeting.title}" with ${attendeeNames}. The meeting is ${meeting.description ? `about: ${meeting.description}` : 'scheduled soon'}.`;
-
-                    // Invoke async to not block
-                    console.log(`🤖 Generating briefing for: ${meeting.title}`);
-
-                    const result = await invokeAgent(
-                        prompt,
-                        meeting.workspaceId.toString(),
-                        meeting.userId.toString(),
-                        undefined,
-                        25000 // 25 second timeout
-                    );
-
-                    if (result.response && !result.error) {
-                        // Mark briefing as generated
-                        await CalendarEvent.findByIdAndUpdate(meeting._id, {
-                            briefingGenerated: true,
-                            briefingGeneratedAt: new Date(),
-                        });
-
-                        // Create AI notification for the user
-                        await getAINotificationModel().create({
-                            workspaceId: meeting.workspaceId,
-                            userId: meeting.userId,
-                            type: 'meeting_prep',
-                            title: `Meeting Brief: ${meeting.title}`,
-                            message: result.response.substring(0, 500) + (result.response.length > 500 ? '...' : ''),
-                            fullContent: result.response,
-                            priority: 'high',
-                            contextType: 'calendar_event',
-                            contextId: meeting._id,
-                            metadata: {
-                                meetingTitle: meeting.title,
-                                meetingTime: meeting.startTime,
-                                attendees: attendeeNames,
-                            },
-                            expiresAt: meeting.endTime, // Expire after meeting ends
-                        });
-
-                        briefingsGenerated++;
-                        console.log(`✅ Briefing generated for: ${meeting.title}`);
-                    }
-                } catch (meetingError: any) {
-                    console.error(`❌ Failed to generate briefing for meeting ${meeting._id}:`, meetingError.message);
+                if (upcomingMeetings.length === 0) {
+                    return {
+                        success: true,
+                        briefingsScheduled: 0,
+                        timestamp: new Date().toISOString(),
+                    };
                 }
+
+                // Create individual briefing job for each meeting
+                const jobPromises = upcomingMeetings.map((meeting) => {
+                    const attendeeNames = meeting.attendees?.map(a => a.name || a.email).join(', ') || 'Unknown attendees';
+
+                    return meetingPrepQueue.add(
+                        `generate-briefing-${meeting._id}`,
+                        {
+                            meetingId: meeting._id.toString(),
+                            meetingTitle: meeting.title,
+                            workspaceId: meeting.workspaceId.toString(),
+                            userId: meeting.userId.toString(),
+                            attendees: attendeeNames,
+                            description: meeting.description,
+                            startTime: meeting.startTime,
+                            endTime: meeting.endTime,
+                        },
+                        {
+                            removeOnComplete: {
+                                count: 5, // Keep last 5 completed briefings per meeting
+                            },
+                            removeOnFail: {
+                                count: 10, // Keep last 10 failed briefings for debugging
+                            },
+                            attempts: 2, // Retry once if failed
+                            backoff: {
+                                type: 'exponential',
+                                delay: 5000, // 5 seconds
+                            },
+                        }
+                    );
+                });
+
+                await Promise.all(jobPromises);
+
+                console.log(`✅ Created ${upcomingMeetings.length} individual briefing job(s)`);
+
+                return {
+                    success: true,
+                    briefingsScheduled: upcomingMeetings.length,
+                    timestamp: new Date().toISOString(),
+                };
+            } catch (error: any) {
+                console.error('❌ Failed to schedule meeting briefings:', error);
+                throw new Error(`Failed to schedule meeting briefings: ${error.message}`);
             }
-
-            console.log(`✅ Meeting prep complete: ${briefingsGenerated} briefings generated`);
-
-            return {
-                success: true,
-                meetingsChecked: upcomingMeetings.length,
-                briefingsGenerated,
-                timestamp: new Date().toISOString(),
-            };
-        } catch (error: any) {
-            console.error('❌ Meeting prep job failed:', error);
-            throw new Error(`Meeting prep failed: ${error.message}`);
         }
+
+        // Handle individual meeting briefing job
+        if (job.name.startsWith('generate-briefing-')) {
+            const { meetingId, meetingTitle, workspaceId, userId, attendees, description, endTime } = job.data;
+
+            console.log(`🤖 Generating briefing for: ${meetingTitle}`);
+
+            try {
+                // Build meeting context for briefing agent
+                const prompt = `Prepare me for my meeting: "${meetingTitle}" with ${attendees}. The meeting is ${description ? `about: ${description}` : 'scheduled soon'}.`;
+
+                const result = await invokeAgent(
+                    prompt,
+                    workspaceId,
+                    userId,
+                    undefined,
+                    25000 // 25 second timeout
+                );
+
+                if (result.response && !result.error) {
+                    // Mark briefing as generated
+                    await CalendarEvent.findByIdAndUpdate(meetingId, {
+                        briefingGenerated: true,
+                        briefingGeneratedAt: new Date(),
+                    });
+
+                    // Create AI notification for the user
+                    await getAINotificationModel().create({
+                        workspaceId,
+                        userId,
+                        type: 'meeting_prep',
+                        title: `Meeting Brief: ${meetingTitle}`,
+                        message: result.response.substring(0, 500) + (result.response.length > 500 ? '...' : ''),
+                        fullContent: result.response,
+                        priority: 'high',
+                        contextType: 'calendar_event',
+                        contextId: meetingId,
+                        metadata: {
+                            meetingTitle,
+                            meetingTime: job.data.startTime,
+                            attendees,
+                        },
+                        expiresAt: endTime, // Expire after meeting ends
+                    });
+
+                    console.log(`✅ Briefing generated for: ${meetingTitle}`);
+
+                    return {
+                        success: true,
+                        meetingId,
+                        meetingTitle,
+                        briefingGenerated: true,
+                        timestamp: new Date().toISOString(),
+                    };
+                } else {
+                    throw new Error(result.error || 'AI agent returned no response');
+                }
+            } catch (error: any) {
+                console.error(`❌ Failed to generate briefing for meeting ${meetingTitle}:`, error.message);
+                throw new Error(`Briefing generation failed for ${meetingTitle}: ${error.message}`);
+            }
+        }
+
+        // Unknown job type
+        throw new Error(`Unknown job type: ${job.name}`);
     },
     {
         ...defaultWorkerOptions,
-        concurrency: 1,
+        concurrency: 5, // Process up to 5 briefings simultaneously (AI calls can be slow)
     }
 );
 
 // Event handlers
 meetingPrepWorker.on('completed', (job, result) => {
-    if (result.briefingsGenerated > 0) {
-        console.log(`🎯 Meeting prep job completed:`, {
+    if (job.name === 'schedule-meeting-briefings') {
+        if (result.briefingsScheduled > 0) {
+            console.log(`🎯 Meeting briefing scheduler completed:`, {
+                jobId: job.id,
+                briefingsScheduled: result.briefingsScheduled,
+            });
+        }
+    } else if (job.name.startsWith('generate-briefing-')) {
+        console.log(`✅ Meeting briefing completed:`, {
             jobId: job.id,
-            briefingsGenerated: result.briefingsGenerated,
+            meetingTitle: result.meetingTitle,
         });
     }
 });
 
 meetingPrepWorker.on('failed', (job, error) => {
-    console.error(`❌ Meeting prep job failed:`, {
-        jobId: job?.id,
-        error: error.message,
-    });
+    if (job?.name === 'schedule-meeting-briefings') {
+        console.error(`❌ Meeting briefing scheduler failed:`, {
+            jobId: job?.id,
+            error: error.message,
+        });
+    } else if (job?.name.startsWith('generate-briefing-')) {
+        console.error(`❌ Meeting briefing failed:`, {
+            jobId: job?.id,
+            meetingTitle: job?.data?.meetingTitle,
+            error: error.message,
+        });
+    }
 });
 
 meetingPrepWorker.on('error', (error) => {

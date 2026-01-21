@@ -79,7 +79,6 @@ import { workflowScheduler } from "./services/WorkflowScheduler";
 import { startContactSyncScheduler } from "./services/contactSyncService";
 import { startEmailSyncJob } from "./jobs/emailSyncJob";
 import { startIntentScoreDecayJob } from "./jobs/intentScoreDecayJob";
-import { startSalesforceSyncJob } from "./jobs/salesforceSyncJob";
 import { startLifecycleProgressionJob } from "./jobs/lifecycleProgressionJob";
 import { startLeadRecyclingJob } from "./jobs/leadRecyclingJob";
 import { initializeProactiveAIJobs } from "./jobs/proactiveAI";
@@ -482,13 +481,56 @@ const startServer = async () => {
       workflowScheduler.start();
       logger.info('Workflow scheduler started');
 
+      // Start all background jobs
+      logger.info('Starting background jobs...');
+
       // Start sequence email job (runs every 2 minutes)
       startSequenceEmailJob().catch((error) => {
         logger.error('Failed to start sequence email job', { error });
       });
-      logger.info('Sequence email job started');
 
-      logger.warn('Some background jobs disabled to prevent Redis rate limit');
+      // Start email sync job
+      startEmailSyncJob().catch((error) => {
+        logger.error('Failed to start email sync job', { error });
+      });
+
+      // Start contact sync scheduler (void function - no promise)
+      try {
+        startContactSyncScheduler();
+      } catch (error) {
+        logger.error('Failed to start contact sync scheduler', { error });
+      }
+
+      // Start intent score decay job
+      startIntentScoreDecayJob().catch((error) => {
+        logger.error('Failed to start intent score decay job', { error });
+      });
+
+      // Start lifecycle progression job (void function - no promise)
+      try {
+        startLifecycleProgressionJob();
+      } catch (error) {
+        logger.error('Failed to start lifecycle progression job', { error });
+      }
+
+      // Start lead recycling job (void function - no promise)
+      try {
+        startLeadRecyclingJob();
+      } catch (error) {
+        logger.error('Failed to start lead recycling job', { error });
+      }
+
+      // Initialize proactive AI jobs (meeting prep, stale deals, daily insights)
+      initializeProactiveAIJobs().catch((error) => {
+        logger.error('Failed to initialize proactive AI jobs', { error });
+      });
+
+      // Start Google Sheet form sync job
+      startGoogleSheetFormSyncJob().catch((error) => {
+        logger.error('Failed to start Google Sheet form sync job', { error });
+      });
+
+      logger.info('✅ All background jobs started successfully');
 
       // Initialize event consumers
       (async () => {

@@ -552,6 +552,394 @@ router.delete(
 );
 
 /**
+ * @route   PATCH /api/workspaces/:workspaceId/contacts/bulk
+ * @desc    Bulk update multiple contacts at once
+ * @access  Private
+ */
+router.patch(
+  "/:workspaceId/contacts/bulk",
+  authenticate,
+  contactLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { contactIds, updates } = req.body;
+
+      // Validate contactIds array
+      if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Please provide an array of contact IDs to update.",
+        });
+      }
+
+      // Validate updates object
+      if (!updates || typeof updates !== 'object' || Object.keys(updates).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "Please provide updates to apply.",
+        });
+      }
+
+      // Limit bulk operations to 500 contacts at a time
+      if (contactIds.length > 500) {
+        return res.status(400).json({
+          success: false,
+          error: "Maximum 500 contacts can be updated at once.",
+        });
+      }
+
+      // Validate workspace exists and user has access
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Build update object (only allow specific fields)
+      const allowedFields = [
+        'tags', 'status', 'lifecycleStage', 'assignedTo', 'leadSource',
+        'jobTitle', 'company', 'industry', 'phone', 'website'
+      ];
+
+      const updateData: any = {};
+      for (const [key, value] of Object.entries(updates)) {
+        if (allowedFields.includes(key)) {
+          updateData[key] = value;
+        }
+      }
+
+      // Handle custom fields separately
+      if (updates.customFields && typeof updates.customFields === 'object') {
+        for (const [fieldKey, fieldValue] of Object.entries(updates.customFields)) {
+          updateData[`customFields.${fieldKey}`] = fieldValue;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No valid fields to update.",
+        });
+      }
+
+      // Add updatedAt timestamp
+      updateData.updatedAt = new Date();
+
+      // Perform bulk update
+      const result = await Contact.updateMany(
+        {
+          _id: { $in: contactIds },
+          workspaceId,
+        },
+        { $set: updateData }
+      );
+
+      // Publish events for updated contacts (non-blocking)
+      if (result.modifiedCount > 0) {
+        const updatedContacts = await Contact.find({
+          _id: { $in: contactIds },
+          workspaceId,
+        }).select('_id firstName lastName email').lean();
+
+        for (const contact of updatedContacts) {
+          eventPublisher.publish(
+            CONTACT_EVENTS.UPDATED,
+            {
+              contactId: contact._id.toString(),
+              firstName: contact.firstName,
+              lastName: contact.lastName,
+              email: contact.email,
+              workspaceId: workspaceId.toString(),
+              userId: (req.user?._id as any).toString(),
+              updates: updateData,
+            },
+            { workspaceId: workspaceId.toString() }
+          ).catch((err) => {
+            logger.error("Failed to publish bulk contact update event", { error: err });
+          });
+        }
+      }
+
+      logger.info("Bulk contact update successful", {
+        workspaceId,
+        contactCount: contactIds.length,
+        modifiedCount: result.modifiedCount,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully updated ${result.modifiedCount} contact(s).`,
+        data: {
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+        },
+      });
+    } catch (error: any) {
+      logger.error("Bulk update contacts error", { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: "Failed to update contacts. Please try again.",
+      });
+    }
+  }
+);
+
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/contacts/bulk/tags
+ * @desc    Bulk add or remove tags from multiple contacts
+ * @access  Private
+ */
+router.patch(
+  "/:workspaceId/contacts/bulk/tags",
+  authenticate,
+  contactLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { contactIds, tagsToAdd, tagsToRemove } = req.body;
+
+      // Validate workspace exists and user has access
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Validate input
+      if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "contactIds must be a non-empty array.",
+        });
+      }
+
+      if (contactIds.length > 500) {
+        return res.status(400).json({
+          success: false,
+          error: "Maximum 500 contacts can be updated at once.",
+        });
+      }
+
+      if (!tagsToAdd && !tagsToRemove) {
+        return res.status(400).json({
+          success: false,
+          error: "Either tagsToAdd or tagsToRemove must be provided.",
+        });
+      }
+
+      // Validate tags arrays
+      if (tagsToAdd && !Array.isArray(tagsToAdd)) {
+        return res.status(400).json({
+          success: false,
+          error: "tagsToAdd must be an array.",
+        });
+      }
+
+      if (tagsToRemove && !Array.isArray(tagsToRemove)) {
+        return res.status(400).json({
+          success: false,
+          error: "tagsToRemove must be an array.",
+        });
+      }
+
+      // Build update operations
+      const updateOps: any = {};
+
+      if (tagsToAdd && tagsToAdd.length > 0) {
+        updateOps.$addToSet = { tags: { $each: tagsToAdd } };
+      }
+
+      if (tagsToRemove && tagsToRemove.length > 0) {
+        updateOps.$pullAll = { tags: tagsToRemove };
+      }
+
+      // Perform bulk tag operation
+      const result = await Contact.updateMany(
+        {
+          _id: { $in: contactIds },
+          workspaceId,
+        },
+        updateOps
+      );
+
+      // Get updated contacts for event publishing
+      const updatedContacts = await Contact.find({
+        _id: { $in: contactIds },
+        workspaceId,
+      }).select('_id firstName lastName email tags').lean();
+
+      // Publish events for updated contacts (non-blocking)
+      for (const contact of updatedContacts) {
+        eventPublisher.publish(
+          CONTACT_EVENTS.UPDATED,
+          {
+            contactId: (contact._id as any).toString(),
+            updates: { tags: contact.tags },
+          },
+          {
+            workspaceId,
+            userId: (req.user?._id as any)?.toString(),
+            source: 'api',
+          }
+        ).catch(err => logger.error('Event publish error', { error: err }));
+      }
+
+      const message = [];
+      if (tagsToAdd && tagsToAdd.length > 0) {
+        message.push(`added ${tagsToAdd.length} tag(s)`);
+      }
+      if (tagsToRemove && tagsToRemove.length > 0) {
+        message.push(`removed ${tagsToRemove.length} tag(s)`);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully ${message.join(' and ')} for ${result.modifiedCount} contact(s).`,
+        data: {
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+          tagsAdded: tagsToAdd || [],
+          tagsRemoved: tagsToRemove || [],
+        },
+      });
+    } catch (error: any) {
+      logger.error("Bulk tag operation error", { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: "Failed to update tags. Please try again.",
+      });
+    }
+  }
+);
+
+/**
+ * @route   PATCH /api/workspaces/:workspaceId/contacts/bulk/custom-fields
+ * @desc    Bulk update custom fields for multiple contacts
+ * @access  Private
+ */
+router.patch(
+  "/:workspaceId/contacts/bulk/custom-fields",
+  authenticate,
+  contactLimiter,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { contactIds, customFields } = req.body;
+
+      // Validate workspace exists and user has access
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: "Workspace not found.",
+        });
+      }
+
+      if (workspace.userId.toString() !== (req.user?._id as any).toString()) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to access this workspace.",
+        });
+      }
+
+      // Validate input
+      if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "contactIds must be a non-empty array.",
+        });
+      }
+
+      if (contactIds.length > 500) {
+        return res.status(400).json({
+          success: false,
+          error: "Maximum 500 contacts can be updated at once.",
+        });
+      }
+
+      if (!customFields || typeof customFields !== 'object' || Object.keys(customFields).length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "customFields must be a non-empty object.",
+        });
+      }
+
+      // Build update data with dot notation for nested custom fields
+      const updateData: Record<string, any> = {};
+      for (const [fieldKey, fieldValue] of Object.entries(customFields)) {
+        updateData[`customFields.${fieldKey}`] = fieldValue;
+      }
+
+      // Perform bulk custom field update
+      const result = await Contact.updateMany(
+        {
+          _id: { $in: contactIds },
+          workspaceId,
+        },
+        { $set: updateData }
+      );
+
+      // Get updated contacts for event publishing
+      const updatedContacts = await Contact.find({
+        _id: { $in: contactIds },
+        workspaceId,
+      }).select('_id firstName lastName email customFields').lean();
+
+      // Publish events for updated contacts (non-blocking)
+      for (const contact of updatedContacts) {
+        eventPublisher.publish(
+          CONTACT_EVENTS.UPDATED,
+          {
+            contactId: (contact._id as any).toString(),
+            updates: { customFields: contact.customFields },
+          },
+          {
+            workspaceId,
+            userId: (req.user?._id as any)?.toString(),
+            source: 'api',
+          }
+        ).catch(err => logger.error('Event publish error', { error: err }));
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully updated custom fields for ${result.modifiedCount} contact(s).`,
+        data: {
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+          fieldsUpdated: Object.keys(customFields),
+        },
+      });
+    } catch (error: any) {
+      logger.error("Bulk custom field update error", { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: "Failed to update custom fields. Please try again.",
+      });
+    }
+  }
+);
+
+/**
  * @route   DELETE /api/workspaces/:workspaceId/contacts/:id
  * @desc    Delete contact
  * @access  Private

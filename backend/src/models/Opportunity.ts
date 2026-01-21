@@ -305,6 +305,15 @@ opportunitySchema.index({ workspaceId: 1, createdAt: -1 });
 opportunitySchema.index({ workspaceId: 1, lastActivityAt: -1 }); // For stale deals
 opportunitySchema.index({ workspaceId: 1, dealTemperature: 1 }); // For filtering by temperature
 
+// Additional performance indexes for bulk operations and filtering
+opportunitySchema.index({ workspaceId: 1, tags: 1 }); // Tag filtering
+opportunitySchema.index({ workspaceId: 1, status: 1, assignedTo: 1 }); // Combined filters
+opportunitySchema.index({ workspaceId: 1, pipelineId: 1, status: 1 }); // Pipeline + status queries
+opportunitySchema.index({ workspaceId: 1, expectedCloseDate: 1 }); // Closing soon queries
+opportunitySchema.index({ workspaceId: 1, value: -1 }); // Value sorting (biggest deals)
+opportunitySchema.index({ workspaceId: 1, priority: 1, status: 1 }); // Priority filtering
+// Note: salesforceId already has index: true in field definition
+
 // Text index for search
 opportunitySchema.index({
   title: "text",

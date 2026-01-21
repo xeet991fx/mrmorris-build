@@ -69,8 +69,8 @@ const BusinessProfileSchema = new Schema<IBusinessProfile>(
       type: Schema.Types.ObjectId,
       ref: "Project",
       required: true,
-      unique: true,
-      index: true,
+      unique: true
+      // Note: index: true removed - unique already creates an index
     },
 
     // Core Business Info
@@ -183,7 +183,7 @@ const BusinessProfileSchema = new Schema<IBusinessProfile>(
 );
 
 // Indexes
-BusinessProfileSchema.index({ workspace: 1 });
+// Note: workspace index removed - field already has unique: true which creates an index
 
 // Update lastUpdated on save
 BusinessProfileSchema.pre("save", function (next) {

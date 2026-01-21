@@ -57,7 +57,7 @@ AgentMemoryDataSchema.index({ workspace: 1, agent: 1, key: 1 }, { unique: true }
 
 // Query performance indexes
 AgentMemoryDataSchema.index({ workspace: 1, agent: 1 });
-AgentMemoryDataSchema.index({ workspace: 1, expiresAt: 1 });
+// Note: expiresAt already has TTL index in field definition with expireAfterSeconds
 
 // CRITICAL: Workspace isolation middleware - prevents cross-workspace data leaks
 AgentMemoryDataSchema.pre('find', function () {

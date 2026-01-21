@@ -99,7 +99,7 @@ router.get("/:workspaceId/email-templates", authenticate, async (req: AuthReques
     try {
         const { workspaceId } = req.params;
         const userId = (req.user?._id as any)?.toString();
-        const { category } = req.query;
+        const { category, page = "1", limit = "50" } = req.query;
 
         if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
 
@@ -108,13 +108,28 @@ router.get("/:workspaceId/email-templates", authenticate, async (req: AuthReques
             query.category = category;
         }
 
-        const templates = await EmailTemplate.find(query)
-            .sort({ usageCount: -1, updatedAt: -1 })
-            .select("-__v");
+        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+
+        const [templates, total] = await Promise.all([
+            EmailTemplate.find(query)
+                .sort({ usageCount: -1, updatedAt: -1 })
+                .select("-__v")
+                .skip(skip)
+                .limit(parseInt(limit as string)),
+            EmailTemplate.countDocuments(query),
+        ]);
 
         res.json({
             success: true,
-            data: templates,
+            data: {
+                templates,
+                pagination: {
+                    page: parseInt(page as string),
+                    limit: parseInt(limit as string),
+                    total,
+                    pages: Math.ceil(total / parseInt(limit as string)),
+                },
+            },
         });
     } catch (error: any) {
         console.error("Get templates error:", error);

@@ -219,6 +219,11 @@ activitySchema.index({ workspaceId: 1, entityType: 1, entityId: 1, createdAt: -1
 activitySchema.index({ workspaceId: 1, workflowId: 1, createdAt: -1 }); // Workflow activities
 activitySchema.index({ workspaceId: 1, automated: 1, createdAt: -1 }); // Automated vs manual
 
+// Additional performance indexes for activity queries
+activitySchema.index({ workspaceId: 1, createdAt: -1 }); // Recent activities
+activitySchema.index({ workspaceId: 1, type: 1, completed: 1 }); // Incomplete tasks
+activitySchema.index({ workspaceId: 1, isAutoLogged: 1, createdAt: -1 }); // Auto-logged filtering
+
 const Activity = mongoose.model<IActivity>("Activity", activitySchema);
 
 export default Activity;

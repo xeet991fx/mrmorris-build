@@ -98,7 +98,8 @@
       "Bash(npx shadcn@latest:*)",
       "Bash(npx jest:*)",
       "Bash(git -C \"C:/app/morrisB\" status:*)",
-      "Bash(git -C \"C:/app/morrisB\" diff:*)"
+      "Bash(git -C \"C:/app/morrisB\" diff:*)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": []

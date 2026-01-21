@@ -59,7 +59,7 @@ const agentSessionSchema = new Schema<IAgentSession>(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
+      // Note: index: true removed - expiresAt has TTL index defined below with expireAfterSeconds
       default: () => new Date(Date.now() + 3600000) // 1 hour from now
     }
   },
