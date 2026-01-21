@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * TestModePanel - Story 2.1, 2.2 & 2.3: Test Mode with Enhanced Previews
+ * TestModePanel - Story 2.1, 2.2, 2.3 & 2.5: Test Mode with Enhanced Previews
  *
  * A sliding panel that allows users to test their agent in dry-run mode.
  * - AC1: Opens from right side with "Run Test" button
@@ -16,9 +16,14 @@
  * - Enhanced step-by-step preview with rich previews
  * - Summary banner with stats
  * - Expandable step cards with type-specific previews
+ *
+ * Story 2.5:
+ * - ExecutionEstimatesPanel with credit/time breakdown
+ * - Previous test comparison
+ * - Scheduled agent projections
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -31,8 +36,10 @@ import { TestResultsList } from './TestResultsList';
 import { TestSummaryBanner } from './TestSummaryBanner';
 import { TestTargetSelector } from './TestTargetSelector';
 import { ManualTestDataInput } from './ManualTestDataInput';
+import { ExecutionEstimatesPanel } from './ExecutionEstimatesPanel';
 import { testAgent } from '@/lib/api/agents';
-import { TestRunResponse, TestTarget, ITriggerConfig } from '@/types/agent';
+import { TestRunResponse, TestTarget, ITriggerConfig, StoredEstimate } from '@/types/agent';
+import { saveTestEstimate, getPreviousEstimate } from '@/lib/utils/testEstimatesStorage';
 import { toast } from 'sonner';
 import {
   PlayIcon,
@@ -67,6 +74,14 @@ export function TestModePanel({
   // Story 2.2: Test target state
   const [testTarget, setTestTarget] = useState<TestTarget | null>(null);
   const [manualData, setManualData] = useState<Record<string, any>>({});
+  // Story 2.5: Previous estimates for comparison
+  const [previousEstimates, setPreviousEstimates] = useState<StoredEstimate | null>(null);
+
+  // Story 2.5: Load previous estimates on mount
+  useEffect(() => {
+    const stored = getPreviousEstimate(agentId);
+    setPreviousEstimates(stored);
+  }, [agentId]);
 
   // Story 2.2 AC7: Determine default target type based on trigger
   const defaultTargetType = useMemo(() => {
@@ -127,6 +142,15 @@ export function TestModePanel({
 
       const result = await testAgent(workspaceId, agentId, targetToSend ? { testTarget: targetToSend } : undefined);
       setTestResult(result);
+
+      // Story 2.5: Save estimates for future comparison
+      if (result.estimates) {
+        saveTestEstimate(agentId, {
+          time: result.estimates.activeTimeMs,
+          credits: result.estimates.totalCredits,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       if (result.success) {
         if (result.steps.length === 0) {
@@ -282,40 +306,45 @@ export function TestModePanel({
                 totalCredits={testResult.totalEstimatedCredits}
               />
 
+              {/* Story 2.5: Execution Estimates Panel */}
+              {testResult.estimates && (
+                <ExecutionEstimatesPanel
+                  estimates={testResult.estimates}
+                  previousEstimates={previousEstimates}
+                  showProjections={triggers?.some(t => t.type === 'scheduled')}
+                />
+              )}
+
               {/* Warnings */}
               {testResult.warnings.length > 0 && (
                 <div className="space-y-2">
                   {testResult.warnings.map((warning, index) => (
                     <div
                       key={index}
-                      className={`flex items-start gap-3 p-3 rounded-lg ${
-                        warning.severity === 'error'
-                          ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-                          : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
-                      }`}
+                      className={`flex items-start gap-3 p-3 rounded-lg ${warning.severity === 'error'
+                        ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                        : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
+                        }`}
                     >
                       <ExclamationTriangleIcon
-                        className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-                          warning.severity === 'error' ? 'text-red-500' : 'text-amber-500'
-                        }`}
+                        className={`h-5 w-5 flex-shrink-0 mt-0.5 ${warning.severity === 'error' ? 'text-red-500' : 'text-amber-500'
+                          }`}
                       />
                       <div>
                         <p
-                          className={`text-sm font-medium ${
-                            warning.severity === 'error'
-                              ? 'text-red-700 dark:text-red-300'
-                              : 'text-amber-700 dark:text-amber-300'
-                          }`}
+                          className={`text-sm font-medium ${warning.severity === 'error'
+                            ? 'text-red-700 dark:text-red-300'
+                            : 'text-amber-700 dark:text-amber-300'
+                            }`}
                         >
                           {warning.message}
                         </p>
                         {warning.suggestion && (
                           <p
-                            className={`mt-1 text-xs ${
-                              warning.severity === 'error'
-                                ? 'text-red-600 dark:text-red-400'
-                                : 'text-amber-600 dark:text-amber-400'
-                            }`}
+                            className={`mt-1 text-xs ${warning.severity === 'error'
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-amber-600 dark:text-amber-400'
+                              }`}
                           >
                             Suggestion: {warning.suggestion}
                           </p>

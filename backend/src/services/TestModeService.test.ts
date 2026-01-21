@@ -716,4 +716,239 @@ describe('TestModeService', () => {
       }
     });
   });
+
+  // ==========================================================================
+  // Story 2.5: Execution Estimates
+  // ==========================================================================
+
+  describe('Story 2.5: Execution estimates', () => {
+    it('should return estimates object with test result (AC1)', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          { type: 'send_email', to: 'test@test.com' },
+          { type: 'add_tag', tag: 'contacted' },
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      expect(result.estimates).toBeDefined();
+      expect(result.estimates).toHaveProperty('activeTimeMs');
+      expect(result.estimates).toHaveProperty('totalCredits');
+      expect(result.estimates).toHaveProperty('creditBreakdown');
+      expect(result.estimates).toHaveProperty('activeTimeDisplay');
+      expect(result.estimates).toHaveProperty('creditsDisplay');
+    });
+
+    it('should return zero credits for simple actions without AI (AC2)', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          { type: 'add_tag', tag: 'contacted' },      // 0 credits
+          { type: 'create_task', title: 'Follow up' }, // 0 credits
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      // Only parsing credits (2) should be charged
+      expect(result.estimates?.parsingCredits).toBe(2);
+    });
+
+    it('should include credit breakdown by category (AC3)', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          { type: 'send_email', to: 'a@a.com' },     // 2 credits
+          { type: 'send_email', to: 'b@b.com' },     // 2 credits
+          { type: 'linkedin_invite', recipient: 'X' }, // 2 credits
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      expect(result.estimates?.creditBreakdown).toBeDefined();
+      expect(result.estimates?.creditBreakdown.length).toBeGreaterThan(0);
+
+      // Check parsing category exists
+      const parsingBreakdown = result.estimates?.creditBreakdown.find(b => b.category === 'parsing');
+      expect(parsingBreakdown).toBeDefined();
+      expect(parsingBreakdown?.credits).toBe(2);
+
+      // Check email credits are grouped
+      const emailBreakdown = result.estimates?.creditBreakdown.find(b => b.category === 'email');
+      expect(emailBreakdown).toBeDefined();
+      expect(emailBreakdown?.credits).toBe(4); // 2 + 2
+    });
+
+    it('should separate wait time from active time (AC4)', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          { type: 'send_email', to: 'test@test.com' },
+          { type: 'wait', duration: 5, unit: 'days' },
+          { type: 'add_tag', tag: 'followed-up' },
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      expect(result.estimates?.waitTimeMs).toBeGreaterThan(0);
+      expect(result.estimates?.waitTimeDisplay).toBe('5 days');
+      expect(result.estimates?.activeTimeMs).toBeGreaterThan(0);
+    });
+
+    it('should show time range for conditional branches (AC5)', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          {
+            type: 'conditional',
+            condition: 'contact.replied == true',
+            trueBranch: [{ type: 'send_email', to: 'a@a.com' }],
+            falseBranch: [{ type: 'add_tag', tag: 'no-reply' }],
+          },
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      // Result should include skipped steps, creating min/max range
+      expect(result.steps.some(s => s.status === 'skipped')).toBe(true);
+    });
+
+    it('should calculate scheduled projections for scheduled agents (AC8)', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        triggers: [{ type: 'scheduled', config: { frequency: 'daily' } }],
+        parsedActions: [
+          { type: 'send_email', to: 'test@test.com' }, // 2 credits
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      expect(result.estimates?.dailyProjection).toBeDefined();
+      expect(result.estimates?.monthlyProjection).toBeDefined();
+      // 2 parsing + 2 email = 4 credits daily → 120 credits monthly
+      expect(result.estimates?.monthlyProjection).toBe(120);
+    });
+
+    it('should format duration correctly', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          { type: 'add_tag', tag: 'test' },
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      expect(result.estimates?.activeTimeDisplay).toBeDefined();
+      // Should be a human-readable string like "30ms" or "100ms"
+      expect(typeof result.estimates?.activeTimeDisplay).toBe('string');
+    });
+
+    it('should format credits display correctly', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          { type: 'send_email', to: 'test@test.com' },
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      // 2 parsing + 2 email = 4 credits
+      expect(result.estimates?.creditsDisplay).toBe('4 AI credits');
+    });
+
+    it('should detect bulk actions with multiple emails (AC6)', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          { type: 'send_email', to: 'a@test.com' },
+          { type: 'send_email', to: 'b@test.com' },
+          { type: 'send_email', to: 'c@test.com' },
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      expect(result.estimates?.bulkActions).toBeDefined();
+      expect(result.estimates?.bulkActions?.length).toBeGreaterThan(0);
+
+      const emailBulk = result.estimates?.bulkActions?.find(b => b.actionType === 'send_email');
+      expect(emailBulk).toBeDefined();
+      expect(emailBulk?.count).toBe(3);
+      expect(emailBulk?.display).toContain('3');
+      expect(emailBulk?.display).toContain('email');
+    });
+
+    it('should calculate bulk action per-item timing (AC6)', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: Array(50).fill({ type: 'send_email', to: 'test@test.com' }),
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      const emailBulk = result.estimates?.bulkActions?.find(b => b.actionType === 'send_email');
+      expect(emailBulk).toBeDefined();
+      expect(emailBulk?.count).toBe(50);
+      expect(emailBulk?.perItemTimeMs).toBe(500); // 0.5s per email
+      expect(emailBulk?.totalTimeMs).toBe(25000); // 50 × 500ms = 25s
+      expect(emailBulk?.display).toContain('50');
+    });
+
+    it('should not report bulk actions for single actions', async () => {
+      const mockAgentData = {
+        _id: agentId,
+        workspace: workspaceId,
+        parsedActions: [
+          { type: 'send_email', to: 'test@test.com' },
+          { type: 'add_tag', tag: 'contacted' },
+        ],
+      };
+
+      (mockAgent.findOne as jest.Mock).mockResolvedValue(mockAgentData);
+
+      const result = await TestModeService.simulateExecution(agentId, workspaceId);
+
+      // Single actions should not create bulk action info
+      expect(result.estimates?.bulkActions).toBeUndefined();
+    });
+  });
 });
+

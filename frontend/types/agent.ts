@@ -439,6 +439,7 @@ export interface TestRunResponse {
   }>;
   error?: string;
   failedAtStep?: number;
+  estimates?: ExecutionEstimate;  // Story 2.5: Enhanced execution estimates
 }
 
 // Story 1.9: Status display info
@@ -532,4 +533,66 @@ export const VALIDATION_CODES = {
   INSTRUCTION_EMPTY: 'instruction_empty',
   INSTRUCTION_TOO_LONG: 'instruction_too_long',
 } as const;
+
+// =============================================================================
+// Story 2.5: Execution Estimates types
+// =============================================================================
+
+// AC6: Bulk action info for estimation display
+export interface BulkActionInfo {
+  actionType: string;
+  count: number;
+  perItemTimeMs: number;
+  totalTimeMs: number;
+  perItemCredits: number;
+  totalCredits: number;
+  display: string; // e.g., "50 emails × 0.5s per email"
+}
+
+export interface EstimateBreakdown {
+  category: 'parsing' | 'email' | 'linkedin' | 'enrich' | 'web_search' | 'other';
+  label: string;
+  credits: number;
+  duration: number;
+}
+
+export interface ExecutionEstimate {
+  // Time estimates
+  activeTimeMs: number;           // Actual execution time
+  waitTimeMs: number;             // Wait/delay time (days → ms)
+  totalTimeMs: number;            // activeTimeMs + waitTimeMs
+  timeRangeMs?: {                 // For conditional branches
+    min: number;
+    max: number;
+  };
+
+  // Credit estimates
+  totalCredits: number;
+  creditBreakdown: EstimateBreakdown[];
+  parsingCredits: number;         // Base 2 credits for AI parsing
+
+  // Display helpers
+  activeTimeDisplay: string;      // "12 seconds"
+  waitTimeDisplay: string | null; // "5 days" or null
+  creditsDisplay: string;         // "5 AI credits"
+
+  // Scheduled projections (if agent has schedule)
+  dailyProjection?: number;
+  monthlyProjection?: number;
+
+  // AC6: Bulk action info (if multiple identical actions detected)
+  bulkActions?: BulkActionInfo[];
+}
+
+// Story 2.5: Previous test estimate for comparison (AC7)
+export interface StoredEstimate {
+  time: number;
+  credits: number;
+  timestamp: string;
+}
+
+// Story 2.5: Extended test run response with estimates
+export interface TestRunResponseWithEstimates extends Omit<TestRunResponse, 'estimates'> {
+  estimates?: ExecutionEstimate;
+}
 

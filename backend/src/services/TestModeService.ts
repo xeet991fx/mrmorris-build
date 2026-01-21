@@ -68,6 +68,45 @@ export interface WaitPreview {
   resumeNote: string;
 }
 
+// =============================================================================
+// Story 2.5: EXECUTION ESTIMATE TYPES
+// =============================================================================
+
+export interface EstimateBreakdown {
+  category: 'parsing' | 'email' | 'linkedin' | 'enrich' | 'web_search' | 'other';
+  label: string;
+  credits: number;
+  duration: number;
+}
+
+export interface ExecutionEstimate {
+  // Time estimates
+  activeTimeMs: number;           // Actual execution time
+  waitTimeMs: number;             // Wait/delay time (days → ms)
+  totalTimeMs: number;            // activeTimeMs + waitTimeMs
+  timeRangeMs?: {                 // For conditional branches
+    min: number;
+    max: number;
+  };
+
+  // Credit estimates
+  totalCredits: number;
+  creditBreakdown: EstimateBreakdown[];
+  parsingCredits: number;         // Base 2 credits for AI parsing
+
+  // Display helpers
+  activeTimeDisplay: string;      // "12 seconds"
+  waitTimeDisplay: string | null; // "5 days" or null
+  creditsDisplay: string;         // "5 AI credits"
+
+  // Scheduled projections (if agent has schedule)
+  dailyProjection?: number;
+  monthlyProjection?: number;
+
+  // AC6: Bulk action info (if multiple identical actions detected)
+  bulkActions?: BulkActionInfo[];
+}
+
 export interface LinkedInPreview {
   type: 'linkedin';
   recipient: string;
@@ -161,6 +200,7 @@ export interface TestRunResult {
     suggestion?: string;
   }>;
   failedAtStep?: number;
+  estimates?: ExecutionEstimate;  // Story 2.5: Enhanced execution estimates
 }
 
 interface TestContext {
@@ -281,6 +321,239 @@ function getEstimatedCredits(actionType: string): number {
 function truncateText(text: string, maxLength: number = 500): string {
   if (!text || text.length <= maxLength) return text || '';
   return text.slice(0, maxLength) + '...';
+}
+
+// =============================================================================
+// Story 2.5: EXECUTION ESTIMATE CALCULATION
+// =============================================================================
+
+/**
+ * Convert duration to milliseconds based on unit.
+ */
+function convertToMs(duration: number, unit: string): number {
+  switch (unit) {
+    case 'seconds': return duration * 1000;
+    case 'minutes': return duration * 60 * 1000;
+    case 'hours': return duration * 60 * 60 * 1000;
+    case 'days': return duration * 24 * 60 * 60 * 1000;
+    default: return duration * 1000;
+  }
+}
+
+/**
+ * Format milliseconds into human-readable duration string.
+ */
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${Math.round(ms / 1000)} seconds`;
+  if (ms < 3600000) return `${Math.round(ms / 60000)} minutes`;
+  if (ms < 86400000) return `${Math.round(ms / 3600000)} hours`;
+  return `${Math.round(ms / 86400000)} days`;
+}
+
+/**
+ * Get credit category for breakdown grouping.
+ */
+function getCreditCategory(action: string): EstimateBreakdown['category'] {
+  if (['send_email', 'email'].includes(action)) return 'email';
+  if (['linkedin_invite', 'linkedin'].includes(action)) return 'linkedin';
+  if (['enrich_contact', 'enrich'].includes(action)) return 'enrich';
+  if (['web_search'].includes(action)) return 'web_search';
+  return 'other';
+}
+
+/**
+ * Calculate runs per day based on schedule config.
+ */
+function calculateRunsPerDay(config: any): number {
+  if (!config) return 1;
+  switch (config.frequency) {
+    case 'hourly': return 24;
+    case 'daily': return 1;
+    case 'weekly': return 1 / 7;
+    case 'monthly': return 1 / 30;
+    default: return 1;
+  }
+}
+
+/**
+ * Bulk action info for estimation display (AC6).
+ */
+export interface BulkActionInfo {
+  actionType: string;
+  count: number;
+  perItemTimeMs: number;
+  totalTimeMs: number;
+  perItemCredits: number;
+  totalCredits: number;
+  display: string; // e.g., "50 emails × 0.5s per email"
+}
+
+/**
+ * Time per action type for bulk action estimation (AC6).
+ */
+const ACTION_TIME_ESTIMATES: Record<string, number> = {
+  send_email: 500,      // 0.5 seconds per email
+  email: 500,
+  linkedin_invite: 1000, // 1 second per invitation
+  linkedin: 1000,
+  enrich_contact: 2000,  // 2 seconds per enrichment
+  enrich: 2000,
+  web_search: 1500,      // 1.5 seconds per search
+};
+
+/**
+ * Detect bulk actions from steps (AC6).
+ * Returns info when multiple identical actions are detected.
+ */
+function detectBulkActions(steps: TestStepResult[]): BulkActionInfo[] {
+  const actionCounts: Record<string, number> = {};
+  const bulkActions: BulkActionInfo[] = [];
+
+  // Count actions by type
+  for (const step of steps) {
+    if (step.status !== 'skipped' && step.status !== 'not_executed') {
+      const actionKey = step.action;
+      actionCounts[actionKey] = (actionCounts[actionKey] || 0) + 1;
+    }
+  }
+
+  // Detect bulk actions (more than 1 of the same action)
+  for (const [actionType, count] of Object.entries(actionCounts)) {
+    if (count > 1) {
+      const perItemTimeMs = ACTION_TIME_ESTIMATES[actionType] || 100;
+      const perItemCredits = CREDIT_COSTS[actionType] || 0;
+      const totalTimeMs = perItemTimeMs * count;
+      const totalCredits = perItemCredits * count;
+
+      const timePerItemSec = (perItemTimeMs / 1000).toFixed(1);
+      const actionLabel = ACTION_LABELS[actionType] || actionType;
+
+      bulkActions.push({
+        actionType,
+        count,
+        perItemTimeMs,
+        totalTimeMs,
+        perItemCredits,
+        totalCredits,
+        display: `~${Math.round(totalTimeMs / 1000)}s (${count} ${actionLabel.toLowerCase()}s × ${timePerItemSec}s per ${actionLabel.toLowerCase()})`,
+      });
+    }
+  }
+
+  return bulkActions;
+}
+
+/**
+ * Calculate execution estimates from test steps.
+ * Story 2.5: AC1-AC8 - Time estimates, credit estimates, breakdowns, projections.
+ */
+export function calculateExecutionEstimates(
+  steps: TestStepResult[],
+  agent: { triggers?: Array<{ type: string; config?: any }> }
+): ExecutionEstimate {
+  let activeTimeMs = 0;
+  let waitTimeMs = 0;
+  let minTimeMs = 0;
+  let maxTimeMs = 0;
+  let hasConditionals = false;
+  let skippedStepsDuration = 0; // Track duration of skipped steps for range calc
+  const breakdowns: EstimateBreakdown[] = [];
+
+  // Add base parsing cost (AC3: instruction parsing = 2 credits)
+  const parsingCredits = 2;
+  breakdowns.push({
+    category: 'parsing',
+    label: 'Instruction Parsing',
+    credits: parsingCredits,
+    duration: 0,
+  });
+
+  // Aggregate from steps
+  for (const step of steps) {
+    // AC4: Separate wait time from active time
+    if (step.action === 'wait' || step.action === 'delay') {
+      const waitPreview = step.richPreview as WaitPreview | undefined;
+      if (waitPreview) {
+        waitTimeMs += convertToMs(waitPreview.duration, waitPreview.unit);
+      }
+    } else {
+      activeTimeMs += step.duration;
+    }
+
+    // AC5: Track conditionals for time range estimation
+    if (step.action === 'conditional' || step.action === 'if') {
+      hasConditionals = true;
+    }
+
+    // Track min/max for range - skipped steps add to max only
+    if (step.status === 'skipped') {
+      skippedStepsDuration += step.duration;
+      maxTimeMs += step.duration;
+    } else if (step.status !== 'not_executed') {
+      minTimeMs += step.duration;
+      maxTimeMs += step.duration;
+    }
+
+    // Build breakdown by category (only for credit-consuming actions)
+    if (step.estimatedCredits > 0) {
+      const category = getCreditCategory(step.action);
+      const existing = breakdowns.find(b => b.category === category);
+      if (existing) {
+        existing.credits += step.estimatedCredits;
+        existing.duration += step.duration;
+      } else {
+        breakdowns.push({
+          category,
+          label: step.actionLabel,
+          credits: step.estimatedCredits,
+          duration: step.duration,
+        });
+      }
+    }
+  }
+
+  // Calculate total credits (parsing + step credits)
+  const stepCredits = steps.reduce((sum, s) => sum + (s.estimatedCredits || 0), 0);
+  const totalCredits = parsingCredits + stepCredits;
+
+  // AC6: Detect bulk actions
+  const bulkActions = detectBulkActions(steps);
+
+  // AC8: Calculate scheduled projections
+  let dailyProjection: number | undefined;
+  let monthlyProjection: number | undefined;
+
+  const scheduledTrigger = agent.triggers?.find(t => t.type === 'scheduled');
+  if (scheduledTrigger) {
+    const runsPerDay = calculateRunsPerDay(scheduledTrigger.config);
+    dailyProjection = Math.round(totalCredits * runsPerDay * 100) / 100;
+    monthlyProjection = Math.round(dailyProjection * 30);
+  }
+
+  // Build result
+  const result: ExecutionEstimate = {
+    activeTimeMs,
+    waitTimeMs,
+    totalTimeMs: activeTimeMs + waitTimeMs,
+    totalCredits,
+    creditBreakdown: breakdowns,
+    parsingCredits,
+    activeTimeDisplay: formatDuration(activeTimeMs),
+    waitTimeDisplay: waitTimeMs > 0 ? formatDuration(waitTimeMs) : null,
+    creditsDisplay: `${totalCredits} AI credit${totalCredits !== 1 ? 's' : ''}`,
+    dailyProjection,
+    monthlyProjection,
+    bulkActions: bulkActions.length > 0 ? bulkActions : undefined,
+  };
+
+  // AC5: Add time range for conditional branches (when we have skipped steps)
+  if (hasConditionals && skippedStepsDuration > 0) {
+    result.timeRangeMs = { min: minTimeMs, max: maxTimeMs };
+    result.activeTimeDisplay = `${formatDuration(minTimeMs)}-${formatDuration(maxTimeMs)} (depends on conditions)`;
+  }
+
+  return result;
 }
 
 function resolveVariables(template: string, context: TestContext): string {
@@ -1214,6 +1487,9 @@ export class TestModeService {
     const totalEstimatedCredits = steps.reduce((sum, s) => sum + (s.estimatedCredits || 0), 0);
     const totalEstimatedDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
 
+    // Story 2.5: Calculate enhanced execution estimates
+    const estimates = calculateExecutionEstimates(steps, agent);
+
     return {
       success: !hasError,
       steps,
@@ -1221,6 +1497,7 @@ export class TestModeService {
       totalEstimatedDuration,
       warnings,
       failedAtStep,
+      estimates,  // Story 2.5: Enhanced execution estimates
     };
   }
 }
