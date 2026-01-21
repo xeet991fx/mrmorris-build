@@ -60,7 +60,7 @@ development_status:
   2-1-enable-test-mode: done
   2-2-select-test-target: done
   2-3-step-by-step-execution-preview: done
-  2-4-validate-instructions: backlog
+  2-4-validate-instructions: in-progress
   2-5-show-execution-estimates: backlog
   2-6-test-result-performance: backlog
   2-7-compare-test-vs-live-results: backlog

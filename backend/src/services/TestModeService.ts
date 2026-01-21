@@ -8,6 +8,7 @@
 import Agent from '../models/Agent';
 import Contact from '../models/Contact';
 import Opportunity from '../models/Opportunity';
+import InstructionValidationService from './InstructionValidationService';
 
 // =============================================================================
 // TYPE DEFINITIONS (matching frontend/types/agent.ts)
@@ -1007,6 +1008,41 @@ export class TestModeService {
         totalEstimatedDuration: 0,
         warnings: [],
       };
+    }
+
+    // Story 2.4: Run instruction validation at start of test mode
+    try {
+      const validationResult = await InstructionValidationService.validateInstructions({
+        workspaceId,
+        agentId,
+        instructions: agent.instructions || '',
+        parsedActions: agent.parsedActions || [],
+        triggerType: agent.triggers?.[0]?.type,
+        restrictions: agent.restrictions,
+      });
+
+      // Add validation errors to warnings
+      for (const error of validationResult.errors) {
+        warnings.push({
+          step: 0,
+          severity: 'error',
+          message: error.message,
+          suggestion: error.suggestion,
+        });
+      }
+
+      // Add validation warnings to warnings
+      for (const warning of validationResult.warnings) {
+        warnings.push({
+          step: 0,
+          severity: 'warning',
+          message: warning.message,
+          suggestion: warning.suggestion,
+        });
+      }
+    } catch (validationError) {
+      console.error('Validation error during test mode:', validationError);
+      // Continue with test even if validation fails
     }
 
     const parsedActions: ParsedAction[] = agent.parsedActions || [];

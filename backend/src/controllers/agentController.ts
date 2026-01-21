@@ -6,6 +6,7 @@ import User from '../models/User';
 import TeamMember from '../models/TeamMember';
 import Project from '../models/Project';
 import TestModeService from '../services/TestModeService';
+import InstructionValidationService from '../services/InstructionValidationService';
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents
@@ -870,6 +871,98 @@ export const testAgent = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({
       success: false,
       error: 'Failed to execute test'
+    });
+  }
+};
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/validate
+ * @desc Validate agent instructions for common errors
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ *
+ * Story 2.4: Validate Instructions
+ * - AC1: Manual validation trigger
+ * - AC2: Missing template warning
+ * - AC3: Undefined variable error
+ * - AC4: Syntax error detection
+ * - AC5: Integration availability check
+ * - AC6: Rate limit estimation warning
+ * - AC7: Success validation
+ */
+export const validateAgent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // RBAC Check - Must be Owner or Admin to validate agents
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+      return;
+    }
+
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+
+    if (!isWorkspaceCreator) {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to validate agents"
+        });
+        return;
+      }
+    }
+
+    // Find agent with workspace filter for security
+    const agent = await Agent.findOne({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!agent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // Run validation
+    const result = await InstructionValidationService.validateInstructions({
+      workspaceId,
+      agentId,
+      instructions: agent.instructions || '',
+      parsedActions: agent.parsedActions || [],
+      triggerType: agent.triggers?.[0]?.type,
+      restrictions: agent.restrictions
+    });
+
+    res.status(200).json({
+      success: true,
+      validation: result
+    });
+  } catch (error: any) {
+    console.error('Error validating agent:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Validation failed'
     });
   }
 };

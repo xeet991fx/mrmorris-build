@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import { DocumentTextIcon, CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import { updateAgent } from '@/lib/api/agents';
+import { DocumentTextIcon, CheckCircleIcon, ExclamationCircleIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { updateAgent, validateAgentInstructions } from '@/lib/api/agents';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { ValidationResultsPanel } from './ValidationResultsPanel';
+import type { ValidationResult, ValidationIssue } from '@/types/agent';
 
 // Story 1.3: Character thresholds (mirror backend)
 export const INSTRUCTIONS_WARNING_THRESHOLD = 8000;
@@ -41,6 +43,10 @@ export function InstructionsEditor({
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [charCount, setCharCount] = useState(initialInstructions?.length || 0);
+
+    // Story 2.4: Validation state
+    const [isValidating, setIsValidating] = useState(false);
+    const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
 
     // Update char count when instructions change
     useEffect(() => {
@@ -99,8 +105,57 @@ export function InstructionsEditor({
         const value = e.target.value;
         setInstructions(value);
         setSaveStatus('idle');
+        // Clear validation when instructions change
+        setValidationResult(null);
         debouncedSave(value);
     }, [debouncedSave]);
+
+    // Story 2.4: Handle validation
+    const handleValidate = useCallback(async () => {
+        if (disabled || isValidating) return;
+
+        setIsValidating(true);
+        try {
+            const response = await validateAgentInstructions(workspaceId, agentId);
+            if (response.success) {
+                setValidationResult(response.validation);
+                if (response.validation.valid && response.validation.warnings.length === 0) {
+                    toast.success('Instructions validated successfully');
+                } else if (!response.validation.valid) {
+                    toast.error(`Validation found ${response.validation.summary.errorCount} error(s)`);
+                } else {
+                    toast.warning(`Validation found ${response.validation.summary.warningCount} warning(s)`);
+                }
+            }
+        } catch (error: any) {
+            console.error('Validation error:', error);
+            toast.error(error.response?.data?.error || 'Validation failed');
+        } finally {
+            setIsValidating(false);
+        }
+    }, [workspaceId, agentId, disabled, isValidating]);
+
+    // Story 2.4: Handle clicking on a validation issue to scroll to line
+    const handleIssueClick = useCallback((issue: ValidationIssue) => {
+        if (!issue.lineNumber) return;
+
+        // Find the textarea and scroll to the line
+        const textarea = document.querySelector('[data-testid="instructions-textarea"]') as HTMLTextAreaElement;
+        if (!textarea) return;
+
+        const lines = instructions.split('\n');
+        let charIndex = 0;
+        for (let i = 0; i < issue.lineNumber - 1 && i < lines.length; i++) {
+            charIndex += lines[i].length + 1; // +1 for newline
+        }
+
+        // Focus and set selection
+        textarea.focus();
+        textarea.setSelectionRange(charIndex, charIndex + (lines[issue.lineNumber - 1]?.length || 0));
+
+        // Scroll into view
+        textarea.scrollTop = (issue.lineNumber - 1) * 20; // Approximate line height
+    }, [instructions]);
 
     // Determine character count styling
     const getCharCountStyles = () => {
@@ -135,26 +190,49 @@ export function InstructionsEditor({
                     </h3>
                 </div>
 
-                {/* Save Status Indicator */}
-                <div className="flex items-center gap-2 text-xs">
-                    {saveStatus === 'saving' && (
-                        <span className="flex items-center gap-1.5 text-zinc-400">
-                            <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
-                            Saving...
-                        </span>
-                    )}
-                    {saveStatus === 'saved' && lastSaved && (
-                        <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                            <CheckCircleIcon className="w-4 h-4" />
-                            Saved {formatDistanceToNow(lastSaved, { addSuffix: false })} ago
-                        </span>
-                    )}
-                    {saveStatus === 'error' && (
-                        <span className="flex items-center gap-1.5 text-red-500">
-                            <ExclamationCircleIcon className="w-4 h-4" />
-                            Error saving
-                        </span>
-                    )}
+                {/* Save Status and Validate Button */}
+                <div className="flex items-center gap-3">
+                    {/* Save Status Indicator */}
+                    <div className="flex items-center gap-2 text-xs">
+                        {saveStatus === 'saving' && (
+                            <span className="flex items-center gap-1.5 text-zinc-400">
+                                <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                                Saving...
+                            </span>
+                        )}
+                        {saveStatus === 'saved' && lastSaved && (
+                            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                <CheckCircleIcon className="w-4 h-4" />
+                                Saved {formatDistanceToNow(lastSaved, { addSuffix: false })} ago
+                            </span>
+                        )}
+                        {saveStatus === 'error' && (
+                            <span className="flex items-center gap-1.5 text-red-500">
+                                <ExclamationCircleIcon className="w-4 h-4" />
+                                Error saving
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Story 2.4: Validate Button */}
+                    <button
+                        type="button"
+                        onClick={handleValidate}
+                        disabled={disabled || isValidating || !instructions.trim()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isValidating ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                                Validating...
+                            </>
+                        ) : (
+                            <>
+                                <ShieldCheckIcon className="w-4 h-4" />
+                                Validate
+                            </>
+                        )}
+                    </button>
                 </div>
             </div>
 
@@ -217,6 +295,20 @@ export function InstructionsEditor({
                     <div className="text-sm text-yellow-700 dark:text-yellow-300">
                         <strong>Instructions are getting long.</strong> Consider breaking into multiple agents for better maintainability.
                     </div>
+                </div>
+            )}
+
+            {/* Story 2.4: Validation Results */}
+            {(validationResult || isValidating) && (
+                <div className="mt-4">
+                    <h4 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+                        Validation Results
+                    </h4>
+                    <ValidationResultsPanel
+                        validation={validationResult}
+                        isLoading={isValidating}
+                        onIssueClick={handleIssueClick}
+                    />
                 </div>
             )}
         </div>

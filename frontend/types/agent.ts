@@ -484,3 +484,52 @@ export interface TestTargetOption {
   company?: string;
 }
 
+// Story 2.4: Validation types
+export type ValidationSeverity = 'error' | 'warning';
+
+export interface ValidationIssue {
+  severity: ValidationSeverity;
+  code: string;
+  message: string;
+  lineNumber?: number;
+  column?: number;
+  instructionText?: string;
+  suggestion?: string;
+  context?: Record<string, any>;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: ValidationIssue[];
+  warnings: ValidationIssue[];
+  summary: {
+    errorCount: number;
+    warningCount: number;
+    validatedAt: string;
+  };
+}
+
+export interface ValidateAgentResponse {
+  success: boolean;
+  validation: ValidationResult;
+  error?: string;
+}
+
+// Story 2.4: Validation codes
+export const VALIDATION_CODES = {
+  TEMPLATE_NOT_FOUND: 'template_not_found',
+  TEMPLATE_INVALID: 'template_invalid',
+  VARIABLE_UNDEFINED: 'variable_undefined',
+  VARIABLE_INVALID_FORMAT: 'variable_invalid_format',
+  VARIABLE_TYPE_MISMATCH: 'variable_type_mismatch',
+  CONDITION_SYNTAX_ERROR: 'condition_syntax_error',
+  ACTION_SYNTAX_ERROR: 'action_syntax_error',
+  MISSING_REQUIRED_PARAM: 'missing_required_param',
+  INTEGRATION_NOT_CONNECTED: 'integration_not_connected',
+  INTEGRATION_EXPIRED: 'integration_expired',
+  RATE_LIMIT_EXCEEDED: 'rate_limit_exceeded',
+  DAILY_LIMIT_RISK: 'daily_limit_risk',
+  INSTRUCTION_EMPTY: 'instruction_empty',
+  INSTRUCTION_TOO_LONG: 'instruction_too_long',
+} as const;
+

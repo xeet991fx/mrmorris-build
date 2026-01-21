@@ -14,7 +14,8 @@ import {
   DeleteAgentResponse,
   TestRunResponse,
   TestAgentInput,
-  TestTargetOption
+  TestTargetOption,
+  ValidateAgentResponse
 } from '@/types/agent';
 
 /**
@@ -187,6 +188,20 @@ export const searchTestTargetDeals = async (
   const queryString = queryParams.toString();
   const response = await axios.get(
     `/workspaces/${workspaceId}/test-targets/deals${queryString ? `?${queryString}` : ''}`
+  );
+  return response.data;
+};
+
+/**
+ * Validate agent instructions (Story 2.4)
+ * Checks for template references, variable usage, syntax errors, integrations, and rate limits
+ */
+export const validateAgentInstructions = async (
+  workspaceId: string,
+  agentId: string
+): Promise<ValidateAgentResponse> => {
+  const response = await axios.post(
+    `/workspaces/${workspaceId}/agents/${agentId}/validate`
   );
   return response.data;
 };

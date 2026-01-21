@@ -10,10 +10,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Play, Pause, Edit, Loader2, AlertCircle } from 'lucide-react';
+import { Play, Pause, Edit, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
-import { updateAgentStatus } from '@/lib/api/agents';
-import { IAgent, AgentStatus, AGENT_STATUS_INFO } from '@/types/agent';
+import { updateAgentStatus, validateAgentInstructions } from '@/lib/api/agents';
+import { IAgent, AgentStatus, AGENT_STATUS_INFO, ValidationResult } from '@/types/agent';
 
 interface AgentStatusControlsProps {
     agent: IAgent;
@@ -32,6 +32,9 @@ export function AgentStatusControls({
     const [showDraftWarning, setShowDraftWarning] = useState(false);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
     const [validationErrors, setValidationErrors] = useState<{ field: string; message: string }[]>([]);
+    // Story 2.4: Validation warnings state
+    const [showWarningsConfirmation, setShowWarningsConfirmation] = useState(false);
+    const [pendingValidationResult, setPendingValidationResult] = useState<ValidationResult | null>(null);
 
     const handleStatusChange = async (newStatus: AgentStatus) => {
         // Show warning when changing to Draft from Live or Paused
@@ -40,7 +43,58 @@ export function AgentStatusControls({
             return;
         }
 
+        // Story 2.4: Validate before going Live
+        if (newStatus === 'Live' && agent.status !== 'Live') {
+            await validateBeforeGoLive();
+            return;
+        }
+
         await performStatusChange(newStatus);
+    };
+
+    // Story 2.4: Validate instructions before going Live
+    const validateBeforeGoLive = async () => {
+        setIsLoading(true);
+        try {
+            const response = await validateAgentInstructions(workspaceId, agent._id);
+
+            if (response.success) {
+                const { validation } = response;
+
+                // Block if there are errors
+                if (validation.errors.length > 0) {
+                    setValidationErrors(validation.errors.map(e => ({
+                        field: 'instructions',
+                        message: e.message
+                    })));
+                    setShowValidationErrors(true);
+                    return;
+                }
+
+                // Show warning confirmation if there are warnings
+                if (validation.warnings.length > 0) {
+                    setPendingValidationResult(validation);
+                    setShowWarningsConfirmation(true);
+                    return;
+                }
+
+                // No errors or warnings, proceed to Live
+                await performStatusChange('Live');
+            }
+        } catch (err: any) {
+            // If validation fails, try to go live anyway (backend will validate)
+            console.error('Validation check failed:', err);
+            await performStatusChange('Live');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Story 2.4: Confirm going Live with warnings
+    const confirmGoLiveWithWarnings = async () => {
+        setShowWarningsConfirmation(false);
+        setPendingValidationResult(null);
+        await performStatusChange('Live');
     };
 
     const performStatusChange = async (newStatus: AgentStatus) => {
@@ -200,11 +254,11 @@ export function AgentStatusControls({
                         </DialogTitle>
                         <DialogDescription asChild>
                             <div className="space-y-3">
-                                <p>The following fields are required to go Live:</p>
+                                <p>The following issues must be fixed before going Live:</p>
                                 <ul className="list-disc list-inside space-y-1 text-sm">
                                     {validationErrors.map((error, index) => (
                                         <li key={index} className="text-red-600">
-                                            <span className="font-medium capitalize">{error.field}</span>: {error.message}
+                                            {error.message}
                                         </li>
                                     ))}
                                 </ul>
@@ -217,6 +271,56 @@ export function AgentStatusControls({
                             data-testid="close-validation-errors"
                         >
                             OK
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Story 2.4: Validation Warnings Confirmation Dialog (AC8) */}
+            <Dialog open={showWarningsConfirmation} onOpenChange={setShowWarningsConfirmation}>
+                <DialogContent data-testid="validation-warnings-dialog">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                            Validation Warnings
+                        </DialogTitle>
+                        <DialogDescription asChild>
+                            <div className="space-y-3">
+                                <p>
+                                    Agent has {pendingValidationResult?.summary.warningCount || 0} warning
+                                    {(pendingValidationResult?.summary.warningCount || 0) !== 1 ? 's' : ''}.
+                                    Review warnings before going live.
+                                </p>
+                                <ul className="list-disc list-inside space-y-1 text-sm max-h-48 overflow-y-auto">
+                                    {pendingValidationResult?.warnings.map((warning, index) => (
+                                        <li key={index} className="text-yellow-600 dark:text-yellow-400">
+                                            {warning.message}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowWarningsConfirmation(false);
+                                setPendingValidationResult(null);
+                            }}
+                            data-testid="review-warnings"
+                        >
+                            Review Warnings
+                        </Button>
+                        <Button
+                            onClick={confirmGoLiveWithWarnings}
+                            disabled={isLoading}
+                            data-testid="go-live-anyway"
+                        >
+                            {isLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            Go Live Anyway
                         </Button>
                     </DialogFooter>
                 </DialogContent>

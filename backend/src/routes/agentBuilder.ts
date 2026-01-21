@@ -14,13 +14,14 @@
  * - PATCH  /api/workspaces/:workspaceId/agents/:agentId/status   Update agent status (Story 1.9)
  * - DELETE /api/workspaces/:workspaceId/agents/:agentId          Delete agent (Story 1.10)
  * - POST   /api/workspaces/:workspaceId/agents/:agentId/test     Test agent in dry-run mode (Story 2.1)
+ * - POST   /api/workspaces/:workspaceId/agents/:agentId/validate Validate agent instructions (Story 2.4)
  * - GET    /api/workspaces/:workspaceId/test-targets/contacts    Search contacts for test target selection (Story 2.2)
  * - GET    /api/workspaces/:workspaceId/test-targets/deals       Search deals for test target selection (Story 2.2)
  */
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateWorkspaceAccess } from '../middleware/workspace';
-import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus, deleteAgent, testAgent } from '../controllers/agentController';
+import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus, deleteAgent, testAgent, validateAgent } from '../controllers/agentController';
 import { searchContacts, searchDeals } from '../controllers/testTargetController';
 import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
@@ -151,6 +152,18 @@ router.post(
   validateWorkspaceAccess,
   validate(testAgentSchema),
   testAgent
+);
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/validate
+ * @desc Validate agent instructions for common errors (Story 2.4)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+router.post(
+  '/workspaces/:workspaceId/agents/:agentId/validate',
+  authenticate,
+  validateWorkspaceAccess,
+  validateAgent
 );
 
 /**
