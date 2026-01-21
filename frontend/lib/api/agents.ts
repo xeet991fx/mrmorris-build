@@ -15,7 +15,9 @@ import {
   TestRunResponse,
   TestAgentInput,
   TestTargetOption,
-  ValidateAgentResponse
+  ValidateAgentResponse,
+  CompareExecutionResponse,
+  GetAgentAccuracyResponse
 } from '@/types/agent';
 
 /**
@@ -202,6 +204,35 @@ export const validateAgentInstructions = async (
 ): Promise<ValidateAgentResponse> => {
   const response = await axios.post(
     `/workspaces/${workspaceId}/agents/${agentId}/validate`
+  );
+  return response.data;
+};
+
+/**
+ * Compare live execution to linked test run (Story 2.7)
+ * AC1, AC5: Returns side-by-side comparison with mismatch detection
+ */
+export const compareExecutionToTest = async (
+  workspaceId: string,
+  agentId: string,
+  executionId: string
+): Promise<CompareExecutionResponse> => {
+  const response = await axios.get(
+    `/workspaces/${workspaceId}/agents/${agentId}/executions/${executionId}/compare-to-test`
+  );
+  return response.data;
+};
+
+/**
+ * Get agent test prediction accuracy metrics (Story 2.7)
+ * AC6, AC8: Returns accuracy percentage with degradation alerts
+ */
+export const getAgentAccuracy = async (
+  workspaceId: string,
+  agentId: string
+): Promise<GetAgentAccuracyResponse> => {
+  const response = await axios.get(
+    `/workspaces/${workspaceId}/agents/${agentId}/accuracy`
   );
   return response.data;
 };

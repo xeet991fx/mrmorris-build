@@ -63,7 +63,7 @@ development_status:
   2-4-validate-instructions: in-progress
   2-5-show-execution-estimates: done
   2-6-test-result-performance: done
-  2-7-compare-test-vs-live-results: in-progress
+  2-7-compare-test-vs-live-results: done
   epic-2-retrospective: optional
 
   # Epic 3: Live Agent Execution (15 stories)

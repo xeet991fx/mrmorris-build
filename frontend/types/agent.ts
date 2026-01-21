@@ -600,3 +600,61 @@ export interface TestRunResponseWithEstimates extends Omit<TestRunResponse, 'est
   estimates?: ExecutionEstimate;
 }
 
+// =============================================================================
+// Story 2.7: Test vs Live Comparison types
+// =============================================================================
+
+// AC1, AC5: Step-by-step comparison result
+export interface StepComparison {
+  stepNumber: number;
+  action: string;
+  match: boolean;
+  predicted: {
+    targetCount?: number;
+    recipients?: string[];
+    conditionResult?: boolean;
+    description: string;
+  };
+  actual: {
+    targetCount?: number;
+    recipients?: string[];
+    conditionResult?: boolean;
+    description: string;
+  };
+  mismatchReason?: string;
+}
+
+// AC1, AC5, AC7: Full comparison result
+export interface ComparisonResult {
+  testRunId: string;
+  executionId: string;
+  overallMatch: boolean;
+  matchPercentage: number;
+  stepComparisons: StepComparison[];
+  possibleReasons: string[];
+  staleDataWarning: boolean;
+  timeBetweenTestAndLive: number;
+}
+
+// AC6, AC8: Agent accuracy metrics
+export interface AgentAccuracyMetrics {
+  accuracy: number;
+  totalComparisons: number;
+  matchingComparisons: number;
+  status: 'healthy' | 'degraded';
+  message: string;
+}
+
+// API response types
+export interface CompareExecutionResponse {
+  success: boolean;
+  comparison: ComparisonResult;
+  error?: string;
+}
+
+export interface GetAgentAccuracyResponse {
+  success: boolean;
+  accuracy: AgentAccuracyMetrics;
+  error?: string;
+}
+

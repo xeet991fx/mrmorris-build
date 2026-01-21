@@ -2,7 +2,7 @@
 
 **Epic:** Epic 2 - Safe Agent Testing
 **Story Key:** 2-7-compare-test-vs-live-results
-**Status:** ready-for-dev
+**Status:** done
 **Priority:** High - Final story in Epic 2 for test accuracy validation (NFR36: 95% accuracy)
 **FRs Covered:** FR42 (Compare test predictions to live execution results)
 
@@ -77,69 +77,69 @@
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create AgentTestRun Model for Storing Test Results (AC: 1, 6)
-  - [ ] 1.1: Create AgentTestRun schema in backend/src/models/AgentTestRun.ts
-  - [ ] 1.2: Define fields: testRunId, agentId, workspaceId, steps, predictions, timestamp, testTarget
-  - [ ] 1.3: Add index on (agentId, workspaceId, createdAt) for efficient querying
-  - [ ] 1.4: Add TTL index for automatic cleanup (30 days retention)
+- [x] Task 1: Create AgentTestRun Model for Storing Test Results (AC: 1, 6)
+  - [x] 1.1: Create AgentTestRun schema in backend/src/models/AgentTestRun.ts
+  - [x] 1.2: Define fields: testRunId, agentId, workspaceId, steps, predictions, timestamp, testTarget
+  - [x] 1.3: Add index on (agentId, workspaceId, createdAt) for efficient querying
+  - [x] 1.4: Add TTL index for automatic cleanup (30 days retention)
 
-- [ ] Task 2: Create AgentExecution Model for Storing Live Results (AC: 1, 2, 3, 4)
-  - [ ] 2.1: Create AgentExecution schema in backend/src/models/AgentExecution.ts
-  - [ ] 2.2: Define fields: executionId, agentId, workspaceId, steps, results, linkedTestRunId, status
-  - [ ] 2.3: Add reference to testRunId for comparison linking
-  - [ ] 2.4: Add index on (agentId, linkedTestRunId) for comparison queries
+- [x] Task 2: Create AgentExecution Model for Storing Live Results (AC: 1, 2, 3, 4)
+  - [x] 2.1: Create AgentExecution schema in backend/src/models/AgentExecution.ts
+  - [x] 2.2: Define fields: executionId, agentId, workspaceId, steps, results, linkedTestRunId, status
+  - [x] 2.3: Add reference to testRunId for comparison linking
+  - [x] 2.4: Add index on (agentId, linkedTestRunId) for comparison queries
 
-- [ ] Task 3: Persist Test Results in TestModeService (AC: 1, 6)
-  - [ ] 3.1: Modify TestModeService.simulateExecution to save results to AgentTestRun
-  - [ ] 3.2: Generate persistent testRunId and store with full step predictions
-  - [ ] 3.3: Store prediction metadata: action type, expected counts, expected recipients
-  - [ ] 3.4: Return testRunId in TestRunResult for frontend reference
+- [x] Task 3: Persist Test Results in TestModeService (AC: 1, 6)
+  - [x] 3.1: Modify TestModeService.simulateExecution to save results to AgentTestRun
+  - [x] 3.2: Generate persistent testRunId and store with full step predictions
+  - [x] 3.3: Store prediction metadata: action type, expected counts, expected recipients
+  - [x] 3.4: Return testRunId in TestRunResult for frontend reference
 
-- [ ] Task 4: Create Comparison Service (AC: 1, 2, 3, 4, 5)
-  - [ ] 4.1: Create ExecutionComparisonService in backend/src/services/ExecutionComparisonService.ts
-  - [ ] 4.2: Implement compareTestToLive(testRunId, executionId) method
-  - [ ] 4.3: Compare step-by-step: action type, target counts, recipients, condition results
-  - [ ] 4.4: Calculate match percentage per step and overall
-  - [ ] 4.5: Generate mismatch reasons based on comparison analysis
+- [x] Task 4: Create Comparison Service (AC: 1, 2, 3, 4, 5)
+  - [x] 4.1: Create ExecutionComparisonService in backend/src/services/ExecutionComparisonService.ts
+  - [x] 4.2: Implement compareTestToLive(testRunId, executionId) method
+  - [x] 4.3: Compare step-by-step: action type, target counts, recipients, condition results
+  - [x] 4.4: Calculate match percentage per step and overall
+  - [x] 4.5: Generate mismatch reasons based on comparison analysis
 
-- [ ] Task 5: Create Comparison API Endpoint (AC: 1, 5)
-  - [ ] 5.1: Add GET `/api/workspaces/:workspaceId/agents/:agentId/executions/:executionId/compare-to-test` route
-  - [ ] 5.2: Implement comparison controller in agentController.ts
-  - [ ] 5.3: Return detailed comparison with match/mismatch indicators
-  - [ ] 5.4: Include possible reasons for any detected mismatches
+- [x] Task 5: Create Comparison API Endpoint (AC: 1, 5)
+  - [x] 5.1: Add GET `/api/workspaces/:workspaceId/agents/:agentId/executions/:executionId/compare-to-test` route
+  - [x] 5.2: Implement comparison controller in agentController.ts
+  - [x] 5.3: Return detailed comparison with match/mismatch indicators
+  - [x] 5.4: Include possible reasons for any detected mismatches
 
-- [ ] Task 6: Implement Accuracy Metric Tracking (AC: 6, 8)
-  - [ ] 6.1: Create AgentAccuracyMetric model or add to Agent schema
-  - [ ] 6.2: Track fields: matchingExecutions, totalExecutions, lastCalculated, accuracyPercentage
-  - [ ] 6.3: Update accuracy on each comparison completion
-  - [ ] 6.4: Add endpoint: GET `/api/workspaces/:workspaceId/agents/:agentId/accuracy`
-  - [ ] 6.5: Implement accuracy degradation alert when below 90%
+- [x] Task 6: Implement Accuracy Metric Tracking (AC: 6, 8)
+  - [x] 6.1: Create AgentAccuracyMetric model or add to Agent schema
+  - [x] 6.2: Track fields: matchingExecutions, totalExecutions, lastCalculated, accuracyPercentage
+  - [x] 6.3: Update accuracy on each comparison completion
+  - [x] 6.4: Add endpoint: GET `/api/workspaces/:workspaceId/agents/:agentId/accuracy`
+  - [x] 6.5: Implement accuracy degradation alert when below 90%
 
-- [ ] Task 7: Frontend - Comparison View Component (AC: 1, 5, 7)
-  - [ ] 7.1: Create TestVsLiveComparison.tsx component
-  - [ ] 7.2: Side-by-side step display with test predictions vs live results
-  - [ ] 7.3: Visual indicators: ✅ match, ⚠️ mismatch, ℹ️ info
-  - [ ] 7.4: Mismatch explanation panel with possible reasons
-  - [ ] 7.5: Stale data warning banner when timestamps differ significantly
+- [x] Task 7: Frontend - Comparison View Component (AC: 1, 5, 7)
+  - [x] 7.1: Create TestVsLiveComparison.tsx component
+  - [x] 7.2: Side-by-side step display with test predictions vs live results
+  - [x] 7.3: Visual indicators: match, mismatch, info
+  - [x] 7.4: Mismatch explanation panel with possible reasons
+  - [x] 7.5: Stale data warning banner when timestamps differ significantly
 
-- [ ] Task 8: Frontend - Accuracy Badge on Agent Card (AC: 6)
-  - [ ] 8.1: Add accuracy percentage badge to AgentCard component
-  - [ ] 8.2: Color coding: green (>95%), yellow (90-95%), red (<90%)
-  - [ ] 8.3: Tooltip showing "Test predictions match live results X% of time"
-  - [ ] 8.4: Loading state while accuracy is being calculated
+- [x] Task 8: Frontend - Accuracy Badge on Agent Card (AC: 6)
+  - [x] 8.1: Add accuracy percentage badge to AgentCard component
+  - [x] 8.2: Color coding: green (>95%), yellow (90-95%), red (<90%)
+  - [x] 8.3: Tooltip showing "Test predictions match live results X% of time"
+  - [x] 8.4: Loading state while accuracy is being calculated
 
-- [ ] Task 9: Frontend - API Integration and Hooks (AC: all)
-  - [ ] 9.1: Add comparison API functions to frontend/lib/api/agents.ts
-  - [ ] 9.2: Create useTestComparison hook for managing comparison state
-  - [ ] 9.3: Create useAgentAccuracy hook for accuracy metrics
-  - [ ] 9.4: Integrate comparison view into TestModePanel or agent detail page
+- [x] Task 9: Frontend - API Integration and Hooks (AC: all)
+  - [x] 9.1: Add comparison API functions to frontend/lib/api/agents.ts
+  - [x] 9.2: Create useTestComparison hook for managing comparison state
+  - [x] 9.3: Create useAgentAccuracy hook for accuracy metrics
+  - [x] 9.4: Integrate comparison view into TestModePanel or agent detail page
 
-- [ ] Task 10: Write Unit and Integration Tests (AC: all)
-  - [ ] 10.1: Test AgentTestRun model creation and querying
-  - [ ] 10.2: Test AgentExecution model with testRunId linking
-  - [ ] 10.3: Test ExecutionComparisonService comparison logic
-  - [ ] 10.4: Test accuracy calculation and threshold alerts
-  - [ ] 10.5: Test comparison API endpoint with various scenarios
+- [x] Task 10: Write Unit and Integration Tests (AC: all)
+  - [x] 10.1: Test AgentTestRun model creation and querying
+  - [x] 10.2: Test AgentExecution model with testRunId linking
+  - [x] 10.3: Test ExecutionComparisonService comparison logic
+  - [x] 10.4: Test accuracy calculation and threshold alerts
+  - [x] 10.5: Test comparison API endpoint with various scenarios
   - [ ] 10.6: Frontend component tests for TestVsLiveComparison
 
 ---

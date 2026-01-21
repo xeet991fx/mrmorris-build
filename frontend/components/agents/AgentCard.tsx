@@ -11,6 +11,8 @@ import { DuplicateAgentModal } from './DuplicateAgentModal';
 import { DeleteAgentModal } from './DeleteAgentModal';
 import { AgentStatusBadge } from './AgentStatusBadge';
 import { AgentStatusControls } from './AgentStatusControls';
+import { AccuracyBadge } from './AccuracyBadge';
+import { useAgentAccuracy } from '@/hooks/useAgentAccuracy';
 import { formatRelativeTime } from '@/lib/utils/date';
 
 interface AgentCardProps {
@@ -29,6 +31,13 @@ export function AgentCard({ agent, workspaceId, onClick, onDuplicate, onStatusCh
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Story 2.7: Fetch accuracy metrics for this agent
+  const { accuracy } = useAgentAccuracy({
+    workspaceId,
+    agentId: agent._id,
+    enabled: true,
+  });
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -92,6 +101,8 @@ export function AgentCard({ agent, workspaceId, onClick, onDuplicate, onStatusCh
             {agent.name}
           </h3>
           <div className="flex items-center gap-2">
+            {/* Story 2.7: Accuracy badge */}
+            {accuracy && <AccuracyBadge accuracy={accuracy} size="sm" />}
             {/* Story 1.9: Use AgentStatusBadge instead of inline styling */}
             <AgentStatusBadge status={agent.status} size="sm" />
             <div className="relative" ref={menuRef}>
