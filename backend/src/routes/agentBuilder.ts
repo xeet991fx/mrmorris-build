@@ -14,14 +14,32 @@
  * - PATCH  /api/workspaces/:workspaceId/agents/:agentId/status   Update agent status (Story 1.9)
  * - DELETE /api/workspaces/:workspaceId/agents/:agentId          Delete agent (Story 1.10)
  * - POST   /api/workspaces/:workspaceId/agents/:agentId/test     Test agent in dry-run mode (Story 2.1)
+ * - GET    /api/workspaces/:workspaceId/agents/:agentId/test/stream  Test agent with SSE streaming (Story 2.6)
+ * - DELETE /api/workspaces/:workspaceId/agents/:agentId/test/:testRunId  Cancel test run (Story 2.6)
  * - POST   /api/workspaces/:workspaceId/agents/:agentId/validate Validate agent instructions (Story 2.4)
  * - GET    /api/workspaces/:workspaceId/test-targets/contacts    Search contacts for test target selection (Story 2.2)
  * - GET    /api/workspaces/:workspaceId/test-targets/deals       Search deals for test target selection (Story 2.2)
+ * - GET    /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId/compare-to-test  Compare test vs live (Story 2.7)
+ * - GET    /api/workspaces/:workspaceId/agents/:agentId/accuracy  Get agent accuracy metrics (Story 2.7)
  */
 import express from 'express';
 import { authenticate } from '../middleware/auth';
 import { validateWorkspaceAccess } from '../middleware/workspace';
-import { createAgent, listAgents, getAgent, updateAgent, duplicateAgent, updateAgentStatus, deleteAgent, testAgent, validateAgent } from '../controllers/agentController';
+import {
+  createAgent,
+  listAgents,
+  getAgent,
+  updateAgent,
+  duplicateAgent,
+  updateAgentStatus,
+  deleteAgent,
+  testAgent,
+  validateAgent,
+  testAgentStream,
+  cancelAgentTest,
+  compareExecutionToTest,
+  getAgentAccuracy
+} from '../controllers/agentController';
 import { searchContacts, searchDeals } from '../controllers/testTargetController';
 import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
@@ -188,6 +206,72 @@ router.get(
   authenticate,
   validateWorkspaceAccess,
   searchDeals
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/test/stream
+ * @desc Run agent in Test Mode with SSE streaming (Story 2.6)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ *
+ * Story 2.6: Progressive Streaming
+ * - AC2: Results stream as each step completes
+ * - AC3: Progress messages and cancel option for long tests
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId/test/stream',
+  authenticate,
+  validateWorkspaceAccess,
+  testAgentStream
+);
+
+/**
+ * @route DELETE /api/workspaces/:workspaceId/agents/:agentId/test/:testRunId
+ * @desc Cancel an in-progress test run (Story 2.6)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ *
+ * Story 2.6 AC3: Cancel option for long-running tests
+ */
+router.delete(
+  '/workspaces/:workspaceId/agents/:agentId/test/:testRunId',
+  authenticate,
+  validateWorkspaceAccess,
+  cancelAgentTest
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId/compare-to-test
+ * @desc Compare live execution to its linked test run (Story 2.7)
+ * @access Private (requires authentication and workspace access)
+ *
+ * Story 2.7: Compare Test vs Live Results
+ * - AC1: Side-by-side comparison view
+ * - AC2: Email prediction accuracy
+ * - AC3: Contact count accuracy
+ * - AC4: Conditional logic consistency
+ * - AC5: Mismatch detection and warning
+ * - AC7: Stale data warning
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId/executions/:executionId/compare-to-test',
+  authenticate,
+  validateWorkspaceAccess,
+  compareExecutionToTest
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/accuracy
+ * @desc Get agent test prediction accuracy metric (Story 2.7)
+ * @access Private (requires authentication and workspace access)
+ *
+ * Story 2.7: Accuracy Metric Tracking
+ * - AC6: Accuracy metric tracking (NFR36: 95% target)
+ * - AC8: System alert for degraded accuracy (below 90%)
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId/accuracy',
+  authenticate,
+  validateWorkspaceAccess,
+  getAgentAccuracy
 );
 
 export default router;

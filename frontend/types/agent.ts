@@ -440,6 +440,10 @@ export interface TestRunResponse {
   error?: string;
   failedAtStep?: number;
   estimates?: ExecutionEstimate;  // Story 2.5: Enhanced execution estimates
+  // Story 2.6: Performance tracking
+  timedOut?: boolean;             // AC7: True if test exceeded 30s timeout
+  fromCache?: boolean;            // AC6: True if instruction parsing used cache
+  executionTimeMs?: number;       // Actual execution time in milliseconds
 }
 
 // Story 1.9: Status display info

@@ -7,6 +7,8 @@ import TeamMember from '../models/TeamMember';
 import Project from '../models/Project';
 import TestModeService from '../services/TestModeService';
 import InstructionValidationService from '../services/InstructionValidationService';
+import ExecutionComparisonService from '../services/ExecutionComparisonService';
+import AgentExecution from '../models/AgentExecution';
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents
@@ -964,6 +966,299 @@ export const validateAgent = async (req: Request, res: Response): Promise<void> 
       success: false,
       error: 'Validation failed'
     });
+  }
+};
+
+// =============================================================================
+// Story 2.6: Active Test Runs Registry (for cancellation support)
+// =============================================================================
+
+const activeTestRuns = new Map<string, AbortController>();
+
+/**
+ * Generate a unique test run ID
+ */
+function generateTestRunId(): string {
+  return `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/test/stream
+ * @desc Run agent in Test Mode with SSE streaming (Story 2.6)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ *
+ * Story 2.6: Progressive Streaming
+ * - AC2: Results stream as each step completes
+ * - AC3: Progress messages and cancel option for long tests
+ * - AC7: Partial results on timeout
+ */
+export const testAgentStream = async (req: Request, res: Response): Promise<void> => {
+  const { workspaceId, agentId } = req.params;
+  const { targetIds, targetType } = req.query;
+  const userId = (req as any).user?._id;
+
+  if (!userId) {
+    res.status(401).json({ success: false, error: 'User not authenticated' });
+    return;
+  }
+
+  // RBAC Check
+  const workspace = await Project.findById(workspaceId);
+  if (!workspace) {
+    res.status(404).json({ success: false, error: 'Workspace not found' });
+    return;
+  }
+
+  const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+  if (!isWorkspaceCreator) {
+    const teamMember = await TeamMember.findOne({
+      workspaceId: workspaceId,
+      userId: userId,
+      status: 'active'
+    });
+
+    if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+      res.status(403).json({ success: false, error: "You don't have permission to test agents" });
+      return;
+    }
+  }
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+  res.flushHeaders();
+
+  // Create abort controller for this test run
+  const abortController = new AbortController();
+  const testRunId = generateTestRunId();
+
+  // Store for cancel endpoint
+  activeTestRuns.set(testRunId, abortController);
+
+  // Send test run ID
+  res.write(`event: started\ndata: ${JSON.stringify({ testRunId })}\n\n`);
+
+  // Handle client disconnect
+  req.on('close', () => {
+    abortController.abort();
+    activeTestRuns.delete(testRunId);
+  });
+
+  try {
+    // Build test target from query params
+    const testTarget = targetType && targetIds ? {
+      type: targetType as string,
+      id: typeof targetIds === 'string' ? targetIds.split(',')[0] : undefined,
+    } : undefined;
+
+    // Execute test with abort signal
+    const result = await TestModeService.simulateExecution(
+      agentId,
+      workspaceId,
+      testTarget,
+      { signal: abortController.signal }
+    );
+
+    // Stream each step result
+    for (let i = 0; i < result.steps.length; i++) {
+      const step = result.steps[i];
+      res.write(`event: step\ndata: ${JSON.stringify(step)}\n\n`);
+
+      // Send progress update
+      res.write(`event: progress\ndata: ${JSON.stringify({
+        current: i + 1,
+        total: result.steps.length,
+        executionTimeMs: result.executionTimeMs
+      })}\n\n`);
+    }
+
+    // Send final complete event
+    res.write(`event: complete\ndata: ${JSON.stringify({
+      success: result.success,
+      timedOut: result.timedOut,
+      totalEstimatedCredits: result.totalEstimatedCredits,
+      totalEstimatedDuration: result.totalEstimatedDuration,
+      executionTimeMs: result.executionTimeMs,
+      warnings: result.warnings,
+      estimates: result.estimates,
+      error: result.error
+    })}\n\n`);
+
+  } catch (error: any) {
+    console.error('Error in streaming test:', error);
+    res.write(`event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`);
+  } finally {
+    activeTestRuns.delete(testRunId);
+    res.end();
+  }
+};
+
+/**
+ * @route DELETE /api/workspaces/:workspaceId/agents/:agentId/test/:testRunId
+ * @desc Cancel an in-progress test run (Story 2.6)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ *
+ * Story 2.6 AC3: Cancel option for long-running tests
+ */
+export const cancelAgentTest = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, testRunId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'User not authenticated' });
+      return;
+    }
+
+    // RBAC Check
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({ success: false, error: 'Workspace not found' });
+      return;
+    }
+
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+    if (!isWorkspaceCreator) {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({ success: false, error: "You don't have permission to cancel tests" });
+        return;
+      }
+    }
+
+    // Find and abort the test run
+    const controller = activeTestRuns.get(testRunId);
+
+    if (controller) {
+      controller.abort();
+      activeTestRuns.delete(testRunId);
+      res.json({ success: true, cancelled: true, testRunId });
+    } else {
+      res.status(404).json({
+        success: false,
+        error: 'Test run not found or already completed',
+        testRunId
+      });
+    }
+  } catch (error: any) {
+    console.error('Error cancelling test:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to cancel test'
+    });
+  }
+};
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId/compare-to-test
+ * @desc Compare live execution to its linked test run (Story 2.7)
+ * @access Private (requires authentication, workspace access)
+ *
+ * Story 2.7: Compare Test vs Live Results
+ * - AC1: Side-by-side comparison view
+ * - AC2: Email prediction accuracy
+ * - AC3: Contact count accuracy
+ * - AC4: Conditional logic consistency
+ * - AC5: Mismatch detection and warning
+ * - AC7: Stale data warning
+ */
+export const compareExecutionToTest = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId, executionId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'User not authenticated' });
+      return;
+    }
+
+    // RBAC check
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({ success: false, error: 'Workspace not found' });
+      return;
+    }
+
+    // Find execution with workspace isolation
+    const execution = await AgentExecution.findOne({
+      executionId,
+      agent: agentId,
+      workspace: workspaceId,
+    });
+
+    if (!execution) {
+      res.status(404).json({ success: false, error: 'Execution not found' });
+      return;
+    }
+
+    if (!execution.linkedTestRunId) {
+      res.status(400).json({
+        success: false,
+        error: 'No linked test run found for this execution',
+      });
+      return;
+    }
+
+    const comparison = await ExecutionComparisonService.compareTestToLive(
+      execution.linkedTestRunId,
+      executionId
+    );
+
+    // Store comparison result in execution record
+    await ExecutionComparisonService.storeComparisonResult(executionId, comparison);
+
+    res.json({ success: true, comparison });
+  } catch (error: any) {
+    console.error('Error comparing execution to test:', error);
+    res.status(500).json({ success: false, error: 'Failed to compare execution' });
+  }
+};
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/accuracy
+ * @desc Get agent test prediction accuracy metric (Story 2.7)
+ * @access Private (requires authentication, workspace access)
+ *
+ * Story 2.7: Accuracy Metric Tracking
+ * - AC6: Accuracy metric tracking (NFR36: 95% target)
+ * - AC8: System alert for degraded accuracy (below 90%)
+ */
+export const getAgentAccuracy = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'User not authenticated' });
+      return;
+    }
+
+    // RBAC check
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({ success: false, error: 'Workspace not found' });
+      return;
+    }
+
+    const accuracy = await ExecutionComparisonService.calculateAgentAccuracy(
+      agentId,
+      workspaceId
+    );
+
+    res.json({
+      success: true,
+      accuracy,
+    });
+  } catch (error: any) {
+    console.error('Error getting agent accuracy:', error);
+    res.status(500).json({ success: false, error: 'Failed to get accuracy' });
   }
 };
 

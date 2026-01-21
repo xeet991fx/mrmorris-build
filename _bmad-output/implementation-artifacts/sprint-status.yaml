@@ -62,13 +62,13 @@ development_status:
   2-3-step-by-step-execution-preview: done
   2-4-validate-instructions: in-progress
   2-5-show-execution-estimates: done
-  2-6-test-result-performance: backlog
-  2-7-compare-test-vs-live-results: backlog
+  2-6-test-result-performance: done
+  2-7-compare-test-vs-live-results: in-progress
   epic-2-retrospective: optional
 
   # Epic 3: Live Agent Execution (15 stories)
-  epic-3: backlog
-  3-1-parse-and-execute-instructions: backlog
+  epic-3: in-progress
+  3-1-parse-and-execute-instructions: ready-for-dev
   3-2-manual-trigger-execution: backlog
   3-3-scheduled-trigger-execution: backlog
   3-4-event-based-trigger-execution: backlog

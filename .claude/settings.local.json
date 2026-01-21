@@ -99,7 +99,11 @@
       "Bash(npx jest:*)",
       "Bash(git -C \"C:/app/morrisB\" status:*)",
       "Bash(git -C \"C:/app/morrisB\" diff:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(npm run test:backend:*)",
+      "Bash(script -c:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []

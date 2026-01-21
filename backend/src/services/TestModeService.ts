@@ -1,11 +1,25 @@
 /**
- * TestModeService.ts - Story 2.1, 2.2, 2.3: Test Mode with Enhanced Step Previews
+ * TestModeService.ts - Story 2.1, 2.2, 2.3, 2.6: Test Mode with Enhanced Step Previews
  *
  * Simulates agent execution without performing real actions (DRY RUN).
  * Returns step-by-step results with rich previews for each action type.
+ * Story 2.6: Performance optimizations - timeout, caching, query limits.
  */
 
 import Agent from '../models/Agent';
+import AgentTestRun from '../models/AgentTestRun';
+import {
+  getCachedWebSearch,
+  setCachedWebSearch,
+  recordCacheHit,
+  recordCacheMiss,
+} from '../utils/testModeCache';
+
+// =============================================================================
+// Story 2.6: PERFORMANCE CONSTANTS
+// =============================================================================
+const TEST_TIMEOUT_MS = 30000;          // 30 second max execution (AC7)
+const TEST_MODE_RECORD_LIMIT = 100;     // Max records in test mode queries (AC4)
 import Contact from '../models/Contact';
 import Opportunity from '../models/Opportunity';
 import InstructionValidationService from './InstructionValidationService';
@@ -40,6 +54,9 @@ export interface SearchPreview {
     company?: string;
   }>;
   hasMore: boolean;
+  // Story 2.6 AC4: Query limiting fields
+  isLimited?: boolean;            // True when results limited to TEST_MODE_RECORD_LIMIT
+  limitNote?: string;             // User-facing message about limit
 }
 
 export interface EmailPreview {
@@ -148,6 +165,9 @@ export interface WebSearchPreview {
   type: 'web_search';
   query: string;
   isDryRun: true;
+  // Story 2.6 AC5: Cache information
+  cachedAt?: string;            // ISO timestamp when result was cached
+  fromCache?: boolean;          // True if result came from cache
 }
 
 export type StepPreview =
@@ -201,6 +221,12 @@ export interface TestRunResult {
   }>;
   failedAtStep?: number;
   estimates?: ExecutionEstimate;  // Story 2.5: Enhanced execution estimates
+  // Story 2.6: Performance tracking fields
+  timedOut?: boolean;             // AC7: True if test exceeded 30s timeout
+  fromCache?: boolean;            // AC6: True if instruction parsing used cache
+  executionTimeMs?: number;       // Actual execution time in milliseconds
+  // Story 2.7: Test run persistence for comparison
+  testRunId?: string;             // Unique ID for comparing test vs live results
 }
 
 interface TestContext {
@@ -717,7 +743,9 @@ async function simulateSearchAction(
   const resolvedValue = resolveVariables(String(value || ''), context);
 
   let matchedCount = 0;
+  let totalCount = 0;  // Story 2.6: Track actual total for limit detection
   let matches: Array<{ id: string; name: string; subtitle: string; company?: string }> = [];
+  let isLimited = false;  // Story 2.6 AC4: Track if query was limited
 
   try {
     // Build query based on parameters
@@ -731,13 +759,17 @@ async function simulateSearchAction(
     }
 
     if (target === 'contacts' || target === 'contact') {
+      // Story 2.6 AC4: Apply TEST_MODE_RECORD_LIMIT to queries
       const results = await Contact.find(query)
-        .limit(6)
+        .limit(TEST_MODE_RECORD_LIMIT + 1)  // Fetch one extra to detect if there are more
         .select('_id firstName lastName title company')
         .populate('company', 'name')
         .lean();
 
-      matchedCount = await Contact.countDocuments(query);
+      totalCount = await Contact.countDocuments(query);
+      matchedCount = Math.min(results.length, TEST_MODE_RECORD_LIMIT);
+      isLimited = totalCount > TEST_MODE_RECORD_LIMIT;
+
       matches = results.slice(0, 5).map((c: any) => ({
         id: c._id.toString(),
         name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown',
@@ -745,12 +777,16 @@ async function simulateSearchAction(
         company: c.company?.name,
       }));
     } else if (target === 'deals' || target === 'deal') {
+      // Story 2.6 AC4: Apply TEST_MODE_RECORD_LIMIT to queries
       const results = await Opportunity.find(query)
-        .limit(6)
+        .limit(TEST_MODE_RECORD_LIMIT + 1)  // Fetch one extra to detect if there are more
         .select('_id name value stage')
         .lean();
 
-      matchedCount = await Opportunity.countDocuments(query);
+      totalCount = await Opportunity.countDocuments(query);
+      matchedCount = Math.min(results.length, TEST_MODE_RECORD_LIMIT);
+      isLimited = totalCount > TEST_MODE_RECORD_LIMIT;
+
       matches = results.slice(0, 5).map((d: any) => ({
         id: d._id.toString(),
         name: d.name || 'Unnamed Deal',
@@ -768,11 +804,16 @@ async function simulateSearchAction(
     ];
   }
 
+  // Story 2.6 AC4: Build preview with limit information
   const preview: SearchPreview = {
     type: 'search',
     matchedCount,
     matches,
-    hasMore: matchedCount > 5,
+    hasMore: matchedCount > 5 || isLimited,
+    isLimited,
+    limitNote: isLimited
+      ? `Limited to ${TEST_MODE_RECORD_LIMIT} records in Test Mode (Live mode processes all ${totalCount})`
+      : undefined,
   };
 
   const description = field
@@ -786,14 +827,16 @@ async function simulateSearchAction(
     icon: 'search',
     status: 'success',
     preview: {
-      description,
-      details: { field, operator, value: resolvedValue, matchedCount },
+      description: isLimited ? `${description} (limited to ${TEST_MODE_RECORD_LIMIT} records)` : description,
+      details: { field, operator, value: resolvedValue, matchedCount, totalCount, isLimited },
     },
     richPreview: preview,
     isExpandable: true,
     duration: 100,
     estimatedCredits: 0,
-    note: 'DRY RUN - No data modified',
+    note: isLimited
+      ? `DRY RUN - Limited to ${TEST_MODE_RECORD_LIMIT} records (${totalCount} total available)`
+      : 'DRY RUN - No data modified',
   };
 }
 
@@ -1108,10 +1151,34 @@ async function simulateWebSearchAction(
   const { query } = action;
   const resolvedQuery = resolveVariables(query || '', context);
 
+  // Story 2.6 AC5: Check cache for previous search results
+  let fromCache = false;
+  let cachedAt: string | undefined;
+
+  const cachedResult = await getCachedWebSearch(resolvedQuery);
+  if (cachedResult) {
+    fromCache = true;
+    cachedAt = cachedResult.cachedAt;
+    recordCacheHit('websearch');
+  } else {
+    recordCacheMiss('websearch');
+    // Cache the simulated result for future requests
+    await setCachedWebSearch(resolvedQuery, {
+      query: resolvedQuery,
+      results: [
+        { title: 'Simulated Result 1', url: 'https://example.com/1', snippet: 'Sample search result...' },
+        { title: 'Simulated Result 2', url: 'https://example.com/2', snippet: 'Another search result...' },
+      ],
+      source: 'simulated',
+    });
+  }
+
   const preview: WebSearchPreview = {
     type: 'web_search',
     query: resolvedQuery,
     isDryRun: true,
+    fromCache,
+    cachedAt,
   };
 
   return {
@@ -1121,14 +1188,18 @@ async function simulateWebSearchAction(
     icon: 'web_search',
     status: 'success',
     preview: {
-      description: `Would search: "${resolvedQuery}"`,
-      details: { query: resolvedQuery },
+      description: fromCache
+        ? `Would search: "${resolvedQuery}" (cached result)`
+        : `Would search: "${resolvedQuery}"`,
+      details: { query: resolvedQuery, fromCache, cachedAt },
     },
     richPreview: preview,
     isExpandable: true,
-    duration: 300,
+    duration: fromCache ? 50 : 300,  // Faster if from cache
     estimatedCredits: 1,
-    note: 'DRY RUN - Search NOT performed',
+    note: fromCache
+      ? `DRY RUN - Using cached result from ${cachedAt}`
+      : 'DRY RUN - Search NOT performed',
   };
 }
 
@@ -1261,244 +1332,365 @@ export class TestModeService {
   /**
    * Simulates the execution of an agent without performing real actions (DRY RUN).
    * Returns step-by-step results with rich previews.
+   * Story 2.6: Added timeout handling (30s max) and execution time tracking.
    */
   static async simulateExecution(
     agentId: string,
     workspaceId: string,
-    testTarget?: { type: string; id?: string; manualData?: Record<string, any> }
+    testTarget?: { type: string; id?: string; manualData?: Record<string, any> },
+    options?: { signal?: AbortSignal }  // Story 2.6: External abort signal for cancellation
   ): Promise<TestRunResult> {
+    const startTime = Date.now();  // Story 2.6: Track execution time
     const warnings: TestRunResult['warnings'] = [];
+    let timedOut = false;
 
-    // Fetch agent with workspace isolation
-    const agent = await Agent.findOne({ _id: agentId, workspace: workspaceId });
+    // Story 2.6 AC7: Create timeout controller with 30s limit
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      timeoutController.abort();
+    }, TEST_TIMEOUT_MS);
 
-    if (!agent) {
-      return {
-        success: false,
-        error: 'Agent not found',
-        steps: [],
-        totalEstimatedCredits: 0,
-        totalEstimatedDuration: 0,
-        warnings: [],
-      };
-    }
-
-    // Story 2.4: Run instruction validation at start of test mode
-    try {
-      const validationResult = await InstructionValidationService.validateInstructions({
-        workspaceId,
-        agentId,
-        instructions: agent.instructions || '',
-        parsedActions: agent.parsedActions || [],
-        triggerType: agent.triggers?.[0]?.type,
-        restrictions: agent.restrictions,
-      });
-
-      // Add validation errors to warnings
-      for (const error of validationResult.errors) {
-        warnings.push({
-          step: 0,
-          severity: 'error',
-          message: error.message,
-          suggestion: error.suggestion,
-        });
-      }
-
-      // Add validation warnings to warnings
-      for (const warning of validationResult.warnings) {
-        warnings.push({
-          step: 0,
-          severity: 'warning',
-          message: warning.message,
-          suggestion: warning.suggestion,
-        });
-      }
-    } catch (validationError) {
-      console.error('Validation error during test mode:', validationError);
-      // Continue with test even if validation fails
-    }
-
-    const parsedActions: ParsedAction[] = agent.parsedActions || [];
-
-    // Warn if instructions exist but no parsed actions
-    if (agent.instructions && parsedActions.length === 0) {
-      warnings.push({
-        step: 0,
-        severity: 'warning',
-        message: 'Agent has instructions but no parsed actions. Instructions may need to be re-parsed.',
-        suggestion: 'Save the agent to trigger instruction parsing',
-      });
-    }
-
-    if (parsedActions.length === 0) {
-      return {
-        success: true,
-        steps: [],
-        totalEstimatedCredits: 0,
-        totalEstimatedDuration: 0,
-        warnings,
-      };
-    }
-
-    // Build test context
-    const context: TestContext = {
-      workspaceId,
-      agentId,
-      variables: {},
-      manualData: testTarget?.manualData,
+    // Combine external abort signal with timeout signal
+    const shouldAbort = () => {
+      return timeoutController.signal.aborted || options?.signal?.aborted;
     };
 
-    // Load test target data if specified
-    if (testTarget?.type === 'contact' && testTarget.id) {
+    try {
+      // Fetch agent with workspace isolation
+      const agent = await Agent.findOne({ _id: agentId, workspace: workspaceId });
+
+      if (!agent) {
+        return {
+          success: false,
+          error: 'Agent not found',
+          steps: [],
+          totalEstimatedCredits: 0,
+          totalEstimatedDuration: 0,
+          warnings: [],
+          executionTimeMs: Date.now() - startTime,
+        };
+      }
+
+      // Story 2.4: Run instruction validation at start of test mode
       try {
-        context.contact = await Contact.findOne({
-          _id: testTarget.id,
-          workspace: workspaceId,
-        }).populate('company', 'name domain').lean();
-      } catch (err) {
-        warnings.push({
-          step: 0,
-          severity: 'warning',
-          message: 'Could not load test contact',
+        const validationResult = await InstructionValidationService.validateInstructions({
+          workspaceId,
+          agentId,
+          instructions: agent.instructions || '',
+          parsedActions: agent.parsedActions || [],
+          triggerType: agent.triggers?.[0]?.type,
+          restrictions: agent.restrictions,
         });
-      }
-    } else if (testTarget?.type === 'deal' && testTarget.id) {
-      try {
-        context.deal = await Opportunity.findOne({
-          _id: testTarget.id,
-          workspace: workspaceId,
-        }).lean();
-      } catch (err) {
-        warnings.push({
-          step: 0,
-          severity: 'warning',
-          message: 'Could not load test deal',
-        });
-      }
-    }
 
-    // Execute simulation
-    const steps: TestStepResult[] = [];
-    let stepNumber = 1;
-    let hasError = false;
-    let failedAtStep: number | undefined;
-
-    for (const action of parsedActions) {
-      if (hasError) {
-        // Mark remaining steps as not_executed
-        steps.push({
-          stepNumber,
-          action: action.type || 'unknown',
-          actionLabel: getActionLabel(action.type || 'unknown'),
-          icon: getActionIcon(action.type || 'unknown'),
-          status: 'not_executed',
-          preview: {
-            description: 'Not executed due to previous error',
-          },
-          isExpandable: false,
-          duration: 0,
-          estimatedCredits: 0,
-          note: 'Skipped - previous step failed',
-          skipReason: `Execution stopped at step ${failedAtStep} due to error`,
-        });
-        stepNumber++;
-        continue;
-      }
-
-      const result = await simulateAction(action, context, stepNumber);
-      steps.push(result);
-
-      if (result.status === 'error') {
-        hasError = true;
-        failedAtStep = stepNumber;
-        warnings.push({
-          step: stepNumber,
-          severity: 'error',
-          message: result.preview.description,
-          suggestion: result.suggestions?.[0],
-        });
-      }
-
-      // Handle conditional logic - mark skipped steps
-      if (action.type === 'conditional' || action.type === 'if') {
-        const conditionResult = result.conditionResult;
-        const trueBranch = action.trueBranch || [];
-        const falseBranch = action.falseBranch || [];
-
-        // Process the appropriate branch
-        const activeBranch = conditionResult ? trueBranch : falseBranch;
-        const skippedBranch = conditionResult ? falseBranch : trueBranch;
-        const skipReason = conditionResult
-          ? 'Skipped - condition evaluated to TRUE'
-          : 'Skipped - condition evaluated to FALSE';
-
-        // Execute active branch
-        for (const branchAction of activeBranch) {
-          stepNumber++;
-          if (hasError) {
-            steps.push({
-              stepNumber,
-              action: branchAction.type || 'unknown',
-              actionLabel: getActionLabel(branchAction.type || 'unknown'),
-              icon: getActionIcon(branchAction.type || 'unknown'),
-              status: 'not_executed',
-              preview: { description: 'Not executed due to previous error' },
-              isExpandable: false,
-              duration: 0,
-              estimatedCredits: 0,
-              note: 'Skipped - previous step failed',
-              skipReason: `Execution stopped at step ${failedAtStep} due to error`,
-            });
-          } else {
-            const branchResult = await simulateAction(branchAction, context, stepNumber);
-            steps.push(branchResult);
-            if (branchResult.status === 'error') {
-              hasError = true;
-              failedAtStep = stepNumber;
-            }
-          }
+        // Add validation errors to warnings
+        for (const error of validationResult.errors) {
+          warnings.push({
+            step: 0,
+            severity: 'error',
+            message: error.message,
+            suggestion: error.suggestion,
+          });
         }
 
-        // Mark skipped branch
-        for (const skippedAction of skippedBranch) {
-          stepNumber++;
-          steps.push({
-            stepNumber,
-            action: skippedAction.type || 'unknown',
-            actionLabel: getActionLabel(skippedAction.type || 'unknown'),
-            icon: getActionIcon(skippedAction.type || 'unknown'),
-            status: 'skipped',
-            preview: {
-              description: `Would ${getActionLabel(skippedAction.type || 'unknown').toLowerCase()}`,
-            },
-            isExpandable: false,
-            duration: 0,
-            estimatedCredits: 0,
-            note: 'Skipped due to condition',
-            skipReason,
+        // Add validation warnings to warnings
+        for (const warning of validationResult.warnings) {
+          warnings.push({
+            step: 0,
+            severity: 'warning',
+            message: warning.message,
+            suggestion: warning.suggestion,
+          });
+        }
+      } catch (validationError) {
+        console.error('Validation error during test mode:', validationError);
+        // Continue with test even if validation fails
+      }
+
+      const parsedActions: ParsedAction[] = agent.parsedActions || [];
+
+      // Warn if instructions exist but no parsed actions
+      if (agent.instructions && parsedActions.length === 0) {
+        warnings.push({
+          step: 0,
+          severity: 'warning',
+          message: 'Agent has instructions but no parsed actions. Instructions may need to be re-parsed.',
+          suggestion: 'Save the agent to trigger instruction parsing',
+        });
+      }
+
+      if (parsedActions.length === 0) {
+        return {
+          success: true,
+          steps: [],
+          totalEstimatedCredits: 0,
+          totalEstimatedDuration: 0,
+          warnings,
+          executionTimeMs: Date.now() - startTime,
+        };
+      }
+
+      // Build test context
+      const context: TestContext = {
+        workspaceId,
+        agentId,
+        variables: {},
+        manualData: testTarget?.manualData,
+      };
+
+      // Load test target data if specified
+      if (testTarget?.type === 'contact' && testTarget.id) {
+        try {
+          context.contact = await Contact.findOne({
+            _id: testTarget.id,
+            workspace: workspaceId,
+          }).populate('company', 'name domain').lean();
+        } catch (err) {
+          warnings.push({
+            step: 0,
+            severity: 'warning',
+            message: 'Could not load test contact',
+          });
+        }
+      } else if (testTarget?.type === 'deal' && testTarget.id) {
+        try {
+          context.deal = await Opportunity.findOne({
+            _id: testTarget.id,
+            workspace: workspaceId,
+          }).lean();
+        } catch (err) {
+          warnings.push({
+            step: 0,
+            severity: 'warning',
+            message: 'Could not load test deal',
           });
         }
       }
 
-      stepNumber++;
+      // Execute simulation with timeout checking
+      const steps: TestStepResult[] = [];
+      let stepNumber = 1;
+      let hasError = false;
+      let failedAtStep: number | undefined;
+
+      for (const action of parsedActions) {
+        // Story 2.6 AC7: Check for timeout before each step
+        if (shouldAbort()) {
+          timedOut = timeoutController.signal.aborted;
+          // Mark remaining steps as not_executed due to timeout
+          steps.push({
+            stepNumber,
+            action: action.type || 'unknown',
+            actionLabel: getActionLabel(action.type || 'unknown'),
+            icon: getActionIcon(action.type || 'unknown'),
+            status: 'not_executed',
+            preview: {
+              description: timedOut ? 'Not executed - test timed out' : 'Not executed - test cancelled',
+            },
+            isExpandable: false,
+            duration: 0,
+            estimatedCredits: 0,
+            note: timedOut ? 'Timed out after 30 seconds' : 'Test cancelled by user',
+            skipReason: timedOut
+              ? 'Test timed out after 30 seconds'
+              : 'Test cancelled',
+          });
+          stepNumber++;
+          continue;
+        }
+
+        if (hasError) {
+          // Mark remaining steps as not_executed
+          steps.push({
+            stepNumber,
+            action: action.type || 'unknown',
+            actionLabel: getActionLabel(action.type || 'unknown'),
+            icon: getActionIcon(action.type || 'unknown'),
+            status: 'not_executed',
+            preview: {
+              description: 'Not executed due to previous error',
+            },
+            isExpandable: false,
+            duration: 0,
+            estimatedCredits: 0,
+            note: 'Skipped - previous step failed',
+            skipReason: `Execution stopped at step ${failedAtStep} due to error`,
+          });
+          stepNumber++;
+          continue;
+        }
+
+        const result = await simulateAction(action, context, stepNumber);
+        steps.push(result);
+
+        if (result.status === 'error') {
+          hasError = true;
+          failedAtStep = stepNumber;
+          warnings.push({
+            step: stepNumber,
+            severity: 'error',
+            message: result.preview.description,
+            suggestion: result.suggestions?.[0],
+          });
+        }
+
+        // Handle conditional logic - mark skipped steps
+        if (action.type === 'conditional' || action.type === 'if') {
+          const conditionResult = result.conditionResult;
+          const trueBranch = action.trueBranch || [];
+          const falseBranch = action.falseBranch || [];
+
+          // Process the appropriate branch
+          const activeBranch = conditionResult ? trueBranch : falseBranch;
+          const skippedBranch = conditionResult ? falseBranch : trueBranch;
+          const skipReason = conditionResult
+            ? 'Skipped - condition evaluated to TRUE'
+            : 'Skipped - condition evaluated to FALSE';
+
+          // Execute active branch
+          for (const branchAction of activeBranch) {
+            stepNumber++;
+
+            // Story 2.6: Check timeout before each branch step
+            if (shouldAbort()) {
+              timedOut = timeoutController.signal.aborted;
+              steps.push({
+                stepNumber,
+                action: branchAction.type || 'unknown',
+                actionLabel: getActionLabel(branchAction.type || 'unknown'),
+                icon: getActionIcon(branchAction.type || 'unknown'),
+                status: 'not_executed',
+                preview: { description: timedOut ? 'Not executed - test timed out' : 'Not executed - test cancelled' },
+                isExpandable: false,
+                duration: 0,
+                estimatedCredits: 0,
+                note: timedOut ? 'Timed out after 30 seconds' : 'Test cancelled',
+              });
+              continue;
+            }
+
+            if (hasError) {
+              steps.push({
+                stepNumber,
+                action: branchAction.type || 'unknown',
+                actionLabel: getActionLabel(branchAction.type || 'unknown'),
+                icon: getActionIcon(branchAction.type || 'unknown'),
+                status: 'not_executed',
+                preview: { description: 'Not executed due to previous error' },
+                isExpandable: false,
+                duration: 0,
+                estimatedCredits: 0,
+                note: 'Skipped - previous step failed',
+                skipReason: `Execution stopped at step ${failedAtStep} due to error`,
+              });
+            } else {
+              const branchResult = await simulateAction(branchAction, context, stepNumber);
+              steps.push(branchResult);
+              if (branchResult.status === 'error') {
+                hasError = true;
+                failedAtStep = stepNumber;
+              }
+            }
+          }
+
+          // Mark skipped branch
+          for (const skippedAction of skippedBranch) {
+            stepNumber++;
+            steps.push({
+              stepNumber,
+              action: skippedAction.type || 'unknown',
+              actionLabel: getActionLabel(skippedAction.type || 'unknown'),
+              icon: getActionIcon(skippedAction.type || 'unknown'),
+              status: 'skipped',
+              preview: {
+                description: `Would ${getActionLabel(skippedAction.type || 'unknown').toLowerCase()}`,
+              },
+              isExpandable: false,
+              duration: 0,
+              estimatedCredits: 0,
+              note: 'Skipped due to condition',
+              skipReason,
+            });
+          }
+        }
+
+        stepNumber++;
+      }
+
+      // Calculate totals
+      const totalEstimatedCredits = steps.reduce((sum, s) => sum + (s.estimatedCredits || 0), 0);
+      const totalEstimatedDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
+      const executionTimeMs = Date.now() - startTime;
+
+      // Story 2.5: Calculate enhanced execution estimates
+      const estimates = calculateExecutionEstimates(steps, agent);
+
+      // Story 2.7: Persist test run for comparison with live execution
+      let testRunId: string | undefined;
+      try {
+        testRunId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        await AgentTestRun.create({
+          testRunId,
+          agent: agentId,
+          workspace: workspaceId,
+          testTarget: testTarget ? {
+            type: testTarget.type as 'contact' | 'deal' | 'none',
+            id: testTarget.id,
+            snapshotData: context.contact || context.deal || undefined,
+          } : undefined,
+          steps: steps.map((step) => ({
+            stepNumber: step.stepNumber,
+            action: step.action,
+            prediction: {
+              targetCount: step.richPreview && 'matchedCount' in step.richPreview
+                ? (step.richPreview as SearchPreview).matchedCount
+                : step.richPreview && 'targetCount' in step.richPreview
+                  ? (step.richPreview as TagPreview | UpdatePreview | EnrichPreview).targetCount
+                  : undefined,
+              recipients: step.richPreview && 'recipient' in step.richPreview
+                ? [(step.richPreview as EmailPreview | LinkedInPreview).recipient]
+                : undefined,
+              conditionResult: step.conditionResult,
+              fieldUpdates: step.richPreview && 'newValue' in step.richPreview
+                ? { [(step.richPreview as UpdatePreview).fieldName]: (step.richPreview as UpdatePreview).newValue }
+                : undefined,
+              description: step.preview.description,
+            },
+            status: step.status === 'not_executed' ? 'skipped' : step.status,
+          })),
+          summary: {
+            totalSteps: steps.length,
+            successfulSteps: steps.filter((s) => s.status === 'success').length,
+            estimatedCredits: totalEstimatedCredits,
+            estimatedDurationMs: totalEstimatedDuration,
+          },
+        });
+      } catch (persistError) {
+        console.error('Failed to persist test run:', persistError);
+        // Continue without testRunId - non-critical failure
+      }
+
+      return {
+        success: !hasError && !timedOut,
+        steps,
+        totalEstimatedCredits,
+        totalEstimatedDuration,
+        warnings,
+        failedAtStep,
+        estimates,  // Story 2.5: Enhanced execution estimates
+        // Story 2.6: Performance tracking
+        timedOut,
+        executionTimeMs,
+        error: timedOut
+          ? 'Test timed out after 30 seconds. Simplify instructions or break into multiple agents.'
+          : undefined,
+        // Story 2.7: Test run ID for comparison
+        testRunId,
+      };
+    } finally {
+      // Clean up timeout
+      clearTimeout(timeoutId);
     }
-
-    // Calculate totals
-    const totalEstimatedCredits = steps.reduce((sum, s) => sum + (s.estimatedCredits || 0), 0);
-    const totalEstimatedDuration = steps.reduce((sum, s) => sum + (s.duration || 0), 0);
-
-    // Story 2.5: Calculate enhanced execution estimates
-    const estimates = calculateExecutionEstimates(steps, agent);
-
-    return {
-      success: !hasError,
-      steps,
-      totalEstimatedCredits,
-      totalEstimatedDuration,
-      warnings,
-      failedAtStep,
-      estimates,  // Story 2.5: Enhanced execution estimates
-    };
   }
 }
 

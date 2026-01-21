@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * TestModePanel - Story 2.1, 2.2, 2.3 & 2.5: Test Mode with Enhanced Previews
+ * TestModePanel - Story 2.1, 2.2, 2.3, 2.5 & 2.6: Test Mode with Enhanced Previews
  *
  * A sliding panel that allows users to test their agent in dry-run mode.
  * - AC1: Opens from right side with "Run Test" button
@@ -21,6 +21,11 @@
  * - ExecutionEstimatesPanel with credit/time breakdown
  * - Previous test comparison
  * - Scheduled agent projections
+ *
+ * Story 2.6:
+ * - AC1: Loading indicator with elapsed time
+ * - AC2: Progressive streaming display using SSE
+ * - AC3: Cancel button and "taking longer" warning
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
@@ -37,8 +42,10 @@ import { TestSummaryBanner } from './TestSummaryBanner';
 import { TestTargetSelector } from './TestTargetSelector';
 import { ManualTestDataInput } from './ManualTestDataInput';
 import { ExecutionEstimatesPanel } from './ExecutionEstimatesPanel';
-import { testAgent } from '@/lib/api/agents';
-import { TestRunResponse, TestTarget, ITriggerConfig, StoredEstimate } from '@/types/agent';
+import { TestProgressIndicator } from './TestProgressIndicator';
+import { TestStepSkeleton } from './TestStepSkeleton';
+import { useTestModeStreaming } from '@/hooks/useTestModeStreaming';
+import { TestTarget, ITriggerConfig, StoredEstimate } from '@/types/agent';
 import { saveTestEstimate, getPreviousEstimate } from '@/lib/utils/testEstimatesStorage';
 import { toast } from 'sonner';
 import {
@@ -68,14 +75,52 @@ export function TestModePanel({
   instructions,
   triggers,
 }: TestModePanelProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [testResult, setTestResult] = useState<TestRunResponse | null>(null);
-  const [testError, setTestError] = useState<string | null>(null);
   // Story 2.2: Test target state
   const [testTarget, setTestTarget] = useState<TestTarget | null>(null);
   const [manualData, setManualData] = useState<Record<string, any>>({});
   // Story 2.5: Previous estimates for comparison
   const [previousEstimates, setPreviousEstimates] = useState<StoredEstimate | null>(null);
+  // Story 2.6: Cancellation state
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Story 2.6: Use streaming hook for progressive display
+  const {
+    steps,
+    isRunning,
+    progress,
+    result,
+    error: streamError,
+    elapsedTimeMs,
+    startTest,
+    cancelTest,
+    reset: resetStreaming,
+  } = useTestModeStreaming({
+    agentId,
+    workspaceId,
+    onComplete: (streamResult) => {
+      // Story 2.5: Save estimates for future comparison
+      if (streamResult.estimates) {
+        saveTestEstimate(agentId, {
+          time: streamResult.estimates.activeTimeMs,
+          credits: streamResult.estimates.totalCredits,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (streamResult.success) {
+        if (steps.length === 0) {
+          toast.info('No actions to simulate - agent has no parsed actions');
+        } else {
+          toast.success(`Test completed: ${steps.length} step${steps.length !== 1 ? 's' : ''} simulated`);
+        }
+      } else if (streamResult.error) {
+        toast.error(streamResult.error);
+      }
+    },
+    onError: (errorMessage) => {
+      toast.error(errorMessage);
+    },
+  });
 
   // Story 2.5: Load previous estimates on mount
   useEffect(() => {
@@ -120,67 +165,55 @@ export function TestModePanel({
     return !!testTarget.id;
   }, [hasInstructions, targetRequired, testTarget, manualData]);
 
-  const handleRunTest = useCallback(async () => {
-    setIsLoading(true);
-    setTestError(null);
-    setTestResult(null);
+  // Story 2.6: Calculate remaining steps for skeleton display
+  const remainingSteps = useMemo(() => {
+    if (!progress || !progress.total) return 0;
+    return progress.total - progress.current;
+  }, [progress]);
 
-    try {
-      // Story 2.2: Build test target with optional manual data
-      let targetToSend: TestTarget | undefined;
-      if (testTarget) {
-        if (testTarget.type === 'none') {
-          // Manual mode - include manual data
-          targetToSend = {
-            type: 'none',
-            manualData: Object.keys(manualData).length > 0 ? manualData : undefined,
-          };
-        } else {
-          targetToSend = testTarget;
-        }
+  const handleRunTest = useCallback(() => {
+    // Build target IDs and type for streaming endpoint
+    let targetIds: string[] | undefined;
+    let targetType: 'contact' | 'deal' | undefined;
+
+    if (testTarget) {
+      if (testTarget.type === 'contact' && testTarget.id) {
+        targetIds = [testTarget.id];
+        targetType = 'contact';
+      } else if (testTarget.type === 'deal' && testTarget.id) {
+        targetIds = [testTarget.id];
+        targetType = 'deal';
       }
-
-      const result = await testAgent(workspaceId, agentId, targetToSend ? { testTarget: targetToSend } : undefined);
-      setTestResult(result);
-
-      // Story 2.5: Save estimates for future comparison
-      if (result.estimates) {
-        saveTestEstimate(agentId, {
-          time: result.estimates.activeTimeMs,
-          credits: result.estimates.totalCredits,
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      if (result.success) {
-        if (result.steps.length === 0) {
-          toast.info('No actions to simulate - agent has no parsed actions');
-        } else {
-          toast.success(`Test completed: ${result.steps.length} step${result.steps.length !== 1 ? 's' : ''} simulated`);
-        }
-      } else {
-        toast.error(result.error || 'Test failed');
-      }
-    } catch (error: any) {
-      console.error('Test mode error:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to run test';
-      setTestError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
-  }, [workspaceId, agentId, testTarget, manualData]);
+
+    // Start streaming test
+    startTest(targetIds, targetType);
+  }, [testTarget, startTest]);
+
+  // Story 2.6: Handle cancel
+  const handleCancel = useCallback(async () => {
+    setIsCancelling(true);
+    try {
+      await cancelTest();
+      toast.info('Test cancelled');
+    } finally {
+      setIsCancelling(false);
+    }
+  }, [cancelTest]);
 
   const handleClose = useCallback(() => {
     onOpenChange(false);
     // Reset state when closing
     setTimeout(() => {
-      setTestResult(null);
-      setTestError(null);
+      resetStreaming();
       setTestTarget(null);
       setManualData({});
+      setIsCancelling(false);
     }, 300); // Wait for close animation
-  }, [onOpenChange]);
+  }, [onOpenChange, resetStreaming]);
+
+  // Combine streaming error with result error for display
+  const testError = streamError || (result && !result.success ? result.error : null);
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
@@ -236,7 +269,7 @@ export function TestModePanel({
                 workspaceId={workspaceId}
                 value={testTarget}
                 onChange={setTestTarget}
-                disabled={isLoading}
+                disabled={isRunning}
                 defaultType={defaultTargetType}
               />
 
@@ -245,7 +278,7 @@ export function TestModePanel({
                 <ManualTestDataInput
                   value={manualData}
                   onChange={setManualData}
-                  disabled={isLoading}
+                  disabled={isRunning}
                   instructions={instructions}
                 />
               )}
@@ -265,12 +298,12 @@ export function TestModePanel({
           {/* Run Test Button (AC1) */}
           <Button
             onClick={handleRunTest}
-            disabled={isLoading || !canRunTest}
+            disabled={isRunning || !canRunTest}
             className="w-full"
             size="lg"
             data-testid="run-test-button"
           >
-            {isLoading ? (
+            {isRunning ? (
               <>
                 <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
                 Running Test...
@@ -283,8 +316,36 @@ export function TestModePanel({
             )}
           </Button>
 
+          {/* Story 2.6: Progress Indicator with cancel button */}
+          {isRunning && progress && (
+            <TestProgressIndicator
+              current={progress.current}
+              total={progress.total}
+              elapsedTimeMs={elapsedTimeMs}
+              isRunning={isRunning}
+              onCancel={handleCancel}
+              isCancelling={isCancelling}
+            />
+          )}
+
+          {/* Story 2.6: Progressive step display during streaming */}
+          {isRunning && steps.length > 0 && (
+            <div className="space-y-4">
+              {/* Show completed steps so far */}
+              <TestResultsList steps={steps} />
+
+              {/* Show skeleton for remaining steps */}
+              {remainingSteps > 0 && (
+                <TestStepSkeleton
+                  count={Math.min(remainingSteps, 3)}
+                  startingStep={steps.length + 1}
+                />
+              )}
+            </div>
+          )}
+
           {/* Error Display (AC5) */}
-          {testError && (
+          {testError && !isRunning && (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <div className="flex items-start gap-3">
                 <ExclamationTriangleIcon className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -297,28 +358,38 @@ export function TestModePanel({
           )}
 
           {/* Test Results (Story 2.3: Enhanced step-by-step preview) */}
-          {testResult && (
+          {result && !isRunning && (
             <div className="space-y-4">
               {/* Summary Banner */}
               <TestSummaryBanner
-                steps={testResult.steps}
-                executionTime={testResult.totalEstimatedDuration}
-                totalCredits={testResult.totalEstimatedCredits}
+                steps={steps}
+                executionTime={result.totalEstimatedDuration}
+                totalCredits={result.totalEstimatedCredits}
               />
 
+              {/* Story 2.6: Timeout indicator */}
+              {result.timedOut && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <ExclamationTriangleIcon className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Test timed out after 30 seconds. Showing partial results.
+                  </p>
+                </div>
+              )}
+
               {/* Story 2.5: Execution Estimates Panel */}
-              {testResult.estimates && (
+              {result.estimates && (
                 <ExecutionEstimatesPanel
-                  estimates={testResult.estimates}
+                  estimates={result.estimates}
                   previousEstimates={previousEstimates}
                   showProjections={triggers?.some(t => t.type === 'scheduled')}
                 />
               )}
 
               {/* Warnings */}
-              {testResult.warnings.length > 0 && (
+              {result.warnings.length > 0 && (
                 <div className="space-y-2">
-                  {testResult.warnings.map((warning, index) => (
+                  {result.warnings.map((warning, index) => (
                     <div
                       key={index}
                       className={`flex items-start gap-3 p-3 rounded-lg ${warning.severity === 'error'
@@ -356,7 +427,7 @@ export function TestModePanel({
               )}
 
               {/* Step-by-Step Results */}
-              <TestResultsList steps={testResult.steps} />
+              <TestResultsList steps={steps} />
             </div>
           )}
         </div>
