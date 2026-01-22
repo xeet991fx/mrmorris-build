@@ -89,7 +89,6 @@ export function useAgentExecution({
     });
 
     newSocket.on('connect', () => {
-      console.log('Connected to agent execution socket');
       setIsConnected(true);
 
       // Join workspace room
@@ -102,32 +101,27 @@ export function useAgentExecution({
     });
 
     newSocket.on('disconnect', () => {
-      console.log('Disconnected from agent execution socket');
       setIsConnected(false);
     });
 
     // Event listeners
     newSocket.on('execution:started', (event: ExecutionStartedEvent) => {
-      console.log('Execution started:', event);
       setCurrentExecution(event);
       onStarted?.(event);
     });
 
     newSocket.on('execution:progress', (event: ExecutionProgressEvent) => {
-      console.log('Execution progress:', event);
       setProgress(event);
       onProgress?.(event);
     });
 
     newSocket.on('execution:completed', (event: ExecutionCompletedEvent) => {
-      console.log('Execution completed:', event);
       setCurrentExecution(null);
       setProgress(null);
       onCompleted?.(event);
     });
 
     newSocket.on('execution:failed', (event: ExecutionFailedEvent) => {
-      console.log('Execution failed:', event);
       setCurrentExecution(null);
       setProgress(null);
       onFailed?.(event);

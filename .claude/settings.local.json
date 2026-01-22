@@ -103,7 +103,8 @@
       "Bash(npm run test:backend:*)",
       "Bash(script -c:*)",
       "Bash(npx vitest run:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(git -C \"C:/app/morrisB\" status --porcelain)"
     ],
     "deny": [],
     "ask": []

@@ -35,8 +35,6 @@ export function initializeAgentExecutionSocket(httpServer: HTTPServer): SocketIO
   agentExecutionNamespace = io.of('/agent-execution');
 
   agentExecutionNamespace.on('connection', (socket) => {
-    console.log(`✅ Agent execution client connected: ${socket.id}`);
-
     /**
      * Join workspace room for agent execution updates
      * Room format: workspace:${workspaceId}:agent:${agentId}
@@ -44,7 +42,6 @@ export function initializeAgentExecutionSocket(httpServer: HTTPServer): SocketIO
     socket.on('join', (data: { workspaceId: string; agentId: string }) => {
       const room = `workspace:${data.workspaceId}:agent:${data.agentId}`;
       socket.join(room);
-      console.log(`Client joined agent execution room: ${room}`);
     });
 
     /**
@@ -54,7 +51,6 @@ export function initializeAgentExecutionSocket(httpServer: HTTPServer): SocketIO
     socket.on('join:workspace', (data: { workspaceId: string }) => {
       const room = `workspace:${data.workspaceId}`;
       socket.join(room);
-      console.log(`Client joined workspace execution room: ${room}`);
     });
 
     /**
@@ -63,15 +59,12 @@ export function initializeAgentExecutionSocket(httpServer: HTTPServer): SocketIO
     socket.on('leave', (data: { workspaceId: string; agentId: string }) => {
       const room = `workspace:${data.workspaceId}:agent:${data.agentId}`;
       socket.leave(room);
-      console.log(`Client left agent execution room: ${room}`);
     });
 
     socket.on('disconnect', () => {
-      console.log(`❌ Agent execution client disconnected: ${socket.id}`);
+      // Client disconnected - cleanup handled automatically by socket.io
     });
   });
-
-  console.log('🚀 Agent Execution Socket.IO initialized');
 
   return io;
 }

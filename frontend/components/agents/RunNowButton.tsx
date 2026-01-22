@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Play, Loader2, AlertCircle, ExternalLink, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { triggerAgent, TriggerAgentInput } from '@/lib/api/agents';
 import { IAgent } from '@/types/agent';
+import { useAgentExecution } from '@/hooks/useAgentExecution';
 
 /**
  * Story 3.2: RunNowButton Component
@@ -38,15 +39,91 @@ export function RunNowButton({
 }: RunNowButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
+  const lastTargetRef = useRef<TriggerAgentInput['target']>(target);
 
   // Check if agent can be triggered (Live or Draft only)
   const canTrigger = agent.status === 'Live' || agent.status === 'Draft';
+
+  // Story 3.2 AC3/AC4: Handle execution result with proper messages
+  const handleExecutionResult = useCallback((
+    executionId: string,
+    success: boolean,
+    processedCount?: number,
+    errorMessage?: string
+  ) => {
+    toast.dismiss(`execution-${executionId}`);
+    setIsLoading(false);
+
+    if (success) {
+      // Story 3.2 AC3: Success completion feedback with processed count
+      toast.success('Agent completed successfully', {
+        description: `Processed ${processedCount ?? 0} contacts.`,
+        action: {
+          label: 'View Execution Log',
+          onClick: () => {
+            window.location.href = `/projects/${workspaceId}/agents/${agent._id}/executions/${executionId}`;
+          },
+        },
+      });
+    } else {
+      // Story 3.2 AC4: Failure handling with View Error Log AND Retry actions
+      toast.error('Agent execution failed', {
+        description: errorMessage || 'Check the execution log for details',
+        action: {
+          label: 'View Error Log',
+          onClick: () => {
+            window.location.href = `/projects/${workspaceId}/agents/${agent._id}/executions/${executionId}`;
+          },
+        },
+      });
+      // Show separate retry toast action
+      toast('Retry available', {
+        description: 'Click to retry the execution',
+        action: {
+          label: 'Retry Execution',
+          onClick: () => {
+            handleTrigger();
+          },
+        },
+        duration: 10000,
+      });
+    }
+
+    onExecutionCompleted?.({ success, executionId });
+    setCurrentExecutionId(null);
+  }, [workspaceId, agent._id, onExecutionCompleted]);
+
+  // Story 3.2: Connect to Socket.io for real-time execution updates
+  useAgentExecution({
+    workspaceId,
+    agentId: agent._id,
+    onCompleted: (event) => {
+      if (currentExecutionId === event.executionId) {
+        handleExecutionResult(
+          event.executionId,
+          true,
+          event.processedCount
+        );
+      }
+    },
+    onFailed: (event) => {
+      if (currentExecutionId === event.executionId) {
+        handleExecutionResult(
+          event.executionId,
+          false,
+          undefined,
+          event.error
+        );
+      }
+    },
+  });
 
   const handleTrigger = async () => {
     if (!canTrigger || isLoading) return;
 
     setIsLoading(true);
     setCurrentExecutionId(null);
+    lastTargetRef.current = target;
 
     try {
       const response = await triggerAgent(workspaceId, agent._id, {
@@ -64,11 +141,17 @@ export function RunNowButton({
 
       // If execution completed quickly (synchronous case), show result immediately
       if (response.status === 'completed' || response.status === 'failed') {
-        handleExecutionResult(response.executionId, response.result?.success ?? false, response.result?.error);
+        handleExecutionResult(
+          response.executionId,
+          response.result?.success ?? false,
+          undefined,
+          response.result?.error
+        );
       }
       // Otherwise, socket.io will handle the completion notification
 
     } catch (error: any) {
+      setIsLoading(false);
       // Story 3.2 AC5: Handle already running case
       if (error.isConflict) {
         toast.error('Agent is already running', {
@@ -86,40 +169,7 @@ export function RunNowButton({
           description: error.message || 'An unexpected error occurred',
         });
       }
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  const handleExecutionResult = (executionId: string, success: boolean, errorMessage?: string) => {
-    toast.dismiss(`execution-${executionId}`);
-
-    if (success) {
-      // Story 3.2 AC3: Success completion feedback
-      toast.success('Agent completed successfully', {
-        description: 'Execution finished without errors',
-        action: {
-          label: 'View Log',
-          onClick: () => {
-            window.location.href = `/projects/${workspaceId}/agents/${agent._id}/executions/${executionId}`;
-          },
-        },
-      });
-    } else {
-      // Story 3.2 AC4: Failure handling
-      toast.error('Agent execution failed', {
-        description: errorMessage || 'Check the execution log for details',
-        action: {
-          label: 'View Error Log',
-          onClick: () => {
-            window.location.href = `/projects/${workspaceId}/agents/${agent._id}/executions/${executionId}`;
-          },
-        },
-      });
-    }
-
-    onExecutionCompleted?.({ success, executionId });
-    setCurrentExecutionId(null);
   };
 
   // Pill button styles matching AgentStatusControls pattern

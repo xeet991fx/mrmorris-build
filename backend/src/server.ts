@@ -13,6 +13,7 @@ import { ExpressAdapter } from "@bull-board/express";
 import rateLimit from 'express-rate-limit';
 import * as Sentry from "@sentry/node";
 import { initializeChatSocket } from "./socket/chatSocket";
+import { initializeAgentExecutionSocket } from "./socket/agentExecutionSocket";
 import waitlistRoutes from "./routes/waitlist";
 import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/project";
@@ -466,6 +467,10 @@ const startServer = async () => {
     // Initialize Socket.IO for real-time chat
     initializeChatSocket(httpServer);
     logger.info('Chat Socket.IO initialized');
+
+    // Initialize Socket.IO for agent execution updates (Story 3.2)
+    initializeAgentExecutionSocket(httpServer);
+    logger.info('Agent Execution Socket.IO initialized');
 
     httpServer.listen(PORT, () => {
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
