@@ -294,3 +294,16 @@ export const executeAgentSchema = z.object({
 
 export type ExecuteAgentInput = z.infer<typeof executeAgentSchema>['body'];
 
+// Story 3.2: Trigger agent validation schema (manual trigger)
+export const triggerAgentSchema = z.object({
+  body: z.object({
+    target: z.object({
+      type: z.enum(['contact', 'deal']),
+      id: z.string().min(1, 'Target ID is required')
+    }).optional(),
+    testRunId: z.string().optional()
+  }).optional().default({})
+});
+
+export type TriggerAgentInput = z.infer<typeof triggerAgentSchema>['body'];
+

@@ -46,10 +46,11 @@ import {
   executeAgent,
   listAgentExecutions,
   getAgentExecution,
-  cancelAgentExecution
+  cancelAgentExecution,
+  triggerAgent
 } from '../controllers/agentController';
 import { searchContacts, searchDeals } from '../controllers/testTargetController';
-import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema, executeAgentSchema } from '../validations/agentValidation';
+import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema, executeAgentSchema, triggerAgentSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
 const router = express.Router();
@@ -333,6 +334,35 @@ router.delete(
   authenticate,
   validateWorkspaceAccess,
   cancelAgentExecution
+);
+
+// =============================================================================
+// Story 3.2: Manual Trigger Execution Routes
+// =============================================================================
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/trigger
+ * @desc Manually trigger agent execution (Story 3.2)
+ * @access Private (requires authentication, workspace access, Owner/Admin/Member role)
+ *
+ * Story 3.2: Manual Trigger Execution
+ * - AC1: Immediate execution on "Run Now" button click
+ * - AC2: Trigger configuration applied
+ * - AC5: Duplicate execution prevention (409 Conflict if already running)
+ * - AC6: RBAC - Members can trigger, Viewers cannot
+ *
+ * Key differences from /execute:
+ * - Accepts Live OR Draft agents
+ * - Members can trigger (not just Owner/Admin)
+ * - Returns 409 if agent is already running
+ * - Returns 202 Accepted with execution ID
+ */
+router.post(
+  '/workspaces/:workspaceId/agents/:agentId/trigger',
+  authenticate,
+  validateWorkspaceAccess,
+  validate(triggerAgentSchema),
+  triggerAgent
 );
 
 export default router;

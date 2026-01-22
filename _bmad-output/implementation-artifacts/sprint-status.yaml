@@ -69,7 +69,7 @@ development_status:
   # Epic 3: Live Agent Execution (15 stories)
   epic-3: in-progress
   3-1-parse-and-execute-instructions: review
-  3-2-manual-trigger-execution: backlog
+  3-2-manual-trigger-execution: review
   3-3-scheduled-trigger-execution: backlog
   3-4-event-based-trigger-execution: backlog
   3-5-sequential-multi-step-workflows: backlog

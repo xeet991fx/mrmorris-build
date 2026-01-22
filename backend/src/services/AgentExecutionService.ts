@@ -20,6 +20,12 @@ import Opportunity from '../models/Opportunity';
 import InstructionParserService, { ParsedAction } from './InstructionParserService';
 import ActionExecutorService, { ActionResult } from './ActionExecutorService';
 import InstructionValidationService from './InstructionValidationService';
+import {
+  emitExecutionStarted,
+  emitExecutionProgress,
+  emitExecutionCompleted,
+  emitExecutionFailed
+} from '../socket/agentExecutionSocket';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -409,6 +415,15 @@ export class AgentExecutionService {
       executionRecord.status = 'running';
       await executionRecord.save();
 
+      // Story 3.2: Emit execution:started event via Socket.io
+      emitExecutionStarted(workspaceId, agentId, {
+        executionId,
+        agentId,
+        agentName: agent.name,
+        startedAt: new Date(),
+        triggerType: trigger.type,
+      });
+
       // 3. Build execution context
       const context: ExecutionContext = {
         workspaceId,
@@ -614,6 +629,16 @@ export class AgentExecutionService {
           creditsUsed: creditCost,
         });
 
+        // Story 3.2: Emit execution:progress event via Socket.io
+        emitExecutionProgress(workspaceId, agentId, {
+          executionId,
+          step: stepNumber,
+          total: parsedActions.length,
+          action: action.type,
+          status: actionResult.success ? 'success' : 'failed',
+          message: actionResult.description,
+        });
+
         if (!actionResult.success) {
           hasError = true;
           failedAtStep = stepNumber;
@@ -646,6 +671,31 @@ export class AgentExecutionService {
         { lastExecutedAt: new Date() }
       );
 
+      // Story 3.2: Emit execution:completed or execution:failed event via Socket.io
+      if (hasError) {
+        emitExecutionFailed(workspaceId, agentId, {
+          executionId,
+          success: false,
+          error: steps.find(s => !s.result.success)?.result.error || 'Execution failed',
+          failedAtStep,
+          completedAt: new Date(),
+        });
+      } else {
+        emitExecutionCompleted(workspaceId, agentId, {
+          executionId,
+          success: true,
+          processedCount: context.contact ? 1 : 0, // Number of contacts processed
+          summary: {
+            totalSteps: steps.length,
+            successfulSteps,
+            failedSteps,
+            skippedSteps: 0,
+            duration: totalDurationMs,
+          },
+          completedAt: new Date(),
+        });
+      }
+
       return {
         success: !hasError,
         executionId,
@@ -675,6 +725,14 @@ export class AgentExecutionService {
         };
         await executionRecord.save();
       }
+
+      // Story 3.2: Emit execution:failed event via Socket.io
+      emitExecutionFailed(workspaceId, agentId, {
+        executionId,
+        success: false,
+        error: error.message,
+        completedAt: new Date(),
+      });
 
       return {
         success: false,

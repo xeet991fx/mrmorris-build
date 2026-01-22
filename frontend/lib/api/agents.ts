@@ -236,3 +236,66 @@ export const getAgentAccuracy = async (
   );
   return response.data;
 };
+
+// =============================================================================
+// Story 3.2: Manual Trigger Execution
+// =============================================================================
+
+export interface TriggerAgentInput {
+  target?: {
+    type: 'contact' | 'deal';
+    id: string;
+  };
+  testRunId?: string;
+}
+
+export interface TriggerAgentResponse {
+  success: boolean;
+  message: string;
+  executionId: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  startedAt: Date;
+  result?: {
+    success: boolean;
+    summary?: object;
+    error?: string;
+  };
+}
+
+export interface TriggerAgentConflictError {
+  success: false;
+  error: string;
+  currentExecutionId: string;
+  startedAt: Date;
+  status: string;
+}
+
+/**
+ * Manually trigger agent execution (Story 3.2)
+ * AC1: Immediate execution on "Run Now" button click
+ * AC5: Returns 409 Conflict if agent is already running
+ */
+export const triggerAgent = async (
+  workspaceId: string,
+  agentId: string,
+  data?: TriggerAgentInput
+): Promise<TriggerAgentResponse> => {
+  try {
+    const response = await axios.post(
+      `/workspaces/${workspaceId}/agents/${agentId}/trigger`,
+      data || {}
+    );
+    return response.data;
+  } catch (error: any) {
+    // Story 3.2 AC5: Handle 409 Conflict (already running)
+    if (error.response?.status === 409) {
+      const conflictError: any = new Error(error.response.data.error || 'Agent is already running');
+      conflictError.isConflict = true;
+      conflictError.currentExecutionId = error.response.data.currentExecutionId;
+      conflictError.startedAt = error.response.data.startedAt;
+      conflictError.status = error.response.data.status;
+      throw conflictError;
+    }
+    throw error;
+  }
+};

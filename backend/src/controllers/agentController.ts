@@ -1565,3 +1565,153 @@ export const cancelAgentExecution = async (req: Request, res: Response): Promise
   }
 };
 
+// =============================================================================
+// Story 3.2: Manual Trigger Execution
+// =============================================================================
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/trigger
+ * @desc Manually trigger agent execution (Story 3.2)
+ * @access Private (requires authentication, workspace access, Owner/Admin/Member role)
+ *
+ * Story 3.2: Manual Trigger Execution
+ * - AC1: Immediate execution on "Run Now"
+ * - AC2: Trigger configuration applied
+ * - AC5: Duplicate execution prevention
+ * - AC6: RBAC for manual trigger (Members allowed, Viewers denied)
+ *
+ * Key differences from /execute:
+ * - Accepts Live OR Draft agents (not just Live)
+ * - RBAC: Members can trigger (not just Owner/Admin)
+ * - Prevents duplicate executions (409 Conflict if already running)
+ * - Returns execution ID immediately (async execution)
+ */
+export const triggerAgent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const userId = (req as any).user?._id;
+    const { target, testRunId } = req.body || {};
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Story 3.2 AC6: RBAC Check - Members can trigger, Viewers cannot
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+      return;
+    }
+
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+
+    if (!isWorkspaceCreator) {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      // Story 3.2 difference: Allow 'member' role (not just owner/admin)
+      // Only deny 'viewer' role
+      if (!teamMember || teamMember.role === 'viewer') {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to trigger agents. Viewer role cannot execute agents."
+        });
+        return;
+      }
+    }
+
+    // Check agent exists
+    const agent = await Agent.findOne({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!agent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // Story 3.2 AC1: Accept both Live AND Draft status (differs from /execute)
+    if (agent.status !== 'Live' && agent.status !== 'Draft') {
+      res.status(400).json({
+        success: false,
+        error: `Cannot trigger agent in ${agent.status} status. Agent must be Live or Draft.`
+      });
+      return;
+    }
+
+    // Story 3.2 AC5: Duplicate execution prevention - check for running execution
+    const runningExecution = await AgentExecution.findOne({
+      agent: new mongoose.Types.ObjectId(agentId),
+      workspace: new mongoose.Types.ObjectId(workspaceId),
+      status: { $in: ['pending', 'running'] }
+    }).select('executionId startedAt status');
+
+    if (runningExecution) {
+      res.status(409).json({
+        success: false,
+        error: 'Agent is already running. Wait for current execution to complete.',
+        currentExecutionId: runningExecution.executionId,
+        startedAt: runningExecution.startedAt,
+        status: runningExecution.status
+      });
+      return;
+    }
+
+    // Story 3.2 AC2: Apply manual trigger configuration if present
+    const manualTrigger = agent.triggers?.find(t => t.type === 'manual');
+    const triggerConfig = manualTrigger?.config || {};
+
+    // Execute the agent with manual trigger type
+    const result = await AgentExecutionService.executeAgent(
+      agentId,
+      workspaceId,
+      {
+        type: 'manual',
+        eventDetails: triggerConfig
+      },
+      target,
+      {
+        testRunId,
+      }
+    );
+
+    // Story 3.2 AC1: Return execution ID immediately
+    res.status(202).json({
+      success: true,
+      message: 'Agent execution started',
+      executionId: result.executionId,
+      status: result.status,
+      startedAt: new Date(),
+      // Include summary if execution completed quickly (synchronous case)
+      ...(result.status === 'completed' || result.status === 'failed' ? {
+        result: {
+          success: result.success,
+          summary: result.summary,
+          error: result.error
+        }
+      } : {})
+    });
+
+  } catch (error: any) {
+    console.error('Error triggering agent:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to trigger agent'
+    });
+  }
+};
+
