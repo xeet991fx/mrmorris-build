@@ -406,6 +406,32 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
 
     await agent.save();
 
+    // Story 3.3: Update schedule if triggers changed on a Live agent
+    if (updateData.triggers !== undefined && agent.status === 'Live') {
+      try {
+        const { registerAgentSchedule, removeAgentSchedule } = await import('../jobs/agentScheduledJob');
+
+        const scheduledTrigger = agent.triggers?.find(
+          (t: any) => t.type === 'scheduled' && t.enabled !== false
+        );
+
+        if (scheduledTrigger?.config?.cron) {
+          // Register/update schedule with new cron expression
+          await registerAgentSchedule(
+            agentId,
+            workspaceId,
+            scheduledTrigger.config.cron
+          );
+        } else {
+          // No scheduled trigger anymore, remove any existing schedule
+          await removeAgentSchedule(agentId);
+        }
+      } catch (scheduleError) {
+        console.error('Failed to update agent schedule:', scheduleError);
+        // Don't fail the request, just log
+      }
+    }
+
     res.status(200).json({
       success: true,
       agent: {
@@ -684,6 +710,31 @@ export const updateAgentStatus = async (req: Request, res: Response): Promise<vo
     agent.updatedBy = userId;
     await agent.save();
 
+    // Story 3.3: Handle schedule registration based on status change
+    try {
+      const { registerAgentSchedule, removeAgentSchedule } = await import('../jobs/agentScheduledJob');
+
+      if (status === 'Live') {
+        // Register schedule if scheduled trigger exists
+        const scheduledTrigger = agent.triggers?.find(
+          (t: any) => t.type === 'scheduled' && t.enabled !== false
+        );
+        if (scheduledTrigger?.config?.cron) {
+          await registerAgentSchedule(
+            agentId,
+            workspaceId,
+            scheduledTrigger.config.cron
+          );
+        }
+      } else if (status === 'Paused' || status === 'Draft') {
+        // Remove schedule when agent is paused or set to draft
+        await removeAgentSchedule(agentId);
+      }
+    } catch (scheduleError) {
+      console.error('Failed to update agent schedule:', scheduleError);
+      // Don't fail the request, just log the error
+    }
+
     res.status(200).json({
       success: true,
       agent: {
@@ -772,8 +823,14 @@ export const deleteAgent = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // TODO (Future Epic 3): Cancel scheduled BullMQ jobs for this agent
-    // TODO (Future Epic 3): Mark execution logs with agentDeleted: true
+    // Story 3.3: Remove any scheduled jobs for this agent
+    try {
+      const { removeAgentSchedule } = await import('../jobs/agentScheduledJob');
+      await removeAgentSchedule(agentId);
+    } catch (scheduleError) {
+      console.error('Failed to remove agent schedule on delete:', scheduleError);
+      // Don't fail the request, agent is already deleted
+    }
 
     res.status(200).json({
       success: true,

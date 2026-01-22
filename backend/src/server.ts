@@ -82,6 +82,7 @@ import { startEmailSyncJob } from "./jobs/emailSyncJob";
 import { startIntentScoreDecayJob } from "./jobs/intentScoreDecayJob";
 import { startLifecycleProgressionJob } from "./jobs/lifecycleProgressionJob";
 import { startLeadRecyclingJob } from "./jobs/leadRecyclingJob";
+import { startAgentScheduledJob, registerAllLiveAgentSchedules } from "./jobs/agentScheduledJob";
 import { initializeProactiveAIJobs } from "./jobs/proactiveAI";
 import { startGoogleSheetFormSyncJob } from "./jobs/googleSheetFormSyncJob";
 import { startSequenceEmailJob } from "./jobs/sequenceEmailJob";
@@ -534,6 +535,15 @@ const startServer = async () => {
       startGoogleSheetFormSyncJob().catch((error) => {
         logger.error('Failed to start Google Sheet form sync job', { error });
       });
+
+      // Story 3.3: Start agent scheduled job worker and register existing schedules
+      try {
+        await startAgentScheduledJob();
+        await registerAllLiveAgentSchedules();
+        logger.info('✅ Agent scheduled job started');
+      } catch (error) {
+        logger.error('Failed to start agent scheduled job', { error });
+      }
 
       logger.info('✅ All background jobs started successfully');
 

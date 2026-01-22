@@ -120,6 +120,26 @@ export interface ExecutionFailedEvent {
   completedAt: Date;
 }
 
+// Story 3.3: New event types for scheduled execution
+export interface ExecutionQueuedEvent {
+  agentId: string;
+  message: string;
+  delayMs: number;
+}
+
+export interface AgentAutoPausedEvent {
+  agentId: string;
+  reason: string;
+  limit?: number;
+}
+
+export interface AgentFailureAlertEvent {
+  agentId: string;
+  consecutiveFailures: number;
+  message: string;
+  lastError?: string;
+}
+
 // =============================================================================
 // Helper Functions for Emitting Events
 // =============================================================================
@@ -187,6 +207,56 @@ export function emitExecutionFailed(
     namespace.to(room).emit('execution:failed', event);
     // Also emit to workspace-wide room
     namespace.to(`workspace:${workspaceId}`).emit('execution:failed', event);
+  }
+}
+
+// Story 3.3: Helper functions for scheduled execution events
+
+/**
+ * Emit execution:queued event when scheduled execution is delayed due to overlap
+ */
+export function emitExecutionQueued(
+  workspaceId: string,
+  agentId: string,
+  event: ExecutionQueuedEvent
+): void {
+  const namespace = getAgentExecutionNamespace();
+  if (namespace) {
+    const room = `workspace:${workspaceId}:agent:${agentId}`;
+    namespace.to(room).emit('execution:queued', event);
+    namespace.to(`workspace:${workspaceId}`).emit('execution:queued', event);
+  }
+}
+
+/**
+ * Emit agent:auto-paused event when circuit breaker triggers
+ */
+export function emitAgentAutoPaused(
+  workspaceId: string,
+  agentId: string,
+  event: AgentAutoPausedEvent
+): void {
+  const namespace = getAgentExecutionNamespace();
+  if (namespace) {
+    const room = `workspace:${workspaceId}:agent:${agentId}`;
+    namespace.to(room).emit('agent:auto-paused', event);
+    namespace.to(`workspace:${workspaceId}`).emit('agent:auto-paused', event);
+  }
+}
+
+/**
+ * Emit agent:failure-alert event when consecutive failures threshold reached
+ */
+export function emitAgentFailureAlert(
+  workspaceId: string,
+  agentId: string,
+  event: AgentFailureAlertEvent
+): void {
+  const namespace = getAgentExecutionNamespace();
+  if (namespace) {
+    const room = `workspace:${workspaceId}:agent:${agentId}`;
+    namespace.to(room).emit('agent:failure-alert', event);
+    namespace.to(`workspace:${workspaceId}`).emit('agent:failure-alert', event);
   }
 }
 

@@ -29,6 +29,7 @@ export interface AuthRequest extends Request {
 
 /**
  * Middleware to verify JWT token and attach user to request
+ * Supports both Authorization header and query parameter (for SSE/EventSource)
  */
 export const authenticate = async (
   req: AuthRequest,
@@ -36,18 +37,26 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Get token from header
+    // Get token from header or query parameter (for SSE/EventSource which can't send headers)
     const authHeader = req.headers.authorization;
+    const queryToken = req.query.token as string | undefined;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    let token: string | undefined;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else if (queryToken) {
+      // Fallback to query parameter for SSE/EventSource requests
+      token = queryToken;
+    }
+
+    if (!token) {
       res.status(401).json({
         success: false,
         error: "No token provided. Please authenticate.",
       });
       return;
     }
-
-    const token = authHeader.split(" ")[1];
 
     // Verify token
     const decoded = jwt.verify(

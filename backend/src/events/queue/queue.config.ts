@@ -9,6 +9,7 @@ export const QUEUE_NAMES = {
   CAMPAIGN_EMAILS: 'campaign-emails', // Queue for campaign email sending
   CAMPAIGN_EMAILS_DLQ: 'campaign-emails-dlq',
   AGENT_EXECUTION_RESUME: 'agent-execution-resume', // Story 3.1: For wait action scheduling
+  AGENT_SCHEDULED: 'agent-scheduled', // Story 3.3: For scheduled agent execution
 } as const;
 
 // Get Redis connection config (supports both REDIS_URL and individual params)

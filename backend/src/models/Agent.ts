@@ -127,6 +127,10 @@ export interface IAgent extends Document {
   integrationAccess?: any[];
   circuitBreaker?: any;
 
+  // Story 3.3: Track consecutive failures for alerting
+  consecutiveFailures?: number;
+  lastScheduledExecution?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -295,6 +299,15 @@ const AgentSchema = new Schema<IAgent>(
     circuitBreaker: {
       type: Schema.Types.Mixed,
       default: null
+    },
+    // Story 3.3: Track consecutive failures for alerting
+    consecutiveFailures: {
+      type: Number,
+      default: 0
+    },
+    lastScheduledExecution: {
+      type: Date,
+      default: null
     }
   },
   {
@@ -312,6 +325,8 @@ AgentSchema.index({ workspace: 1, 'triggers.enabled': 1 });
 // Story 1.11: Sorting indexes for agents list
 AgentSchema.index({ workspace: 1, name: 1 });
 AgentSchema.index({ workspace: 1, lastExecutedAt: -1 });
+// Story 3.3: Index for finding Live agents with scheduled triggers
+AgentSchema.index({ status: 1, 'triggers.type': 1, 'triggers.enabled': 1 });
 
 // CRITICAL: Workspace isolation middleware - prevents cross-workspace data leaks
 AgentSchema.pre('find', function () {

@@ -148,7 +148,14 @@ export function useTestModeStreaming({
         params.set('targetType', targetType);
       }
 
-      const url = `/api/workspaces/${workspaceId}/agents/${agentId}/test/stream?${params.toString()}`;
+      // EventSource doesn't support custom headers, so pass token as query param
+      const token = localStorage.getItem('token');
+      if (token) {
+        params.set('token', token);
+      }
+
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const url = `${backendUrl}/workspaces/${workspaceId}/agents/${agentId}/test/stream?${params.toString()}`;
 
       // Create EventSource for SSE
       const eventSource = new EventSource(url, { withCredentials: true });
@@ -253,8 +260,9 @@ export function useTestModeStreaming({
     cleanup();
 
     try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/agents/${agentId}/test/${testRunId}`,
+        `${backendUrl}/workspaces/${workspaceId}/agents/${agentId}/test/${testRunId}`,
         {
           method: 'DELETE',
           credentials: 'include',
