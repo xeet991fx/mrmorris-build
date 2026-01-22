@@ -21,6 +21,10 @@
  * - GET    /api/workspaces/:workspaceId/test-targets/deals       Search deals for test target selection (Story 2.2)
  * - GET    /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId/compare-to-test  Compare test vs live (Story 2.7)
  * - GET    /api/workspaces/:workspaceId/agents/:agentId/accuracy  Get agent accuracy metrics (Story 2.7)
+ * - POST   /api/workspaces/:workspaceId/agents/:agentId/execute   Execute agent live (Story 3.1)
+ * - GET    /api/workspaces/:workspaceId/agents/:agentId/executions  List agent executions (Story 3.1)
+ * - GET    /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId  Get execution (Story 3.1)
+ * - DELETE /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId  Cancel execution (Story 3.1)
  */
 import express from 'express';
 import { authenticate } from '../middleware/auth';
@@ -38,7 +42,11 @@ import {
   testAgentStream,
   cancelAgentTest,
   compareExecutionToTest,
-  getAgentAccuracy
+  getAgentAccuracy,
+  executeAgent,
+  listAgentExecutions,
+  getAgentExecution,
+  cancelAgentExecution
 } from '../controllers/agentController';
 import { searchContacts, searchDeals } from '../controllers/testTargetController';
 import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema } from '../validations/agentValidation';
@@ -272,6 +280,58 @@ router.get(
   authenticate,
   validateWorkspaceAccess,
   getAgentAccuracy
+);
+
+// =============================================================================
+// Story 3.1: Live Agent Execution Routes
+// =============================================================================
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/execute
+ * @desc Execute an agent live (Story 3.1)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+router.post(
+  '/workspaces/:workspaceId/agents/:agentId/execute',
+  authenticate,
+  validateWorkspaceAccess,
+  executeAgent
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions
+ * @desc List all executions for an agent (Story 3.1)
+ * @access Private (requires authentication and workspace access)
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId/executions',
+  authenticate,
+  validateWorkspaceAccess,
+  listAgentExecutions
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId
+ * @desc Get a specific execution by ID (Story 3.1)
+ * @access Private (requires authentication and workspace access)
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId/executions/:executionId',
+  authenticate,
+  validateWorkspaceAccess,
+  getAgentExecution
+);
+
+/**
+ * @route DELETE /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId
+ * @desc Cancel an in-progress execution (Story 3.1)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+router.delete(
+  '/workspaces/:workspaceId/agents/:agentId/executions/:executionId',
+  authenticate,
+  validateWorkspaceAccess,
+  cancelAgentExecution
 );
 
 export default router;

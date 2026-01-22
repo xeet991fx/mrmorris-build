@@ -1,6 +1,6 @@
 # Story 3.1: Parse and Execute Instructions
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -46,49 +46,49 @@ So that my agents can automate workflows without writing code.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Create AgentExecutionService (AC: 1, 2, 5)**
-  - [ ] 1.1 Create `backend/src/services/AgentExecutionService.ts`
-  - [ ] 1.2 Implement `executeAgent(agentId, trigger, workspaceId)` method
-  - [ ] 1.3 Implement action execution pipeline: parse → validate → execute → log
-  - [ ] 1.4 Add variable resolution for @contact.*, @deal.*, @memory.*
-  - [ ] 1.5 Implement step-by-step execution with progress tracking
-  - [ ] 1.6 Add execution status management (Queued → Running → Completed/Failed)
-  - [ ] 1.7 Add execution logging to AgentExecution model
+- [x] **Task 1: Create AgentExecutionService (AC: 1, 2, 5)**
+  - [x] 1.1 Create `backend/src/services/AgentExecutionService.ts`
+  - [x] 1.2 Implement `executeAgent(agentId, trigger, workspaceId)` method
+  - [x] 1.3 Implement action execution pipeline: parse → validate → execute → log
+  - [x] 1.4 Add variable resolution for @contact.*, @deal.*, @memory.*
+  - [x] 1.5 Implement step-by-step execution with progress tracking
+  - [x] 1.6 Add execution status management (Queued → Running → Completed/Failed)
+  - [x] 1.7 Add execution logging to AgentExecution model
 
-- [ ] **Task 2: Create InstructionParserService (AC: 1, 3, 4)**
-  - [ ] 2.1 Create `backend/src/services/InstructionParserService.ts`
-  - [ ] 2.2 Integrate LangChain StructuredOutputParser with Gemini 2.5 Pro
-  - [ ] 2.3 Define Zod schemas for all 8 core action types
-  - [ ] 2.4 Implement sales-specific system prompt for parsing accuracy
-  - [ ] 2.5 Add condition parsing (if/then in plain English)
-  - [ ] 2.6 Add variable extraction and validation
-  - [ ] 2.7 Add error handling with specific error messages
-  - [ ] 2.8 Add parsing result caching for identical instructions
+- [x] **Task 2: Create InstructionParserService (AC: 1, 3, 4)**
+  - [x] 2.1 Create `backend/src/services/InstructionParserService.ts`
+  - [x] 2.2 Integrate LangChain StructuredOutputParser with Gemini 2.5 Pro
+  - [x] 2.3 Define Zod schemas for all 8 core action types
+  - [x] 2.4 Implement sales-specific system prompt for parsing accuracy
+  - [x] 2.5 Add condition parsing (if/then in plain English)
+  - [x] 2.6 Add variable extraction and validation
+  - [x] 2.7 Add error handling with specific error messages
+  - [x] 2.8 Add parsing result caching for identical instructions
 
-- [ ] **Task 3: Create Action Executor Handlers (AC: 1, 2, 5)**
-  - [ ] 3.1 Create `backend/src/services/ActionExecutorService.ts`
-  - [ ] 3.2 Implement handler for send_email action (Gmail integration)
-  - [ ] 3.3 Implement handler for linkedin_invite action
-  - [ ] 3.4 Implement handler for web_search action
-  - [ ] 3.5 Implement handler for create_task action
-  - [ ] 3.6 Implement handler for add_tag/remove_tag actions
-  - [ ] 3.7 Implement handler for update_field action
-  - [ ] 3.8 Implement handler for enrich_contact action (Apollo)
-  - [ ] 3.9 Implement handler for wait action
-  - [ ] 3.10 Add error handling with retry logic for each handler
+- [x] **Task 3: Create Action Executor Handlers (AC: 1, 2, 5)**
+  - [x] 3.1 Create `backend/src/services/ActionExecutorService.ts`
+  - [x] 3.2 Implement handler for send_email action (Gmail integration)
+  - [x] 3.3 Implement handler for linkedin_invite action
+  - [x] 3.4 Implement handler for web_search action
+  - [x] 3.5 Implement handler for create_task action
+  - [x] 3.6 Implement handler for add_tag/remove_tag actions
+  - [x] 3.7 Implement handler for update_field action
+  - [x] 3.8 Implement handler for enrich_contact action (Apollo)
+  - [x] 3.9 Implement handler for wait action
+  - [x] 3.10 Add error handling with retry logic for each handler
 
-- [ ] **Task 4: Create Execution API Endpoint (AC: 1, 4, 5)**
-  - [ ] 4.1 Create POST `/api/workspaces/:workspaceId/agents/:agentId/execute` route
-  - [ ] 4.2 Add RBAC validation (Owners/Admins can execute)
-  - [ ] 4.3 Add pre-execution validation checks
-  - [ ] 4.4 Return execution ID for status tracking
-  - [ ] 4.5 Add real-time status updates via Socket.io
+- [x] **Task 4: Create Execution API Endpoint (AC: 1, 4, 5)**
+  - [x] 4.1 Create POST `/api/workspaces/:workspaceId/agents/:agentId/execute` route
+  - [x] 4.2 Add RBAC validation (Owners/Admins can execute)
+  - [x] 4.3 Add pre-execution validation checks
+  - [x] 4.4 Return execution ID for status tracking
+  - [ ] 4.5 Add real-time status updates via Socket.io (deferred to Story 3.3)
 
-- [ ] **Task 5: Add Tests (AC: All)**
-  - [ ] 5.1 Unit tests for InstructionParserService
-  - [ ] 5.2 Unit tests for AgentExecutionService
-  - [ ] 5.3 Unit tests for ActionExecutorService
-  - [ ] 5.4 Integration tests for execute endpoint
+- [x] **Task 5: Add Tests (AC: All)**
+  - [x] 5.1 Unit tests for InstructionParserService
+  - [x] 5.2 Unit tests for AgentExecutionService
+  - [ ] 5.3 Unit tests for ActionExecutorService (basic handlers in place)
+  - [ ] 5.4 Integration tests for execute endpoint (deferred)
 
 ## Dev Notes
 
@@ -250,11 +250,31 @@ backend/src/routes/
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.5 (claude-opus-4-5-thinking)
 
 ### Debug Log References
 
+None
+
 ### Completion Notes List
 
+- Implemented full live agent execution pipeline
+- InstructionParserService uses LangChain + Gemini 2.5 Pro for NL parsing
+- ActionExecutorService integrates with EmailService, LinkedInService, ApolloService
+- API endpoints added to agentBuilder.ts routes with RBAC
+- Socket.io real-time updates deferred to Story 3.3 (Real-time Execution Dashboard)
+- Tests added for core services (mocked dependencies)
+
 ### File List
+
+| File | Action | Description |
+|------|--------|-------------|
+| backend/src/services/AgentExecutionService.ts | Created | Orchestrates agent execution with variable resolution |
+| backend/src/services/InstructionParserService.ts | Created | LangChain + Gemini parsing of NL instructions |
+| backend/src/services/ActionExecutorService.ts | Created | Handlers for all 10 action types |
+| backend/src/controllers/agentController.ts | Modified | Added executeAgent, listAgentExecutions, getAgentExecution, cancelAgentExecution |
+| backend/src/routes/agentBuilder.ts | Modified | Added /execute, /executions routes |
+| backend/src/validations/agentValidation.ts | Modified | Added executeAgentSchema |
+| backend/src/services/AgentExecutionService.test.ts | Created | Unit tests for execution service |
+| backend/src/services/InstructionParserService.test.ts | Created | Unit tests for parser service |
 

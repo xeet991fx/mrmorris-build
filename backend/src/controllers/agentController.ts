@@ -9,6 +9,7 @@ import TestModeService from '../services/TestModeService';
 import InstructionValidationService from '../services/InstructionValidationService';
 import ExecutionComparisonService from '../services/ExecutionComparisonService';
 import AgentExecution from '../models/AgentExecution';
+import AgentExecutionService from '../services/AgentExecutionService';
 
 /**
  * @route POST /api/workspaces/:workspaceId/agents
@@ -1259,6 +1260,308 @@ export const getAgentAccuracy = async (req: Request, res: Response): Promise<voi
   } catch (error: any) {
     console.error('Error getting agent accuracy:', error);
     res.status(500).json({ success: false, error: 'Failed to get accuracy' });
+  }
+};
+
+// =============================================================================
+// Story 3.1: Live Agent Execution
+// =============================================================================
+
+/**
+ * Active execution registry for cancellation support
+ */
+const activeExecutions = new Map<string, AbortController>();
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/execute
+ * @desc Execute an agent live (Story 3.1)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ *
+ * Story 3.1: Parse and Execute Instructions
+ * - AC1: Instruction Parsing with Structured Output
+ * - AC2: Variable Resolution
+ * - AC4: Parsing Error Handling
+ * - AC5: Execution Performance
+ *
+ * Request body:
+ * {
+ *   trigger: { type: 'manual' | 'scheduled' | 'event', eventDetails?: object },
+ *   target?: { type: 'contact' | 'deal', id: string },
+ *   testRunId?: string  // Optional: link to test run for comparison
+ * }
+ */
+export const executeAgent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const userId = (req as any).user?._id;
+    const { trigger, target, testRunId } = req.body || {};
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Validate trigger
+    if (!trigger || !trigger.type) {
+      res.status(400).json({
+        success: false,
+        error: 'Trigger is required with type: manual, scheduled, or event'
+      });
+      return;
+    }
+
+    // RBAC Check - Must be Owner or Admin to execute agents
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+      return;
+    }
+
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+
+    if (!isWorkspaceCreator) {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to execute agents"
+        });
+        return;
+      }
+    }
+
+    // Check agent exists and is Live
+    const agent = await Agent.findOne({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!agent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    if (agent.status !== 'Live') {
+      res.status(400).json({
+        success: false,
+        error: `Cannot execute agent in ${agent.status} status. Agent must be Live.`
+      });
+      return;
+    }
+
+    // Create abort controller for cancellation
+    const abortController = new AbortController();
+
+    // Execute the agent
+    const result = await AgentExecutionService.executeAgent(
+      agentId,
+      workspaceId,
+      trigger,
+      target,
+      {
+        testRunId,
+        signal: abortController.signal,
+      }
+    );
+
+    // Store controller if execution is ongoing (for async case in future)
+    if (result.status === 'running') {
+      activeExecutions.set(result.executionId, abortController);
+    }
+
+    res.status(result.success ? 200 : 400).json({
+      success: result.success,
+      executionId: result.executionId,
+      status: result.status,
+      steps: result.steps,
+      summary: result.summary,
+      ...(result.error && { error: result.error }),
+      ...(result.failedAtStep && { failedAtStep: result.failedAtStep })
+    });
+
+  } catch (error: any) {
+    console.error('Error executing agent:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to execute agent'
+    });
+  }
+};
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions
+ * @desc List executions for an agent (Story 3.1)
+ * @access Private (requires authentication and workspace access)
+ */
+export const listAgentExecutions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const { status, limit = '20', skip = '0' } = req.query;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    const executions = await AgentExecutionService.listExecutions(
+      agentId,
+      workspaceId,
+      {
+        status: status as any,
+        limit: parseInt(limit as string),
+        skip: parseInt(skip as string),
+      }
+    );
+
+    res.json({
+      success: true,
+      executions,
+      count: executions.length
+    });
+
+  } catch (error: any) {
+    console.error('Error listing executions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to list executions'
+    });
+  }
+};
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId
+ * @desc Get a specific execution by ID (Story 3.1)
+ * @access Private (requires authentication and workspace access)
+ */
+export const getAgentExecution = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, executionId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    const execution = await AgentExecutionService.getExecution(executionId, workspaceId);
+
+    if (!execution) {
+      res.status(404).json({
+        success: false,
+        error: 'Execution not found'
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      execution
+    });
+
+  } catch (error: any) {
+    console.error('Error getting execution:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get execution'
+    });
+  }
+};
+
+/**
+ * @route DELETE /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId
+ * @desc Cancel an in-progress execution (Story 3.1)
+ * @access Private (requires authentication, workspace access, Owner/Admin role)
+ */
+export const cancelAgentExecution = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, executionId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // RBAC Check
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+      res.status(404).json({
+        success: false,
+        error: 'Workspace not found'
+      });
+      return;
+    }
+
+    const isWorkspaceCreator = workspace.userId.toString() === userId.toString();
+    if (!isWorkspaceCreator) {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+
+      if (!teamMember || !['owner', 'admin'].includes(teamMember.role)) {
+        res.status(403).json({
+          success: false,
+          error: "You don't have permission to cancel executions"
+        });
+        return;
+      }
+    }
+
+    // Try to cancel via in-memory controller first
+    const controller = activeExecutions.get(executionId);
+    if (controller) {
+      controller.abort();
+      activeExecutions.delete(executionId);
+    }
+
+    // Also update database status
+    const cancelled = await AgentExecutionService.cancelExecution(executionId, workspaceId);
+
+    if (cancelled) {
+      res.json({
+        success: true,
+        message: 'Execution cancelled',
+        executionId
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        error: 'Execution not found or already completed'
+      });
+    }
+
+  } catch (error: any) {
+    console.error('Error cancelling execution:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to cancel execution'
+    });
   }
 };
 
