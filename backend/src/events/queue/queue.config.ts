@@ -8,6 +8,7 @@ export const QUEUE_NAMES = {
   ACTIVITY_LOG: 'crm-activity-log',
   CAMPAIGN_EMAILS: 'campaign-emails', // Queue for campaign email sending
   CAMPAIGN_EMAILS_DLQ: 'campaign-emails-dlq',
+  AGENT_EXECUTION_RESUME: 'agent-execution-resume', // Story 3.1: For wait action scheduling
 } as const;
 
 // Get Redis connection config (supports both REDIS_URL and individual params)

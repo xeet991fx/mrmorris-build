@@ -1,6 +1,6 @@
 # Story 3.1: Parse and Execute Instructions
 
-Status: review
+Status: done
 
 ## Story
 
@@ -87,7 +87,7 @@ So that my agents can automate workflows without writing code.
 - [x] **Task 5: Add Tests (AC: All)**
   - [x] 5.1 Unit tests for InstructionParserService
   - [x] 5.2 Unit tests for AgentExecutionService
-  - [ ] 5.3 Unit tests for ActionExecutorService (basic handlers in place)
+  - [x] 5.3 Unit tests for ActionExecutorService
   - [ ] 5.4 Integration tests for execute endpoint (deferred)
 
 ## Dev Notes
@@ -277,4 +277,26 @@ None
 | backend/src/validations/agentValidation.ts | Modified | Added executeAgentSchema |
 | backend/src/services/AgentExecutionService.test.ts | Created | Unit tests for execution service |
 | backend/src/services/InstructionParserService.test.ts | Created | Unit tests for parser service |
+| backend/src/services/ActionExecutorService.test.ts | Created | Unit tests for action executor (added in code review) |
+| backend/src/events/queue/queue.config.ts | Modified | Added AGENT_EXECUTION_RESUME queue for long waits |
+
+## Code Review Fixes (2026-01-22)
+
+The following issues were identified and fixed during adversarial code review:
+
+### Critical Fixes
+1. **executeAgentSchema validation missing** - Added `validate(executeAgentSchema)` middleware to `/execute` route
+2. **Pre-execution validation missing** - Added circuit breaker (100/day) and rate limit (10/min) checks
+3. **ActionExecutorService tests missing** - Created comprehensive test file with 20+ test cases
+4. **BullMQ not used for long waits** - Implemented job scheduling for wait actions > 60s
+
+### High Priority Fixes
+5. **LinkedIn rate limiting** - Added 100 invites/day limit enforcement
+6. **Email rate limiting** - Added 100 emails/day limit enforcement
+7. **Human handoff was stub** - Now creates task with full context and tags
+
+### Medium Priority Fixes
+8. **Deprecated substr()** - Replaced with substring() in generateExecutionId and generateTestRunId
+9. **ObjectId type mismatch** - Fixed listExecutions to use mongoose.Types.ObjectId
+10. **Error message sanitization** - Added sanitizeErrorMessage() to strip internal details
 

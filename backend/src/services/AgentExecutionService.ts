@@ -90,6 +90,104 @@ const CREDIT_COSTS: Record<string, number> = {
 };
 
 // =============================================================================
+// PRE-EXECUTION VALIDATION (Story 3.1 Architecture Requirements)
+// =============================================================================
+
+const RATE_LIMITS = {
+  maxExecutionsPerDay: 100,    // Circuit breaker: max 100 executions/day per agent
+  maxExecutionsPerMinute: 10,  // Rate limit: 10 executions/min per agent
+  maxEmailsPerDay: 100,        // Email rate limit per agent
+  maxLinkedInPerDay: 100,      // LinkedIn rate limit (API terms)
+};
+
+interface PreExecutionValidation {
+  valid: boolean;
+  error?: string;
+  executionsToday: number;
+  executionsThisMinute: number;
+}
+
+/**
+ * Validate pre-execution requirements (circuit breaker, rate limiting)
+ * Per Architecture: Check before every execution
+ */
+async function validatePreExecution(
+  agentId: string,
+  workspaceId: string
+): Promise<PreExecutionValidation> {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+
+  // Count executions today (circuit breaker check)
+  const executionsToday = await AgentExecution.countDocuments({
+    agent: new mongoose.Types.ObjectId(agentId),
+    workspace: new mongoose.Types.ObjectId(workspaceId),
+    startedAt: { $gte: startOfDay },
+  });
+
+  if (executionsToday >= RATE_LIMITS.maxExecutionsPerDay) {
+    return {
+      valid: false,
+      error: `Circuit breaker triggered: Agent has reached ${RATE_LIMITS.maxExecutionsPerDay} executions today. Try again tomorrow.`,
+      executionsToday,
+      executionsThisMinute: 0,
+    };
+  }
+
+  // Count executions in last minute (rate limit check)
+  const executionsThisMinute = await AgentExecution.countDocuments({
+    agent: new mongoose.Types.ObjectId(agentId),
+    workspace: new mongoose.Types.ObjectId(workspaceId),
+    startedAt: { $gte: oneMinuteAgo },
+  });
+
+  if (executionsThisMinute >= RATE_LIMITS.maxExecutionsPerMinute) {
+    return {
+      valid: false,
+      error: `Rate limit exceeded: Maximum ${RATE_LIMITS.maxExecutionsPerMinute} executions per minute. Please wait before retrying.`,
+      executionsToday,
+      executionsThisMinute,
+    };
+  }
+
+  return {
+    valid: true,
+    executionsToday,
+    executionsThisMinute,
+  };
+}
+
+/**
+ * Count action-specific usage for the day (emails, LinkedIn invites)
+ */
+async function getActionUsageToday(
+  agentId: string,
+  workspaceId: string,
+  actionType: string
+): Promise<number> {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const executions = await AgentExecution.find({
+    agent: new mongoose.Types.ObjectId(agentId),
+    workspace: new mongoose.Types.ObjectId(workspaceId),
+    startedAt: { $gte: startOfDay },
+    status: 'completed',
+  }).select('steps');
+
+  let count = 0;
+  for (const exec of executions) {
+    for (const step of exec.steps) {
+      if (step.action === actionType && step.result.success) {
+        count += step.result.recipients?.length || 1;
+      }
+    }
+  }
+  return count;
+}
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
@@ -97,7 +195,7 @@ const CREDIT_COSTS: Record<string, number> = {
  * Generate a unique execution ID
  */
 function generateExecutionId(): string {
-  return `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `exec_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
@@ -299,6 +397,12 @@ export class AgentExecutionService {
 
       if (agent.status !== 'Live') {
         throw new Error(`Agent is not live. Current status: ${agent.status}`);
+      }
+
+      // 2.5 Pre-execution validation (circuit breaker, rate limiting)
+      const preValidation = await validatePreExecution(agentId, workspaceId);
+      if (!preValidation.valid) {
+        throw new Error(preValidation.error || 'Pre-execution validation failed');
       }
 
       // Update status to running
@@ -657,8 +761,8 @@ export class AgentExecutionService {
     options: { limit?: number; skip?: number; status?: ExecutionStatus } = {}
   ): Promise<IAgentExecution[]> {
     const query: any = {
-      agent: agentId,
-      workspace: workspaceId,
+      agent: new mongoose.Types.ObjectId(agentId),
+      workspace: new mongoose.Types.ObjectId(workspaceId),
     };
 
     if (options.status) {

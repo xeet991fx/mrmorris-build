@@ -18,6 +18,9 @@ import Task from '../models/Task';
 import mongoose from 'mongoose';
 import { ParsedAction } from './InstructionParserService';
 import { ExecutionContext } from './AgentExecutionService';
+import { Queue } from 'bullmq';
+import { QUEUE_NAMES, defaultQueueOptions } from '../events/queue/queue.config';
+import AgentExecution from '../models/AgentExecution';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -33,6 +36,7 @@ export interface ActionResult {
   fieldUpdates?: Record<string, any>;
   durationMs?: number;
   data?: Record<string, any>;
+  scheduled?: boolean; // For long waits that are scheduled
 }
 
 interface RetryConfig {
@@ -47,6 +51,84 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   delayMs: 1000,
   backoffMultiplier: 2,
 };
+
+// =============================================================================
+// RATE LIMITING (Story 3.1 Architecture Requirements)
+// =============================================================================
+
+const ACTION_RATE_LIMITS = {
+  send_email: 100,      // Max 100 emails per day per agent
+  linkedin_invite: 100, // Max 100 LinkedIn invites per day per agent (API terms)
+};
+
+// BullMQ queue for scheduling long waits
+let agentResumeQueue: Queue | null = null;
+
+/**
+ * Get or create the agent resume queue (lazy initialization)
+ */
+function getAgentResumeQueue(): Queue {
+  if (!agentResumeQueue) {
+    agentResumeQueue = new Queue(QUEUE_NAMES.AGENT_EXECUTION_RESUME, defaultQueueOptions);
+  }
+  return agentResumeQueue;
+}
+
+/**
+ * Check rate limit for an action type
+ */
+async function checkActionRateLimit(
+  actionType: string,
+  context: ExecutionContext
+): Promise<{ allowed: boolean; usageToday: number; limit: number }> {
+  const limit = ACTION_RATE_LIMITS[actionType as keyof typeof ACTION_RATE_LIMITS];
+  if (!limit) {
+    return { allowed: true, usageToday: 0, limit: 0 };
+  }
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  // Count successful actions of this type today
+  const executions = await AgentExecution.find({
+    agent: new mongoose.Types.ObjectId(context.agentId),
+    workspace: new mongoose.Types.ObjectId(context.workspaceId),
+    startedAt: { $gte: startOfDay },
+    status: { $in: ['completed', 'running'] },
+  }).select('steps');
+
+  let usageToday = 0;
+  for (const exec of executions) {
+    for (const step of exec.steps) {
+      if (step.action === actionType && step.result.success) {
+        usageToday += step.result.recipients?.length || 1;
+      }
+    }
+  }
+
+  return {
+    allowed: usageToday < limit,
+    usageToday,
+    limit,
+  };
+}
+
+/**
+ * Sanitize error message to avoid exposing internal details
+ */
+function sanitizeErrorMessage(error: string): string {
+  // Remove stack traces, file paths, and internal implementation details
+  const sanitized = error
+    .replace(/at\s+.*$/gm, '') // Remove stack trace lines
+    .replace(/\b[A-Z]:\\[^\s]+/g, '[path]') // Remove Windows paths
+    .replace(/\/[^\s]+\.(ts|js)/g, '[file]') // Remove Unix paths
+    .replace(/node_modules[^\s]*/g, '[internal]') // Remove node_modules references
+    .replace(/\n+/g, ' ') // Collapse newlines
+    .trim();
+
+  // Truncate long messages
+  return sanitized.substring(0, 200);
+}
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -124,6 +206,17 @@ async function executeSendEmail(
       };
     }
 
+    // Check rate limit before sending
+    const rateLimit = await checkActionRateLimit('send_email', context);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        description: `Email rate limit exceeded: ${rateLimit.usageToday}/${rateLimit.limit} emails sent today`,
+        error: `Daily email limit of ${rateLimit.limit} reached. Try again tomorrow.`,
+        durationMs: Date.now() - startTime,
+      };
+    }
+
     // Use email service to send
     await withRetry(async () => {
       await emailService.sendEmail({
@@ -169,6 +262,17 @@ async function executeLinkedInInvite(
         success: false,
         description: 'LinkedIn invite failed: no recipient specified',
         error: 'Missing recipient field',
+        durationMs: Date.now() - startTime,
+      };
+    }
+
+    // Check rate limit before sending (LinkedIn API terms: 100 invites/day)
+    const rateLimit = await checkActionRateLimit('linkedin_invite', context);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        description: `LinkedIn invite rate limit exceeded: ${rateLimit.usageToday}/${rateLimit.limit} invites sent today`,
+        error: `Daily LinkedIn invite limit of ${rateLimit.limit} reached. Try again tomorrow.`,
         durationMs: Date.now() - startTime,
       };
     }
@@ -527,21 +631,50 @@ async function executeWait(
       break;
   }
 
-  // For very short waits (under 1 minute), actually wait
-  // For longer waits, this would be handled by a job scheduler in production
+  // For very short waits (under 1 minute), actually wait inline
   if (durationMs <= 60000) {
     await sleep(durationMs);
+    return {
+      success: true,
+      description: `Waited ${duration} ${unit}`,
+      data: {
+        duration,
+        unit,
+        durationMs,
+      },
+      durationMs: Date.now() - startTime,
+    };
   }
+
+  // For longer waits, schedule a BullMQ job to resume execution
+  const resumeAt = new Date(Date.now() + durationMs);
+  const queue = getAgentResumeQueue();
+
+  await queue.add(
+    'resume-execution',
+    {
+      executionId: context.executionId,
+      agentId: context.agentId,
+      workspaceId: context.workspaceId,
+      resumeFromStep: action.order, // Resume from next step
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      delay: durationMs,
+      jobId: `resume_${context.executionId}_${action.order}`,
+    }
+  );
 
   return {
     success: true,
-    description: `Waited ${duration} ${unit}`,
+    scheduled: true, // Indicates this is a scheduled resume, not inline wait
+    description: `Wait scheduled for ${duration} ${unit}. Execution will resume at ${resumeAt.toISOString()}`,
     data: {
       duration,
       unit,
       durationMs,
-      // For long waits, include resume time
-      resumeAt: durationMs > 60000 ? new Date(Date.now() + durationMs).toISOString() : undefined,
+      resumeAt: resumeAt.toISOString(),
+      jobId: `resume_${context.executionId}_${action.order}`,
     },
     durationMs: Date.now() - startTime,
   };
@@ -617,6 +750,67 @@ async function executeSearch(
   }
 }
 
+/**
+ * Execute human_handoff action - creates task and notifies assignee
+ */
+async function executeHumanHandoff(
+  action: ParsedAction,
+  context: ExecutionContext
+): Promise<ActionResult> {
+  const startTime = Date.now();
+
+  try {
+    const assignee = action.assignee || action.params?.assignee;
+    const message = action.message || action.params?.message || 'Agent execution requires human review';
+    const priority = action.priority || action.params?.priority || 'high';
+
+    // Create a task for the handoff
+    const taskTitle = `[Agent Handoff] ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`;
+
+    const task = await Task.create({
+      workspace: context.workspaceId,
+      title: taskTitle,
+      description: `**Human Handoff from Agent Execution**\n\n` +
+        `**Execution ID:** ${context.executionId}\n` +
+        `**Agent ID:** ${context.agentId}\n` +
+        `**Message:** ${message}\n\n` +
+        (context.contact ? `**Contact:** ${context.contact.firstName || ''} ${context.contact.lastName || ''} (${context.contact.email || 'No email'})\n` : '') +
+        (context.deal ? `**Deal:** ${context.deal.name || 'Unknown'}\n` : ''),
+      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Due in 24 hours
+      status: 'pending',
+      priority: priority,
+      assignee: assignee || undefined,
+      relatedContact: context.contact?._id,
+      relatedDeal: context.deal?._id,
+      createdBy: 'system',
+      tags: ['agent-handoff', 'requires-review'],
+    });
+
+    // TODO: In production, also send notification via email/Slack to assignee
+    // This would integrate with NotificationService when available
+
+    return {
+      success: true,
+      description: `Human handoff created: Task assigned to ${assignee || 'team'} for review`,
+      data: {
+        taskId: task._id.toString(),
+        assignee: assignee || 'unassigned',
+        message,
+        priority,
+      },
+      durationMs: Date.now() - startTime,
+    };
+
+  } catch (error: any) {
+    return {
+      success: false,
+      description: `Human handoff failed: ${sanitizeErrorMessage(error.message)}`,
+      error: sanitizeErrorMessage(error.message),
+      durationMs: Date.now() - startTime,
+    };
+  }
+}
+
 // =============================================================================
 // MAIN SERVICE
 // =============================================================================
@@ -673,15 +867,7 @@ export class ActionExecutorService {
 
       case 'human_handoff':
       case 'handoff':
-        // Human handoff would trigger notification to assigned user
-        return {
-          success: true,
-          description: `Human handoff triggered for ${action.assignee || 'team member'}`,
-          data: {
-            assignee: action.assignee,
-            message: action.message,
-          },
-        };
+        return executeHumanHandoff(action, context);
 
       case 'conditional':
       case 'if':

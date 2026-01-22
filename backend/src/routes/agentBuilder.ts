@@ -49,7 +49,7 @@ import {
   cancelAgentExecution
 } from '../controllers/agentController';
 import { searchContacts, searchDeals } from '../controllers/testTargetController';
-import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema } from '../validations/agentValidation';
+import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema, executeAgentSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
 const router = express.Router();
@@ -295,6 +295,7 @@ router.post(
   '/workspaces/:workspaceId/agents/:agentId/execute',
   authenticate,
   validateWorkspaceAccess,
+  validate(executeAgentSchema),
   executeAgent
 );
 

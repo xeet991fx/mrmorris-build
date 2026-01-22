@@ -980,7 +980,7 @@ const activeTestRuns = new Map<string, AbortController>();
  * Generate a unique test run ID
  */
 function generateTestRunId(): string {
-  return `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return `test_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
