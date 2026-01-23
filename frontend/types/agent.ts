@@ -291,7 +291,7 @@ export interface DeleteAgentResponse {
 }
 
 // Story 2.1 & 2.3: Enhanced Test Mode types
-export type TestStepStatus = 'success' | 'warning' | 'error' | 'skipped' | 'not_executed';
+export type TestStepStatus = 'success' | 'warning' | 'error' | 'skipped' | 'not_executed' | 'simulated';
 
 export type StepIcon =
   | 'search'

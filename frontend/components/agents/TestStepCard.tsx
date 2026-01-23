@@ -97,6 +97,13 @@ const STATUS_CONFIG: Record<TestStepStatus, {
     borderColor: 'border-gray-200 dark:border-gray-700',
     label: 'NOT EXECUTED',
   },
+  simulated: {
+    icon: CheckCircleIcon,
+    color: 'text-green-500',
+    bgColor: 'bg-green-50 dark:bg-green-900/20',
+    borderColor: 'border-green-200 dark:border-green-800',
+    label: 'SIMULATED',
+  },
 };
 
 function StepPreviewRenderer({ preview }: { preview: StepPreview }) {
@@ -323,9 +330,8 @@ export function TestStepCard({ step, isExpanded, onToggle }: TestStepCardProps) 
       {/* Step Header */}
       <button
         onClick={isClickable ? onToggle : undefined}
-        className={`w-full flex items-center justify-between p-3 ${
-          isClickable ? 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer' : 'cursor-default'
-        } transition-colors`}
+        className={`w-full flex items-center justify-between p-3 ${isClickable ? 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer' : 'cursor-default'
+          } transition-colors`}
         disabled={!isClickable}
       >
         <div className="flex items-center gap-3">
@@ -338,17 +344,16 @@ export function TestStepCard({ step, isExpanded, onToggle }: TestStepCardProps) 
             {step.actionLabel}
           </span>
           <Badge
-            className={`text-xs ${
-              step.status === 'success'
+            className={`text-xs ${step.status === 'success'
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                 : step.status === 'error'
-                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                : step.status === 'skipped'
-                ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                : step.status === 'warning'
-                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500'
-            }`}
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                  : step.status === 'skipped'
+                    ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                    : step.status === 'warning'
+                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500'
+              }`}
           >
             {statusConfig.label}
           </Badge>
