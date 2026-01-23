@@ -11,6 +11,7 @@ export const QUEUE_NAMES = {
   AGENT_EXECUTION_RESUME: 'agent-execution-resume', // Story 3.5: For wait action resume scheduling
   AGENT_SCHEDULED: 'agent-scheduled', // Story 3.3: For scheduled agent execution
   AGENT_EVENT_TRIGGER: 'agent-event-trigger', // Story 3.4: For event-based agent execution
+  NOTIFICATIONS: 'notifications',
 } as const;
 
 // Get Redis connection config (supports both REDIS_URL and individual params)

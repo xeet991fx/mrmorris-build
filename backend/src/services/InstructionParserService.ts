@@ -46,6 +46,7 @@ export const ActionTypeEnum = z.enum([
   'wait',
   'search',
   'conditional',
+  'human_handoff',
 ]);
 
 export type ActionType = z.infer<typeof ActionTypeEnum>;
@@ -70,6 +71,8 @@ const ActionSchema = z.object({
   template: z.string().optional(),
   recipient: z.string().optional(),
   message: z.string().optional(),
+  note: z.string().optional(),
+  priority: z.string().optional(),
   query: z.string().optional(),
   field: z.string().optional(),
   value: z.any().optional(),

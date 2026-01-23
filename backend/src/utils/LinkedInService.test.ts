@@ -24,6 +24,7 @@ jest.mock('../models/IntegrationCredential', () => ({
   __esModule: true,
   default: {
     findOne: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
   },
 }));
 
@@ -181,19 +182,15 @@ describe('LinkedInService', () => {
   describe('checkDailyLimit', () => {
     it('should allow when under limit', async () => {
       const mockCredential = {
+        _id: 'cred_123',
         workspaceId,
         type: 'linkedin',
         isValid: true,
-        getCredentialData: jest.fn().mockReturnValue({
-          access_token: 'token_123',
-          sentToday: 50,
-          lastSentAt: new Date().toISOString(),
-        }),
+        linkedinSentToday: 50,
+        linkedinLastSentDate: new Date(),
       };
 
-      (mockIntegrationCredential.findOne as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockCredential),
-      });
+      (mockIntegrationCredential.findOne as jest.Mock).mockResolvedValue(mockCredential);
 
       const result = await LinkedInService.checkDailyLimit(workspaceId);
 
@@ -204,19 +201,15 @@ describe('LinkedInService', () => {
 
     it('should not allow when at limit', async () => {
       const mockCredential = {
+        _id: 'cred_123',
         workspaceId,
         type: 'linkedin',
         isValid: true,
-        getCredentialData: jest.fn().mockReturnValue({
-          access_token: 'token_123',
-          sentToday: 100,
-          lastSentAt: new Date().toISOString(),
-        }),
+        linkedinSentToday: 100,
+        linkedinLastSentDate: new Date(),
       };
 
-      (mockIntegrationCredential.findOne as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockCredential),
-      });
+      (mockIntegrationCredential.findOne as jest.Mock).mockResolvedValue(mockCredential);
 
       const result = await LinkedInService.checkDailyLimit(workspaceId);
 
@@ -224,29 +217,95 @@ describe('LinkedInService', () => {
       expect(result.usageToday).toBe(100);
     });
 
-    it('should reset counter for new day', async () => {
+    it('should reset counter for new day (UTC-based)', async () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
       const mockCredential = {
+        _id: 'cred_123',
         workspaceId,
         type: 'linkedin',
         isValid: true,
-        getCredentialData: jest.fn().mockReturnValue({
-          access_token: 'token_123',
-          sentToday: 100, // Was at limit yesterday
-          lastSentAt: yesterday.toISOString(),
-        }),
+        linkedinSentToday: 100, // Was at limit yesterday
+        linkedinLastSentDate: yesterday,
       };
 
-      (mockIntegrationCredential.findOne as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockCredential),
-      });
+      (mockIntegrationCredential.findOne as jest.Mock).mockResolvedValue(mockCredential);
+      (mockIntegrationCredential.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockCredential);
 
       const result = await LinkedInService.checkDailyLimit(workspaceId);
 
       expect(result.allowed).toBe(true);
       expect(result.usageToday).toBe(0); // Reset for new day
+      expect(mockIntegrationCredential.findByIdAndUpdate).toHaveBeenCalledWith(
+        'cred_123',
+        expect.objectContaining({
+          $set: expect.objectContaining({ linkedinSentToday: 0 }),
+        })
+      );
+    });
+  });
+
+  // ==========================================================================
+  // incrementSentCount Tests (Task 6.4 - Atomic $inc)
+  // ==========================================================================
+
+  describe('incrementSentCount', () => {
+    it('should increment count atomically using $inc for same day', async () => {
+      const today = new Date();
+      const mockCredential = {
+        _id: 'cred_123',
+        workspaceId,
+        type: 'linkedin',
+        isValid: true,
+        linkedinSentToday: 5,
+        linkedinLastSentDate: today,
+      };
+
+      (mockIntegrationCredential.findOne as jest.Mock).mockResolvedValue(mockCredential);
+      (mockIntegrationCredential.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockCredential);
+
+      await LinkedInService.incrementSentCount(workspaceId);
+
+      expect(mockIntegrationCredential.findByIdAndUpdate).toHaveBeenCalledWith(
+        'cred_123',
+        expect.objectContaining({
+          $inc: { linkedinSentToday: 1 },
+        })
+      );
+    });
+
+    it('should reset counter to 1 for new day instead of incrementing', async () => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const mockCredential = {
+        _id: 'cred_123',
+        workspaceId,
+        type: 'linkedin',
+        isValid: true,
+        linkedinSentToday: 50,
+        linkedinLastSentDate: yesterday,
+      };
+
+      (mockIntegrationCredential.findOne as jest.Mock).mockResolvedValue(mockCredential);
+      (mockIntegrationCredential.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockCredential);
+
+      await LinkedInService.incrementSentCount(workspaceId);
+
+      expect(mockIntegrationCredential.findByIdAndUpdate).toHaveBeenCalledWith(
+        'cred_123',
+        expect.objectContaining({
+          $set: expect.objectContaining({ linkedinSentToday: 1 }),
+        })
+      );
+    });
+
+    it('should handle missing credential gracefully', async () => {
+      (mockIntegrationCredential.findOne as jest.Mock).mockResolvedValue(null);
+
+      // Should not throw
+      await expect(LinkedInService.incrementSentCount(workspaceId)).resolves.not.toThrow();
     });
   });
 
@@ -420,18 +479,29 @@ describe('LinkedInService', () => {
 
     it('should return error when rate limit exceeded (AC4, AC5)', async () => {
       const mockCredential = {
+        _id: 'cred_123',
         workspaceId,
         type: 'linkedin',
         isValid: true,
+        linkedinSentToday: 100, // At limit
+        linkedinLastSentDate: new Date(),
         getCredentialData: jest.fn().mockReturnValue({
           access_token: 'token_123',
-          sentToday: 100, // At limit
-          lastSentAt: new Date().toISOString(),
         }),
       };
 
-      (mockIntegrationCredential.findOne as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockCredential),
+      // Mock findOne to handle both patterns:
+      // 1. getActiveLinkedInAccount uses findOne(...).select(...)
+      // 2. checkDailyLimit uses findOne(...) directly (returns Promise)
+      let callCount = 0;
+      (mockIntegrationCredential.findOne as jest.Mock).mockImplementation(() => {
+        callCount++;
+        // First call is from getActiveLinkedInAccount (uses .select)
+        // Second call is from checkDailyLimit (direct await)
+        return {
+          select: jest.fn().mockResolvedValue(mockCredential),
+          then: (resolve: any) => resolve(mockCredential), // Make it thenable for direct await
+        };
       });
 
       const result = await LinkedInService.sendInvitationWithWorkspaceAccount(
@@ -446,23 +516,29 @@ describe('LinkedInService', () => {
 
     it('should send invitation using workspace LinkedIn account (AC1, AC2)', async () => {
       const mockCredential = {
+        _id: 'cred_123',
         workspaceId,
         type: 'linkedin',
         isValid: true,
+        linkedinSentToday: 5,
+        linkedinLastSentDate: new Date(),
         getCredentialData: jest.fn().mockReturnValue({
           access_token: 'valid_token',
           refresh_token: 'refresh_token',
           expiry_date: Date.now() + 3600000,
-          sentToday: 5,
-          lastSentAt: new Date().toISOString(),
         }),
         setCredentialData: jest.fn(),
         save: jest.fn().mockResolvedValue(undefined),
       };
 
-      (mockIntegrationCredential.findOne as jest.Mock).mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockCredential),
+      (mockIntegrationCredential.findOne as jest.Mock).mockImplementation((query) => {
+        // For checkDailyLimit and isLinkedInConnected (no .select)
+        if (!query) return Promise.resolve(mockCredential);
+        return {
+          select: jest.fn().mockResolvedValue(mockCredential),
+        };
       });
+      (mockIntegrationCredential.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockCredential);
 
       mockAxios.post.mockResolvedValue({
         data: { id: 'invitation_789' },
@@ -485,6 +561,20 @@ describe('LinkedInService', () => {
   // ==========================================================================
 
   describe('refreshToken', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      process.env = {
+        ...originalEnv,
+        LINKEDIN_CLIENT_ID: 'test_client_id',
+        LINKEDIN_CLIENT_SECRET: 'test_client_secret',
+      };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
     it('should successfully refresh token', async () => {
       mockAxios.post.mockResolvedValue({
         data: {
@@ -511,6 +601,16 @@ describe('LinkedInService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid refresh token');
+    });
+
+    it('should return error when env vars are missing', async () => {
+      delete process.env.LINKEDIN_CLIENT_ID;
+      delete process.env.LINKEDIN_CLIENT_SECRET;
+
+      const result = await LinkedInService.refreshToken('refresh_token_123');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('LINKEDIN_CLIENT_ID');
     });
   });
 });

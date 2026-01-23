@@ -106,7 +106,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Check if current date has passed the counter reset time (midnight)
+ * Check if current date has passed the counter reset time (midnight UTC)
+ * Uses UTC-based comparison for consistency across timezones
  */
 function shouldResetDailyCounter(lastSentAt?: Date): boolean {
   if (!lastSentAt) return true;
@@ -114,8 +115,11 @@ function shouldResetDailyCounter(lastSentAt?: Date): boolean {
   const now = new Date();
   const lastSent = new Date(lastSentAt);
 
-  // Reset if it's a new day
-  return now.toDateString() !== lastSent.toDateString();
+  // Use UTC date comparison for consistency across timezones
+  const nowUTC = now.toISOString().split('T')[0];
+  const lastUTC = lastSent.toISOString().split('T')[0];
+
+  return nowUTC !== lastUTC;
 }
 
 // =============================================================================
@@ -171,19 +175,28 @@ class LinkedInService {
   /**
    * Check if daily rate limit allows sending
    * Returns current usage and limit info
+   * Uses atomic operations on schema-level fields (not encrypted data)
    */
   async checkDailyLimit(
     workspaceId: string | mongoose.Types.ObjectId
   ): Promise<{ allowed: boolean; usageToday: number; limit: number }> {
-    const account = await this.getActiveLinkedInAccount(workspaceId);
+    const credential = await IntegrationCredential.findOne({
+      workspaceId: new mongoose.Types.ObjectId(workspaceId),
+      type: 'linkedin',
+      isValid: true,
+    });
 
-    if (!account) {
+    if (!credential) {
       return { allowed: false, usageToday: 0, limit: LINKEDIN_DAILY_LIMIT };
     }
 
-    // Reset counter if it's a new day
-    let usageToday = account.sentToday;
-    if (shouldResetDailyCounter(account.lastSentAt)) {
+    // Check if we need to reset (new day in UTC)
+    let usageToday = credential.linkedinSentToday || 0;
+    if (shouldResetDailyCounter(credential.linkedinLastSentDate)) {
+      // Reset counter atomically for new day
+      await IntegrationCredential.findByIdAndUpdate(credential._id, {
+        $set: { linkedinSentToday: 0, linkedinLastSentDate: new Date() },
+      });
       usageToday = 0;
     }
 
@@ -258,14 +271,23 @@ class LinkedInService {
    * Refresh LinkedIn OAuth access token using refresh token
    */
   async refreshToken(refreshToken: string): Promise<TokenRefreshResult> {
+    // Validate environment configuration
+    if (!process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET) {
+      console.error('LinkedIn OAuth not configured');
+      return {
+        success: false,
+        error: 'LinkedIn OAuth not configured. Missing LINKEDIN_CLIENT_ID or LINKEDIN_CLIENT_SECRET environment variables.',
+      };
+    }
+
     try {
       const response = await axios.post(
         LINKEDIN_TOKEN_ENDPOINT,
         new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token: refreshToken,
-          client_id: process.env.LINKEDIN_CLIENT_ID || '',
-          client_secret: process.env.LINKEDIN_CLIENT_SECRET || '',
+          client_id: process.env.LINKEDIN_CLIENT_ID,
+          client_secret: process.env.LINKEDIN_CLIENT_SECRET,
         }),
         {
           headers: {
@@ -495,38 +517,44 @@ class LinkedInService {
 
   /**
    * Increment the daily sent count for a workspace
-   * Uses atomic operation to prevent race conditions
+   * Uses atomic $inc operation to prevent race conditions (Task 6.4)
    */
   async incrementSentCount(
     workspaceId: string | mongoose.Types.ObjectId
   ): Promise<void> {
     try {
+      const now = new Date();
+      const todayUTC = now.toISOString().split('T')[0];
+
+      // First, check if we need to reset for a new day
       const credential = await IntegrationCredential.findOne({
         workspaceId: new mongoose.Types.ObjectId(workspaceId),
         type: 'linkedin',
         isValid: true,
-      }).select('+encryptedData');
+      });
 
       if (!credential) return;
 
-      const data = credential.getCredentialData();
+      // Check if last sent was on a different day (UTC)
+      const lastSentUTC = credential.linkedinLastSentDate
+        ? credential.linkedinLastSentDate.toISOString().split('T')[0]
+        : null;
 
-      // Reset counter if it's a new day
-      let newSentToday = data.sentToday || 0;
-      if (shouldResetDailyCounter(data.lastSentAt ? new Date(data.lastSentAt) : undefined)) {
-        newSentToday = 0;
+      if (lastSentUTC !== todayUTC) {
+        // New day - reset counter and set to 1 atomically
+        await IntegrationCredential.findByIdAndUpdate(credential._id, {
+          $set: {
+            linkedinSentToday: 1,
+            linkedinLastSentDate: now,
+          },
+        });
+      } else {
+        // Same day - use atomic $inc
+        await IntegrationCredential.findByIdAndUpdate(credential._id, {
+          $inc: { linkedinSentToday: 1 },
+          $set: { linkedinLastSentDate: now },
+        });
       }
-
-      newSentToday += 1;
-
-      const updatedData = {
-        ...data,
-        sentToday: newSentToday,
-        lastSentAt: new Date().toISOString(),
-      };
-
-      credential.setCredentialData(updatedData);
-      await credential.save();
     } catch (error: any) {
       console.error('Failed to increment LinkedIn sent count:', error.message);
     }

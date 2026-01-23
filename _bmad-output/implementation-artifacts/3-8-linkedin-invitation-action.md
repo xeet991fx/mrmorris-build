@@ -1,6 +1,6 @@
 # Story 3.8: LinkedIn Invitation Action
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -402,6 +402,15 @@ N/A - No critical issues encountered during implementation.
 - OAuth token refresh with proper error handling
 - All unit tests passing (20+ test cases covering all ACs)
 - TypeScript compilation clean with no errors
+
+**2026-01-23 Code Review Fixes Applied:**
+- [FIX #1] Changed incrementSentCount to use atomic $inc operation (Task 6.4 compliance)
+- [FIX #2] Changed Activity type from 'workflow_action' to 'linkedin_invitation' (AC7 compliance)
+- [FIX #3] Added validateCredential cases for 'linkedin', 'gmail', 'calendar' in IntegrationCredential
+- [FIX #4] Added new schema fields (linkedinSentToday, linkedinLastSentDate) for atomic rate limiting
+- [FIX #5] Added environment variable validation for LINKEDIN_CLIENT_ID/SECRET
+- [FIX #6] Changed date comparison to UTC-based for timezone consistency
+- [FIX #7] Added tests for incrementSentCount and env var validation (32 tests now passing)
 
 ### File List
 

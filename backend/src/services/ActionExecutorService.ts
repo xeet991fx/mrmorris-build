@@ -318,7 +318,7 @@ async function createEmailActivity(
 
 /**
  * Create activity for LinkedIn invitation sent
- * Story 3.8 AC7: Activity Logging
+ * Story 3.8 AC7: Activity Logging - type='linkedin_invitation'
  */
 async function createLinkedInActivity(
   workspaceId: string,
@@ -333,7 +333,7 @@ async function createLinkedInActivity(
 
   await Activity.create({
     workspaceId: new mongoose.Types.ObjectId(workspaceId),
-    type: 'workflow_action',
+    type: 'linkedin_invitation',  // AC7: Correct activity type
     title: `LinkedIn invitation sent to ${contactName}`,
     direction: 'outbound',
     automated: true,
@@ -345,7 +345,6 @@ async function createLinkedInActivity(
       executionId: context.executionId,
       invitationId,
       profileUrl,
-      actionType: 'linkedin_invitation_sent',
     },
   });
 }

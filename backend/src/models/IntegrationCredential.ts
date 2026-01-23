@@ -20,6 +20,9 @@ export interface IIntegrationCredential extends Document {
     lastValidated?: Date;
     isValid: boolean;
     validationError?: string;
+    // LinkedIn rate limiting (stored outside encrypted data for atomic $inc updates)
+    linkedinSentToday?: number;
+    linkedinLastSentDate?: Date;
 
     // Methods
     setCredentialData(data: any): void;
@@ -59,6 +62,14 @@ const integrationCredentialSchema = new Schema<IIntegrationCredential>(
         },
         validationError: {
             type: String,
+        },
+        // Rate limiting fields for LinkedIn (stored outside encrypted data for atomic updates)
+        linkedinSentToday: {
+            type: Number,
+            default: 0,
+        },
+        linkedinLastSentDate: {
+            type: Date,
         },
     },
     {
@@ -133,6 +144,43 @@ integrationCredentialSchema.methods.validateCredential = async function (): Prom
                 const { Client } = await import('@notionhq/client');
                 const notionClient = new Client({ auth: data.access_token });
                 await notionClient.users.list({ page_size: 1 });
+                break;
+
+            case 'gmail':
+                // Test Gmail token by getting user profile
+                const { google: gmailGoogle } = await import('googleapis');
+                const gmailAuth = new gmailGoogle.auth.OAuth2();
+                gmailAuth.setCredentials({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token,
+                    expiry_date: data.expiry_date,
+                });
+                const gmail = gmailGoogle.gmail({ version: 'v1', auth: gmailAuth });
+                await gmail.users.getProfile({ userId: 'me' });
+                break;
+
+            case 'linkedin':
+                // Test LinkedIn token by getting user profile
+                const axios = (await import('axios')).default;
+                await axios.get('https://api.linkedin.com/v2/me', {
+                    headers: {
+                        'Authorization': `Bearer ${data.access_token}`,
+                        'X-Restli-Protocol-Version': '2.0.0',
+                    },
+                });
+                break;
+
+            case 'calendar':
+                // Test Calendar token by listing calendars
+                const { google: calendarGoogle } = await import('googleapis');
+                const calendarAuth = new calendarGoogle.auth.OAuth2();
+                calendarAuth.setCredentials({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token,
+                    expiry_date: data.expiry_date,
+                });
+                const calendar = calendarGoogle.calendar({ version: 'v3', auth: calendarAuth });
+                await calendar.calendarList.list({ maxResults: 1 });
                 break;
 
             default:
