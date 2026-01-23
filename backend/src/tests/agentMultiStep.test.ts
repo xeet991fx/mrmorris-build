@@ -21,7 +21,7 @@ jest.mock('bullmq', () => ({
   })),
 }));
 
-// Mock Socket.io namespace
+// Mock Socket.io namespace - only mock functions that actually exist in agentExecutionSocket.ts
 jest.mock('../socket/agentExecutionSocket', () => ({
   getAgentExecutionNamespace: jest.fn().mockReturnValue({
     to: jest.fn().mockReturnValue({
@@ -29,12 +29,12 @@ jest.mock('../socket/agentExecutionSocket', () => ({
     }),
   }),
   emitExecutionStarted: jest.fn(),
-  emitExecutionProgress: jest.fn(),
+  emitExecutionProgress: jest.fn(),  // Used for step progress with 'started'/'resumed' status
   emitExecutionCompleted: jest.fn(),
   emitExecutionFailed: jest.fn(),
-  emitStepStarted: jest.fn(),
-  emitStepCompleted: jest.fn(),
-  emitExecutionWaiting: jest.fn(),
+  emitExecutionQueued: jest.fn(),
+  emitAgentAutoPaused: jest.fn(),
+  emitAgentFailureAlert: jest.fn(),
 }));
 
 /**

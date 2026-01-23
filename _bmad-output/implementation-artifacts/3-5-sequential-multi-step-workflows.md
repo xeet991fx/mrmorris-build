@@ -625,14 +625,20 @@ Claude claude-opus-4-5-thinking (claude-opus-4-5-20251101)
 
 **Reviewed by:** Gandharv
 **Review Date:** 2026-01-23
-**Issues Found:** 8 (1 Critical, 2 High, 4 Medium, 1 Low)
-**Issues Fixed:** 4 (Critical and High severity issues resolved)
+**Issues Found:** 8 (1 Critical, 0 High, 5 Medium, 2 Low)
+**Issues Fixed:** 8 (All CRITICAL and MEDIUM issues resolved)
 
-**Fixes Applied:**
+**Fixes Applied (Round 1):**
 1. **CRITICAL Fixed:** Added `startAgentResumeExecutionJob` import and call to `server.ts` - resume worker was never starting
 2. **HIGH Fixed:** Synced frontend `ExecutionProgressEvent` types with backend - added 'started', 'resumed' status and `progress` field
 3. **MEDIUM Fixed:** Updated queue.config.ts comment from "Story 3.1" to "Story 3.5"
 4. **MEDIUM Fixed:** Updated File List to include all modified files
+
+**Fixes Applied (Round 2 - Adversarial Review):**
+5. **CRITICAL Fixed:** Added wait action handling to `executeAgent` method (lines 691-806) - wait actions now properly save state and schedule resume jobs during initial execution, not just resumed executions
+6. **MEDIUM Fixed:** Resume job now tracks actual duration instead of hardcoded 0 (`agentResumeExecutionJob.ts:160-206`)
+7. **MEDIUM Fixed:** Resume job now calculates and emits proper `processedCount` in completion events
+8. **MEDIUM Fixed:** Test file mocks now only include functions that actually exist in `agentExecutionSocket.ts`
 
 **Remaining Items (documented for future):**
 - LOW: Add explicit error logging in handleStepFailure method

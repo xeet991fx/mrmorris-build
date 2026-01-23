@@ -157,18 +157,30 @@ const agentResumeExecutionWorker = new Worker(
       }
 
       // 6. Continue execution from resumeFromStep
+      const resumeStartTime = Date.now();
       const result = await AgentExecutionService.executeStepsSequentially(
         execution,
         parsedSteps,
         restoredContext,
         resumeFromStep
       );
+      const resumeDuration = Date.now() - resumeStartTime;
 
       // 7. Update execution based on result
       if (result.status === 'completed') {
+        const completedAt = new Date();
+
+        // Calculate total duration (original execution + wait time + resume execution)
+        const originalDuration = execution.summary?.totalDurationMs || 0;
+        const totalDuration = originalDuration + resumeDuration;
+
+        // Calculate steps completed in this resume session
+        const stepsCompletedInResume = result.completedSteps - (resumeFromStep - 1);
+
         await AgentExecution.findByIdAndUpdate(executionId, {
           status: 'completed',
-          completedAt: new Date(),
+          completedAt,
+          'summary.totalDurationMs': totalDuration,
         });
 
         // Emit completion notification
@@ -177,20 +189,21 @@ const agentResumeExecutionWorker = new Worker(
           emitExecutionCompleted(workspaceId, agentId, {
             executionId: execution.executionId,
             success: true,
+            processedCount: stepsCompletedInResume,
             summary: {
               totalSteps: parsedSteps.length,
               successfulSteps: result.completedSteps,
               failedSteps: 0,
-              skippedSteps: 0,
-              duration: 0,
+              skippedSteps: parsedSteps.length - result.completedSteps,
+              duration: resumeDuration,
             },
-            completedAt: new Date(),
+            completedAt,
           });
         } catch (socketError) {
           console.error('Failed to emit completion notification:', socketError);
         }
 
-        console.log(`✅ Resumed execution ${executionId} completed successfully`);
+        console.log(`✅ Resumed execution ${executionId} completed successfully (${resumeDuration}ms)`);
       } else if (result.status === 'waiting') {
         // Another wait action encountered - already handled in executeStepsSequentially
         console.log(`⏳ Execution ${executionId} entered wait state again`);

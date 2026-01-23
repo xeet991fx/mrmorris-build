@@ -688,6 +688,123 @@ export class AgentExecutionService {
           continue;
         }
 
+        // Story 3.5: Handle wait action - save state and schedule resume job
+        if (action.type === 'wait') {
+          const waitDuration = this.parseWaitDuration(
+            action.params?.duration || action.params?.delay || action.duration || '1d'
+          );
+
+          // For short waits (< 5 minutes), execute synchronously
+          const SYNC_WAIT_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+          if (waitDuration < SYNC_WAIT_THRESHOLD) {
+            // Short wait - just log it and continue (actual delay handled by ActionExecutorService)
+            const actionStartTime = Date.now();
+            const actionResult = await this.executeAction(action, context);
+            const durationMs = Date.now() - actionStartTime;
+
+            steps.push({
+              stepNumber,
+              action: action.type,
+              result: actionResult,
+              executedAt: new Date(),
+              durationMs,
+              creditsUsed: 0,
+            });
+
+            emitExecutionProgress(workspaceId, agentId, {
+              executionId,
+              step: stepNumber,
+              total: parsedActions.length,
+              action: action.type,
+              status: 'success',
+              message: `Wait completed (${waitDuration}ms)`,
+            });
+
+            stepNumber++;
+            continue;
+          }
+
+          // Long wait - save state and schedule resume job
+          const resumeAt = new Date(Date.now() + waitDuration);
+          const resumeFromStep = stepNumber; // 1-based, next step to execute
+
+          // Serialize context for storage
+          const serializedContext = {
+            ...context,
+            memory: undefined,
+          };
+          const serializedMemory = Object.fromEntries(context.memory);
+
+          // Update execution record with wait state
+          executionRecord.status = 'waiting';
+          executionRecord.savedContext = serializedContext;
+          executionRecord.savedMemory = serializedMemory;
+          executionRecord.resumeFromStep = resumeFromStep;
+          executionRecord.resumeAt = resumeAt;
+          executionRecord.currentStep = stepNumber - 1;
+          executionRecord.totalSteps = parsedActions.length;
+          executionRecord.steps = steps;
+          await executionRecord.save();
+
+          // Log the wait step
+          steps.push({
+            stepNumber,
+            action: action.type,
+            result: {
+              description: `Waiting until ${resumeAt.toISOString()}`,
+              success: true,
+            },
+            executedAt: new Date(),
+            durationMs: 0,
+            creditsUsed: 0,
+          });
+
+          // Schedule resume job
+          try {
+            const { agentResumeExecutionQueue } = await import('../jobs/agentResumeExecutionJob');
+            const job = await agentResumeExecutionQueue.add(
+              `resume-${executionRecord._id}`,
+              {
+                executionId: executionRecord._id.toString(),
+                agentId,
+                workspaceId,
+                resumeFromStep,
+              },
+              { delay: waitDuration }
+            );
+
+            executionRecord.resumeJobId = job.id;
+            await executionRecord.save();
+          } catch (jobError) {
+            console.error('Failed to schedule resume job:', jobError);
+          }
+
+          // Emit waiting status
+          emitExecutionProgress(workspaceId, agentId, {
+            executionId,
+            step: stepNumber,
+            total: parsedActions.length,
+            action: action.type,
+            status: 'success',
+            message: `Execution paused, will resume at ${resumeAt.toISOString()}`,
+          });
+
+          // Return with waiting status
+          return {
+            success: true,
+            executionId,
+            status: 'waiting',
+            steps,
+            summary: {
+              totalSteps: parsedActions.length,
+              successfulSteps: steps.filter(s => s.result.success).length,
+              failedSteps: steps.filter(s => !s.result.success).length,
+              totalCreditsUsed,
+              totalDurationMs: Date.now() - startTime,
+            },
+          };
+        }
+
         // Execute the action
         const actionStartTime = Date.now();
         const actionResult = await this.executeAction(action, context);

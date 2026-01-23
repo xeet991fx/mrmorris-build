@@ -105,7 +105,8 @@
       "Bash(npx vitest run:*)",
       "Bash(npm run lint:*)",
       "Bash(git -C \"C:/app/morrisB\" status --porcelain)",
-      "Bash(cd /d C:appmorrisB)"
+      "Bash(cd /d C:appmorrisB)",
+      "Bash(npx jest.cmd:*)"
     ],
     "deny": [],
     "ask": []
