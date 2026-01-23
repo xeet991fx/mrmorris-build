@@ -38,13 +38,20 @@ describe('WebSearchService', () => {
   // ==========================================================================
 
   describe('sanitizeQuery', () => {
-    it('should remove single and double quotes', () => {
-      expect(sanitizeQuery("Acme Corp's CEO")).toBe('Acme Corp s CEO');
-      expect(sanitizeQuery('"Quoted Text"')).toBe('Quoted Text'); // trim removes leading/trailing spaces
+    it('should remove single quotes without adding space', () => {
+      expect(sanitizeQuery("Acme Corp's CEO")).toBe('Acme Corps CEO');
+    });
+
+    it('should remove double quotes with space', () => {
+      expect(sanitizeQuery('"Quoted Text"')).toBe('Quoted Text');
     });
 
     it('should remove backslashes', () => {
-      expect(sanitizeQuery('C:\\path\\to\\file')).toBe('C: path to file'); // colon not removed, spaces collapsed
+      expect(sanitizeQuery('C:\\path\\to\\file')).toBe('C: path to file');
+    });
+
+    it('should preserve forward slashes for URLs', () => {
+      expect(sanitizeQuery('news about https://acme.com')).toBe('news about https://acme.com');
     });
 
     it('should collapse multiple spaces', () => {
@@ -129,7 +136,7 @@ describe('WebSearchService', () => {
         expect.any(String),
         expect.objectContaining({
           params: expect.objectContaining({
-            q: 'Acme s special query test', // spaces collapsed after sanitization
+            q: 'Acmes special query test', // apostrophe removed without space, quotes/backslash replaced with space
           }),
         })
       );

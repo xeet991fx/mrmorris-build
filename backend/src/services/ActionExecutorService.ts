@@ -731,6 +731,16 @@ async function executeWebSearch(
     // AC1: Apply variable resolution (e.g., @company.name -> "Acme Corp")
     query = resolveEmailVariables(query, context);
 
+    // Validate query is not empty after trimming (handles whitespace-only queries)
+    if (!query.trim()) {
+      return {
+        success: false,
+        description: 'Web search failed: query is empty after variable resolution',
+        error: 'Empty query after resolution',
+        durationMs: Date.now() - startTime,
+      };
+    }
+
     // Execute search via WebSearchService (AC5, AC6, AC7 handled inside)
     const searchResult = await WebSearchService.search(query);
 

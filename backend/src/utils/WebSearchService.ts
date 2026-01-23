@@ -59,11 +59,13 @@ const MAX_QUERY_LENGTH = 256;
 /**
  * Sanitize search query for safe API call (AC7)
  * Removes special characters that could cause issues with the search API
+ * Note: Forward slashes are preserved to allow URL searches
  */
 export function sanitizeQuery(query: string): string {
   return query
-    .replace(/['"\\/]/g, ' ')  // Remove quotes, backslashes, forward slashes
-    .replace(/\s+/g, ' ')      // Collapse multiple spaces
+    .replace(/["\\]/g, ' ')       // Remove double quotes and backslashes
+    .replace(/'/g, '')            // Remove apostrophes without space (preserves "Corp's" -> "Corps")
+    .replace(/\s+/g, ' ')         // Collapse multiple spaces
     .trim()
     .substring(0, MAX_QUERY_LENGTH);
 }

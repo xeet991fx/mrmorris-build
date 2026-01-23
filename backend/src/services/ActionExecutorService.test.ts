@@ -36,8 +36,13 @@ jest.mock('../utils/WebSearchService', () => ({
   },
 }));
 
-jest.mock('./LinkedInService', () => ({
-  sendConnectionRequest: jest.fn(),
+jest.mock('../utils/LinkedInService', () => ({
+  __esModule: true,
+  default: {
+    sendInvitationWithWorkspaceAccount: jest.fn(),
+    checkDailyLimit: jest.fn().mockResolvedValue({ allowed: true, usageToday: 0, limit: 100 }),
+    isConfigured: jest.fn().mockReturnValue(true),
+  },
 }));
 
 jest.mock('./ApolloService', () => ({
@@ -125,7 +130,7 @@ jest.mock('bullmq', () => ({
 
 import GmailService from '../utils/GmailService';
 import WebSearchService from '../utils/WebSearchService';
-import { sendConnectionRequest } from './LinkedInService';
+import LinkedInService from '../utils/LinkedInService';
 import ApolloService from './ApolloService';
 import Contact from '../models/Contact';
 import Opportunity from '../models/Opportunity';
@@ -136,7 +141,7 @@ import Agent from '../models/Agent';
 
 const mockGmailService = GmailService as jest.Mocked<typeof GmailService>;
 const mockWebSearchService = WebSearchService as jest.Mocked<typeof WebSearchService>;
-const mockLinkedIn = sendConnectionRequest as jest.MockedFunction<typeof sendConnectionRequest>;
+const mockLinkedInService = LinkedInService as jest.Mocked<typeof LinkedInService>;
 const mockApollo = ApolloService as jest.Mocked<typeof ApolloService>;
 const mockContact = Contact as jest.Mocked<typeof Contact>;
 const mockTask = Task as jest.Mocked<typeof Task>;
@@ -480,7 +485,11 @@ describe('ActionExecutorService', () => {
 
   describe('linkedin_invite action', () => {
     it('should send LinkedIn invite successfully', async () => {
-      mockLinkedIn.mockResolvedValue({ success: true });
+      (mockLinkedInService.sendInvitationWithWorkspaceAccount as jest.Mock).mockResolvedValue({
+        success: true,
+        invitationId: 'inv_123',
+        retryAttempts: 0,
+      });
 
       const action: ParsedAction = {
         type: 'linkedin_invite',
@@ -505,7 +514,7 @@ describe('ActionExecutorService', () => {
       const result = await ActionExecutorService.executeAction(action, baseContext);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('recipient');
+      expect(result.error).toContain('LinkedIn URL');
     });
   });
 
@@ -958,6 +967,20 @@ describe('ActionExecutorService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Missing query');
+      expect(mockWebSearchService.search).not.toHaveBeenCalled();
+    });
+
+    it('should fail when query is whitespace only', async () => {
+      const action: ParsedAction = {
+        type: 'web_search',
+        query: '   ',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Empty query');
       expect(mockWebSearchService.search).not.toHaveBeenCalled();
     });
 

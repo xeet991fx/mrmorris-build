@@ -108,7 +108,8 @@
       "Bash(cd /d C:appmorrisB)",
       "Bash(npx jest.cmd:*)",
       "Bash(git -C \"C:/app/morrisB\" log:*)",
-      "Bash(if not exist \"C:\\\\app\\\\morrisB\\\\_bmad-output\\\\implementation-artifacts\" mkdir \"C:\\\\app\\\\morrisB\\\\_bmad-output\\\\implementation-artifacts\")"
+      "Bash(if not exist \"C:\\\\app\\\\morrisB\\\\_bmad-output\\\\implementation-artifacts\" mkdir \"C:\\\\app\\\\morrisB\\\\_bmad-output\\\\implementation-artifacts\")",
+      "Bash(xxd:*)"
     ],
     "deny": [],
     "ask": []
