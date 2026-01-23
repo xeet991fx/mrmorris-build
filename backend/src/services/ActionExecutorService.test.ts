@@ -1,6 +1,7 @@
 /**
  * ActionExecutorService Tests - Story 3.1: Parse and Execute Instructions
  * Updated Story 3.7: Send Email Action via Gmail API
+ * Updated Story 3.10: Task and Tag Actions
  *
  * Tests for action execution handlers:
  * - AC1: Each action is executed in sequence
@@ -12,6 +13,13 @@
  * - Template loading and variable resolution
  * - Activity logging
  * - Auto-pause on rate limit
+ *
+ * Story 3.10 Tests:
+ * - Task creation with variable resolution (AC1)
+ * - Task assignment with RBAC validation (AC7)
+ * - User notification for task assignment (AC2)
+ * - Multiple tags support (AC3, AC4, AC5)
+ * - Due date natural language parsing
  */
 
 import ActionExecutorService, { ActionResult } from './ActionExecutorService';
@@ -108,6 +116,23 @@ jest.mock('../models/Agent', () => ({
   __esModule: true,
   default: {
     findOneAndUpdate: jest.fn(),
+    findById: jest.fn().mockReturnValue({
+      select: jest.fn().mockResolvedValue({ name: 'Test Agent' }),
+    }),
+  },
+}));
+
+jest.mock('../models/TeamMember', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+  },
+}));
+
+jest.mock('../models/Notification', () => ({
+  __esModule: true,
+  default: {
+    create: jest.fn().mockResolvedValue({ _id: 'notif_123' }),
   },
 }));
 
@@ -138,6 +163,8 @@ import Task from '../models/Task';
 import Activity from '../models/Activity';
 import EmailTemplate from '../models/EmailTemplate';
 import Agent from '../models/Agent';
+import TeamMember from '../models/TeamMember';
+import Notification from '../models/Notification';
 
 const mockGmailService = GmailService as jest.Mocked<typeof GmailService>;
 const mockWebSearchService = WebSearchService as jest.Mocked<typeof WebSearchService>;
@@ -148,6 +175,8 @@ const mockTask = Task as jest.Mocked<typeof Task>;
 const mockActivity = Activity as jest.Mocked<typeof Activity>;
 const mockEmailTemplate = EmailTemplate as jest.Mocked<typeof EmailTemplate>;
 const mockAgent = Agent as jest.Mocked<typeof Agent>;
+const mockTeamMember = TeamMember as jest.Mocked<typeof TeamMember>;
+const mockNotification = Notification as jest.Mocked<typeof Notification>;
 
 describe('ActionExecutorService', () => {
   const workspaceId = '507f1f77bcf86cd799439011';
@@ -519,11 +548,17 @@ describe('ActionExecutorService', () => {
   });
 
   // ==========================================================================
-  // Create Task Tests
+  // Create Task Tests (Story 3.10: Task and Tag Actions)
   // ==========================================================================
 
   describe('create_task action', () => {
-    it('should create task successfully', async () => {
+    const userId = '507f1f77bcf86cd799439013';
+    const contextWithUser: ExecutionContext = {
+      ...baseContext,
+      userId,
+    };
+
+    it('should create task successfully with correct field names (AC1)', async () => {
       const action: ParsedAction = {
         type: 'create_task',
         title: 'Follow up with John',
@@ -531,36 +566,187 @@ describe('ActionExecutorService', () => {
         order: 1,
       };
 
-      const result = await ActionExecutorService.executeAction(action, baseContext);
+      const result = await ActionExecutorService.executeAction(action, contextWithUser);
 
       expect(result.success).toBe(true);
       expect(result.description).toContain('Task created');
-      expect(mockTask.create).toHaveBeenCalled();
+      expect(mockTask.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workspaceId: expect.any(Object), // ObjectId
+          userId: expect.any(Object), // ObjectId - Task 1.2
+          title: 'Follow up with John',
+          status: 'todo', // Correct status per Task model
+        })
+      );
     });
 
-    it('should use default due date of 1 day', async () => {
+    it('should resolve @contact.firstName variable in title (AC1)', async () => {
+      const context: ExecutionContext = {
+        ...contextWithUser,
+        contact: { _id: 'contact_123', firstName: 'John', lastName: 'Doe', email: 'john@test.com' },
+      };
+
+      const action: ParsedAction = {
+        type: 'create_task',
+        title: 'Follow up with @contact.firstName',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, context);
+
+      expect(mockTask.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Follow up with John',
+        })
+      );
+    });
+
+    it('should parse "in 3 days" due date (AC1)', async () => {
+      const action: ParsedAction = {
+        type: 'create_task',
+        title: 'Test task',
+        dueDate: 'in 3 days',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, contextWithUser);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.parseMethod).toBe('natural');
+    });
+
+    it('should parse "tomorrow" due date (AC1)', async () => {
+      const action: ParsedAction = {
+        type: 'create_task',
+        title: 'Test task',
+        params: { dueDate: 'tomorrow' },
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, contextWithUser);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.parseMethod).toBe('natural');
+    });
+
+    it('should use default due date of 1 day when not specified', async () => {
       const action: ParsedAction = {
         type: 'create_task',
         title: 'Follow up',
         order: 1,
       };
 
-      await ActionExecutorService.executeAction(action, baseContext);
+      const result = await ActionExecutorService.executeAction(action, contextWithUser);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.parseMethod).toBe('default');
+    });
+
+    it('should validate assignee is in workspace (AC7)', async () => {
+      const invalidAssigneeId = '507f1f77bcf86cd799439099';
+      (mockTeamMember.findOne as jest.Mock).mockResolvedValue(null); // User not in workspace
+
+      const action: ParsedAction = {
+        type: 'create_task',
+        title: 'Test task',
+        assignee: invalidAssigneeId,
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, contextWithUser);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not in workspace');
+    });
+
+    it('should fail for invalid assignee ObjectId format (AC7)', async () => {
+      const action: ParsedAction = {
+        type: 'create_task',
+        title: 'Test task',
+        assignee: 'invalid-id',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, contextWithUser);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('user not found');
+    });
+
+    it('should create notification when assignee is valid (AC2)', async () => {
+      const validAssigneeId = '507f1f77bcf86cd799439088';
+      (mockTeamMember.findOne as jest.Mock).mockResolvedValue({
+        userId: validAssigneeId,
+        status: 'active',
+      });
+
+      const action: ParsedAction = {
+        type: 'create_task',
+        title: 'Test task',
+        assignee: validAssigneeId,
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, contextWithUser);
+
+      expect(result.success).toBe(true);
+      expect(mockNotification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'task_assigned',
+          title: expect.stringContaining('Test Agent'),
+        })
+      );
+    });
+
+    it('should include relatedContactId when contact in context (Task 1.7)', async () => {
+      const context: ExecutionContext = {
+        ...contextWithUser,
+        contact: { _id: 'contact_123' },
+      };
+
+      const action: ParsedAction = {
+        type: 'create_task',
+        title: 'Test task',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, context);
 
       expect(mockTask.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Follow up',
+          relatedContactId: expect.any(Object),
+        })
+      );
+    });
+
+    it('should include relatedOpportunityId when deal in context (Task 1.8)', async () => {
+      const context: ExecutionContext = {
+        ...contextWithUser,
+        deal: { _id: 'deal_123', name: 'Big Deal' },
+      };
+
+      const action: ParsedAction = {
+        type: 'create_task',
+        title: 'Test task',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, context);
+
+      expect(mockTask.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relatedOpportunityId: expect.any(Object),
         })
       );
     });
   });
 
   // ==========================================================================
-  // Tag Actions Tests
+  // Tag Actions Tests (Story 3.10: Task and Tag Actions)
   // ==========================================================================
 
   describe('add_tag action', () => {
-    it('should add tag to contact in context', async () => {
+    it('should add single tag to contact in context (AC3)', async () => {
       const context: ExecutionContext = {
         ...baseContext,
         contact: { _id: '507f1f77bcf86cd799439099' },
@@ -576,9 +762,74 @@ describe('ActionExecutorService', () => {
 
       expect(result.success).toBe(true);
       expect(result.description).toContain('added');
+      // Story 3.10: Now uses $addToSet with $each for consistency
       expect(mockContact.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: '507f1f77bcf86cd799439099', workspace: workspaceId },
-        { $addToSet: { tags: 'interested' } }
+        { $addToSet: { tags: { $each: ['interested'] } } }
+      );
+    });
+
+    it('should add multiple tags from comma-separated string (AC5)', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'add_tag',
+        tags: 'Interested, CEO, SaaS',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.description).toContain('3 tags');
+      expect(mockContact.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: '507f1f77bcf86cd799439099', workspace: workspaceId },
+        { $addToSet: { tags: { $each: ['Interested', 'CEO', 'SaaS'] } } }
+      );
+    });
+
+    it('should add multiple tags from array (AC5)', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'add_tag',
+        tags: ['Tag1', 'Tag2'],
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.tagCount).toBe(2);
+      expect(mockContact.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: '507f1f77bcf86cd799439099', workspace: workspaceId },
+        { $addToSet: { tags: { $each: ['Tag1', 'Tag2'] } } }
+      );
+    });
+
+    it('should resolve @contact.industry variable in tag name', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099', industry: 'SaaS' },
+      };
+
+      const action: ParsedAction = {
+        type: 'add_tag',
+        tag: 'Industry-@contact.industry',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, context);
+
+      expect(mockContact.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.any(Object),
+        { $addToSet: { tags: { $each: ['Industry-SaaS'] } } }
       );
     });
 
@@ -609,7 +860,7 @@ describe('ActionExecutorService', () => {
   });
 
   describe('remove_tag action', () => {
-    it('should remove tag from contact', async () => {
+    it('should remove single tag from contact (AC4)', async () => {
       const context: ExecutionContext = {
         ...baseContext,
         contact: { _id: '507f1f77bcf86cd799439099' },
@@ -625,9 +876,31 @@ describe('ActionExecutorService', () => {
 
       expect(result.success).toBe(true);
       expect(result.description).toContain('removed');
+      // Story 3.10: Now uses $pullAll for consistency with multiple tags
       expect(mockContact.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: '507f1f77bcf86cd799439099', workspace: workspaceId },
-        { $pull: { tags: 'cold' } }
+        { $pullAll: { tags: ['cold'] } }
+      );
+    });
+
+    it('should remove multiple tags at once', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'remove_tag',
+        tags: 'Cold, Inactive',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(mockContact.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.any(Object),
+        { $pullAll: { tags: ['Cold', 'Inactive'] } }
       );
     });
   });

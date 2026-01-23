@@ -77,6 +77,8 @@ const ActionSchema = z.object({
   field: z.string().optional(),
   value: z.any().optional(),
   tag: z.string().optional(),
+  tags: z.union([z.string(), z.array(z.string())]).optional().describe('Story 3.10: Multiple tags support - string or array'),
+  dueDate: z.union([z.string(), z.number()]).optional().describe('Story 3.10: Natural language or explicit due date'),
   duration: z.number().optional(),
   unit: z.enum(['seconds', 'minutes', 'hours', 'days']).optional(),
   title: z.string().optional(),

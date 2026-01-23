@@ -1,6 +1,7 @@
 /**
  * ActionExecutorService.ts - Story 3.1: Parse and Execute Instructions
  * Updated Story 3.7: Send Email Action via Gmail API
+ * Updated Story 3.10: Task and Tag Actions
  *
  * Handles execution of individual actions with integration connections.
  * Each action type has a dedicated handler that performs the real action.
@@ -14,18 +15,28 @@
  * - Email template loading and variable resolution
  * - Activity logging for sent emails
  * - Auto-pause on rate limit exceeded
+ *
+ * Story 3.10 Additions:
+ * - Task creation with variable resolution (AC1)
+ * - Task assignment with RBAC validation (AC2, AC7)
+ * - User notification for task assignment
+ * - Multiple tags support (AC3, AC4, AC5)
+ * - Due date natural language parsing
  */
 
 import LinkedInService from '../utils/LinkedInService';
 import WebSearchService from '../utils/WebSearchService';
 import ApolloService from './ApolloService';
 import GmailService from '../utils/GmailService';
+import { parseDueDate } from '../utils/dueDateParser';
 import Contact from '../models/Contact';
 import Opportunity from '../models/Opportunity';
 import Task from '../models/Task';
 import Activity from '../models/Activity';
 import EmailTemplate from '../models/EmailTemplate';
 import Agent from '../models/Agent';
+import TeamMember from '../models/TeamMember';
+import Notification from '../models/Notification';
 import mongoose from 'mongoose';
 import { ParsedAction } from './InstructionParserService';
 import { ExecutionContext } from './AgentExecutionService';
@@ -795,6 +806,12 @@ async function executeWebSearch(
 
 /**
  * Execute create_task action
+ * Story 3.10: Task and Tag Actions
+ *
+ * AC1: Create Task with Variable Resolution
+ * AC2: Assign Task to Specified User
+ * AC6: Bulk Task Creation (No Rate Limit)
+ * AC7: Task Assignment Validation (RBAC)
  */
 async function executeCreateTask(
   action: ParsedAction,
@@ -803,27 +820,103 @@ async function executeCreateTask(
   const startTime = Date.now();
 
   try {
-    const title = action.title || action.params?.title || 'Follow up';
-    const assignee = action.assignee || action.params?.assignee;
-    const dueIn = action.dueIn || action.params?.dueIn || 1; // Default 1 day
+    // Task 1.3: Extract and apply variable resolution to title (AC1)
+    let title = action.title || action.params?.title || 'Follow up';
+    title = resolveEmailVariables(title, context);
 
-    // Calculate due date
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + Number(dueIn));
+    if (!title.trim()) {
+      return {
+        success: false,
+        description: 'Create task failed: no title specified',
+        error: 'Missing title field',
+        durationMs: Date.now() - startTime,
+      };
+    }
 
-    // Create task in database
+    // Task 1.4: Parse due date from natural language (AC1)
+    const dueInRaw = action.dueIn || action.params?.dueIn || action.dueDate || action.params?.dueDate;
+    const parsedDue = parseDueDate(dueInRaw);
+    const dueDate = parsedDue.dueDate;
+
+    // Task 1.5, 1.6: Get and validate assignee (AC2, AC7)
+    let assigneeRaw = action.assignee || action.params?.assignee || action.params?.assignedTo;
+    let validatedAssigneeId: mongoose.Types.ObjectId | undefined;
+
+    if (assigneeRaw) {
+      // Task 1.6: Resolve @user.* variables (AC2)
+      assigneeRaw = resolveEmailVariables(String(assigneeRaw), context);
+
+      // Task 1.5: Validate assignee is valid user in workspace (AC7)
+      try {
+        const assigneeObjectId = new mongoose.Types.ObjectId(assigneeRaw);
+
+        // Check user exists and is active member of workspace
+        const teamMember = await TeamMember.findOne({
+          workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
+          userId: assigneeObjectId,
+          status: 'active',
+        });
+
+        if (!teamMember) {
+          return {
+            success: false,
+            description: `Cannot assign task to user ${assigneeRaw}: user not in workspace`,
+            error: `Cannot assign task to user ${assigneeRaw}: user not in workspace`,
+            durationMs: Date.now() - startTime,
+          };
+        }
+
+        validatedAssigneeId = assigneeObjectId;
+      } catch (err) {
+        // Invalid ObjectId format
+        return {
+          success: false,
+          description: `Cannot assign task to user ${assigneeRaw}: user not found`,
+          error: `Cannot assign task to user ${assigneeRaw}: user not found`,
+          durationMs: Date.now() - startTime,
+        };
+      }
+    }
+
+    // Task 1.1, 1.2, 1.7, 1.8: Create task with correct field names per Task model
     const task = await Task.create({
-      workspace: context.workspaceId,
+      workspaceId: new mongoose.Types.ObjectId(context.workspaceId), // Task 1.1: Correct field name
+      userId: new mongoose.Types.ObjectId(context.userId), // Task 1.2: Required field
       title,
       description: `Auto-created by agent execution ${context.executionId}`,
       dueDate,
-      status: 'pending',
+      status: 'todo', // Correct enum value per Task model
       priority: 'medium',
-      assignee: assignee || undefined,
-      relatedContact: context.contact?._id,
-      relatedDeal: context.deal?._id,
-      createdBy: context.userId || 'system',
+      assignedTo: validatedAssigneeId, // Correct field name
+      relatedContactId: context.contact?._id ? new mongoose.Types.ObjectId(context.contact._id) : undefined, // Task 1.7
+      relatedOpportunityId: context.deal?._id ? new mongoose.Types.ObjectId(context.deal._id) : undefined, // Task 1.8
+      createdBy: new mongoose.Types.ObjectId(context.userId), // Required field
     });
+
+    // Task 2: Send notification if assignee specified (AC2)
+    if (validatedAssigneeId) {
+      try {
+        // Get agent name for notification
+        const agent = await Agent.findById(context.agentId).select('name');
+        const agentName = agent?.name || 'Agent';
+
+        // Task 2.2, 2.3: Create notification for assigned user
+        await Notification.create({
+          workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
+          userId: validatedAssigneeId,
+          type: 'task_assigned',
+          title: `New task assigned by agent ${agentName}`,
+          message: `Task: "${title}" - Due: ${dueDate.toLocaleDateString()}`,
+          priority: 'normal',
+          relatedEntityType: 'task',
+          relatedEntityId: task._id,
+          actionUrl: `/tasks/${task._id}`,
+        });
+      } catch (notifError) {
+        // Task 2.4: Log warning but don't fail task creation
+        console.warn('Failed to create task assignment notification:', notifError);
+      }
+    }
 
     return {
       success: true,
@@ -832,6 +925,8 @@ async function executeCreateTask(
         taskId: task._id.toString(),
         title,
         dueDate: dueDate.toISOString(),
+        parseMethod: parsedDue.parseMethod,
+        assignedTo: validatedAssigneeId?.toString(),
       },
       durationMs: Date.now() - startTime,
     };
@@ -839,8 +934,8 @@ async function executeCreateTask(
   } catch (error: any) {
     return {
       success: false,
-      description: `Create task failed: ${error.message}`,
-      error: error.message,
+      description: `Create task failed: ${sanitizeErrorMessage(error.message)}`,
+      error: sanitizeErrorMessage(error.message),
       durationMs: Date.now() - startTime,
     };
   }
@@ -848,6 +943,11 @@ async function executeCreateTask(
 
 /**
  * Execute add_tag or remove_tag action
+ * Story 3.10: Task and Tag Actions
+ *
+ * AC3: Add Single Tag to Contact
+ * AC4: Remove Tag from Contact
+ * AC5: Add Multiple Tags at Once
  */
 async function executeTagAction(
   action: ParsedAction,
@@ -857,9 +957,33 @@ async function executeTagAction(
   const startTime = Date.now();
 
   try {
-    const tag = action.tag || action.params?.tag;
+    // Task 3.1, 3.2: Parse tags - support single, array, and comma-separated
+    let tagsArray: string[] = [];
 
-    if (!tag) {
+    // Priority 1: Array of tags (AC5)
+    if (Array.isArray(action.tags)) {
+      tagsArray = action.tags.map((t: any) => String(t).trim()).filter(Boolean);
+    } else if (Array.isArray(action.params?.tags)) {
+      tagsArray = action.params.tags.map((t: any) => String(t).trim()).filter(Boolean);
+    }
+    // Priority 2: Comma-separated string (AC5)
+    else if (typeof action.tags === 'string' && action.tags.includes(',')) {
+      tagsArray = action.tags.split(',').map(t => t.trim()).filter(Boolean);
+    } else if (typeof action.params?.tags === 'string' && action.params.tags.includes(',')) {
+      tagsArray = action.params.tags.split(',').map(t => t.trim()).filter(Boolean);
+    }
+    // Priority 3: Single tag (AC3, AC4)
+    else {
+      const singleTag = action.tag || action.params?.tag || action.tags || action.params?.tags;
+      if (singleTag) {
+        tagsArray = [String(singleTag).trim()];
+      }
+    }
+
+    // Task 3.3: Apply variable resolution to each tag
+    tagsArray = tagsArray.map(tag => resolveEmailVariables(tag, context)).filter(Boolean);
+
+    if (tagsArray.length === 0) {
       return {
         success: false,
         description: `${operation === 'add' ? 'Add' : 'Remove'} tag failed: no tag specified`,
@@ -872,9 +996,10 @@ async function executeTagAction(
 
     // Update contact if in context
     if (context.contact?._id) {
+      // Task 3.4: Use $addToSet with $each for multiple tags, or $pullAll for remove
       const updateOp = operation === 'add'
-        ? { $addToSet: { tags: tag } }
-        : { $pull: { tags: tag } };
+        ? { $addToSet: { tags: { $each: tagsArray } } }
+        : { $pullAll: { tags: tagsArray } };
 
       await Contact.findOneAndUpdate(
         { _id: context.contact._id, workspace: context.workspaceId },
@@ -886,8 +1011,8 @@ async function executeTagAction(
     // Update deal if in context
     if (context.deal?._id) {
       const updateOp = operation === 'add'
-        ? { $addToSet: { tags: tag } }
-        : { $pull: { tags: tag } };
+        ? { $addToSet: { tags: { $each: tagsArray } } }
+        : { $pullAll: { tags: tagsArray } };
 
       await Opportunity.findOneAndUpdate(
         { _id: context.deal._id, workspace: context.workspaceId },
@@ -905,18 +1030,25 @@ async function executeTagAction(
       };
     }
 
+    // Task 3.5: Return count of tags added/removed
+    const tagLabel = tagsArray.length === 1 ? `Tag "${tagsArray[0]}"` : `${tagsArray.length} tags`;
     return {
       success: true,
-      description: `Tag "${tag}" ${operation === 'add' ? 'added to' : 'removed from'} ${targetCount} record(s)`,
+      description: `${tagLabel} ${operation === 'add' ? 'added to' : 'removed from'} ${targetCount} record(s)`,
       targetCount,
+      data: {
+        tags: tagsArray,
+        tagCount: tagsArray.length,
+        operation,
+      },
       durationMs: Date.now() - startTime,
     };
 
   } catch (error: any) {
     return {
       success: false,
-      description: `${operation === 'add' ? 'Add' : 'Remove'} tag failed: ${error.message}`,
-      error: error.message,
+      description: `${operation === 'add' ? 'Add' : 'Remove'} tag failed: ${sanitizeErrorMessage(error.message)}`,
+      error: sanitizeErrorMessage(error.message),
       durationMs: Date.now() - startTime,
     };
   }
@@ -1195,6 +1327,7 @@ async function executeSearch(
 
 /**
  * Execute human_handoff action - creates task and notifies assignee
+ * Updated for Story 3.10 - uses correct Task model field names
  */
 async function executeHumanHandoff(
   action: ParsedAction,
@@ -1210,8 +1343,28 @@ async function executeHumanHandoff(
     // Create a task for the handoff
     const taskTitle = `[Agent Handoff] ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`;
 
+    // Validate assignee if specified
+    let validatedAssigneeId: mongoose.Types.ObjectId | undefined;
+    if (assignee) {
+      try {
+        const assigneeObjectId = new mongoose.Types.ObjectId(assignee);
+        const teamMember = await TeamMember.findOne({
+          workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
+          userId: assigneeObjectId,
+          status: 'active',
+        });
+        if (teamMember) {
+          validatedAssigneeId = assigneeObjectId;
+        }
+      } catch (err) {
+        // Invalid ObjectId - skip assignment
+        console.warn(`Invalid assignee ID for human handoff: ${assignee}`);
+      }
+    }
+
     const task = await Task.create({
-      workspace: context.workspaceId,
+      workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
+      userId: new mongoose.Types.ObjectId(context.userId),
       title: taskTitle,
       description: `**Human Handoff from Agent Execution**\n\n` +
         `**Execution ID:** ${context.executionId}\n` +
@@ -1220,24 +1373,40 @@ async function executeHumanHandoff(
         (context.contact ? `**Contact:** ${context.contact.firstName || ''} ${context.contact.lastName || ''} (${context.contact.email || 'No email'})\n` : '') +
         (context.deal ? `**Deal:** ${context.deal.name || 'Unknown'}\n` : ''),
       dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Due in 24 hours
-      status: 'pending',
-      priority: priority,
-      assignee: assignee || undefined,
-      relatedContact: context.contact?._id,
-      relatedDeal: context.deal?._id,
-      createdBy: 'system',
+      status: 'todo',
+      priority: priority as 'low' | 'medium' | 'high' | 'urgent',
+      assignedTo: validatedAssigneeId,
+      relatedContactId: context.contact?._id ? new mongoose.Types.ObjectId(context.contact._id) : undefined,
+      relatedOpportunityId: context.deal?._id ? new mongoose.Types.ObjectId(context.deal._id) : undefined,
+      createdBy: new mongoose.Types.ObjectId(context.userId),
       tags: ['agent-handoff', 'requires-review'],
     });
 
-    // TODO: In production, also send notification via email/Slack to assignee
-    // This would integrate with NotificationService when available
+    // Send notification if assignee is valid
+    if (validatedAssigneeId) {
+      try {
+        await Notification.create({
+          workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
+          userId: validatedAssigneeId,
+          type: 'task_assigned',
+          title: 'Human Handoff Required',
+          message: `Agent requires your attention: ${message.substring(0, 100)}`,
+          priority: 'high',
+          relatedEntityType: 'task',
+          relatedEntityId: task._id,
+          actionUrl: `/tasks/${task._id}`,
+        });
+      } catch (notifError) {
+        console.warn('Failed to create handoff notification:', notifError);
+      }
+    }
 
     return {
       success: true,
       description: `Human handoff created: Task assigned to ${assignee || 'team'} for review`,
       data: {
         taskId: task._id.toString(),
-        assignee: assignee || 'unassigned',
+        assignee: validatedAssigneeId?.toString() || 'unassigned',
         message,
         priority,
       },
