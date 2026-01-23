@@ -31,17 +31,56 @@ import {
 // TYPE DEFINITIONS
 // =============================================================================
 
-export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'waiting';
 
+/**
+ * Story 3.5: Enhanced ExecutionContext with step outputs and memory
+ * Supports sequential multi-step workflows with data flow between steps
+ */
 export interface ExecutionContext {
   workspaceId: string;
   agentId: string;
   executionId: string;
   contact?: Record<string, any>;
   deal?: Record<string, any>;
-  memory?: Record<string, any>;
+  memory: Map<string, any>;  // Story 3.5: Changed from optional Record to Map
   variables: Record<string, any>;
   userId?: string;
+  // Story 3.5: Multi-step execution tracking
+  triggerType: 'manual' | 'scheduled' | 'event';
+  triggerData?: Record<string, any>;
+  stepOutputs: Record<string, {  // Story 3.5: Step outputs for dependency resolution
+    action: string;
+    result: any;
+    timestamp: Date;
+  }>;
+  currentStep: number;
+  totalSteps: number;
+}
+
+/**
+ * Story 3.5: Result from step execution
+ */
+export interface StepExecutionResult {
+  success: boolean;
+  data?: any;
+  itemsProcessed?: number;
+  error?: {
+    message: string;
+    code?: string;
+    details?: any;
+  };
+}
+
+/**
+ * Story 3.5: Result from multi-step workflow execution
+ */
+export interface MultiStepExecutionResult {
+  status: 'completed' | 'failed' | 'waiting' | 'cancelled';
+  completedSteps: number;
+  failedStep?: number;
+  error?: any;
+  resumeAt?: Date;
 }
 
 export interface ExecutionOptions {
@@ -227,10 +266,25 @@ export function resolveVariables(template: string, context: ExecutionContext): s
     });
   }
 
-  // Replace @memory.* variables
+  // Replace @memory.* variables - Story 3.5: Updated to use Map.get()
   if (context.memory) {
     resolved = resolved.replace(/@memory\.(\w+)/g, (_, field) => {
-      return context.memory?.[field] ?? `[${field}]`;
+      const value = context.memory instanceof Map
+        ? context.memory.get(field)
+        : (context.memory as Record<string, any>)?.[field];
+      return value ?? `[${field}]`;
+    });
+  }
+
+  // Story 3.5: Replace @step*.* variables (step outputs)
+  if (context.stepOutputs) {
+    resolved = resolved.replace(/@step(\d+)\.(\w+)/g, (_, stepNum, field) => {
+      const stepKey = `step${stepNum}`;
+      const stepOutput = context.stepOutputs?.[stepKey];
+      if (stepOutput?.result && typeof stepOutput.result === 'object') {
+        return stepOutput.result[field] ?? `[step${stepNum}.${field}]`;
+      }
+      return `[step${stepNum}.${field}]`;
     });
   }
 
@@ -286,7 +340,11 @@ export function evaluateCondition(
       } else if (field.startsWith('deal.') && context.deal) {
         fieldValue = context.deal[field.replace('deal.', '')];
       } else if (field.startsWith('memory.') && context.memory) {
-        fieldValue = context.memory[field.replace('memory.', '')];
+        // Story 3.5: Support Map or Record for memory
+        const memKey = field.replace('memory.', '');
+        fieldValue = context.memory instanceof Map
+          ? context.memory.get(memKey)
+          : (context.memory as Record<string, any>)[memKey];
       } else if (context.variables[field]) {
         fieldValue = context.variables[field];
       }
@@ -425,12 +483,18 @@ export class AgentExecutionService {
       });
 
       // 3. Build execution context
+      // Story 3.5: Enhanced execution context with multi-step support
       const context: ExecutionContext = {
         workspaceId,
         agentId,
         executionId,
         variables: {},
-        memory: {},
+        memory: new Map(),  // Story 3.5: Use Map for memory
+        triggerType: trigger.type,
+        triggerData: trigger.eventDetails,
+        stepOutputs: {},    // Story 3.5: Step outputs for dependency resolution
+        currentStep: 0,
+        totalSteps: 0,      // Will be set after parsing
       };
 
       // Load target data if specified
@@ -467,7 +531,7 @@ export class AgentExecutionService {
       // Load agent memory if enabled
       if (agent.memory?.enabled && agent.memory?.variables) {
         agent.memory.variables.forEach((v) => {
-          context.memory![v.name] = v.defaultValue;
+          context.memory.set(v.name, v.defaultValue);  // Story 3.5: Use Map.set()
         });
       }
 
@@ -855,6 +919,428 @@ export class AgentExecutionService {
     await execution.save();
 
     return true;
+  }
+
+  // =============================================================================
+  // STORY 3.5: MULTI-STEP EXECUTION METHODS
+  // =============================================================================
+
+  /**
+   * Story 3.5 Task 1.3: Initialize execution context
+   * Creates initial context with trigger data and empty step outputs
+   */
+  static initializeExecutionContext(
+    workspaceId: string,
+    agentId: string,
+    executionId: string,
+    trigger: { type: 'manual' | 'scheduled' | 'event'; eventDetails?: Record<string, any> },
+    contact?: Record<string, any>,
+    deal?: Record<string, any>
+  ): ExecutionContext {
+    return {
+      workspaceId,
+      agentId,
+      executionId,
+      contact,
+      deal,
+      memory: new Map(),
+      variables: {},
+      triggerType: trigger.type,
+      triggerData: trigger.eventDetails,
+      stepOutputs: {},
+      currentStep: 0,
+      totalSteps: 0,
+    };
+  }
+
+  /**
+   * Story 3.5 Task 1.4: Execute a single step
+   * Executes one step and returns updated context with step output
+   */
+  static async executeSingleStep(
+    step: ParsedAction,
+    stepIndex: number,
+    context: ExecutionContext
+  ): Promise<{ result: StepExecutionResult; context: ExecutionContext }> {
+    // Resolve variables in action
+    const resolvedAction = this.resolveActionVariables(step, context);
+
+    // Execute the action
+    const actionResult = await ActionExecutorService.executeAction(resolvedAction, context);
+
+    // Build step result
+    const stepResult: StepExecutionResult = {
+      success: actionResult.success,
+      data: actionResult.data || actionResult,
+      itemsProcessed: actionResult.recipients?.length || actionResult.targetCount,
+    };
+
+    if (!actionResult.success && actionResult.error) {
+      stepResult.error = {
+        message: actionResult.error,
+      };
+    }
+
+    // Story 3.5: Store step output for subsequent steps
+    const stepKey = `step${stepIndex + 1}`;
+    context.stepOutputs[stepKey] = {
+      action: step.type,
+      result: stepResult.data,
+      timestamp: new Date(),
+    };
+
+    // Update context step tracking
+    context.currentStep = stepIndex + 1;
+
+    return { result: stepResult, context };
+  }
+
+  /**
+   * Story 3.5 Task 1.5: Execute steps sequentially
+   * Main orchestration loop for multi-step execution with error handling and wait support
+   *
+   * AC1: Sequential execution 1 → 2 → 3 → 4 → 5
+   * AC3: Error handling and partial completion
+   * AC6: Wait action and resume capability
+   */
+  static async executeStepsSequentially(
+    execution: IAgentExecution,
+    steps: ParsedAction[],
+    context: ExecutionContext,
+    startFromStep: number = 0
+  ): Promise<MultiStepExecutionResult> {
+    context.totalSteps = steps.length;
+
+    // Update execution with total steps
+    await AgentExecution.findByIdAndUpdate(execution._id, {
+      totalSteps: steps.length,
+    });
+
+    for (let i = startFromStep; i < steps.length; i++) {
+      const step = steps[i];
+      context.currentStep = i;
+
+      // Update step status to 'running' and save to database (Task 2.3)
+      await this.updateStepStatus(execution._id.toString(), i, 'running');
+
+      // Emit step started event (Task 5.2)
+      this.emitStepStartedEvent(execution, i, steps.length, step.type);
+
+      try {
+        // Story 3.5 Task 6.1: Check for Wait action
+        if (step.type === 'wait' || step.type === 'delay') {
+          const waitResult = await this.handleWaitAction(execution, step, context, i + 1);
+          return waitResult;
+        }
+
+        // Execute the step
+        const stepStartTime = Date.now();
+        const { result: stepResult, context: updatedContext } = await this.executeSingleStep(
+          step,
+          i,
+          context
+        );
+        const stepDuration = Date.now() - stepStartTime;
+        context = updatedContext;
+
+        // Update step status to 'completed' (Task 2.4)
+        await this.updateStepStatus(
+          execution._id.toString(),
+          i,
+          'completed',
+          {
+            result: stepResult,
+            durationMs: stepDuration,
+          }
+        );
+
+        // Emit step completed event (Task 5.1)
+        this.emitStepCompletedEvent(execution, i, steps.length, stepResult);
+
+        if (!stepResult.success) {
+          // Task 4: Handle step failure - mark remaining as skipped
+          await this.handleStepFailure(execution, i, steps.length, stepResult.error);
+          return {
+            status: 'failed',
+            completedSteps: i,
+            failedStep: i,
+            error: stepResult.error,
+          };
+        }
+
+      } catch (error: any) {
+        // Unexpected error during step execution
+        await this.handleStepFailure(execution, i, steps.length, {
+          message: error.message,
+          details: error,
+        });
+        return {
+          status: 'failed',
+          completedSteps: i,
+          failedStep: i,
+          error: { message: error.message },
+        };
+      }
+    }
+
+    // All steps completed successfully
+    return {
+      status: 'completed',
+      completedSteps: steps.length,
+    };
+  }
+
+  /**
+   * Story 3.5 Task 2: Update step status in database
+   */
+  private static async updateStepStatus(
+    executionId: string,
+    stepIndex: number,
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped' | 'waiting',
+    data?: {
+      result?: any;
+      durationMs?: number;
+      error?: any;
+      skippedReason?: string;
+    }
+  ): Promise<void> {
+    const updateData: any = {
+      currentStep: stepIndex,
+      [`steps.${stepIndex}.stepStatus`]: status,
+    };
+
+    if (status === 'running') {
+      updateData[`steps.${stepIndex}.executedAt`] = new Date();
+    }
+
+    if (status === 'completed' && data) {
+      updateData[`steps.${stepIndex}.completedAt`] = new Date();
+      updateData[`steps.${stepIndex}.durationMs`] = data.durationMs || 0;
+      if (data.result) {
+        updateData[`steps.${stepIndex}.result`] = {
+          success: data.result.success,
+          description: data.result.data?.description || 'Completed',
+          data: data.result.data,
+          itemsProcessed: data.result.itemsProcessed,
+        };
+      }
+    }
+
+    if (status === 'failed' && data?.error) {
+      updateData[`steps.${stepIndex}.result.error`] = data.error.message;
+      updateData[`steps.${stepIndex}.result.success`] = false;
+    }
+
+    if (status === 'skipped' && data?.skippedReason) {
+      updateData[`steps.${stepIndex}.skippedReason`] = data.skippedReason;
+      updateData[`steps.${stepIndex}.result.success`] = false;
+      updateData[`steps.${stepIndex}.result.description`] = 'Not executed';
+    }
+
+    await AgentExecution.findByIdAndUpdate(executionId, { $set: updateData });
+  }
+
+  /**
+   * Story 3.5 Task 4: Handle step failure and mark remaining steps as skipped
+   */
+  private static async handleStepFailure(
+    execution: IAgentExecution,
+    failedStepIndex: number,
+    totalSteps: number,
+    error?: any
+  ): Promise<void> {
+    // Update failed step
+    await this.updateStepStatus(
+      execution._id.toString(),
+      failedStepIndex,
+      'failed',
+      { error }
+    );
+
+    // Mark remaining steps as skipped (Task 4.3)
+    for (let i = failedStepIndex + 1; i < totalSteps; i++) {
+      await this.updateStepStatus(
+        execution._id.toString(),
+        i,
+        'skipped',
+        { skippedReason: 'Previous step failed' }
+      );
+    }
+
+    // Update execution status to failed (Task 4.4)
+    await AgentExecution.findByIdAndUpdate(execution._id, {
+      status: 'failed',
+      completedAt: new Date(),
+    });
+
+    // Emit execution failed event
+    emitExecutionFailed(execution.workspace.toString(), execution.agent.toString(), {
+      executionId: execution.executionId,
+      success: false,
+      error: error?.message || 'Step execution failed',
+      failedAtStep: failedStepIndex + 1,
+      completedAt: new Date(),
+    });
+  }
+
+  /**
+   * Story 3.5 Task 6: Handle wait action and schedule resume job
+   */
+  private static async handleWaitAction(
+    execution: IAgentExecution,
+    step: ParsedAction,
+    context: ExecutionContext,
+    resumeFromStep: number
+  ): Promise<MultiStepExecutionResult> {
+    // Parse wait duration from step params
+    const waitDuration = this.parseWaitDuration(step.params?.duration || step.params?.delay || '1d');
+    const resumeAt = new Date(Date.now() + waitDuration);
+
+    // Serialize context for storage
+    const serializedContext = {
+      ...context,
+      memory: undefined,  // Will be stored separately
+    };
+    const serializedMemory = Object.fromEntries(context.memory);
+
+    // Update execution with wait state
+    await AgentExecution.findByIdAndUpdate(execution._id, {
+      status: 'waiting',
+      savedContext: serializedContext,
+      savedMemory: serializedMemory,
+      resumeFromStep,
+      resumeAt,
+      [`steps.${context.currentStep}.stepStatus`]: 'waiting',
+    });
+
+    // Schedule resume job
+    try {
+      // Import dynamically to avoid circular dependencies
+      const { agentResumeExecutionQueue } = await import('../jobs/agentResumeExecutionJob');
+      const job = await agentResumeExecutionQueue.add(
+        `resume-${execution._id}`,
+        {
+          executionId: execution._id.toString(),
+          agentId: execution.agent.toString(),
+          workspaceId: execution.workspace.toString(),
+          resumeFromStep,
+        },
+        { delay: waitDuration }
+      );
+
+      // Store job ID for potential cancellation
+      await AgentExecution.findByIdAndUpdate(execution._id, {
+        resumeJobId: job.id,
+      });
+    } catch (error) {
+      console.error('Failed to schedule resume job:', error);
+      // Job scheduling failed - don't block the execution
+    }
+
+    return {
+      status: 'waiting',
+      completedSteps: context.currentStep,
+      resumeAt,
+    };
+  }
+
+  /**
+   * Story 3.5: Parse wait duration string to milliseconds
+   * Supports: 1d, 2h, 30m, 5s, "5 days", "2 hours"
+   */
+  private static parseWaitDuration(duration: string): number {
+    if (typeof duration === 'number') return duration;
+
+    const match = duration.match(/^(\d+)\s*(d|day|days|h|hour|hours|m|min|minute|minutes|s|sec|second|seconds)?$/i);
+    if (!match) return 24 * 60 * 60 * 1000; // Default to 1 day
+
+    const value = parseInt(match[1], 10);
+    const unit = (match[2] || 'd').toLowerCase();
+
+    switch (unit[0]) {
+      case 'd': return value * 24 * 60 * 60 * 1000;
+      case 'h': return value * 60 * 60 * 1000;
+      case 'm': return value * 60 * 1000;
+      case 's': return value * 1000;
+      default: return value * 24 * 60 * 60 * 1000;
+    }
+  }
+
+  /**
+   * Story 3.5 Task 5.2: Emit step started event
+   */
+  private static emitStepStartedEvent(
+    execution: IAgentExecution,
+    stepIndex: number,
+    totalSteps: number,
+    action: string
+  ): void {
+    const progress = Math.round((stepIndex / totalSteps) * 100);
+
+    emitExecutionProgress(
+      execution.workspace.toString(),
+      execution.agent.toString(),
+      {
+        executionId: execution.executionId,
+        step: stepIndex + 1,
+        total: totalSteps,
+        action,
+        status: 'started',
+        message: `Starting step ${stepIndex + 1} of ${totalSteps}`,
+        progress,
+      }
+    );
+  }
+
+  /**
+   * Story 3.5 Task 5.1: Emit step completed event
+   */
+  private static emitStepCompletedEvent(
+    execution: IAgentExecution,
+    stepIndex: number,
+    totalSteps: number,
+    result: StepExecutionResult
+  ): void {
+    const completedSteps = stepIndex + 1;
+    const progress = Math.round((completedSteps / totalSteps) * 100);
+
+    emitExecutionProgress(
+      execution.workspace.toString(),
+      execution.agent.toString(),
+      {
+        executionId: execution.executionId,
+        step: completedSteps,
+        total: totalSteps,
+        action: 'step_completed',
+        status: result.success ? 'success' : 'failed',
+        message: `Step ${completedSteps} of ${totalSteps} completed (${progress}%)`,
+        progress,
+      }
+    );
+  }
+
+  /**
+   * Story 3.5: Restore execution context from saved state
+   * Used when resuming execution after wait action
+   */
+  static restoreExecutionContext(
+    savedContext: Record<string, any>,
+    savedMemory: Record<string, any>
+  ): ExecutionContext {
+    return {
+      workspaceId: savedContext.workspaceId,
+      agentId: savedContext.agentId,
+      executionId: savedContext.executionId,
+      contact: savedContext.contact,
+      deal: savedContext.deal,
+      memory: new Map(Object.entries(savedMemory || {})),
+      variables: savedContext.variables || {},
+      triggerType: savedContext.triggerType,
+      triggerData: savedContext.triggerData,
+      stepOutputs: savedContext.stepOutputs || {},
+      currentStep: savedContext.currentStep || 0,
+      totalSteps: savedContext.totalSteps || 0,
+    };
   }
 }
 

@@ -72,7 +72,7 @@ development_status:
   3-2-manual-trigger-execution: review
   3-3-scheduled-trigger-execution: review
   3-4-event-based-trigger-execution: done
-  3-5-sequential-multi-step-workflows: backlog
+  3-5-sequential-multi-step-workflows: done
   3-6-conditional-logic-execution: backlog
   3-7-send-email-action: backlog
   3-8-linkedin-invitation-action: backlog
