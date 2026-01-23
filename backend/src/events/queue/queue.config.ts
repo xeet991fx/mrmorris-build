@@ -8,7 +8,7 @@ export const QUEUE_NAMES = {
   ACTIVITY_LOG: 'crm-activity-log',
   CAMPAIGN_EMAILS: 'campaign-emails', // Queue for campaign email sending
   CAMPAIGN_EMAILS_DLQ: 'campaign-emails-dlq',
-  AGENT_EXECUTION_RESUME: 'agent-execution-resume', // Story 3.1: For wait action scheduling
+  AGENT_EXECUTION_RESUME: 'agent-execution-resume', // Story 3.5: For wait action resume scheduling
   AGENT_SCHEDULED: 'agent-scheduled', // Story 3.3: For scheduled agent execution
   AGENT_EVENT_TRIGGER: 'agent-event-trigger', // Story 3.4: For event-based agent execution
 } as const;

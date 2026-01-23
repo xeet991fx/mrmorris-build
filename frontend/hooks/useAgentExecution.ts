@@ -30,8 +30,9 @@ export interface ExecutionProgressEvent {
   step: number;
   total: number;
   action: string;
-  status: 'pending' | 'success' | 'failed' | 'skipped';
+  status: 'pending' | 'success' | 'failed' | 'skipped' | 'started' | 'resumed';  // Story 3.5: Added started, resumed
   message?: string;
+  progress?: number;  // Story 3.5: Progress percentage (0-100)
 }
 
 export interface ExecutionCompletedEvent {
