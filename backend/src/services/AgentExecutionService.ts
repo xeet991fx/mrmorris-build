@@ -475,7 +475,7 @@ export class AgentExecutionService {
       }
 
       // 4. Parse instructions or use cached parsedActions
-      let parsedActions: ParsedAction[] = agent.parsedActions || [];
+      let parsedActions: ParsedAction[] = (agent.parsedActions as unknown as ParsedAction[]) || [];
 
       if (!parsedActions.length && agent.instructions) {
         // Parse instructions using InstructionParserService
@@ -505,7 +505,7 @@ export class AgentExecutionService {
           workspaceId,
           agentId,
           instructions: agent.instructions || '',
-          parsedActions,
+          parsedActions: parsedActions as any,
           triggerType: trigger.type,
           restrictions: agent.restrictions,
         });
@@ -568,7 +568,7 @@ export class AgentExecutionService {
 
         // Handle conditional logic
         // Story 3.6: Enhanced conditional handling with nested support (Task 4) and logging (Task 7)
-        if (action.type === 'conditional' || action.type === 'if') {
+        if (action.type === 'conditional') {
           const conditionStartTime = Date.now();
 
           // Task 5.1: Use ConditionEvaluator for full feature support
@@ -576,7 +576,7 @@ export class AgentExecutionService {
           if (action.conditions && action.logicalOperator) {
             // Task 3: Compound condition (AC5, AC6)
             const conditionStrings = action.conditions.map(
-              (c: { field: string; operator: string; value: any }) =>
+              (c: any) =>
                 `${c.field} ${c.operator} ${JSON.stringify(c.value)}`
             );
             conditionResult = ConditionEvaluator.evaluateCompound(
@@ -927,7 +927,7 @@ export class AgentExecutionService {
     let conditionResult: ConditionResult;
     if (action.conditions && action.logicalOperator) {
       const conditionStrings = action.conditions.map(
-        (c: { field: string; operator: string; value: any }) =>
+        (c: any) =>
           `${c.field} ${c.operator} ${JSON.stringify(c.value)}`
       );
       conditionResult = ConditionEvaluator.evaluateCompound(
@@ -1204,7 +1204,7 @@ export class AgentExecutionService {
 
       try {
         // Story 3.5 Task 6.1: Check for Wait action
-        if (step.type === 'wait' || step.type === 'delay') {
+        if (step.type === 'wait') {
           const waitResult = await this.handleWaitAction(execution, step, context, i + 1);
           return waitResult;
         }

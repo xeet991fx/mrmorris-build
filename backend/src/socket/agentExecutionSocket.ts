@@ -97,6 +97,8 @@ export interface ExecutionProgressEvent {
   status: 'pending' | 'success' | 'failed' | 'skipped' | 'started' | 'resumed';  // Story 3.5: Added started, resumed
   message?: string;
   progress?: number;  // Story 3.5: Progress percentage
+  conditionResult?: boolean; // Story 3.6: For conditional actions
+  explanation?: string;      // Story 3.6: For conditional actions
 }
 
 export interface ExecutionCompletedEvent {
