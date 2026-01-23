@@ -475,7 +475,7 @@ const startServer = async () => {
     initializeAgentExecutionSocket(httpServer);
     logger.info('Agent Execution Socket.IO initialized');
 
-    httpServer.listen(PORT, () => {
+    httpServer.listen(PORT, async () => {
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
       logger.info("Server started", {
         port: PORT,

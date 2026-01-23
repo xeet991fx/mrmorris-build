@@ -18,13 +18,18 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 // =============================================================================
 
 /**
- * Condition schema for conditional actions
+ * Story 3.6: Enhanced condition schema for conditional actions
+ * Task 2.2: Support conditions array for compound logic
  */
 const ConditionSchema = z.object({
   field: z.string().describe('Field to check, e.g., "contact.title"'),
-  operator: z.enum(['equals', 'contains', 'greater_than', 'less_than', 'exists', 'not_exists']),
+  operator: z.enum([
+    'equals', 'not_equals', 'contains', 'starts_with', 'ends_with',
+    'greater_than', 'less_than', 'greater_than_or_equal', 'less_than_or_equal',
+    'exists', 'not_exists', 'is', 'is_not'
+  ]).describe('Comparison operator'),
   value: z.any().describe('Value to compare against'),
-}).optional();
+});
 
 /**
  * Action types supported by the system
@@ -46,11 +51,16 @@ export const ActionTypeEnum = z.enum([
 export type ActionType = z.infer<typeof ActionTypeEnum>;
 
 /**
- * Base action schema
+ * Story 3.6: Enhanced action schema with compound condition support
+ * Task 2.2, 2.3: conditions array and logicalOperator fields
  */
 const ActionSchema = z.object({
   type: ActionTypeEnum,
-  condition: z.string().optional().describe('Condition in plain English, e.g., "if contact.title contains CEO"'),
+  condition: z.string().optional().describe('Simple condition in plain English, e.g., "if contact.title contains CEO"'),
+  // Story 3.6 Task 2.2: Compound condition support
+  conditions: z.array(ConditionSchema).optional().describe('Array of conditions for compound logic (AND/OR)'),
+  // Story 3.6 Task 2.3: Logical operator for compound conditions
+  logicalOperator: z.enum(['and', 'or']).optional().describe('Logical operator for combining conditions'),
   params: z.record(z.any()).optional().describe('Action-specific parameters'),
   order: z.number().describe('Execution order (1-indexed)'),
   // Action-specific fields
@@ -141,6 +151,9 @@ function setCachedParse(instructions: string, result: ParseResult): void {
 // SALES-SPECIFIC SYSTEM PROMPT
 // =============================================================================
 
+/**
+ * Story 3.6: Enhanced prompt with AND/OR/NOT logic examples (Task 2.1, 2.4)
+ */
 const SALES_PARSING_PROMPT = `You are an expert sales automation instruction parser. Your job is to convert natural language sales automation instructions into a structured JSON array of actions.
 
 ## Available Action Types:
@@ -174,8 +187,18 @@ const SALES_PARSING_PROMPT = `You are an expert sales automation instruction par
 10. **wait** - Pause execution
     - Parameters: duration (number), unit (seconds/minutes/hours/days)
 
-11. **conditional** - If/then logic
-    - Parameters: condition (plain English), trueBranch (actions if true), falseBranch (actions if false)
+11. **conditional** - If/then/else logic with support for AND/OR/NOT
+    - Simple condition: condition (plain English string)
+    - Compound conditions: conditions (array of {field, operator, value}), logicalOperator ("and" or "or")
+    - Branches: trueBranch (actions if true), falseBranch (actions if false)
+    - Supports nested conditionals in branches
+
+## Condition Operators:
+- equals, not_equals - Exact match
+- contains, starts_with, ends_with - String matching (case-insensitive)
+- greater_than, less_than, greater_than_or_equal, less_than_or_equal - Numeric comparison
+- exists, not_exists - Check if field has/doesn't have a value
+- is, is_not - Boolean comparison (true/false/null/empty)
 
 ## Variable Syntax:
 - @contact.fieldName - Contact fields (firstName, lastName, email, title, company, etc.)
@@ -194,6 +217,9 @@ const SALES_PARSING_PROMPT = `You are an expert sales automation instruction par
 - "if" / "when" / "only if" → conditional action with condition
 - "CEOs" / "executives" → title contains CEO/Executive
 - "enterprise" / "big companies" → company size or value filters
+- "A AND B" / "both A and B" → compound condition with logicalOperator: "and"
+- "A OR B" / "either A or B" → compound condition with logicalOperator: "or"
+- "NOT A" / "unless A" → negate condition using not_equals or is_not operator
 
 ## Output Format:
 Return ONLY a JSON array of actions. Each action must have:
@@ -201,19 +227,78 @@ Return ONLY a JSON array of actions. Each action must have:
 - order: execution order (1, 2, 3, etc.)
 - Relevant parameters for that action type
 
-Example output:
+## Example Outputs:
+
+### Simple Condition:
 [
-  { "type": "search", "target": "contacts", "field": "title", "operator": "contains", "value": "CEO", "order": 1 },
-  { "type": "send_email", "to": "@contact.email", "subject": "Quick question", "body": "Hi @contact.firstName...", "order": 2 }
+  { "type": "conditional", "condition": "contact.title contains CEO", "trueBranch": [{ "type": "send_email", "to": "@contact.email", "subject": "VIP outreach", "body": "...", "order": 1 }], "order": 1 }
+]
+
+### Compound AND Condition (Story 3.6 AC5):
+[
+  {
+    "type": "conditional",
+    "conditions": [
+      { "field": "contact.title", "operator": "contains", "value": "CEO" },
+      { "field": "company.industry", "operator": "equals", "value": "SaaS" }
+    ],
+    "logicalOperator": "and",
+    "trueBranch": [{ "type": "add_tag", "tag": "VIP Lead", "order": 1 }],
+    "order": 1
+  }
+]
+
+### Compound OR Condition (Story 3.6 AC6):
+[
+  {
+    "type": "conditional",
+    "conditions": [
+      { "field": "contact.replied", "operator": "is", "value": true },
+      { "field": "contact.opened_email", "operator": "is", "value": true }
+    ],
+    "logicalOperator": "or",
+    "trueBranch": [{ "type": "create_task", "title": "Follow up with engaged lead", "dueIn": 1, "order": 1 }],
+    "order": 1
+  }
+]
+
+### Nested Conditions (Story 3.6 AC4):
+[
+  {
+    "type": "conditional",
+    "condition": "contact.replied == true",
+    "trueBranch": [
+      {
+        "type": "conditional",
+        "condition": "contact.interested == true",
+        "trueBranch": [{ "type": "create_task", "title": "Schedule demo", "dueIn": 1, "order": 1 }],
+        "order": 1
+      }
+    ],
+    "order": 1
+  }
+]
+
+### If/Else with Comparison (Story 3.6 AC3):
+[
+  {
+    "type": "conditional",
+    "condition": "deal.value > 50000",
+    "trueBranch": [{ "type": "send_email", "template": "urgent_followup", "order": 1 }],
+    "falseBranch": [{ "type": "send_email", "template": "standard_followup", "order": 1 }],
+    "order": 1
+  }
 ]
 
 ## Rules:
 1. Parse ALL instructions into actions - don't skip any steps
 2. Preserve the order of operations as written
 3. Use @variable syntax for dynamic values
-4. For conditionals, include trueBranch and falseBranch arrays
-5. If you cannot parse an instruction, return an error message instead of guessing
-6. Always return valid JSON - no markdown code blocks, just the raw JSON array`;
+4. For conditionals, include trueBranch and optionally falseBranch arrays
+5. For AND/OR conditions, use the conditions array with logicalOperator
+6. For nested conditions, place conditional actions inside trueBranch/falseBranch
+7. If you cannot parse an instruction, return an error message instead of guessing
+8. Always return valid JSON - no markdown code blocks, just the raw JSON array`;
 
 // =============================================================================
 // MAIN SERVICE
@@ -424,9 +509,28 @@ export class InstructionParserService {
           }
           break;
 
+        // Story 3.6 Task 2.5: Enhanced conditional validation
         case 'conditional':
-          if (!action.condition) {
-            errors.push(`Action ${i + 1} (conditional): Missing condition`);
+          // Must have either simple condition OR compound conditions
+          if (!action.condition && (!action.conditions || action.conditions.length === 0)) {
+            errors.push(`Action ${i + 1} (conditional): Missing condition - must have 'condition' string or 'conditions' array`);
+          }
+          // If using compound conditions, must have logicalOperator
+          if (action.conditions && action.conditions.length > 0 && !action.logicalOperator) {
+            errors.push(`Action ${i + 1} (conditional): Missing logicalOperator ('and' or 'or') for compound conditions`);
+          }
+          // Validate trueBranch exists
+          if (!action.trueBranch || action.trueBranch.length === 0) {
+            errors.push(`Action ${i + 1} (conditional): Missing trueBranch - conditional must have actions to execute when true`);
+          }
+          // Recursively validate branch actions
+          if (action.trueBranch) {
+            const branchValidation = this.validateActions(action.trueBranch);
+            errors.push(...branchValidation.errors.map(e => `  ${e} (in trueBranch)`));
+          }
+          if (action.falseBranch) {
+            const branchValidation = this.validateActions(action.falseBranch);
+            errors.push(...branchValidation.errors.map(e => `  ${e} (in falseBranch)`));
           }
           break;
       }

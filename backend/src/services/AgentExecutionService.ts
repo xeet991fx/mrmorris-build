@@ -20,6 +20,7 @@ import Opportunity from '../models/Opportunity';
 import InstructionParserService, { ParsedAction } from './InstructionParserService';
 import ActionExecutorService, { ActionResult } from './ActionExecutorService';
 import InstructionValidationService from './InstructionValidationService';
+import ConditionEvaluator, { ConditionResult } from '../utils/ConditionEvaluator';
 import {
   emitExecutionStarted,
   emitExecutionProgress,
@@ -311,87 +312,25 @@ export function resolveVariables(template: string, context: ExecutionContext): s
 }
 
 /**
- * Evaluate a condition against the execution context.
- * Returns { result: boolean, explanation: string }
+ * Story 3.6: Evaluate a condition against the execution context using ConditionEvaluator.
+ * Returns { result: boolean, explanation: string, warnings?: string[], fieldValues?: Record<string, any> }
+ *
+ * Task 1.1: Refactored to use ConditionEvaluator class
+ * AC1-AC7: Full conditional logic support including AND/OR/NOT, exists, and missing field handling
  */
 export function evaluateCondition(
   condition: string,
   context: ExecutionContext
-): { result: boolean; explanation: string } {
-  if (!condition) {
-    return { result: true, explanation: 'No condition specified' };
-  }
+): { result: boolean; explanation: string; warnings?: string[]; fieldValues?: Record<string, any> } {
+  // Delegate to ConditionEvaluator for full feature support
+  const evalResult = ConditionEvaluator.evaluate(condition, context);
 
-  // Parse simple conditions like "contact.replied == true" or "deal.value > 10000"
-  const patterns = [
-    /(\w+(?:\.\w+)?)\s*(==|!=|>|<|>=|<=|contains)\s*['"]?([^'"]+)['"]?/i,
-    /(\w+(?:\.\w+)?)\s*(is|is not)\s*(empty|null|true|false)/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = condition.match(pattern);
-    if (match) {
-      const [, field, operator, value] = match;
-      let fieldValue: any;
-
-      // Get field value from context
-      if (field.startsWith('contact.') && context.contact) {
-        fieldValue = context.contact[field.replace('contact.', '')];
-      } else if (field.startsWith('deal.') && context.deal) {
-        fieldValue = context.deal[field.replace('deal.', '')];
-      } else if (field.startsWith('memory.') && context.memory) {
-        // Story 3.5: Support Map or Record for memory
-        const memKey = field.replace('memory.', '');
-        fieldValue = context.memory instanceof Map
-          ? context.memory.get(memKey)
-          : (context.memory as Record<string, any>)[memKey];
-      } else if (context.variables[field]) {
-        fieldValue = context.variables[field];
-      }
-
-      // Evaluate based on operator
-      let result = false;
-      const normalizedOp = operator.toLowerCase();
-
-      switch (normalizedOp) {
-        case '==':
-        case 'is':
-          if (value === 'true') result = fieldValue === true;
-          else if (value === 'false') result = fieldValue === false;
-          else if (value === 'null' || value === 'empty') result = !fieldValue;
-          else result = String(fieldValue) === String(value);
-          break;
-        case '!=':
-        case 'is not':
-          if (value === 'true') result = fieldValue !== true;
-          else if (value === 'false') result = fieldValue !== false;
-          else if (value === 'null' || value === 'empty') result = !!fieldValue;
-          else result = String(fieldValue) !== String(value);
-          break;
-        case '>':
-          result = Number(fieldValue) > Number(value);
-          break;
-        case '<':
-          result = Number(fieldValue) < Number(value);
-          break;
-        case '>=':
-          result = Number(fieldValue) >= Number(value);
-          break;
-        case '<=':
-          result = Number(fieldValue) <= Number(value);
-          break;
-        case 'contains':
-          result = String(fieldValue || '').toLowerCase().includes(String(value).toLowerCase());
-          break;
-      }
-
-      const explanation = `${field} ${operator} ${value} → ${result ? 'TRUE' : 'FALSE'} (${field} = ${JSON.stringify(fieldValue)})`;
-      return { result, explanation };
-    }
-  }
-
-  // Default: can't evaluate, assume true
-  return { result: true, explanation: `Could not evaluate: ${condition}` };
+  return {
+    result: evalResult.result,
+    explanation: evalResult.explanation,
+    warnings: evalResult.warnings.length > 0 ? evalResult.warnings : undefined,
+    fieldValues: Object.keys(evalResult.fieldValues).length > 0 ? evalResult.fieldValues : undefined,
+  };
 }
 
 /**
@@ -628,9 +567,42 @@ export class AgentExecutionService {
         }
 
         // Handle conditional logic
+        // Story 3.6: Enhanced conditional handling with nested support (Task 4) and logging (Task 7)
         if (action.type === 'conditional' || action.type === 'if') {
-          const conditionResult = evaluateCondition(action.condition || '', context);
+          const conditionStartTime = Date.now();
 
+          // Task 5.1: Use ConditionEvaluator for full feature support
+          let conditionResult: ConditionResult;
+          if (action.conditions && action.logicalOperator) {
+            // Task 3: Compound condition (AC5, AC6)
+            const conditionStrings = action.conditions.map(
+              (c: { field: string; operator: string; value: any }) =>
+                `${c.field} ${c.operator} ${JSON.stringify(c.value)}`
+            );
+            conditionResult = ConditionEvaluator.evaluateCompound(
+              conditionStrings,
+              action.logicalOperator as 'and' | 'or',
+              context
+            );
+          } else {
+            // Simple condition (AC1, AC2, AC3)
+            conditionResult = ConditionEvaluator.evaluate(action.condition || '', context);
+          }
+
+          const conditionDurationMs = Date.now() - conditionStartTime;
+
+          // Task 7: Build condition log for debugging
+          const conditionLog = {
+            condition: action.condition || JSON.stringify(action.conditions),
+            resolvedValues: conditionResult.fieldValues,
+            operator: action.logicalOperator || 'single',
+            expectedValue: action.conditions ? action.conditions.map((c: any) => c.value) : null,
+            result: conditionResult.result,
+            warnings: conditionResult.warnings,
+            nestingLevel: 0, // Top level
+          };
+
+          // Task 5.2: Add enhanced result with warnings and field values
           steps.push({
             stepNumber,
             action: action.type,
@@ -638,36 +610,76 @@ export class AgentExecutionService {
               conditionResult: conditionResult.result,
               description: conditionResult.explanation,
               success: true,
+              warnings: conditionResult.warnings.length > 0 ? conditionResult.warnings : undefined,
+              fieldValues: conditionResult.fieldValues,
             },
+            conditionLog,
             executedAt: new Date(),
-            durationMs: 0,
+            durationMs: conditionDurationMs,
             creditsUsed: 0,
+          });
+
+          // Task 5.5: Emit Socket.io event with condition evaluation details
+          emitExecutionProgress(workspaceId, agentId, {
+            executionId,
+            step: stepNumber,
+            total: parsedActions.length,
+            action: action.type,
+            status: 'success',
+            message: `Condition evaluated: ${conditionResult.result ? 'TRUE' : 'FALSE'}`,
+            conditionResult: conditionResult.result,
+            explanation: conditionResult.explanation,
           });
 
           // Execute appropriate branch
           const activeBranch = conditionResult.result ? action.trueBranch : action.falseBranch;
           if (activeBranch?.length) {
-            // Recursively execute branch (simplified - in production this would be more robust)
+            // Task 4: Execute branch with nested condition support
             for (const branchAction of activeBranch) {
               stepNumber++;
-              const branchResult = await this.executeAction(branchAction, context);
 
-              const creditCost = getCreditCost(branchAction.type);
-              totalCreditsUsed += creditCost;
+              // Task 4.1, 4.3: Handle nested conditionals recursively
+              if (branchAction.type === 'conditional' || branchAction.type === 'if') {
+                const nestedResult = await this.executeNestedConditional(
+                  branchAction,
+                  context,
+                  workspaceId,
+                  agentId,
+                  executionId,
+                  stepNumber,
+                  parsedActions.length,
+                  1 // Nesting level 1
+                );
+                steps.push(...nestedResult.steps);
+                totalCreditsUsed += nestedResult.creditsUsed;
 
-              steps.push({
-                stepNumber,
-                action: branchAction.type,
-                result: branchResult,
-                executedAt: new Date(),
-                durationMs: branchResult.durationMs || 0,
-                creditsUsed: creditCost,
-              });
+                if (nestedResult.hasError) {
+                  hasError = true;
+                  failedAtStep = stepNumber;
+                  break;
+                }
+                stepNumber = nestedResult.lastStepNumber;
+              } else {
+                // Execute regular action
+                const branchResult = await this.executeAction(branchAction, context);
 
-              if (!branchResult.success) {
-                hasError = true;
-                failedAtStep = stepNumber;
-                break;
+                const creditCost = getCreditCost(branchAction.type);
+                totalCreditsUsed += creditCost;
+
+                steps.push({
+                  stepNumber,
+                  action: branchAction.type,
+                  result: branchResult,
+                  executedAt: new Date(),
+                  durationMs: branchResult.durationMs || 0,
+                  creditsUsed: creditCost,
+                });
+
+                if (!branchResult.success) {
+                  hasError = true;
+                  failedAtStep = stepNumber;
+                  break;
+                }
               }
             }
           }
@@ -859,6 +871,170 @@ export class AgentExecutionService {
     }
 
     return resolved;
+  }
+
+  /**
+   * Story 3.6 Task 4: Execute nested conditional actions with depth limit
+   * AC4: Nested conditions support
+   * Task 4.2: Maximum nesting depth of 5 levels
+   * Task 4.4: Preserve parent context
+   * Task 4.5: Log nesting level in execution logs
+   */
+  private static async executeNestedConditional(
+    action: ParsedAction,
+    context: ExecutionContext,
+    workspaceId: string,
+    agentId: string,
+    executionId: string,
+    startStepNumber: number,
+    totalSteps: number,
+    nestingLevel: number
+  ): Promise<{
+    steps: IAgentExecutionStep[];
+    creditsUsed: number;
+    hasError: boolean;
+    lastStepNumber: number;
+  }> {
+    // Task 4.2: Enforce maximum nesting depth
+    const MAX_NESTING_DEPTH = 5;
+    if (nestingLevel >= MAX_NESTING_DEPTH) {
+      return {
+        steps: [{
+          stepNumber: startStepNumber,
+          action: 'conditional',
+          result: {
+            success: false,
+            description: `Maximum condition nesting depth (${MAX_NESTING_DEPTH}) exceeded`,
+            error: `Nesting level ${nestingLevel} exceeds maximum of ${MAX_NESTING_DEPTH}`,
+          },
+          executedAt: new Date(),
+          durationMs: 0,
+          creditsUsed: 0,
+        }],
+        creditsUsed: 0,
+        hasError: true,
+        lastStepNumber: startStepNumber,
+      };
+    }
+
+    const steps: IAgentExecutionStep[] = [];
+    let totalCreditsUsed = 0;
+    let hasError = false;
+    let currentStepNumber = startStepNumber;
+    const conditionStartTime = Date.now();
+
+    // Evaluate condition using ConditionEvaluator
+    let conditionResult: ConditionResult;
+    if (action.conditions && action.logicalOperator) {
+      const conditionStrings = action.conditions.map(
+        (c: { field: string; operator: string; value: any }) =>
+          `${c.field} ${c.operator} ${JSON.stringify(c.value)}`
+      );
+      conditionResult = ConditionEvaluator.evaluateCompound(
+        conditionStrings,
+        action.logicalOperator as 'and' | 'or',
+        context
+      );
+    } else {
+      conditionResult = ConditionEvaluator.evaluate(action.condition || '', context);
+    }
+
+    const conditionDurationMs = Date.now() - conditionStartTime;
+
+    // Task 4.5: Log nesting level
+    const conditionLog = {
+      condition: action.condition || JSON.stringify(action.conditions),
+      resolvedValues: conditionResult.fieldValues,
+      operator: action.logicalOperator || 'single',
+      expectedValue: action.conditions ? action.conditions.map((c: any) => c.value) : null,
+      result: conditionResult.result,
+      warnings: conditionResult.warnings,
+      nestingLevel,
+    };
+
+    steps.push({
+      stepNumber: currentStepNumber,
+      action: action.type,
+      result: {
+        conditionResult: conditionResult.result,
+        description: `[Nested L${nestingLevel}] ${conditionResult.explanation}`,
+        success: true,
+        warnings: conditionResult.warnings.length > 0 ? conditionResult.warnings : undefined,
+        fieldValues: conditionResult.fieldValues,
+      },
+      conditionLog,
+      executedAt: new Date(),
+      durationMs: conditionDurationMs,
+      creditsUsed: 0,
+    });
+
+    // Emit progress event
+    emitExecutionProgress(workspaceId, agentId, {
+      executionId,
+      step: currentStepNumber,
+      total: totalSteps,
+      action: action.type,
+      status: 'success',
+      message: `Nested condition (L${nestingLevel}): ${conditionResult.result ? 'TRUE' : 'FALSE'}`,
+      conditionResult: conditionResult.result,
+    });
+
+    // Execute appropriate branch
+    const activeBranch = conditionResult.result ? action.trueBranch : action.falseBranch;
+    if (activeBranch?.length) {
+      for (const branchAction of activeBranch) {
+        currentStepNumber++;
+
+        // Task 4.3: Recursive handling of nested conditionals
+        if (branchAction.type === 'conditional' || branchAction.type === 'if') {
+          const nestedResult = await this.executeNestedConditional(
+            branchAction,
+            context,
+            workspaceId,
+            agentId,
+            executionId,
+            currentStepNumber,
+            totalSteps,
+            nestingLevel + 1
+          );
+          steps.push(...nestedResult.steps);
+          totalCreditsUsed += nestedResult.creditsUsed;
+
+          if (nestedResult.hasError) {
+            hasError = true;
+            break;
+          }
+          currentStepNumber = nestedResult.lastStepNumber;
+        } else {
+          // Execute regular action
+          const branchResult = await this.executeAction(branchAction, context);
+
+          const creditCost = getCreditCost(branchAction.type);
+          totalCreditsUsed += creditCost;
+
+          steps.push({
+            stepNumber: currentStepNumber,
+            action: branchAction.type,
+            result: branchResult,
+            executedAt: new Date(),
+            durationMs: branchResult.durationMs || 0,
+            creditsUsed: creditCost,
+          });
+
+          if (!branchResult.success) {
+            hasError = true;
+            break;
+          }
+        }
+      }
+    }
+
+    return {
+      steps,
+      creditsUsed: totalCreditsUsed,
+      hasError,
+      lastStepNumber: currentStepNumber,
+    };
   }
 
   /**

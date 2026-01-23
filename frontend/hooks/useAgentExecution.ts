@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 /**
@@ -79,6 +79,19 @@ export function useAgentExecution({
   const [currentExecution, setCurrentExecution] = useState<ExecutionStartedEvent | null>(null);
   const [progress, setProgress] = useState<ExecutionProgressEvent | null>(null);
 
+  // Use refs for callbacks to avoid re-connecting socket when callbacks change
+  const onStartedRef = useRef(onStarted);
+  const onProgressRef = useRef(onProgress);
+  const onCompletedRef = useRef(onCompleted);
+  const onFailedRef = useRef(onFailed);
+
+  useEffect(() => {
+    onStartedRef.current = onStarted;
+    onProgressRef.current = onProgress;
+    onCompletedRef.current = onCompleted;
+    onFailedRef.current = onFailed;
+  }, [onStarted, onProgress, onCompleted, onFailed]);
+
   useEffect(() => {
     // Get backend URL from environment or use default
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
@@ -108,24 +121,24 @@ export function useAgentExecution({
     // Event listeners
     newSocket.on('execution:started', (event: ExecutionStartedEvent) => {
       setCurrentExecution(event);
-      onStarted?.(event);
+      onStartedRef.current?.(event);
     });
 
     newSocket.on('execution:progress', (event: ExecutionProgressEvent) => {
       setProgress(event);
-      onProgress?.(event);
+      onProgressRef.current?.(event);
     });
 
     newSocket.on('execution:completed', (event: ExecutionCompletedEvent) => {
       setCurrentExecution(null);
       setProgress(null);
-      onCompleted?.(event);
+      onCompletedRef.current?.(event);
     });
 
     newSocket.on('execution:failed', (event: ExecutionFailedEvent) => {
       setCurrentExecution(null);
       setProgress(null);
-      onFailed?.(event);
+      onFailedRef.current?.(event);
     });
 
     setSocket(newSocket);

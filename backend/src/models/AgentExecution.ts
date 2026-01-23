@@ -27,12 +27,24 @@ export interface IAgentExecutionStep {
     error?: string;
     data?: any;                 // Story 3.5: Action-specific output data
     itemsProcessed?: number;    // Story 3.5: For batch operations
+    warnings?: string[];        // Story 3.6: Condition evaluation warnings
+    fieldValues?: Record<string, any>;  // Story 3.6: Resolved field values
   };
   executedAt: Date;
   completedAt?: Date;           // Story 3.5: When step finished
   durationMs: number;
   creditsUsed: number;
   skippedReason?: string;       // Story 3.5: Reason if step was skipped
+  // Story 3.6: Condition logging for debugging
+  conditionLog?: {
+    condition: string;          // Original condition text
+    resolvedValues: Record<string, any>;  // Field values at evaluation time
+    operator: string;           // Operator used
+    expectedValue: any;         // Expected comparison value
+    result: boolean;            // Evaluation result
+    warnings: string[];         // Any warnings generated
+    nestingLevel?: number;      // For nested conditions (Task 4.5)
+  };
 }
 
 export interface IAgentExecutionComparison {
@@ -158,12 +170,24 @@ const AgentExecutionSchema = new Schema<IAgentExecution>(
           error: String,
           data: Schema.Types.Mixed,       // Story 3.5: Action-specific output
           itemsProcessed: Number,         // Story 3.5: For batch operations
+          warnings: [String],             // Story 3.6: Condition evaluation warnings
+          fieldValues: Schema.Types.Mixed, // Story 3.6: Resolved field values
         },
         executedAt: { type: Date, required: true },
         completedAt: Date,                // Story 3.5: When step finished
         durationMs: { type: Number, required: true },
         creditsUsed: { type: Number, required: true },
         skippedReason: String,            // Story 3.5: Reason if step was skipped
+        // Story 3.6: Condition logging for debugging
+        conditionLog: {
+          condition: String,              // Original condition text
+          resolvedValues: Schema.Types.Mixed,  // Field values at evaluation time
+          operator: String,               // Operator used
+          expectedValue: Schema.Types.Mixed,   // Expected comparison value
+          result: Boolean,                // Evaluation result
+          warnings: [String],             // Any warnings generated
+          nestingLevel: Number,           // For nested conditions (Task 4.5)
+        },
       },
     ],
     summary: {
