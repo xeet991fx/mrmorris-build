@@ -595,5 +595,23 @@ export const startAgentEventTriggerJob = (): void => {
 
 ### Completion Notes List
 
+- Code review completed 2026-01-23
+- Fixed isNewContact logic bug in handleFormSubmitted (was always true, now correctly passed from publicForm.ts)
+- Added explicit worker startup in server.ts for Story 3.4
+- Updated job naming to include eventId for traceability
+- Reduced verbose condition logging in production
+
 ### File List
 
+**Created:**
+- `backend/src/jobs/agentEventTriggerJob.ts` - BullMQ queue and worker for event-triggered agent execution
+- `backend/src/services/AgentEventListenerService.ts` - Service to handle CRM events and trigger matching agents
+- `backend/src/tests/agentEventTrigger.test.ts` - Unit tests for condition evaluation and findMatchingAgents
+
+**Modified:**
+- `backend/src/events/queue/queue.config.ts` - Added AGENT_EVENT_TRIGGER queue name
+- `backend/src/models/Agent.ts` - Added compound index for event trigger queries
+- `backend/src/routes/contact.ts` - Added hook to trigger agents on contact creation
+- `backend/src/routes/opportunity.ts` - Added hook to trigger agents on deal stage change
+- `backend/src/routes/publicForm.ts` - Added hook to trigger agents on form submission, fixed wasContactCreated tracking
+- `backend/src/server.ts` - Added explicit worker startup for event trigger job

@@ -134,6 +134,7 @@ export class AgentEventListenerService {
     },
     contact: any | null,
     workspaceId: string,
+    isNewContact: boolean = false,
     triggeredBy?: string
   ): Promise<void> {
     console.log(`📩 Handling form_submitted event for workspace ${workspaceId}`);
@@ -146,8 +147,6 @@ export class AgentEventListenerService {
     }
 
     console.log(`Found ${matchingAgents.length} agent(s) matching form_submitted event`);
-
-    const isNewContact = contact?._id ? true : false;
 
     // Queue executions for all matching agents
     for (const agent of matchingAgents) {
@@ -236,7 +235,10 @@ export class AgentEventListenerService {
         condition.value
       );
 
-      console.log(`Condition: ${condition.field} ${condition.operator} ${condition.value} → ${conditionResult} (actual: ${fieldValue})`);
+      // Debug logging - only in non-production environments
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`Condition: ${condition.field} ${condition.operator} ${condition.value} → ${conditionResult} (actual: ${fieldValue})`);
+      }
 
       return conditionResult;
     });

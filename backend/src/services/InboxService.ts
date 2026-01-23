@@ -656,9 +656,9 @@ Write the email reply now (body only, no subject):`;
                     { messageId: { $in: [originalMessage.inReplyTo].filter(Boolean) } },
                 ]
             })
-            .populate("contactId", "firstName lastName email")
-            .sort({ sentAt: 1 })
-            .lean();
+                .populate("contactId", "firstName lastName email")
+                .sort({ sentAt: 1 })
+                .lean();
 
             return {
                 success: true,
@@ -1052,7 +1052,7 @@ Write the email reply now (body only, no subject):`;
 
             for (const integration of integrations) {
                 try {
-                    logger.debug("Processing integration", { email: integration.email, workspaceId: integration.workspaceId });
+                    logger.debug("Processing integration", { workspaceId: integration.workspaceId });
 
                     // Setup OAuth client
                     const oauth2Client = new google.auth.OAuth2(
@@ -1079,7 +1079,7 @@ Write the email reply now (body only, no subject):`;
                     });
 
                     const messages = listResponse.data.messages || [];
-                    logger.debug("Found emails in inbox", { count: messages.length, email: integration.email });
+                    logger.debug("Found emails in inbox", { count: messages.length });
 
                     // Get all campaign emails we've sent from this workspace
                     const sentEmails = await EmailMessage.find({
@@ -1139,7 +1139,7 @@ Write the email reply now (body only, no subject):`;
                             const fromEmail = from.match(/<(.+?)>/)?.[1] || from.split(" ")[0];
                             const cleanSubject = subject.replace(/^re:\s*/i, "").toLowerCase().trim();
 
-                            logger.debug("Checking email", { fromEmail, subject: subject.substring(0, 50) });
+                            logger.debug("Checking email", { fromEmail: "***" });
 
                             // Try to match by sender email first (sent campaign email)
                             let originalEmail = sentToEmails.get(fromEmail.toLowerCase());
@@ -1157,7 +1157,7 @@ Write the email reply now (body only, no subject):`;
                                 matchedContact = contactEmails.get(fromEmail.toLowerCase());
                                 if (matchedContact) {
                                     matchedBy = "contact";
-                                    logger.debug("Email from known contact", { firstName: matchedContact.firstName, lastName: matchedContact.lastName, email: fromEmail });
+                                    logger.debug("Email from known contact", { matchType: "contact" });
                                 } else {
                                     // Not a known contact or campaign recipient - skip
                                     continue;
@@ -1199,11 +1199,11 @@ Write the email reply now (body only, no subject):`;
                                     receivedAt: new Date(date),
                                 });
                                 totalRepliesProcessed++;
-                                logger.info("Reply processed", { fromEmail, subject });
+                                logger.info("Reply processed", { count: 1 });
                             } else if (matchedContact) {
                                 // Reply from a known contact (no original campaign email)
                                 // Log for visibility but don't process as there's no original message
-                                logger.debug("Reply from contact with no original campaign email", { contactName: matchedContact.firstName });
+                                logger.debug("Reply from contact with no original campaign email");
                                 totalRepliesProcessed++;
                             }
 
@@ -1217,7 +1217,7 @@ Write the email reply now (body only, no subject):`;
                     await integration.save();
 
                 } catch (integrationError: any) {
-                    logger.error("Error fetching replies for integration", { email: integration.email, error: integrationError.message });
+                    logger.error("Error fetching replies for integration", { error: integrationError.message });
                 }
             }
 

@@ -83,6 +83,7 @@ import { startIntentScoreDecayJob } from "./jobs/intentScoreDecayJob";
 import { startLifecycleProgressionJob } from "./jobs/lifecycleProgressionJob";
 import { startLeadRecyclingJob } from "./jobs/leadRecyclingJob";
 import { startAgentScheduledJob, registerAllLiveAgentSchedules } from "./jobs/agentScheduledJob";
+import { startAgentEventTriggerJob } from "./jobs/agentEventTriggerJob";
 import { initializeProactiveAIJobs } from "./jobs/proactiveAI";
 import { startGoogleSheetFormSyncJob } from "./jobs/googleSheetFormSyncJob";
 import { startSequenceEmailJob } from "./jobs/sequenceEmailJob";
@@ -543,6 +544,14 @@ const startServer = async () => {
         logger.info('✅ Agent scheduled job started');
       } catch (error) {
         logger.error('Failed to start agent scheduled job', { error });
+      }
+
+      // Story 3.4: Start agent event trigger job worker
+      try {
+        await startAgentEventTriggerJob();
+        logger.info('✅ Agent event trigger job started');
+      } catch (error) {
+        logger.error('Failed to start agent event trigger job', { error });
       }
 
       logger.info('✅ All background jobs started successfully');

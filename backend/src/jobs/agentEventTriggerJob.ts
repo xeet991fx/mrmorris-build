@@ -49,7 +49,12 @@ export const queueEventTriggeredExecution = async (
   eventContext: AgentEventTriggerJobData['eventContext'],
   triggeredBy?: string
 ): Promise<void> => {
-  const jobName = `event-${agentId}-${Date.now()}`;
+  // Extract eventId from context for job uniqueness and traceability
+  const eventId = eventContext.contact?._id?.toString()
+    || eventContext.deal?._id?.toString()
+    || eventContext.form?.formId
+    || 'unknown';
+  const jobName = `event-${agentId}-${eventId}-${Date.now()}`;
 
   await agentEventTriggerQueue.add(
     jobName,

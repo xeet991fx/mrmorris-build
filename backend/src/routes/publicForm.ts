@@ -242,6 +242,7 @@ router.post(
             // Auto-create contact if enabled
             let contactId: any = null;
             let contactDoc: any = null;
+            let wasContactCreated = false;
             if (form.settings.autoCreateContact) {
                 try {
                     const contactData: any = {
@@ -311,6 +312,7 @@ router.post(
                         const wasCreated = result.lastErrorObject?.upserted !== undefined;
                         contactId = contact._id;
                         contactDoc = contact;
+                        wasContactCreated = wasCreated;
 
                         // 🔔 TRIGGER WORKFLOW: Only for NEW contacts
                         // Note: findOneAndUpdate doesn't trigger post-save hook,
@@ -445,7 +447,8 @@ router.post(
             AgentEventListenerService.handleFormSubmitted(
                 { formId, fields: data },
                 contactDoc,
-                form.workspaceId.toString()
+                form.workspaceId.toString(),
+                wasContactCreated
             ).catch((err) => console.error("Agent event trigger error:", err));
 
             // Send notification emails if configured
