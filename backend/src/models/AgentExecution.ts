@@ -43,7 +43,7 @@ export interface IAgentExecutionStep {
     expectedValue: any;         // Expected comparison value
     result: boolean;            // Evaluation result
     warnings: string[];         // Any warnings generated
-    nestingLevel?: number;      // For nested conditions (Task 4.5)
+    nestingLevel: number;       // For nested conditions (Task 4.5) - 0 for top level
   };
 }
 

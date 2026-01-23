@@ -573,17 +573,28 @@ export class AgentExecutionService {
 
           // Task 5.1: Use ConditionEvaluator for full feature support
           let conditionResult: ConditionResult;
-          if (action.conditions && action.logicalOperator) {
+          if (action.conditions && action.conditions.length > 0 && action.logicalOperator) {
+            // Fix: Validate logicalOperator before using
+            const validOperator = ['and', 'or'].includes(action.logicalOperator)
+              ? (action.logicalOperator as 'and' | 'or')
+              : 'and'; // Default to 'and' if invalid
+
             // Task 3: Compound condition (AC5, AC6)
-            const conditionStrings = action.conditions.map(
-              (c: any) =>
-                `${c.field} ${c.operator} ${JSON.stringify(c.value)}`
-            );
-            conditionResult = ConditionEvaluator.evaluateCompound(
-              conditionStrings,
-              action.logicalOperator as 'and' | 'or',
-              context
-            );
+            // Fix: Add null check for condition elements
+            const conditionStrings = action.conditions
+              .filter((c: any) => c && c.field && c.operator)
+              .map((c: any) => `${c.field} ${c.operator} ${JSON.stringify(c.value)}`);
+
+            if (conditionStrings.length > 0) {
+              conditionResult = ConditionEvaluator.evaluateCompound(
+                conditionStrings,
+                validOperator,
+                context
+              );
+            } else {
+              // No valid conditions - default to simple condition evaluation
+              conditionResult = ConditionEvaluator.evaluate(action.condition || '', context);
+            }
           } else {
             // Simple condition (AC1, AC2, AC3)
             conditionResult = ConditionEvaluator.evaluate(action.condition || '', context);
@@ -592,11 +603,12 @@ export class AgentExecutionService {
           const conditionDurationMs = Date.now() - conditionStartTime;
 
           // Task 7: Build condition log for debugging
+          // Fix: Add null check for conditions array when mapping values
           const conditionLog = {
             condition: action.condition || JSON.stringify(action.conditions),
             resolvedValues: conditionResult.fieldValues,
             operator: action.logicalOperator || 'single',
-            expectedValue: action.conditions ? action.conditions.map((c: any) => c.value) : null,
+            expectedValue: action.conditions?.filter((c: any) => c)?.map((c: any) => c?.value) ?? null,
             result: conditionResult.result,
             warnings: conditionResult.warnings,
             nestingLevel: 0, // Top level
@@ -1015,14 +1027,16 @@ export class AgentExecutionService {
     // Task 4.2: Enforce maximum nesting depth
     const MAX_NESTING_DEPTH = 5;
     if (nestingLevel >= MAX_NESTING_DEPTH) {
+      // Fix: Include condition info in error message for better debugging
+      const conditionInfo = action.condition || JSON.stringify(action.conditions) || 'unknown';
       return {
         steps: [{
           stepNumber: startStepNumber,
           action: 'conditional',
           result: {
             success: false,
-            description: `Maximum condition nesting depth (${MAX_NESTING_DEPTH}) exceeded`,
-            error: `Nesting level ${nestingLevel} exceeds maximum of ${MAX_NESTING_DEPTH}`,
+            description: `Maximum condition nesting depth (${MAX_NESTING_DEPTH}) exceeded at step ${startStepNumber}`,
+            error: `Nesting level ${nestingLevel} exceeds maximum of ${MAX_NESTING_DEPTH}. Condition: ${conditionInfo.substring(0, 100)}`,
           },
           executedAt: new Date(),
           durationMs: 0,
@@ -1042,16 +1056,26 @@ export class AgentExecutionService {
 
     // Evaluate condition using ConditionEvaluator
     let conditionResult: ConditionResult;
-    if (action.conditions && action.logicalOperator) {
-      const conditionStrings = action.conditions.map(
-        (c: any) =>
-          `${c.field} ${c.operator} ${JSON.stringify(c.value)}`
-      );
-      conditionResult = ConditionEvaluator.evaluateCompound(
-        conditionStrings,
-        action.logicalOperator as 'and' | 'or',
-        context
-      );
+    if (action.conditions && action.conditions.length > 0 && action.logicalOperator) {
+      // Fix: Validate logicalOperator before using
+      const validOperator = ['and', 'or'].includes(action.logicalOperator)
+        ? (action.logicalOperator as 'and' | 'or')
+        : 'and'; // Default to 'and' if invalid
+
+      // Fix: Add null check for condition elements
+      const conditionStrings = action.conditions
+        .filter((c: any) => c && c.field && c.operator)
+        .map((c: any) => `${c.field} ${c.operator} ${JSON.stringify(c.value)}`);
+
+      if (conditionStrings.length > 0) {
+        conditionResult = ConditionEvaluator.evaluateCompound(
+          conditionStrings,
+          validOperator,
+          context
+        );
+      } else {
+        conditionResult = ConditionEvaluator.evaluate(action.condition || '', context);
+      }
     } else {
       conditionResult = ConditionEvaluator.evaluate(action.condition || '', context);
     }
@@ -1059,11 +1083,12 @@ export class AgentExecutionService {
     const conditionDurationMs = Date.now() - conditionStartTime;
 
     // Task 4.5: Log nesting level
+    // Fix: Add null check for conditions array when mapping values
     const conditionLog = {
       condition: action.condition || JSON.stringify(action.conditions),
       resolvedValues: conditionResult.fieldValues,
       operator: action.logicalOperator || 'single',
-      expectedValue: action.conditions ? action.conditions.map((c: any) => c.value) : null,
+      expectedValue: action.conditions?.filter((c: any) => c)?.map((c: any) => c?.value) ?? null,
       result: conditionResult.result,
       warnings: conditionResult.warnings,
       nestingLevel,

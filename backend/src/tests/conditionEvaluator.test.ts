@@ -41,7 +41,7 @@ function createMockContext(overrides: Partial<ExecutionContext> = {}): Execution
       stage: 'Negotiation',
       owner: 'Jane Smith',
     },
-    memory: new Map([
+    memory: new Map<string, any>([
       ['lastContact', '2026-01-20'],
       ['followUpCount', 3],
     ]),
@@ -425,8 +425,9 @@ describe('ConditionEvaluator - Integration Tests', () => {
     const result = ConditionEvaluator.evaluateCompound(conditions, 'and', context);
 
     expect(result.result).toBe(true);
-    expect(result.fieldValues).toHaveProperty('contact.title');
-    expect(result.fieldValues).toHaveProperty('deal.value');
+    // Note: toHaveProperty doesn't work with dot notation in keys, use direct access
+    expect(result.fieldValues['contact.title']).toBeDefined();
+    expect(result.fieldValues['deal.value']).toBeDefined();
   });
 
   it('should handle if/else branch selection scenario (AC3)', () => {
@@ -514,11 +515,12 @@ describe('ConditionEvaluator - Edge Cases', () => {
     expect(result.result).toBe(true);
   });
 
-  it('should handle unparseable condition gracefully', () => {
+  it('should handle unparseable condition gracefully - defaults to FALSE', () => {
     const context = createMockContext();
     const result = ConditionEvaluator.evaluate('this is not a valid condition format', context);
 
-    expect(result.result).toBe(true);
+    // Fix: Unparseable conditions now default to FALSE for safety
+    expect(result.result).toBe(false);
     expect(result.warnings.length).toBeGreaterThan(0);
   });
 
@@ -547,5 +549,70 @@ describe('ConditionEvaluator - Edge Cases', () => {
     expect(operators).toContain('contains');
     expect(operators).toContain('exists');
     expect(operators).toContain('not_exists');
+  });
+});
+
+// =============================================================================
+// NEW: Tests for Fixed Issues
+// =============================================================================
+
+describe('ConditionEvaluator - Fixed Issues', () => {
+  it('should handle field names with numbers (e.g., customField99)', () => {
+    const context = createMockContext({
+      contact: { ...createMockContext().contact!, customField99: 'test-value' },
+    });
+    const result = ConditionEvaluator.evaluate("contact.customField99 == 'test-value'", context);
+
+    expect(result.result).toBe(true);
+  });
+
+  it('should handle step output fields with numbers (e.g., step1.count)', () => {
+    const context = createMockContext();
+    const result = ConditionEvaluator.evaluate('step1.count > 5', context);
+
+    expect(result.result).toBe(true);
+    expect(result.fieldValues['step1.count']).toBe(10);
+  });
+
+  it('should handle exists operator for empty string - returns true (field exists)', () => {
+    const context = createMockContext({
+      contact: { ...createMockContext().contact!, notes: '' },
+    });
+    const result = ConditionEvaluator.evaluate('contact.notes exists', context);
+
+    // Fix: Empty string is still a valid value that exists
+    expect(result.result).toBe(true);
+  });
+
+  it('should handle starts_with operator correctly', () => {
+    const context = createMockContext();
+    const result = ConditionEvaluator.evaluate("contact.title starts_with 'CEO'", context);
+
+    expect(result.result).toBe(true);
+  });
+
+  it('should handle ends_with operator correctly', () => {
+    const context = createMockContext();
+    const result = ConditionEvaluator.evaluate("contact.title ends_with 'Sales'", context);
+
+    expect(result.result).toBe(true);
+  });
+
+  it('should handle quoted strings with proper parsing', () => {
+    const context = createMockContext({
+      contact: { ...createMockContext().contact!, title: 'CEO of Global Sales' },
+    });
+    const result = ConditionEvaluator.evaluate("contact.title contains 'of Global'", context);
+
+    expect(result.result).toBe(true);
+  });
+
+  it('should default unparseable conditions to FALSE (safety fix)', () => {
+    const context = createMockContext();
+    const result = ConditionEvaluator.evaluate('invalid condition format here', context);
+
+    expect(result.result).toBe(false);
+    expect(result.explanation).toContain('FALSE');
+    expect(result.warnings).toContainEqual(expect.stringContaining('Unparseable'));
   });
 });

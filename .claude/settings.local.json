@@ -106,7 +106,8 @@
       "Bash(npm run lint:*)",
       "Bash(git -C \"C:/app/morrisB\" status --porcelain)",
       "Bash(cd /d C:appmorrisB)",
-      "Bash(npx jest.cmd:*)"
+      "Bash(npx jest.cmd:*)",
+      "Bash(git -C \"C:/app/morrisB\" log:*)"
     ],
     "deny": [],
     "ask": []

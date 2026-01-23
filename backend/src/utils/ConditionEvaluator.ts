@@ -92,9 +92,10 @@ export class ConditionEvaluator {
     // Parse the condition
     const parsed = this.parseCondition(condition);
     if (!parsed) {
+      // Fix: Default to FALSE for unparseable conditions (safer than TRUE)
       return {
-        result: true,
-        explanation: `Could not parse condition: "${condition}" - defaulting to TRUE`,
+        result: false,
+        explanation: `Could not parse condition: "${condition}" - defaulting to FALSE`,
         warnings: [`Unparseable condition: ${condition}`],
         fieldValues: {},
       };
@@ -251,7 +252,8 @@ export class ConditionEvaluator {
     }
 
     // Pattern 1: exists/not_exists operators
-    const existsMatch = workingCondition.match(/^([a-zA-Z@_.]+)\s+(exists|not_exists)$/i);
+    // Fix: Added \d to support numeric characters in field names (e.g., customField99, step1.result)
+    const existsMatch = workingCondition.match(/^([a-zA-Z@_.\d]+)\s+(exists|not_exists)$/i);
     if (existsMatch) {
       const [, field, op] = existsMatch;
       return {
@@ -265,11 +267,13 @@ export class ConditionEvaluator {
 
     // Pattern 2: Comparison operators with quoted or unquoted values
     // Matches: field == 'value', field > 50000, field contains "CEO"
+    // Fix: Added \d for numeric field names, improved quoted string handling with proper groups
     const comparisonMatch = workingCondition.match(
-      /^([a-zA-Z@_.]+)\s*(==|!=|>=|<=|>|<|equals|not_equals|contains|starts_with|ends_with|greater_than|less_than|greater_than_or_equal|less_than_or_equal|is|is_not)\s*['"]?([^'"]+)['"]?$/i
+      /^([a-zA-Z@_.\d]+)\s*(==|!=|>=|<=|>|<|equals|not_equals|contains|starts_with|ends_with|greater_than|less_than|greater_than_or_equal|less_than_or_equal|is|is_not)\s*(?:'([^']*)'|"([^"]*)"|(\S+))$/i
     );
     if (comparisonMatch) {
-      const [, field, operator, value] = comparisonMatch;
+      const [, field, operator, singleQuoted, doubleQuoted, unquoted] = comparisonMatch;
+      const value = singleQuoted ?? doubleQuoted ?? unquoted;
       return {
         field: this.normalizeFieldName(field),
         operator: this.normalizeOperator(operator),
@@ -280,8 +284,9 @@ export class ConditionEvaluator {
     }
 
     // Pattern 3: Plain English style - "field is true/false/null/empty"
+    // Fix: Added \d for numeric field names
     const isMatch = workingCondition.match(
-      /^([a-zA-Z@_.]+)\s+(is|is not)\s+(true|false|null|empty)$/i
+      /^([a-zA-Z@_.\d]+)\s+(is|is not)\s+(true|false|null|empty)$/i
     );
     if (isMatch) {
       const [, field, operator, value] = isMatch;
@@ -432,6 +437,7 @@ export class ConditionEvaluator {
 
   /**
    * Task 1.2, 1.3 & existing operators: Apply operator to compare values
+   * Fix: 'exists' now checks for field presence, not just truthy value
    */
   private static applyOperator(
     fieldValue: any,
@@ -440,13 +446,14 @@ export class ConditionEvaluator {
     fieldFound: boolean
   ): boolean {
     switch (operator) {
-      // Task 1.2: exists operator
+      // Task 1.2: exists operator - checks if field is present (not just truthy)
+      // Fix: Now returns true for empty strings if field exists
       case 'exists':
-        return fieldFound && fieldValue !== undefined && fieldValue !== null && fieldValue !== '';
+        return fieldFound && fieldValue !== undefined && fieldValue !== null;
 
       // Task 1.3: not_exists operator
       case 'not_exists':
-        return !fieldFound || fieldValue === undefined || fieldValue === null || fieldValue === '';
+        return !fieldFound || fieldValue === undefined || fieldValue === null;
 
       // Equality operators
       case '==':
