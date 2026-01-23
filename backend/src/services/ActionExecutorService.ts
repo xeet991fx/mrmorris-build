@@ -17,6 +17,7 @@
  */
 
 import LinkedInService from '../utils/LinkedInService';
+import WebSearchService from '../utils/WebSearchService';
 import ApolloService from './ApolloService';
 import GmailService from '../utils/GmailService';
 import Contact from '../models/Contact';
@@ -194,8 +195,9 @@ async function withRetry<T>(
 
 /**
  * Resolve email template variables in content
- * Supports @contact.*, @company.*, @deal.*, and {{variable}} formats
+ * Supports @contact.*, @company.*, @deal.*, @search.results[N].field, and {{variable}} formats
  * Story 3.7 AC2: Variable Resolution
+ * Story 3.9 AC2: Search results variable resolution
  */
 function resolveEmailVariables(
   content: string,
@@ -221,6 +223,38 @@ function resolveEmailVariables(
   content = content.replace(/@deal\.(\w+)/g, (match, field) => {
     const value = context.deal?.[field];
     return value !== undefined && value !== null ? String(value) : match;
+  });
+
+  // Story 3.9 AC2: Replace @search.results[N].field patterns
+  // Supports: @search.results[0].title, @search.results[0].snippet, @search.results[0].url
+  content = content.replace(/@search\.results\[(\d+)\]\.(\w+)/g, (match, index, field) => {
+    const results = context.variables?.search?.results;
+    if (!Array.isArray(results)) return match;
+
+    const idx = parseInt(index, 10);
+    // AC2: Out of bounds returns empty string (graceful handling)
+    if (idx >= results.length) return '';
+
+    const value = results[idx]?.[field];
+    return value !== undefined && value !== null ? String(value) : match;
+  });
+
+  // Story 3.9 AC2: Replace @search.results.length for conditional logic
+  content = content.replace(/@search\.results\.length/g, () => {
+    const results = context.variables?.search?.results;
+    return Array.isArray(results) ? String(results.length) : '0';
+  });
+
+  // Story 3.9: Replace @search.count (alias for results.length)
+  content = content.replace(/@search\.count/g, () => {
+    const count = context.variables?.search?.count;
+    return count !== undefined ? String(count) : '0';
+  });
+
+  // Story 3.9: Replace @search.query (the resolved search query)
+  content = content.replace(/@search\.query/g, () => {
+    const query = context.variables?.search?.query;
+    return query !== undefined ? String(query) : '';
   });
 
   // Also support {{variable}} format from templates
@@ -664,7 +698,16 @@ async function executeLinkedInInvite(
 }
 
 /**
- * Execute web_search action
+ * Execute web_search action using Google Custom Search API
+ * Story 3.9: Web Search Action
+ *
+ * AC1: Variable resolution in search query (uses resolveEmailVariables)
+ * AC2: Store results in execution context for subsequent steps
+ * AC3: Handle complex search queries
+ * AC4: Handle empty results gracefully
+ * AC5: Retry with exponential backoff (handled by WebSearchService)
+ * AC6: 10-second timeout (handled by WebSearchService)
+ * AC7: Query sanitization (handled by WebSearchService)
  */
 async function executeWebSearch(
   action: ParsedAction,
@@ -673,7 +716,8 @@ async function executeWebSearch(
   const startTime = Date.now();
 
   try {
-    const query = action.query || action.params?.query;
+    // AC1, AC3: Extract and resolve query variables
+    let query = action.query || action.params?.query;
 
     if (!query) {
       return {
@@ -684,16 +728,47 @@ async function executeWebSearch(
       };
     }
 
-    // Web search implementation would go here
-    // For now, return a placeholder result
-    // In production, this would use a search API (Google, Bing, etc.)
+    // AC1: Apply variable resolution (e.g., @company.name -> "Acme Corp")
+    query = resolveEmailVariables(query, context);
+
+    // Execute search via WebSearchService (AC5, AC6, AC7 handled inside)
+    const searchResult = await WebSearchService.search(query);
+
+    if (!searchResult.success) {
+      return {
+        success: false,
+        description: `Web search failed: ${searchResult.error}`,
+        error: searchResult.error,
+        durationMs: Date.now() - startTime,
+        data: {
+          query,
+          retryAttempts: searchResult.retryAttempts,
+        },
+      };
+    }
+
+    // AC2: Store results in execution context for subsequent steps
+    // This allows: @search.results[0].title in later actions
+    context.variables['search'] = {
+      results: searchResult.results,
+      query,
+      count: searchResult.results.length,
+    };
+
+    // AC4: Empty results handled gracefully - success with empty array
+    const resultCount = searchResult.results.length;
+    const description = resultCount > 0
+      ? `Found ${resultCount} result${resultCount === 1 ? '' : 's'} for: ${query}`
+      : `No results found for: ${query}`;
 
     return {
       success: true,
-      description: `Web search completed for: ${query}`,
+      description,
       data: {
         query,
-        results: [], // Would contain actual search results
+        results: searchResult.results,
+        count: resultCount,
+        retryAttempts: searchResult.retryAttempts,
       },
       durationMs: Date.now() - startTime,
     };
@@ -701,8 +776,8 @@ async function executeWebSearch(
   } catch (error: any) {
     return {
       success: false,
-      description: `Web search failed: ${error.message}`,
-      error: error.message,
+      description: `Web search failed: ${sanitizeErrorMessage(error.message)}`,
+      error: sanitizeErrorMessage(error.message),
       durationMs: Date.now() - startTime,
     };
   }

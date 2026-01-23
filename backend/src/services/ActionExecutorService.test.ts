@@ -28,6 +28,14 @@ jest.mock('../utils/GmailService', () => ({
   },
 }));
 
+jest.mock('../utils/WebSearchService', () => ({
+  __esModule: true,
+  default: {
+    search: jest.fn(),
+    isConfigured: jest.fn(),
+  },
+}));
+
 jest.mock('./LinkedInService', () => ({
   sendConnectionRequest: jest.fn(),
 }));
@@ -116,6 +124,7 @@ jest.mock('bullmq', () => ({
 }));
 
 import GmailService from '../utils/GmailService';
+import WebSearchService from '../utils/WebSearchService';
 import { sendConnectionRequest } from './LinkedInService';
 import ApolloService from './ApolloService';
 import Contact from '../models/Contact';
@@ -126,6 +135,7 @@ import EmailTemplate from '../models/EmailTemplate';
 import Agent from '../models/Agent';
 
 const mockGmailService = GmailService as jest.Mocked<typeof GmailService>;
+const mockWebSearchService = WebSearchService as jest.Mocked<typeof WebSearchService>;
 const mockLinkedIn = sendConnectionRequest as jest.MockedFunction<typeof sendConnectionRequest>;
 const mockApollo = ApolloService as jest.Mocked<typeof ApolloService>;
 const mockContact = Contact as jest.Mocked<typeof Contact>;
@@ -821,6 +831,353 @@ describe('ActionExecutorService', () => {
 
       const result = await resultPromise;
       expect(result.success).toBe(true);
+    });
+  });
+
+  // ==========================================================================
+  // Web Search Tests (Story 3.9: Web Search Action)
+  // ==========================================================================
+
+  describe('web_search action', () => {
+    const mockSearchResults = [
+      { title: 'Acme Corp News', snippet: 'Latest news about Acme Corp...', url: 'https://example.com/1' },
+      { title: 'Acme Funding', snippet: 'Acme Corp raises Series B...', url: 'https://example.com/2' },
+      { title: 'Acme Products', snippet: 'New products from Acme...', url: 'https://example.com/3' },
+    ];
+
+    it('should execute web search successfully (AC1)', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: true,
+        results: mockSearchResults,
+        retryAttempts: 0,
+        durationMs: 1500,
+      });
+
+      const action: ParsedAction = {
+        type: 'web_search',
+        query: 'Acme Corp news',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(true);
+      expect(result.description).toContain('Found 3 results');
+      expect(result.data?.results).toHaveLength(3);
+      expect(result.data?.query).toBe('Acme Corp news');
+      expect(mockWebSearchService.search).toHaveBeenCalledWith('Acme Corp news');
+    });
+
+    it('should store results in execution context (AC2)', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: true,
+        results: mockSearchResults,
+        retryAttempts: 0,
+        durationMs: 1200,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        variables: {},
+      };
+
+      const action: ParsedAction = {
+        type: 'web_search',
+        query: 'test query',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, context);
+
+      // Verify results stored in context
+      expect(context.variables['search']).toBeDefined();
+      expect(context.variables['search'].results).toHaveLength(3);
+      expect(context.variables['search'].query).toBe('test query');
+      expect(context.variables['search'].count).toBe(3);
+    });
+
+    it('should resolve @company.name variable in query (AC1)', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: true,
+        results: mockSearchResults,
+        retryAttempts: 0,
+        durationMs: 1000,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: {
+          _id: 'contact_123',
+          firstName: 'John',
+          company: { name: 'Acme Corp' },
+        } as any,
+        variables: {},
+      };
+
+      const action: ParsedAction = {
+        type: 'web_search',
+        query: 'recent news about @company.name',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, context);
+
+      // Verify variable was resolved
+      expect(mockWebSearchService.search).toHaveBeenCalledWith('recent news about Acme Corp');
+    });
+
+    it('should handle empty results gracefully (AC4)', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: true,
+        results: [],
+        retryAttempts: 0,
+        durationMs: 800,
+      });
+
+      const action: ParsedAction = {
+        type: 'web_search',
+        query: 'very obscure query xyz123',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(true);
+      expect(result.description).toContain('No results found');
+      expect(result.data?.results).toEqual([]);
+      expect(result.data?.count).toBe(0);
+    });
+
+    it('should fail when no query specified', async () => {
+      const action: ParsedAction = {
+        type: 'web_search',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Missing query');
+      expect(mockWebSearchService.search).not.toHaveBeenCalled();
+    });
+
+    it('should handle search API errors', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: false,
+        results: [],
+        error: 'Web search not configured. Missing API key or search engine ID.',
+      });
+
+      const action: ParsedAction = {
+        type: 'web_search',
+        query: 'test query',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not configured');
+    });
+
+    it('should handle rate limit exhaustion (AC5)', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: false,
+        results: [],
+        error: 'Web search unavailable (rate limit exceeded after retries)',
+        retryAttempts: 3,
+      });
+
+      const action: ParsedAction = {
+        type: 'web_search',
+        query: 'test query',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('rate limit exceeded');
+    });
+
+    it('should handle timeout error (AC6)', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: false,
+        results: [],
+        error: 'Web search timed out (exceeded 10 seconds)',
+      });
+
+      const action: ParsedAction = {
+        type: 'web_search',
+        query: 'slow query',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('timed out');
+    });
+
+    it('should extract query from params.query', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: true,
+        results: [],
+        retryAttempts: 0,
+        durationMs: 500,
+      });
+
+      const action: ParsedAction = {
+        type: 'web_search',
+        params: { query: 'query from params' },
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(mockWebSearchService.search).toHaveBeenCalledWith('query from params');
+    });
+  });
+
+  // ==========================================================================
+  // Variable Resolution for @search.results Tests (Story 3.9 AC2)
+  // ==========================================================================
+
+  describe('search results variable resolution', () => {
+    it('should resolve @search.results[0].title in email body', async () => {
+      // First execute search to populate context
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: true,
+        results: [
+          { title: 'Breaking News Title', snippet: 'The snippet text', url: 'https://test.com' },
+        ],
+        retryAttempts: 0,
+        durationMs: 1000,
+      });
+
+      (mockGmailService.sendEmailWithWorkspaceAccount as jest.Mock).mockResolvedValue({
+        success: true,
+        messageId: 'msg_123',
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        variables: {},
+      };
+
+      // Execute search first
+      await ActionExecutorService.executeAction(
+        { type: 'web_search', query: 'test', order: 1 },
+        context
+      );
+
+      // Now send email with @search.results reference
+      const emailAction: ParsedAction = {
+        type: 'send_email',
+        to: 'test@example.com',
+        subject: 'Check this out: @search.results[0].title',
+        body: 'I found this article: @search.results[0].url',
+        order: 2,
+      };
+
+      await ActionExecutorService.executeAction(emailAction, context);
+
+      expect(mockGmailService.sendEmailWithWorkspaceAccount).toHaveBeenCalledWith(
+        workspaceId,
+        'test@example.com',
+        'Check this out: Breaking News Title',
+        'I found this article: https://test.com'
+      );
+    });
+
+    it('should return empty string for out-of-bounds index', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: true,
+        results: [{ title: 'Only One', snippet: 'Snippet', url: 'https://one.com' }],
+        retryAttempts: 0,
+        durationMs: 500,
+      });
+
+      (mockGmailService.sendEmailWithWorkspaceAccount as jest.Mock).mockResolvedValue({
+        success: true,
+        messageId: 'msg_456',
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        variables: {},
+      };
+
+      // Execute search
+      await ActionExecutorService.executeAction(
+        { type: 'web_search', query: 'test', order: 1 },
+        context
+      );
+
+      // Reference out-of-bounds index
+      const emailAction: ParsedAction = {
+        type: 'send_email',
+        to: 'test@example.com',
+        subject: 'Result 5: @search.results[5].title',
+        body: 'Body',
+        order: 2,
+      };
+
+      await ActionExecutorService.executeAction(emailAction, context);
+
+      // Out of bounds should resolve to empty string
+      expect(mockGmailService.sendEmailWithWorkspaceAccount).toHaveBeenCalledWith(
+        workspaceId,
+        'test@example.com',
+        'Result 5: ', // Empty string for out-of-bounds
+        'Body'
+      );
+    });
+
+    it('should resolve @search.results.length for conditional logic', async () => {
+      (mockWebSearchService.search as jest.Mock).mockResolvedValue({
+        success: true,
+        results: [
+          { title: 'R1', snippet: 'S1', url: 'https://1.com' },
+          { title: 'R2', snippet: 'S2', url: 'https://2.com' },
+        ],
+        retryAttempts: 0,
+        durationMs: 800,
+      });
+
+      (mockGmailService.sendEmailWithWorkspaceAccount as jest.Mock).mockResolvedValue({
+        success: true,
+        messageId: 'msg_789',
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        variables: {},
+      };
+
+      // Execute search
+      await ActionExecutorService.executeAction(
+        { type: 'web_search', query: 'test', order: 1 },
+        context
+      );
+
+      // Use @search.results.length
+      const emailAction: ParsedAction = {
+        type: 'send_email',
+        to: 'test@example.com',
+        subject: 'Found @search.results.length results',
+        body: 'Body',
+        order: 2,
+      };
+
+      await ActionExecutorService.executeAction(emailAction, context);
+
+      expect(mockGmailService.sendEmailWithWorkspaceAccount).toHaveBeenCalledWith(
+        workspaceId,
+        'test@example.com',
+        'Found 2 results',
+        'Body'
+      );
     });
   });
 });
