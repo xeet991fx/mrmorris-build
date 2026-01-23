@@ -1,5 +1,6 @@
 /**
  * ActionExecutorService.ts - Story 3.1: Parse and Execute Instructions
+ * Updated Story 3.7: Send Email Action via Gmail API
  *
  * Handles execution of individual actions with integration connections.
  * Each action type has a dedicated handler that performs the real action.
@@ -7,14 +8,23 @@
  * AC1: Each action is executed in sequence
  * AC2: Variable Resolution (handled by caller)
  * AC5: Execution Performance with error handling and retry logic
+ *
+ * Story 3.7 Additions:
+ * - Gmail API integration for email sending
+ * - Email template loading and variable resolution
+ * - Activity logging for sent emails
+ * - Auto-pause on rate limit exceeded
  */
 
-import emailService from './email';
 import { sendConnectionRequest } from './LinkedInService';
 import ApolloService from './ApolloService';
+import GmailService from '../utils/GmailService';
 import Contact from '../models/Contact';
 import Opportunity from '../models/Opportunity';
 import Task from '../models/Task';
+import Activity from '../models/Activity';
+import EmailTemplate from '../models/EmailTemplate';
+import Agent from '../models/Agent';
 import mongoose from 'mongoose';
 import { ParsedAction } from './InstructionParserService';
 import { ExecutionContext } from './AgentExecutionService';
@@ -183,7 +193,153 @@ async function withRetry<T>(
 // =============================================================================
 
 /**
+ * Resolve email template variables in content
+ * Supports @contact.*, @company.*, @deal.*, and {{variable}} formats
+ * Story 3.7 AC2: Variable Resolution
+ */
+function resolveEmailVariables(
+  content: string,
+  context: ExecutionContext
+): string {
+  // Replace @contact.* variables
+  content = content.replace(/@contact\.(\w+)/g, (match, field) => {
+    const value = context.contact?.[field];
+    return value !== undefined && value !== null ? String(value) : match;
+  });
+
+  // Replace @company.* variables (from contact.company)
+  content = content.replace(/@company\.(\w+)/g, (match, field) => {
+    const company = context.contact?.company;
+    if (typeof company === 'object' && company !== null) {
+      const value = company[field];
+      return value !== undefined && value !== null ? String(value) : match;
+    }
+    return match;
+  });
+
+  // Replace @deal.* variables
+  content = content.replace(/@deal\.(\w+)/g, (match, field) => {
+    const value = context.deal?.[field];
+    return value !== undefined && value !== null ? String(value) : match;
+  });
+
+  // Also support {{variable}} format from templates
+  content = content.replace(/\{\{(\w+)\}\}/g, (match, field) => {
+    // Check contact first, then deal, then variables
+    const value = context.contact?.[field]
+      ?? context.deal?.[field]
+      ?? context.variables?.[field];
+    return value !== undefined && value !== null ? String(value) : match;
+  });
+
+  return content;
+}
+
+/**
+ * Load email template by name from workspace
+ * Story 3.7 AC1: Template Loading
+ */
+async function loadEmailTemplate(
+  templateName: string,
+  workspaceId: string
+): Promise<{ subject: string; body: string } | null> {
+  const template = await EmailTemplate.findOne({
+    workspaceId: new mongoose.Types.ObjectId(workspaceId),
+    name: templateName,
+  });
+
+  if (!template) {
+    return null;
+  }
+
+  return {
+    subject: template.subject,
+    body: template.htmlContent || template.body || '',
+  };
+}
+
+/**
+ * Update email template usage stats
+ * Story 3.7 AC3: Template Usage Tracking
+ */
+async function updateTemplateUsage(
+  templateName: string,
+  workspaceId: string
+): Promise<void> {
+  await EmailTemplate.findOneAndUpdate(
+    {
+      workspaceId: new mongoose.Types.ObjectId(workspaceId),
+      name: templateName,
+    },
+    {
+      $inc: { usageCount: 1 },
+      $set: { lastUsedAt: new Date() },
+    }
+  );
+}
+
+/**
+ * Create activity for email sent
+ * Story 3.7 AC3: Activity Logging
+ */
+async function createEmailActivity(
+  workspaceId: string,
+  context: ExecutionContext,
+  to: string,
+  subject: string,
+  messageId?: string
+): Promise<void> {
+  const contactName = context.contact?.firstName
+    ? `${context.contact.firstName} ${context.contact.lastName || ''}`.trim()
+    : to;
+
+  await Activity.create({
+    workspaceId: new mongoose.Types.ObjectId(workspaceId),
+    type: 'email',
+    title: `Email sent to ${contactName}`,
+    direction: 'outbound',
+    emailSubject: subject,
+    automated: true,
+    entityType: context.contact?._id ? 'contact' : undefined,
+    entityId: context.contact?._id ? new mongoose.Types.ObjectId(context.contact._id) : undefined,
+    metadata: {
+      agentId: context.agentId,
+      executionId: context.executionId,
+      messageId,
+      recipient: to,
+    },
+  });
+}
+
+/**
+ * Auto-pause agent when rate limit exceeded
+ * Story 3.7 AC5: Email Limit and Auto-Pause
+ */
+async function autoPauseAgent(
+  agentId: string,
+  workspaceId: string,
+  reason: string
+): Promise<void> {
+  await Agent.findOneAndUpdate(
+    {
+      _id: new mongoose.Types.ObjectId(agentId),
+      workspace: new mongoose.Types.ObjectId(workspaceId),
+    },
+    {
+      $set: {
+        status: 'Paused',
+        // Note: pauseReason field may need to be added to Agent model
+      },
+    }
+  );
+
+  // TODO: Emit notification event for workspace owners/admins
+  console.log(`Agent ${agentId} auto-paused: ${reason}`);
+}
+
+/**
  * Execute send_email action using Gmail integration
+ * Story 3.7: Complete Gmail API implementation
  */
 async function executeSendEmail(
   action: ParsedAction,
@@ -192,10 +348,15 @@ async function executeSendEmail(
   const startTime = Date.now();
 
   try {
-    const to = action.to || action.params?.to;
-    const subject = action.subject || action.params?.subject || 'No subject';
-    const body = action.body || action.params?.body || '';
+    let to = action.to || action.params?.to;
+    let subject = action.subject || action.params?.subject || 'No subject';
+    let body = action.body || action.params?.body || '';
     const templateName = action.template || action.params?.template;
+
+    // If recipient not specified, try to get from context contact
+    if (!to && context.contact?.email) {
+      to = context.contact.email;
+    }
 
     if (!to) {
       return {
@@ -206,39 +367,96 @@ async function executeSendEmail(
       };
     }
 
-    // Check rate limit before sending
+    // Check rate limit before sending (AC5)
     const rateLimit = await checkActionRateLimit('send_email', context);
     if (!rateLimit.allowed) {
+      // Auto-pause the agent
+      await autoPauseAgent(
+        context.agentId,
+        context.workspaceId,
+        'Email limit reached (100/day)'
+      );
+
       return {
         success: false,
         description: `Email rate limit exceeded: ${rateLimit.usageToday}/${rateLimit.limit} emails sent today`,
-        error: `Daily email limit of ${rateLimit.limit} reached. Try again tomorrow.`,
+        error: 'Email limit reached (100/day). Agent auto-paused. Limit resets at midnight.',
         durationMs: Date.now() - startTime,
       };
     }
 
-    // Use email service to send
-    await withRetry(async () => {
-      await emailService.sendEmail({
-        to,
-        subject,
-        html: body,
-        text: body.replace(/<[^>]*>/g, ''), // Strip HTML for text version
-      });
-    });
+    // Load template if specified (AC1, Task 2)
+    if (templateName) {
+      const template = await loadEmailTemplate(templateName, context.workspaceId);
+      if (!template) {
+        return {
+          success: false,
+          description: `Send email failed: template not found`,
+          error: `Email template '${templateName}' not found in workspace.`,
+          durationMs: Date.now() - startTime,
+        };
+      }
+      subject = template.subject;
+      body = template.body;
+    }
+
+    // Resolve variables in subject and body (AC2)
+    subject = resolveEmailVariables(subject, context);
+    body = resolveEmailVariables(body, context);
+
+    // Send via Gmail API (AC1, AC4, AC6)
+    const result = await GmailService.sendEmailWithWorkspaceAccount(
+      context.workspaceId,
+      to,
+      subject,
+      body
+    );
+
+    if (!result.success) {
+      return {
+        success: false,
+        description: `Send email failed: ${result.error}`,
+        error: result.error,
+        durationMs: Date.now() - startTime,
+        data: {
+          retryAttempts: result.retryAttempts,
+        },
+      };
+    }
+
+    // Create CRM activity (AC3, Task 3)
+    await createEmailActivity(
+      context.workspaceId,
+      context,
+      to,
+      subject,
+      result.messageId
+    );
+
+    // Update template usage if used (Task 3.4)
+    if (templateName) {
+      await updateTemplateUsage(templateName, context.workspaceId);
+    }
 
     return {
       success: true,
       description: `Email sent to ${to}`,
       recipients: [to],
       durationMs: Date.now() - startTime,
+      data: {
+        messageId: result.messageId,
+        subject,
+        recipient: to,
+        templateName: templateName || undefined,
+        retryAttempts: result.retryAttempts,
+      },
     };
 
   } catch (error: any) {
     return {
       success: false,
-      description: `Send email failed: ${error.message}`,
-      error: error.message,
+      description: `Send email failed: ${sanitizeErrorMessage(error.message)}`,
+      error: sanitizeErrorMessage(error.message),
       durationMs: Date.now() - startTime,
     };
   }
