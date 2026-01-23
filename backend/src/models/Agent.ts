@@ -104,6 +104,8 @@ export interface IAgent extends Document {
   name: string;
   goal: string;
   status: 'Draft' | 'Live' | 'Paused';
+  // Story 3.7: Reason for pausing (set when auto-paused due to limits)
+  pauseReason?: string | null;
   createdBy: mongoose.Types.ObjectId;
   // Story 1.7: Track who last modified the agent
   updatedBy?: mongoose.Types.ObjectId;
@@ -159,6 +161,11 @@ const AgentSchema = new Schema<IAgent>(
       enum: ['Draft', 'Live', 'Paused'],
       default: 'Draft',
       index: true
+    },
+    // Story 3.7: Reason for pausing (set when auto-paused due to limits)
+    pauseReason: {
+      type: String,
+      default: null
     },
     createdBy: {
       type: Schema.Types.ObjectId,

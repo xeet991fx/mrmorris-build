@@ -1,8 +1,8 @@
 # Story 3.7: Send Email Action
 
-Status: completed
+Status: done
 
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+<!-- Note: Code review completed with all issues fixed. -->
 
 ## Story
 
@@ -386,14 +386,24 @@ claude-opus-4-5-thinking
 - Implemented OAuth token refresh flow with proper error handling
 - Added Activity creation for email tracking in CRM
 - Added comprehensive unit tests for both GmailService and ActionExecutorService
-- All 45 tests pass (15 GmailService + 30 ActionExecutorService)
+- All 49 tests pass (18 GmailService + 31 ActionExecutorService)
+
+**Code Review Fixes Applied:**
+- Added `pauseReason` field to Agent model (Task 4.3)
+- Implemented notification queue for agent auto-pause events (Task 4.4, AC5)
+- Added email address validation before sending (AC7/security)
+- Fixed race condition in sentToday increment using atomic $inc operator
+- Added empty template body warning
+- Added tests for email validation
 
 ### File List
 
 | File | Action | Description |
 |------|--------|-------------|
-| `backend/src/utils/GmailService.ts` | Created | Gmail API integration service with OAuth, token refresh, MIME building |
-| `backend/src/utils/GmailService.test.ts` | Created | Unit tests for GmailService (15 tests) |
-| `backend/src/services/ActionExecutorService.ts` | Modified | Updated send_email action to use GmailService, added template loading, variable resolution, activity creation |
-| `backend/src/services/ActionExecutorService.test.ts` | Modified | Added tests for Gmail integration, template loading, variable resolution, activity creation (30 tests) |
+| `backend/src/utils/GmailService.ts` | Created | Gmail API integration service with OAuth, token refresh, MIME building, email validation |
+| `backend/src/utils/GmailService.test.ts` | Created | Unit tests for GmailService (18 tests) |
+| `backend/src/services/ActionExecutorService.ts` | Modified | Updated send_email action to use GmailService, added template loading, variable resolution, activity creation, notifications |
+| `backend/src/services/ActionExecutorService.test.ts` | Modified | Added tests for Gmail integration, template loading, variable resolution, activity creation, email validation (31 tests) |
+| `backend/src/models/Agent.ts` | Modified | Added `pauseReason` field for tracking auto-pause reasons |
+| `_bmad-output/implementation-artifacts/sprint-status.yaml` | Modified | Updated story status |
 

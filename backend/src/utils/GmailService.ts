@@ -45,6 +45,16 @@ const GMAIL_RETRY_CONFIG = {
   backoffMultiplier: 2,
 };
 
+// Email validation regex (RFC 5322 simplified)
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Validate email address format
+ */
+export function isValidEmail(email: string): boolean {
+  return EMAIL_REGEX.test(email);
+}
+
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
@@ -264,6 +274,14 @@ class GmailService {
     subject: string,
     body: string
   ): Promise<GmailSendResult> {
+    // Validate email address format
+    if (!isValidEmail(to)) {
+      return {
+        success: false,
+        error: `Invalid email address: ${to}`,
+      };
+    }
+
     // Get active Gmail account
     const account = await this.getActiveGmailAccount(workspaceId);
 
@@ -294,11 +312,15 @@ class GmailService {
       body
     );
 
-    // Update sent count if successful
+    // Update sent count atomically if successful (fixes race condition)
     if (result.success) {
-      account.sentToday = (account.sentToday || 0) + 1;
-      account.lastSentAt = new Date();
-      await account.save();
+      await EmailAccount.findByIdAndUpdate(
+        account._id,
+        {
+          $inc: { sentToday: 1 },
+          $set: { lastSentAt: new Date() },
+        }
+      );
     }
 
     return result;

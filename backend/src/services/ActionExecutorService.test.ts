@@ -143,6 +143,11 @@ describe('ActionExecutorService', () => {
     agentId,
     executionId: 'exec_123',
     variables: {},
+    memory: new Map(),
+    triggerType: 'manual',
+    stepOutputs: {},
+    currentStep: 1,
+    totalSteps: 1,
   };
 
   beforeEach(() => {
@@ -193,6 +198,26 @@ describe('ActionExecutorService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('recipient');
+    });
+
+    it('should fail for invalid email address format', async () => {
+      (mockGmailService.sendEmailWithWorkspaceAccount as jest.Mock).mockResolvedValue({
+        success: false,
+        error: 'Invalid email address: not-an-email',
+      });
+
+      const action: ParsedAction = {
+        type: 'send_email',
+        to: 'not-an-email',
+        subject: 'Hello',
+        body: 'Body',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid email address');
     });
 
     it('should use contact email when no explicit recipient (AC1)', async () => {

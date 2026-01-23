@@ -252,10 +252,15 @@ async function loadEmailTemplate(
     return null;
   }
 
-  return {
-    subject: template.subject,
-    body: template.htmlContent || template.body || '',
-  };
+  const subject = template.subject || '';
+  const body = template.htmlContent || template.body || '';
+
+  // Warn if template has empty body
+  if (!body.trim()) {
+    console.warn(`Warning: Email template '${templateName}' has empty body content`);
+  }
+
+  return { subject, body };
 }
 
 /**
@@ -328,12 +333,28 @@ async function autoPauseAgent(
     {
       $set: {
         status: 'Paused',
-        // Note: pauseReason field may need to be added to Agent model
+        pauseReason: reason,
       },
     }
   );
 
-  // TODO: Emit notification event for workspace owners/admins
+  // Emit notification event for workspace owners/admins
+  // Using the existing event emitter pattern from queue system
+  try {
+    const notificationQueue = new Queue(QUEUE_NAMES.NOTIFICATIONS || 'notifications', defaultQueueOptions);
+    await notificationQueue.add('agent-paused', {
+      type: 'agent_paused',
+      workspaceId,
+      agentId,
+      reason,
+      timestamp: new Date().toISOString(),
+    });
+    await notificationQueue.close();
+  } catch (error) {
+    // Log but don't fail the operation if notification fails
+    console.error('Failed to send agent pause notification:', error);
+  }
+
   console.log(`Agent ${agentId} auto-paused: ${reason}`);
 }
 

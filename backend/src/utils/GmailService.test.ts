@@ -7,13 +7,19 @@
  * - AC6: Retry with exponential backoff on 429 errors
  */
 
-import GmailService, { buildMimeMessage } from './GmailService';
+import GmailService, { buildMimeMessage, isValidEmail } from './GmailService';
 import axios from 'axios';
 import EmailAccount from '../models/EmailAccount';
 
 // Mock dependencies
 jest.mock('axios');
-jest.mock('../models/EmailAccount');
+jest.mock('../models/EmailAccount', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
+  },
+}));
 
 const mockAxios = axios as jest.Mocked<typeof axios>;
 const mockEmailAccount = EmailAccount as jest.Mocked<typeof EmailAccount>;
@@ -23,6 +29,26 @@ describe('GmailService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  // ==========================================================================
+  // isValidEmail Tests (Story 3.7 - Email Validation)
+  // ==========================================================================
+
+  describe('isValidEmail', () => {
+    it('should return true for valid email addresses', () => {
+      expect(isValidEmail('test@example.com')).toBe(true);
+      expect(isValidEmail('user.name@domain.org')).toBe(true);
+      expect(isValidEmail('user+tag@example.co.uk')).toBe(true);
+    });
+
+    it('should return false for invalid email addresses', () => {
+      expect(isValidEmail('invalid')).toBe(false);
+      expect(isValidEmail('invalid@')).toBe(false);
+      expect(isValidEmail('@domain.com')).toBe(false);
+      expect(isValidEmail('no spaces@test.com')).toBe(false);
+      expect(isValidEmail('')).toBe(false);
+    });
   });
 
   // ==========================================================================
@@ -228,6 +254,18 @@ describe('GmailService', () => {
   // ==========================================================================
 
   describe('sendEmailWithWorkspaceAccount', () => {
+    it('should return error for invalid email address', async () => {
+      const result = await GmailService.sendEmailWithWorkspaceAccount(
+        workspaceId,
+        'invalid-email',
+        'Test Subject',
+        'Test Body'
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid email address');
+    });
+
     it('should return error when Gmail not connected (AC4)', async () => {
       (mockEmailAccount.findOne as jest.Mock).mockResolvedValue(null);
 
@@ -256,6 +294,7 @@ describe('GmailService', () => {
       };
 
       (mockEmailAccount.findOne as jest.Mock).mockResolvedValue(mockAccount);
+      (mockEmailAccount.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockAccount);
       mockAxios.post.mockResolvedValue({
         data: { id: 'msg_789' },
       });
@@ -269,9 +308,14 @@ describe('GmailService', () => {
 
       expect(result.success).toBe(true);
       expect(result.messageId).toBe('msg_789');
-      // Verify sent count was incremented
-      expect(mockAccount.sentToday).toBe(6);
-      expect(mockAccount.save).toHaveBeenCalled();
+      // Verify atomic increment was called
+      expect(mockEmailAccount.findByIdAndUpdate).toHaveBeenCalledWith(
+        'account_123',
+        expect.objectContaining({
+          $inc: { sentToday: 1 },
+          $set: expect.objectContaining({ lastSentAt: expect.any(Date) }),
+        })
+      );
     });
 
     it('should refresh token when expired before sending', async () => {
@@ -288,6 +332,7 @@ describe('GmailService', () => {
       };
 
       (mockEmailAccount.findOne as jest.Mock).mockResolvedValue(mockAccount);
+      (mockEmailAccount.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockAccount);
 
       // Token refresh call
       mockAxios.post.mockImplementation((url: string) => {
