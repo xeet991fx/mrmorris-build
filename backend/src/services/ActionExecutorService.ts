@@ -16,7 +16,7 @@
  * - Auto-pause on rate limit exceeded
  */
 
-import { sendConnectionRequest } from './LinkedInService';
+import LinkedInService from '../utils/LinkedInService';
 import ApolloService from './ApolloService';
 import GmailService from '../utils/GmailService';
 import Contact from '../models/Contact';
@@ -317,6 +317,40 @@ async function createEmailActivity(
 }
 
 /**
+ * Create activity for LinkedIn invitation sent
+ * Story 3.8 AC7: Activity Logging
+ */
+async function createLinkedInActivity(
+  workspaceId: string,
+  context: ExecutionContext,
+  profileUrl: string,
+  note?: string,
+  invitationId?: string
+): Promise<void> {
+  const contactName = context.contact?.firstName
+    ? `${context.contact.firstName} ${context.contact.lastName || ''}`.trim()
+    : profileUrl;
+
+  await Activity.create({
+    workspaceId: new mongoose.Types.ObjectId(workspaceId),
+    type: 'workflow_action',
+    title: `LinkedIn invitation sent to ${contactName}`,
+    direction: 'outbound',
+    automated: true,
+    entityType: context.contact?._id ? 'contact' : undefined,
+    entityId: context.contact?._id ? new mongoose.Types.ObjectId(context.contact._id) : undefined,
+    description: note ? `Note: ${note.substring(0, 200)}${note.length > 200 ? '...' : ''}` : undefined,
+    metadata: {
+      agentId: context.agentId,
+      executionId: context.executionId,
+      invitationId,
+      profileUrl,
+      actionType: 'linkedin_invitation_sent',
+    },
+  });
+}
+
+/**
  * Auto-pause agent when rate limit exceeded
  * Story 3.7 AC5: Email Limit and Auto-Pause
  */
@@ -484,7 +518,16 @@ async function executeSendEmail(
 }
 
 /**
- * Execute linkedin_invite action
+ * Execute linkedin_invitation action
+ * Story 3.8: LinkedIn Invitation Action via LinkedIn API
+ *
+ * AC1: Send invitation with custom note (variable resolution)
+ * AC2: Use contact LinkedIn URL
+ * AC3: Handle missing LinkedIn URL (skip, don't fail)
+ * AC4: Rate limiting (100/day)
+ * AC5: Auto-pause on limit exceeded
+ * AC6: Handle expired credentials
+ * AC7: Activity logging
  */
 async function executeLinkedInInvite(
   action: ParsedAction,
@@ -493,52 +536,129 @@ async function executeLinkedInInvite(
   const startTime = Date.now();
 
   try {
-    const recipient = action.recipient || action.params?.recipient;
-    const message = action.message || action.params?.message;
+    // Get recipient - from action params or contact context
+    let profileUrl = action.recipient || action.params?.recipient || action.params?.profileUrl;
+    let note = action.message || action.note || action.params?.note || action.params?.message;
 
-    if (!recipient) {
+    // AC2: If recipient not specified, try to get from context contact
+    if (!profileUrl && context.contact?.linkedinUrl) {
+      profileUrl = context.contact.linkedinUrl;
+    }
+
+    // Get contact name for error messages and activity logging
+    const contactName = context.contact?.firstName
+      ? `${context.contact.firstName} ${context.contact.lastName || ''}`.trim()
+      : undefined;
+
+    // AC3: Handle missing LinkedIn URL
+    if (!profileUrl) {
+      const name = contactName || 'Unknown contact';
+      console.log(`Skipping LinkedIn invitation: Contact '${name}' does not have LinkedIn URL`);
       return {
         success: false,
-        description: 'LinkedIn invite failed: no recipient specified',
-        error: 'Missing recipient field',
+        description: `Contact '${name}' does not have LinkedIn URL. Skipping.`,
+        error: `Contact '${name}' does not have LinkedIn URL. Skipping.`,
         durationMs: Date.now() - startTime,
+        data: {
+          skipped: true,
+          reason: 'missing_linkedin_url',
+        },
       };
     }
 
-    // Check rate limit before sending (LinkedIn API terms: 100 invites/day)
-    const rateLimit = await checkActionRateLimit('linkedin_invite', context);
+    // AC4: Check rate limit before sending
+    const rateLimit = await LinkedInService.checkDailyLimit(context.workspaceId);
     if (!rateLimit.allowed) {
+      // AC5: Auto-pause the agent
+      await autoPauseAgent(
+        context.agentId,
+        context.workspaceId,
+        'LinkedIn daily limit reached (100/day)'
+      );
+
       return {
         success: false,
-        description: `LinkedIn invite rate limit exceeded: ${rateLimit.usageToday}/${rateLimit.limit} invites sent today`,
-        error: `Daily LinkedIn invite limit of ${rateLimit.limit} reached. Try again tomorrow.`,
+        description: `LinkedIn rate limit exceeded: ${rateLimit.usageToday}/${rateLimit.limit} invitations sent today`,
+        error: 'LinkedIn daily limit reached (100 invitations/day). Agent auto-paused. Limit resets tomorrow.',
         durationMs: Date.now() - startTime,
       };
     }
 
-    // Use LinkedInService to send invitation
-    await withRetry(async () => {
-      const result = await sendConnectionRequest({
-        profileUrl: recipient,
-        note: message,
-      });
-      if (!result.success) {
-        throw new Error(result.error || 'LinkedIn invitation failed');
+    // AC1: Resolve variables in note (reuse email variable resolution pattern)
+    if (note) {
+      note = resolveEmailVariables(note, context);
+    }
+
+    // Send via LinkedIn API (AC1, AC2, AC6)
+    const result = await LinkedInService.sendInvitationWithWorkspaceAccount(
+      context.workspaceId,
+      profileUrl,
+      note,
+      contactName
+    );
+
+    // Handle skipped contacts (missing LinkedIn URL from service)
+    if (result.skipped) {
+      return {
+        success: false,
+        description: result.error || 'Contact skipped (no LinkedIn URL)',
+        error: result.error,
+        durationMs: Date.now() - startTime,
+        data: {
+          skipped: true,
+          reason: 'missing_linkedin_url',
+        },
+      };
+    }
+
+    if (!result.success) {
+      // Check if this is a rate limit error that should trigger auto-pause
+      if (result.error?.includes('daily limit')) {
+        await autoPauseAgent(
+          context.agentId,
+          context.workspaceId,
+          'LinkedIn daily limit reached (100/day)'
+        );
       }
-    });
+
+      return {
+        success: false,
+        description: `LinkedIn invitation failed: ${result.error}`,
+        error: result.error,
+        durationMs: Date.now() - startTime,
+        data: {
+          retryAttempts: result.retryAttempts,
+        },
+      };
+    }
+
+    // AC7: Create CRM activity on success
+    await createLinkedInActivity(
+      context.workspaceId,
+      context,
+      profileUrl,
+      note,
+      result.invitationId
+    );
 
     return {
       success: true,
-      description: `LinkedIn invitation sent to ${recipient}`,
-      recipients: [recipient],
+      description: `LinkedIn invitation sent to ${contactName || profileUrl}`,
+      recipients: [profileUrl],
       durationMs: Date.now() - startTime,
+      data: {
+        invitationId: result.invitationId,
+        profileUrl,
+        note: note || undefined,
+        retryAttempts: result.retryAttempts,
+      },
     };
 
   } catch (error: any) {
     return {
       success: false,
-      description: `LinkedIn invite failed: ${error.message}`,
-      error: error.message,
+      description: `LinkedIn invitation failed: ${sanitizeErrorMessage(error.message)}`,
+      error: sanitizeErrorMessage(error.message),
       durationMs: Date.now() - startTime,
     };
   }
@@ -1071,6 +1191,7 @@ export class ActionExecutorService {
         return executeSendEmail(action, context);
 
       case 'linkedin_invite':
+      case 'linkedin_invitation':
       case 'linkedin':
         return executeLinkedInInvite(action, context);
 

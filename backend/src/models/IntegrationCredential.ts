@@ -8,7 +8,7 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 import { encryptCredentials, decryptCredentials } from '../utils/encryption';
 
-export type IntegrationType = 'slack' | 'google_sheets' | 'notion' | 'gmail' | 'calendar';
+export type IntegrationType = 'slack' | 'google_sheets' | 'notion' | 'gmail' | 'calendar' | 'linkedin';
 
 export interface IIntegrationCredential extends Document {
     workspaceId: Types.ObjectId;
@@ -37,7 +37,7 @@ const integrationCredentialSchema = new Schema<IIntegrationCredential>(
         },
         type: {
             type: String,
-            enum: ['slack', 'google_sheets', 'notion', 'gmail', 'calendar'],
+            enum: ['slack', 'google_sheets', 'notion', 'gmail', 'calendar', 'linkedin'],
             required: [true, 'Integration type is required'],
         },
         name: {
