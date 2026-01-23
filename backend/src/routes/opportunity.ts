@@ -12,6 +12,7 @@ import {
   opportunityQuerySchema,
 } from "../validations/opportunity";
 import { workflowService } from "../services/WorkflowService";
+import { AgentEventListenerService } from "../services/AgentEventListenerService";
 import { eventPublisher } from "../events/publisher/EventPublisher";
 import { DEAL_EVENTS } from "../events/types/deal.events";
 import { escapeRegex } from "../utils/sanitize";
@@ -858,6 +859,15 @@ router.patch(
       // Trigger workflow enrollment for stage change (async, don't wait) - kept for backward compatibility
       workflowService.checkAndEnroll("deal:stage_changed", opportunity, workspaceId)
         .catch((err) => console.error("Workflow enrollment error:", err));
+
+      // Story 3.4: Trigger event-based agents for deal stage change (async, don't wait)
+      AgentEventListenerService.handleDealStageUpdated(
+        opportunity.toObject(),
+        previousStageName,
+        stage.name,
+        workspaceId,
+        (req.user?._id as any)?.toString()
+      ).catch((err) => console.error("Agent event trigger error:", err));
     } catch (error: any) {
       if (error.name === "ZodError") {
         return res.status(400).json({

@@ -104,7 +104,8 @@
       "Bash(script -c:*)",
       "Bash(npx vitest run:*)",
       "Bash(npm run lint:*)",
-      "Bash(git -C \"C:/app/morrisB\" status --porcelain)"
+      "Bash(git -C \"C:/app/morrisB\" status --porcelain)",
+      "Bash(cd /d C:appmorrisB)"
     ],
     "deny": [],
     "ask": []

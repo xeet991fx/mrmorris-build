@@ -11,6 +11,7 @@ import {
   contactQuerySchema,
 } from "../validations/contact";
 import { workflowService } from "../services/WorkflowService";
+import { AgentEventListenerService } from "../services/AgentEventListenerService";
 import { fileParserService } from "../services/FileParserService";
 import { aiDataExtractor } from "../services/AIDataExtractor";
 import { eventPublisher } from "../events/publisher/EventPublisher";
@@ -114,6 +115,13 @@ router.post(
       // Trigger workflow enrollment (async, don't wait) - kept for backward compatibility
       workflowService.checkAndEnroll("contact:created", contactDoc, workspaceId)
         .catch((err) => logger.error("Workflow enrollment error", { error: err }));
+
+      // Story 3.4: Trigger event-based agents (async, don't wait)
+      AgentEventListenerService.handleContactCreated(
+        contactDoc.toObject(),
+        workspaceId,
+        (req.user?._id as any)?.toString()
+      ).catch((err) => logger.error("Agent event trigger error", { error: err }));
 
       res.status(201).json({
         success: true,

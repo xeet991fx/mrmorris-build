@@ -327,6 +327,8 @@ AgentSchema.index({ workspace: 1, name: 1 });
 AgentSchema.index({ workspace: 1, lastExecutedAt: -1 });
 // Story 3.3: Index for finding Live agents with scheduled triggers
 AgentSchema.index({ status: 1, 'triggers.type': 1, 'triggers.enabled': 1 });
+// Story 3.4: Index for finding Live agents with event triggers by event type
+AgentSchema.index({ workspace: 1, status: 1, 'triggers.type': 1, 'triggers.config.eventType': 1, 'triggers.enabled': 1 });
 
 // CRITICAL: Workspace isolation middleware - prevents cross-workspace data leaks
 AgentSchema.pre('find', function () {

@@ -71,7 +71,7 @@ development_status:
   3-1-parse-and-execute-instructions: review
   3-2-manual-trigger-execution: review
   3-3-scheduled-trigger-execution: review
-  3-4-event-based-trigger-execution: backlog
+  3-4-event-based-trigger-execution: done
   3-5-sequential-multi-step-workflows: backlog
   3-6-conditional-logic-execution: backlog
   3-7-send-email-action: backlog

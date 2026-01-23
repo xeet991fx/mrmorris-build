@@ -14,6 +14,7 @@ import { routeLead } from "../services/leadRouting";
 import { executeFollowUpActions } from "../services/followUpActions";
 import { syncFormSubmission } from "../services/FormGoogleSheetSync";
 import { emitWorkflowEvent } from "../middleware/workflowTrigger";
+import { AgentEventListenerService } from "../services/AgentEventListenerService";
 import axios from "axios";
 
 const router = Router();
@@ -240,6 +241,7 @@ router.post(
 
             // Auto-create contact if enabled
             let contactId: any = null;
+            let contactDoc: any = null;
             if (form.settings.autoCreateContact) {
                 try {
                     const contactData: any = {
@@ -308,6 +310,7 @@ router.post(
                         const contact = result.value;
                         const wasCreated = result.lastErrorObject?.upserted !== undefined;
                         contactId = contact._id;
+                        contactDoc = contact;
 
                         // 🔔 TRIGGER WORKFLOW: Only for NEW contacts
                         // Note: findOneAndUpdate doesn't trigger post-save hook,
@@ -437,6 +440,13 @@ router.post(
                 $inc: { 'stats.submissions': 1 },
                 'stats.lastSubmittedAt': new Date(),
             });
+
+            // Story 3.4: Trigger event-based agents for form submission (async, don't wait)
+            AgentEventListenerService.handleFormSubmitted(
+                { formId, fields: data },
+                contactDoc,
+                form.workspaceId.toString()
+            ).catch((err) => console.error("Agent event trigger error:", err));
 
             // Send notification emails if configured
             if (form.settings.notificationEmails && form.settings.notificationEmails.length > 0) {
