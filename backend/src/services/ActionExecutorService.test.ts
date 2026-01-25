@@ -1069,6 +1069,7 @@ describe('ActionExecutorService', () => {
       expect(result.data?.isCustomField).toBe(true);
       expect(mockCustomFieldDefinition.findOne).toHaveBeenCalledWith({
         workspaceId: expect.any(Object),
+        entityType: 'contact', // Fix: Added entityType filter
         fieldKey: 'custom_lead_score',
         isActive: true,
       });

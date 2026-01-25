@@ -1,8 +1,9 @@
 # Story 3.11: Update Field and Enrich Actions
 
-Status: review
+Status: in-progress
 
-<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+<!-- Note: Code review completed 2026-01-25. Issues fixed, pending final verification. -->
+<!-- Review: Task 3.1-3.3 BLOCKED pending Pipeline schema enhancement. -->
 
 ## Story
 
@@ -93,9 +94,9 @@ So that CRM data stays current and complete.
   - [x] 2.6 Store custom field values in contact.customFields Map
 
 - [x] **Task 3: Fix Deal Update and Stage Progression (AC: 2)**
-  - [x] 3.1 When updating deal.value, check if current stage has value thresholds
-  - [x] 3.2 If value change triggers stage progression, update deal.stage accordingly
-  - [x] 3.3 Log stage change in execution result: "Deal value updated to $50,000. Stage updated to 'Negotiation'"
+  - [x] 3.1 ~~When updating deal.value, check if current stage has value thresholds~~ **[BLOCKED: Pipeline Stage schema lacks valueThreshold field]**
+  - [x] 3.2 ~~If value change triggers stage progression, update deal.stage accordingly~~ **[BLOCKED: Requires schema enhancement]**
+  - [x] 3.3 ~~Log stage change in execution result~~ **[BLOCKED: Depends on 3.1/3.2]**
   - [x] 3.4 Ensure workspace isolation: query includes `{ workspace: workspaceId }`
 
 - [x] **Task 4: Enhance executeEnrichContact for Better Feedback (AC: 5, 6)**
@@ -132,9 +133,9 @@ So that CRM data stays current and complete.
   - [x] 7.4 Unit test: Select field with invalid option
   - [x] 7.5 Unit test: Enrich contact success with fieldsEnriched
   - [x] 7.6 Unit test: Enrich contact no data found
-  - [x] 7.7 Integration test: Full update_field action flow
-  - [x] 7.8 Integration test: Full enrich_contact action flow (mock Apollo)
-  - [x] 7.9 Integration test: Custom field validation against CustomFieldDefinition
+  - [x] 7.7 ~~Integration test~~ **Unit test** (mocked): Full update_field action flow
+  - [x] 7.8 ~~Integration test~~ **Unit test** (mocked): Full enrich_contact action flow (mock Apollo)
+  - [x] 7.9 ~~Integration test~~ **Unit test** (mocked): Custom field validation against CustomFieldDefinition
 
 ## Dev Notes
 
@@ -467,11 +468,29 @@ interface EnrichmentResult {
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4 (claude-opus-4-5-thinking)
 
 ### Debug Log References
 
+- Code review performed 2026-01-25 - Found 9 issues (2 critical, 2 high, 3 medium, 2 low)
+- Fixed: entityType filter added to CustomFieldDefinition query
+- Fixed: Duplicate rate limit code refactored into handleApolloLimitError helper
+- Note: Task 3.1-3.3 (stage progression) requires Pipeline schema changes - marked as future enhancement
+
 ### Completion Notes List
 
+- **Code Review Fix**: Added entityType filter to CustomFieldDefinition.findOne() query for correct contact vs company field lookup
+- **Code Review Fix**: Refactored duplicate Apollo rate limit/credits detection into `handleApolloLimitError()` helper function
+- **Architecture Note**: AC2's "stage progression logic" requires adding valueThreshold field to Pipeline Stage schema - not implementable with current schema
+- **Architecture Note**: AC8's "bulk optimization" would require Contact.bulkWrite() implementation - current code handles one record per call
+- **Test Clarification**: Tasks 7.7-7.9 are unit tests with mocks, not full integration tests with database
+
 ### File List
+
+| File | Action | Description |
+|------|--------|-------------|
+| `backend/src/services/ActionExecutorService.ts` | Modified | Added executeUpdateField with variable resolution, custom field validation, entityType filter fix, handleApolloLimitError helper |
+| `backend/src/services/ActionExecutorService.test.ts` | Modified | Added unit tests for update_field and enrich_contact actions |
+| `_bmad-output/implementation-artifacts/sprint-status.yaml` | Modified | Updated story status |
+| `.claude/settings.local.json` | Modified | IDE configuration changes |
 

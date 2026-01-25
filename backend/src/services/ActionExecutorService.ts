@@ -1108,8 +1108,11 @@ async function executeUpdateField(
 
     if (isCustomField) {
       // Task 2.2: Query CustomFieldDefinition
+      // Determine entityType based on context (contact or deal/company)
+      const entityType = context.contact?._id ? 'contact' : 'company';
       const fieldDef = await CustomFieldDefinition.findOne({
         workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
+        entityType, // Fix: Include entityType in query for correct field lookup
         fieldKey: field,
         isActive: true,
       });
@@ -1218,6 +1221,59 @@ async function executeUpdateField(
 }
 
 /**
+ * Check if an error message indicates Apollo rate limit or credits exhausted
+ * Returns appropriate ActionResult if limit/credit issue detected, null otherwise
+ * Story 3.11: Refactored from duplicate code blocks
+ */
+async function handleApolloLimitError(
+  errorMessage: string,
+  context: ExecutionContext,
+  startTime: number
+): Promise<ActionResult | null> {
+  // Check for rate limit
+  if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+    await autoPauseAgent(
+      context.agentId,
+      context.workspaceId,
+      'Apollo API rate limit exceeded'
+    );
+
+    return {
+      success: false,
+      description: 'Apollo API rate limit exceeded',
+      error: 'Apollo API rate limit exceeded',
+      data: {
+        shouldPauseAgent: true,
+        reason: 'rate_limit',
+      },
+      durationMs: Date.now() - startTime,
+    };
+  }
+
+  // Check for credits exhausted
+  if (errorMessage.includes('credits exhausted') || errorMessage.includes('No credits') || errorMessage.includes('credits')) {
+    await autoPauseAgent(
+      context.agentId,
+      context.workspaceId,
+      'Apollo credits exhausted'
+    );
+
+    return {
+      success: false,
+      description: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
+      error: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
+      data: {
+        shouldPauseAgent: true,
+        reason: 'credits_exhausted',
+      },
+      durationMs: Date.now() - startTime,
+    };
+  }
+
+  return null; // No limit/credit issue detected
+}
+
+/**
  * Execute enrich_contact action using Apollo
  * Story 3.11: Update Field and Enrich Actions
  *
@@ -1259,46 +1315,8 @@ async function executeEnrichContact(
     } catch (retryError: any) {
       // Task 5.1, 5.2, 5.3: Check for rate limit or credits exhausted errors
       const errorMessage = retryError.message || String(retryError);
-
-      if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
-        // Task 5.4: Set shouldPauseAgent flag and auto-pause agent (AC7)
-        await autoPauseAgent(
-          context.agentId,
-          context.workspaceId,
-          'Apollo API rate limit exceeded'
-        );
-
-        return {
-          success: false,
-          description: 'Apollo API rate limit exceeded',
-          error: 'Apollo API rate limit exceeded',
-          data: {
-            shouldPauseAgent: true,
-            reason: 'rate_limit',
-          },
-          durationMs: Date.now() - startTime,
-        };
-      }
-
-      if (errorMessage.includes('credits exhausted') || errorMessage.includes('No credits')) {
-        // Task 5.4: Set shouldPauseAgent flag and auto-pause agent (AC7)
-        await autoPauseAgent(
-          context.agentId,
-          context.workspaceId,
-          'Apollo credits exhausted'
-        );
-
-        return {
-          success: false,
-          description: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
-          error: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
-          data: {
-            shouldPauseAgent: true,
-            reason: 'credits_exhausted',
-          },
-          durationMs: Date.now() - startTime,
-        };
-      }
+      const limitResult = await handleApolloLimitError(errorMessage, context, startTime);
+      if (limitResult) return limitResult;
 
       // Other errors - throw to be caught by outer catch
       throw retryError;
@@ -1308,44 +1326,8 @@ async function executeEnrichContact(
     if (!enrichmentResult.success) {
       // Task 5.2, 5.3: Check for rate limit or credits exhausted in response
       const errorMessage = enrichmentResult.error || '';
-
-      if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
-        await autoPauseAgent(
-          context.agentId,
-          context.workspaceId,
-          'Apollo API rate limit exceeded'
-        );
-
-        return {
-          success: false,
-          description: 'Apollo API rate limit exceeded',
-          error: 'Apollo API rate limit exceeded',
-          data: {
-            shouldPauseAgent: true,
-            reason: 'rate_limit',
-          },
-          durationMs: Date.now() - startTime,
-        };
-      }
-
-      if (errorMessage.includes('credits exhausted') || errorMessage.includes('No credits') || errorMessage.includes('credits')) {
-        await autoPauseAgent(
-          context.agentId,
-          context.workspaceId,
-          'Apollo credits exhausted'
-        );
-
-        return {
-          success: false,
-          description: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
-          error: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
-          data: {
-            shouldPauseAgent: true,
-            reason: 'credits_exhausted',
-          },
-          durationMs: Date.now() - startTime,
-        };
-      }
+      const limitResult = await handleApolloLimitError(errorMessage, context, startTime);
+      if (limitResult) return limitResult;
 
       return {
         success: false,
