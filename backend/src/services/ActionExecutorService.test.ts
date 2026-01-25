@@ -1953,4 +1953,313 @@ describe('ActionExecutorService', () => {
       );
     });
   });
+
+  // ===========================================================================
+  // Story 3.12: Wait Action and Human Handoff Tests
+  // ===========================================================================
+
+  describe('Story 3.12: Human Handoff with Timeout and Warm Lead Detection', () => {
+    const workspaceId = '507f1f77bcf86cd799439011';
+    const agentId = '507f1f77bcf86cd799439012';
+    const executionId = 'exec_handoff_test';
+    const userId = '507f1f77bcf86cd799439013';
+
+    const baseContext: ExecutionContext = {
+      workspaceId,
+      agentId,
+      executionId,
+      contact: {
+        _id: '507f1f77bcf86cd799439014',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        phone: '555-1234',
+        company: 'Acme Corp',
+      },
+      memory: new Map(),
+      variables: {},
+      userId,
+      triggerType: 'manual',
+      stepOutputs: {},
+      currentStep: 1,
+      totalSteps: 2,
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should create handoff with default 7-day timeout and schedule resume job (AC6, AC8)', async () => {
+      const mockQueueAdd = jest.fn().mockResolvedValue({ id: 'job_handoff_123' });
+      jest.doMock('bullmq', () => ({
+        Queue: jest.fn().mockImplementation(() => ({
+          add: mockQueueAdd,
+        })),
+      }));
+
+      const mockTask = { _id: '507f1f77bcf86cd799439015' };
+      const mockNotification = { _id: '507f1f77bcf86cd799439016' };
+      const mockTeamMember = { role: 'owner' };
+
+      const Task = require('../models/Task').default;
+      const Notification = require('../models/Notification').default;
+      const TeamMember = require('../models/TeamMember').default;
+      const AgentExecution = require('../models/AgentExecution').default;
+
+      Task.create = jest.fn().mockResolvedValue(mockTask);
+      Notification.create = jest.fn().mockResolvedValue(mockNotification);
+      TeamMember.findOne = jest.fn().mockResolvedValue(mockTeamMember);
+      AgentExecution.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      const action: ParsedAction = {
+        type: 'human_handoff',
+        message: 'Personal outreach needed',
+        assignee: '507f1f77bcf86cd799439017',
+        priority: 'high',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(true);
+      expect(result.scheduled).toBe(true);
+      expect(result.data?.taskId).toBeDefined();
+      expect(result.data?.resumeAt).toBeDefined();
+      expect(result.description).toContain('Human handoff created');
+    });
+
+    it('should detect warm lead from message keywords (AC7)', async () => {
+      const mockTask = { _id: '507f1f77bcf86cd799439018' };
+      const Task = require('../models/Task').default;
+      const TeamMember = require('../models/TeamMember').default;
+      const AgentExecution = require('../models/AgentExecution').default;
+
+      Task.create = jest.fn().mockResolvedValue(mockTask);
+      TeamMember.findOne = jest.fn().mockResolvedValue(null);
+      AgentExecution.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      const action: ParsedAction = {
+        type: 'human_handoff',
+        message: 'Contact replied positively and is interested in our product',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.isWarmLead).toBe(true);
+      expect(result.data?.priority).toBe('high');
+    });
+
+    it('should detect warm lead from explicit warmLead flag (AC7)', async () => {
+      const mockTask = { _id: '507f1f77bcf86cd799439019' };
+      const Task = require('../models/Task').default;
+      const TeamMember = require('../models/TeamMember').default;
+      const AgentExecution = require('../models/AgentExecution').default;
+
+      Task.create = jest.fn().mockResolvedValue(mockTask);
+      TeamMember.findOne = jest.fn().mockResolvedValue(null);
+      AgentExecution.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      const action: ParsedAction = {
+        type: 'human_handoff',
+        message: 'Normal handoff message',
+        warmLead: true,
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.isWarmLead).toBe(true);
+    });
+
+    it('should parse timeout string like "3 days" correctly (AC6)', async () => {
+      const mockTask = { _id: '507f1f77bcf86cd799439020' };
+      const Task = require('../models/Task').default;
+      const TeamMember = require('../models/TeamMember').default;
+      const AgentExecution = require('../models/AgentExecution').default;
+
+      Task.create = jest.fn().mockResolvedValue(mockTask);
+      TeamMember.findOne = jest.fn().mockResolvedValue(null);
+      AgentExecution.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      const action: ParsedAction = {
+        type: 'human_handoff',
+        message: 'Short timeout handoff',
+        timeout: '3 days',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.resumeAt).toBeDefined();
+      // Check resume is approximately 3 days from now
+      const resumeAt = new Date(result.data.resumeAt);
+      const expectedMs = 3 * 24 * 60 * 60 * 1000;
+      const actualMs = resumeAt.getTime() - Date.now();
+      expect(actualMs).toBeGreaterThan(expectedMs - 10000); // Within 10 seconds tolerance
+      expect(actualMs).toBeLessThan(expectedMs + 10000);
+    });
+
+    it('should build rich description with contact and deal info (AC7)', async () => {
+      const mockTask = { _id: '507f1f77bcf86cd799439021' };
+      const Task = require('../models/Task').default;
+      const TeamMember = require('../models/TeamMember').default;
+      const AgentExecution = require('../models/AgentExecution').default;
+
+      let createdTaskDescription = '';
+      Task.create = jest.fn().mockImplementation((data) => {
+        createdTaskDescription = data.description;
+        return Promise.resolve(mockTask);
+      });
+      TeamMember.findOne = jest.fn().mockResolvedValue(null);
+      AgentExecution.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      const contextWithDeal: ExecutionContext = {
+        ...baseContext,
+        deal: {
+          _id: '507f1f77bcf86cd799439022',
+          name: 'Enterprise Deal',
+          value: 50000,
+          stage: 'Negotiation',
+        },
+      };
+
+      const action: ParsedAction = {
+        type: 'human_handoff',
+        message: 'Follow up on enterprise opportunity',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, contextWithDeal);
+
+      expect(createdTaskDescription).toContain('John Doe');
+      expect(createdTaskDescription).toContain('john@example.com');
+      expect(createdTaskDescription).toContain('Acme Corp');
+      expect(createdTaskDescription).toContain('Enterprise Deal');
+      expect(createdTaskDescription).toContain('$50,000');
+      expect(createdTaskDescription).toContain('Negotiation');
+    });
+
+    it('should include warm-lead tag when warm lead detected (AC7)', async () => {
+      const mockTask = { _id: '507f1f77bcf86cd799439023' };
+      const Task = require('../models/Task').default;
+      const TeamMember = require('../models/TeamMember').default;
+      const AgentExecution = require('../models/AgentExecution').default;
+
+      let createdTaskTags: string[] = [];
+      Task.create = jest.fn().mockImplementation((data) => {
+        createdTaskTags = data.tags;
+        return Promise.resolve(mockTask);
+      });
+      TeamMember.findOne = jest.fn().mockResolvedValue(null);
+      AgentExecution.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      const action: ParsedAction = {
+        type: 'human_handoff',
+        message: 'This is a hot lead - they responded quickly',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(createdTaskTags).toContain('agent-handoff');
+      expect(createdTaskTags).toContain('requires-review');
+      expect(createdTaskTags).toContain('warm-lead');
+    });
+
+    it('should create notification with agent_handoff type (AC6)', async () => {
+      const mockTask = { _id: '507f1f77bcf86cd799439024' };
+      const mockNotification = { _id: '507f1f77bcf86cd799439025' };
+      const Task = require('../models/Task').default;
+      const Notification = require('../models/Notification').default;
+      const TeamMember = require('../models/TeamMember').default;
+      const AgentExecution = require('../models/AgentExecution').default;
+
+      let notificationType = '';
+      Task.create = jest.fn().mockResolvedValue(mockTask);
+      Notification.create = jest.fn().mockImplementation((data) => {
+        notificationType = data.type;
+        return Promise.resolve(mockNotification);
+      });
+      TeamMember.findOne = jest.fn().mockResolvedValue({ role: 'member' });
+      AgentExecution.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      const action: ParsedAction = {
+        type: 'human_handoff',
+        message: 'Please review this contact',
+        assignee: '507f1f77bcf86cd799439026',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(notificationType).toBe('agent_handoff');
+    });
+  });
+
+  describe('Story 3.12: Long Wait Support (90 days)', () => {
+    const workspaceId = '507f1f77bcf86cd799439030';
+    const agentId = '507f1f77bcf86cd799439031';
+    const executionId = 'exec_long_wait_test';
+
+    const baseContext: ExecutionContext = {
+      workspaceId,
+      agentId,
+      executionId,
+      memory: new Map(),
+      variables: {},
+      triggerType: 'manual',
+      stepOutputs: {},
+      currentStep: 1,
+      totalSteps: 2,
+    };
+
+    it('should schedule 90-day wait correctly (AC8)', async () => {
+      const AgentExecution = require('../models/AgentExecution').default;
+      AgentExecution.findOneAndUpdate = jest.fn().mockResolvedValue(null);
+
+      const action: ParsedAction = {
+        type: 'wait',
+        duration: 90,
+        unit: 'days',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(true);
+      expect(result.scheduled).toBe(true);
+      expect(result.data?.duration).toBe(90);
+      expect(result.data?.unit).toBe('days');
+      expect(result.data?.resumeAt).toBeDefined();
+
+      // Verify resume time is approximately 90 days from now
+      const resumeAt = new Date(result.data.resumeAt);
+      const expectedMs = 90 * 24 * 60 * 60 * 1000;
+      const actualMs = resumeAt.getTime() - Date.now();
+      expect(actualMs).toBeGreaterThan(expectedMs - 60000); // Within 1 minute tolerance
+      expect(actualMs).toBeLessThan(expectedMs + 60000);
+    });
+
+    it('should handle short wait inline without scheduling (AC1)', async () => {
+      // Short waits (under 1 minute) should wait inline, not schedule
+      const action: ParsedAction = {
+        type: 'wait',
+        duration: 1,
+        unit: 'seconds',
+        order: 1,
+      };
+
+      const startTime = Date.now();
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+      const elapsedMs = Date.now() - startTime;
+
+      expect(result.success).toBe(true);
+      expect(result.scheduled).toBeUndefined(); // Short waits are not scheduled
+      expect(elapsedMs).toBeGreaterThanOrEqual(900); // Should have actually waited ~1 second
+    });
+  });
 });

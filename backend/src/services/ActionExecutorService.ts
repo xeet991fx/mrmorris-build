@@ -1551,6 +1551,7 @@ async function executeSearch(
 /**
  * Execute human_handoff action - creates task and notifies assignee
  * Updated for Story 3.10 - uses correct Task model field names
+ * Updated for Story 3.12 - adds timeout resume, rich context, warm lead detection
  */
 async function executeHumanHandoff(
   action: ParsedAction,
@@ -1563,8 +1564,39 @@ async function executeHumanHandoff(
     const message = action.message || action.params?.message || 'Agent execution requires human review';
     const priority = action.priority || action.params?.priority || 'high';
 
-    // Create a task for the handoff
-    const taskTitle = `[Agent Handoff] ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`;
+    // Story 3.12: Add handoff timeout (default 7 days in ms)
+    const DEFAULT_HANDOFF_TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+    const timeoutParam = action.timeout || action.params?.timeout;
+    let handoffTimeoutMs = DEFAULT_HANDOFF_TIMEOUT_MS;
+
+    if (typeof timeoutParam === 'number') {
+      handoffTimeoutMs = timeoutParam;
+    } else if (timeoutParam) {
+      // Parse timeout string like "7 days" or "24 hours"
+      const timeoutMatch = String(timeoutParam).match(/(\d+)\s*(days?|hours?|minutes?)/i);
+      if (timeoutMatch) {
+        const value = parseInt(timeoutMatch[1], 10);
+        const unit = timeoutMatch[2].toLowerCase();
+        if (unit.startsWith('day')) {
+          handoffTimeoutMs = value * 24 * 60 * 60 * 1000;
+        } else if (unit.startsWith('hour')) {
+          handoffTimeoutMs = value * 60 * 60 * 1000;
+        } else if (unit.startsWith('minute')) {
+          handoffTimeoutMs = value * 60 * 1000;
+        }
+      }
+    }
+
+    // Story 3.12: Detect warm lead from instruction keywords or context
+    const isWarmLead = detectWarmLead(action, context, message);
+
+    // Build task title
+    const contactName = context.contact
+      ? `${context.contact.firstName || ''} ${context.contact.lastName || ''}`.trim() || 'Unknown Contact'
+      : 'Unknown Contact';
+    const taskTitle = isWarmLead
+      ? `[Warm Lead] Agent Handoff: ${contactName}`
+      : `[Agent Handoff] ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`;
 
     // Validate assignee if specified
     let validatedAssigneeId: mongoose.Types.ObjectId | undefined;
@@ -1585,53 +1617,112 @@ async function executeHumanHandoff(
       }
     }
 
+    // Story 3.12: Build rich handoff description with context
+    const taskDescription = buildHandoffDescription(context, message, isWarmLead);
+
+    // Story 3.12: Enhanced tags with warm-lead indicator
+    const tags = ['agent-handoff', 'requires-review'];
+    if (isWarmLead) {
+      tags.push('warm-lead');
+    }
+
     const task = await Task.create({
       workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
       userId: new mongoose.Types.ObjectId(context.userId),
       title: taskTitle,
-      description: `**Human Handoff from Agent Execution**\n\n` +
-        `**Execution ID:** ${context.executionId}\n` +
-        `**Agent ID:** ${context.agentId}\n` +
-        `**Message:** ${message}\n\n` +
-        (context.contact ? `**Contact:** ${context.contact.firstName || ''} ${context.contact.lastName || ''} (${context.contact.email || 'No email'})\n` : '') +
-        (context.deal ? `**Deal:** ${context.deal.name || 'Unknown'}\n` : ''),
+      description: taskDescription,
       dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Due in 24 hours
       status: 'todo',
-      priority: priority as 'low' | 'medium' | 'high' | 'urgent',
+      priority: isWarmLead ? 'high' : (priority as 'low' | 'medium' | 'high' | 'urgent'),
       assignedTo: validatedAssigneeId,
       relatedContactId: context.contact?._id ? new mongoose.Types.ObjectId(context.contact._id) : undefined,
       relatedOpportunityId: context.deal?._id ? new mongoose.Types.ObjectId(context.deal._id) : undefined,
       createdBy: new mongoose.Types.ObjectId(context.userId),
-      tags: ['agent-handoff', 'requires-review'],
+      tags,
     });
 
-    // Send notification if assignee is valid
+    // Story 3.12: Create notification with agent_handoff type
+    let notificationId: string | undefined;
     if (validatedAssigneeId) {
       try {
-        await Notification.create({
+        const notificationTitle = isWarmLead
+          ? `[Warm Lead] Agent handoff: ${contactName}`
+          : 'Human Handoff Required';
+        const notificationMessage = isWarmLead
+          ? `Warm lead from agent: ${contactName} is interested. ${message.substring(0, 100)}`
+          : `Agent requires your attention: ${message.substring(0, 100)}`;
+
+        const notification = await Notification.create({
           workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
           userId: validatedAssigneeId,
-          type: 'task_assigned',
-          title: 'Human Handoff Required',
-          message: `Agent requires your attention: ${message.substring(0, 100)}`,
-          priority: 'high',
+          type: 'agent_handoff',
+          title: notificationTitle,
+          message: notificationMessage,
+          priority: isWarmLead ? 'high' : 'normal',
           relatedEntityType: 'task',
           relatedEntityId: task._id,
-          actionUrl: `/tasks/${task._id}`,
+          actionUrl: `/tasks/${task._id}?action=handoff`,
         });
+        notificationId = notification._id.toString();
       } catch (notifError) {
         console.warn('Failed to create handoff notification:', notifError);
       }
     }
 
+    // Story 3.12: Schedule timeout resume job
+    let resumeAt: Date | undefined;
+    let jobId: string | undefined;
+
+    if (handoffTimeoutMs > 0) {
+      resumeAt = new Date(Date.now() + handoffTimeoutMs);
+      const queue = getAgentResumeQueue();
+
+      const job = await queue.add(
+        'resume-execution',
+        {
+          executionId: context.executionId,
+          agentId: context.agentId,
+          workspaceId: context.workspaceId,
+          resumeFromStep: (action.order || 0) + 1, // Resume from next step
+          scheduledAt: new Date().toISOString(),
+          handoffTimeout: true, // Flag to identify this as a handoff timeout
+        },
+        {
+          delay: handoffTimeoutMs,
+          jobId: `handoff_${context.executionId}_${action.order || 0}`,
+        }
+      );
+
+      jobId = job.id || `handoff_${context.executionId}_${action.order || 0}`;
+
+      // Store job ID in execution for cancellation if handoff is completed early
+      try {
+        await AgentExecution.findOneAndUpdate(
+          { executionId: context.executionId },
+          {
+            resumeJobId: jobId,
+            resumeAt: resumeAt,
+          }
+        );
+      } catch (updateErr) {
+        console.warn('Failed to store resume job ID in execution:', updateErr);
+      }
+    }
+
     return {
       success: true,
-      description: `Human handoff created: Task assigned to ${assignee || 'team'} for review`,
+      scheduled: handoffTimeoutMs > 0,
+      description: `Human handoff created: Task assigned to ${assignee || 'team'} for review` +
+        (resumeAt ? `. Will auto-resume at ${resumeAt.toISOString()}` : ''),
       data: {
         taskId: task._id.toString(),
         assignee: validatedAssigneeId?.toString() || 'unassigned',
         message,
-        priority,
+        priority: isWarmLead ? 'high' : priority,
+        isWarmLead,
+        notificationId,
+        resumeAt: resumeAt?.toISOString(),
+        jobId,
       },
       durationMs: Date.now() - startTime,
     };
@@ -1644,6 +1735,123 @@ async function executeHumanHandoff(
       durationMs: Date.now() - startTime,
     };
   }
+}
+
+/**
+ * Story 3.12: Detect if this is a warm lead handoff
+ * Checks instruction keywords and execution context
+ */
+function detectWarmLead(
+  action: ParsedAction,
+  context: ExecutionContext,
+  message: string
+): boolean {
+  // Check explicit warm lead flag
+  if (action.warmLead || action.params?.warmLead) {
+    return true;
+  }
+
+  // Check instruction/message for warm lead keywords
+  const warmKeywords = ['warm lead', 'warm_lead', 'interested', 'replied positively', 'positive response', 'hot lead'];
+  const lowerMessage = message.toLowerCase();
+  for (const keyword of warmKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      return true;
+    }
+  }
+
+  // Check step outputs for positive conditions (e.g., contact.replied == true)
+  if (context.stepOutputs) {
+    for (const stepKey of Object.keys(context.stepOutputs)) {
+      const stepOutput = context.stepOutputs[stepKey];
+      if (stepOutput.result?.conditionResult === true) {
+        const conditionStr = JSON.stringify(stepOutput.result).toLowerCase();
+        if (conditionStr.includes('replied') || conditionStr.includes('interested')) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Story 3.12: Build rich handoff description with execution context
+ */
+function buildHandoffDescription(
+  context: ExecutionContext,
+  message: string,
+  isWarmLead: boolean
+): string {
+  let description = '**Human Handoff from Agent Execution**\n\n';
+
+  description += `**Execution ID:** ${context.executionId}\n`;
+  description += `**Agent ID:** ${context.agentId}\n`;
+  if (isWarmLead) {
+    description += `**Lead Status:** 🔥 Warm Lead\n`;
+  }
+  description += '\n';
+
+  // Contact information
+  if (context.contact) {
+    description += '**Contact Information**\n';
+    description += `- Name: ${context.contact.firstName || ''} ${context.contact.lastName || ''}\n`;
+    description += `- Email: ${context.contact.email || 'N/A'}\n`;
+    if (context.contact.phone) {
+      description += `- Phone: ${context.contact.phone}\n`;
+    }
+    if (context.contact.company) {
+      description += `- Company: ${context.contact.company}\n`;
+    }
+    description += '\n';
+  }
+
+  // Deal information
+  if (context.deal) {
+    description += '**Deal Information**\n';
+    description += `- Deal: ${context.deal.name || 'Unknown'}\n`;
+    if (context.deal.value) {
+      description += `- Value: $${context.deal.value.toLocaleString()}\n`;
+    }
+    if (context.deal.stage) {
+      description += `- Stage: ${context.deal.stage}\n`;
+    }
+    description += '\n';
+  }
+
+  // Agent findings from step outputs
+  if (context.stepOutputs && Object.keys(context.stepOutputs).length > 0) {
+    description += '**Agent Findings**\n';
+    let findingsAdded = 0;
+
+    for (const stepKey of Object.keys(context.stepOutputs)) {
+      const stepOutput = context.stepOutputs[stepKey];
+      if (findingsAdded >= 5) break; // Limit to 5 findings
+
+      if (stepOutput.action === 'send_email' && stepOutput.result?.recipients) {
+        description += `- Sent email to ${stepOutput.result.recipients.length} recipient(s)\n`;
+        findingsAdded++;
+      } else if (stepOutput.action === 'web_search' && stepOutput.result?.data) {
+        description += `- Web search performed: ${stepOutput.result.data.query || 'query'}\n`;
+        findingsAdded++;
+      } else if (stepOutput.action === 'conditional' && stepOutput.result?.conditionResult !== undefined) {
+        description += `- Condition evaluated: ${stepOutput.result.conditionResult ? 'TRUE' : 'FALSE'}\n`;
+        findingsAdded++;
+      }
+    }
+
+    if (findingsAdded === 0) {
+      description += '- No significant findings recorded\n';
+    }
+    description += '\n';
+  }
+
+  // Recommended action
+  description += '**Recommended Action**\n';
+  description += `${message}\n`;
+
+  return description;
 }
 
 // =============================================================================

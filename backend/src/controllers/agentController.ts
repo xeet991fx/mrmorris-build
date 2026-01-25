@@ -729,6 +729,69 @@ export const updateAgentStatus = async (req: Request, res: Response): Promise<vo
       } else if (status === 'Paused' || status === 'Draft') {
         // Remove schedule when agent is paused or set to draft
         await removeAgentSchedule(agentId);
+
+        // Story 3.12: Cancel all waiting execution resume jobs when agent is paused
+        if (status === 'Paused') {
+          try {
+            const { Queue } = await import('bullmq');
+            const { QUEUE_NAMES, defaultQueueOptions } = await import('../events/queue/queue.config');
+
+            // Find all waiting executions for this agent
+            const waitingExecutions = await AgentExecution.find({
+              agent: new mongoose.Types.ObjectId(agentId),
+              workspace: new mongoose.Types.ObjectId(workspaceId),
+              status: 'waiting',
+              resumeJobId: { $exists: true, $ne: null }
+            }).select('_id executionId resumeJobId');
+
+            if (waitingExecutions.length > 0) {
+              const queue = new Queue(QUEUE_NAMES.AGENT_EXECUTION_RESUME, defaultQueueOptions);
+
+              for (const execution of waitingExecutions) {
+                if (execution.resumeJobId) {
+                  try {
+                    const job = await queue.getJob(execution.resumeJobId);
+                    if (job) {
+                      await job.remove();
+                      console.log(`✅ Cancelled resume job for paused agent: ${execution.resumeJobId}`);
+                    }
+                  } catch (jobErr) {
+                    console.warn(`Failed to cancel resume job ${execution.resumeJobId}:`, jobErr);
+                  }
+                }
+
+                // Update execution status to cancelled
+                await AgentExecution.findByIdAndUpdate(execution._id, {
+                  status: 'cancelled',
+                  completedAt: new Date(),
+                  resumeJobId: null,
+                  resumeAt: null,
+                  $push: {
+                    steps: {
+                      stepNumber: 0,
+                      action: 'agent_paused',
+                      stepStatus: 'completed',
+                      result: {
+                        description: 'Execution cancelled: Agent paused manually',
+                        success: false,
+                        error: 'Agent paused by user'
+                      },
+                      executedAt: new Date(),
+                      completedAt: new Date(),
+                      durationMs: 0,
+                      creditsUsed: 0
+                    }
+                  }
+                });
+              }
+
+              console.log(`📛 Cancelled ${waitingExecutions.length} waiting executions for paused agent ${agentId}`);
+            }
+          } catch (cancelErr) {
+            console.error('Failed to cancel waiting executions on agent pause:', cancelErr);
+            // Don't fail the request, just log the error
+          }
+        }
       }
     } catch (scheduleError) {
       console.error('Failed to update agent schedule:', scheduleError);
@@ -1772,3 +1835,144 @@ export const triggerAgent = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+/**
+ * Story 3.12: Complete Handoff Endpoint
+ * @route PUT /api/workspaces/:workspaceId/agents/executions/:executionId/complete-handoff
+ * @desc Mark a human handoff as complete, canceling the scheduled timeout resume
+ * @access Private (requires authentication and workspace access)
+ */
+export const completeHandoff = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, executionId } = req.params;
+    const userId = (req as any).user?._id;
+    const { notes, outcomeType } = req.body || {};
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Find the execution
+    const execution = await AgentExecution.findOne({
+      executionId: executionId,
+      workspace: new mongoose.Types.ObjectId(workspaceId)
+    });
+
+    if (!execution) {
+      res.status(404).json({
+        success: false,
+        error: 'Execution not found'
+      });
+      return;
+    }
+
+    // Verify execution is in waiting state
+    if (execution.status !== 'waiting') {
+      res.status(400).json({
+        success: false,
+        error: `Cannot complete handoff: Execution is in '${execution.status}' state, not 'waiting'`
+      });
+      return;
+    }
+
+    // Cancel the scheduled resume job if it exists
+    let jobCancelled = false;
+    if (execution.resumeJobId) {
+      try {
+        // Import BullMQ Queue dynamically to avoid circular dependency
+        const { Queue } = await import('bullmq');
+        const { QUEUE_NAMES, defaultQueueOptions } = await import('../events/queue/queue.config');
+        const queue = new Queue(QUEUE_NAMES.AGENT_EXECUTION_RESUME, defaultQueueOptions);
+
+        const job = await queue.getJob(execution.resumeJobId);
+        if (job) {
+          await job.remove();
+          jobCancelled = true;
+          console.log(`✅ Cancelled handoff resume job: ${execution.resumeJobId}`);
+        }
+      } catch (cancelErr) {
+        console.warn('Failed to cancel handoff resume job:', cancelErr);
+        // Continue anyway - completing handoff is more important than canceling job
+      }
+    }
+
+    // Get user info for logging
+    const user = await User.findById(userId).select('name email');
+    const completedBy = user?.name || user?.email || userId.toString();
+
+    // Add completion step to execution
+    const completionStep = {
+      stepNumber: execution.steps.length + 1,
+      stepIndex: execution.steps.length,
+      action: 'handoff_completed',
+      stepStatus: 'completed' as const,
+      result: {
+        description: `Handoff completed by ${completedBy}`,
+        success: true,
+        data: {
+          completedBy,
+          notes: notes || undefined,
+          outcomeType: outcomeType || 'resolved',
+          jobCancelled,
+        },
+      },
+      executedAt: new Date(),
+      completedAt: new Date(),
+      durationMs: 0,
+      creditsUsed: 0,
+    };
+
+    // Update execution status
+    const completedAt = new Date();
+    await AgentExecution.findByIdAndUpdate(execution._id, {
+      status: 'completed',
+      completedAt,
+      resumeJobId: null,
+      resumeAt: null,
+      $push: { steps: completionStep },
+      $inc: { 'summary.successfulSteps': 1, 'summary.totalSteps': 1 },
+    });
+
+    // Emit Socket.io notification for real-time UI update
+    try {
+      const { emitExecutionCompleted } = await import('../socket/agentExecutionSocket');
+      emitExecutionCompleted(workspaceId, execution.agent.toString(), {
+        executionId: execution.executionId,
+        success: true,
+        processedCount: execution.steps.length + 1,
+        summary: {
+          totalSteps: execution.totalSteps,
+          successfulSteps: execution.summary.successfulSteps + 1,
+          failedSteps: execution.summary.failedSteps,
+          duration: execution.summary.totalDurationMs,
+        },
+        completedAt,
+        handoffCompletedBy: completedBy,
+      });
+    } catch (socketErr) {
+      console.warn('Failed to emit handoff completion notification:', socketErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Handoff completed successfully',
+      execution: {
+        executionId: execution.executionId,
+        status: 'completed',
+        completedAt,
+        completedBy,
+      },
+      jobCancelled,
+    });
+
+  } catch (error: any) {
+    console.error('Error completing handoff:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete handoff'
+    });
+  }
+};

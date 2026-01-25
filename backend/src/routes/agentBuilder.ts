@@ -47,7 +47,8 @@ import {
   listAgentExecutions,
   getAgentExecution,
   cancelAgentExecution,
-  triggerAgent
+  triggerAgent,
+  completeHandoff
 } from '../controllers/agentController';
 import { searchContacts, searchDeals } from '../controllers/testTargetController';
 import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema, executeAgentSchema, triggerAgentSchema } from '../validations/agentValidation';
@@ -363,6 +364,28 @@ router.post(
   validateWorkspaceAccess,
   validate(triggerAgentSchema),
   triggerAgent
+);
+
+// =============================================================================
+// Story 3.12: Complete Handoff Route
+// =============================================================================
+
+/**
+ * @route PUT /api/workspaces/:workspaceId/agents/executions/:executionId/complete-handoff
+ * @desc Complete a human handoff, canceling the scheduled timeout resume (Story 3.12)
+ * @access Private (requires authentication, workspace access)
+ *
+ * Story 3.12: Wait Action and Human Handoff
+ * - AC7: Sales rep can click "Take Over" to mark handoff complete
+ * - Cancels any scheduled handoff timeout resume job
+ * - Updates execution status to 'completed'
+ * - Logs completion in execution steps
+ */
+router.put(
+  '/workspaces/:workspaceId/agents/executions/:executionId/complete-handoff',
+  authenticate,
+  validateWorkspaceAccess,
+  completeHandoff
 );
 
 export default router;

@@ -7,7 +7,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 export interface INotification extends Document {
     workspaceId: Types.ObjectId;
     userId: Types.ObjectId;
-    type: "task_due" | "task_assigned" | "deal_won" | "deal_lost" | "new_lead" | "workflow_complete" | "mention" | "system" | "custom";
+    type: "task_due" | "task_assigned" | "deal_won" | "deal_lost" | "new_lead" | "workflow_complete" | "mention" | "system" | "custom" | "agent_handoff";
     title: string;
     message: string;
     isRead: boolean;
@@ -47,7 +47,7 @@ const notificationSchema = new Schema<INotification>(
         },
         type: {
             type: String,
-            enum: ["task_due", "task_assigned", "deal_won", "deal_lost", "new_lead", "workflow_complete", "mention", "system", "custom"],
+            enum: ["task_due", "task_assigned", "deal_won", "deal_lost", "new_lead", "workflow_complete", "mention", "system", "custom", "agent_handoff"],
             required: true,
             index: true,
         },

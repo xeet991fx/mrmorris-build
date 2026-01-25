@@ -79,7 +79,7 @@ development_status:
   3-9-web-search-action: done
   3-10-task-and-tag-actions: review
   3-11-update-field-and-enrich-actions: review
-  3-12-wait-action-and-human-handoff: backlog
+  3-12-wait-action-and-human-handoff: review
   3-13-track-execution-history: backlog
   3-14-view-execution-logs: backlog
   3-15-export-and-dashboard: backlog
