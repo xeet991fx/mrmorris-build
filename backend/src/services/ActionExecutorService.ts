@@ -2,6 +2,7 @@
  * ActionExecutorService.ts - Story 3.1: Parse and Execute Instructions
  * Updated Story 3.7: Send Email Action via Gmail API
  * Updated Story 3.10: Task and Tag Actions
+ * Updated Story 3.11: Update Field and Enrich Actions
  *
  * Handles execution of individual actions with integration connections.
  * Each action type has a dedicated handler that performs the real action.
@@ -22,6 +23,13 @@
  * - User notification for task assignment
  * - Multiple tags support (AC3, AC4, AC5)
  * - Due date natural language parsing
+ *
+ * Story 3.11 Additions:
+ * - Variable resolution in field values (AC9)
+ * - Custom field validation against CustomFieldDefinition (AC3, AC4)
+ * - Enhanced enrichment with actual fieldsEnriched from Apollo (AC5, AC6)
+ * - Apollo rate limit handling with agent auto-pause (AC7)
+ * - Activity logging for enrichment actions (AC5)
  */
 
 import LinkedInService from '../utils/LinkedInService';
@@ -37,6 +45,7 @@ import EmailTemplate from '../models/EmailTemplate';
 import Agent from '../models/Agent';
 import TeamMember from '../models/TeamMember';
 import Notification from '../models/Notification';
+import CustomFieldDefinition from '../models/CustomFieldDefinition';
 import mongoose from 'mongoose';
 import { ParsedAction } from './InstructionParserService';
 import { ExecutionContext } from './AgentExecutionService';
@@ -1056,6 +1065,13 @@ async function executeTagAction(
 
 /**
  * Execute update_field action
+ * Story 3.11: Update Field and Enrich Actions
+ *
+ * AC1: Update Standard Contact Field with variable resolution
+ * AC2: Update Deal Value
+ * AC3: Update Custom Field with Validation
+ * AC4: Custom Field Not Found Error
+ * AC9: Variable Resolution in Field Values
  */
 async function executeUpdateField(
   action: ParsedAction,
@@ -1065,7 +1081,7 @@ async function executeUpdateField(
 
   try {
     const field = action.field || action.params?.field;
-    const value = action.value ?? action.params?.value;
+    let value = action.value ?? action.params?.value;
 
     if (!field) {
       return {
@@ -1076,25 +1092,94 @@ async function executeUpdateField(
       };
     }
 
+    // Task 1.1, 1.2, 1.3: Apply variable resolution to string values (AC9)
+    let resolvedValue = value;
+    if (typeof value === 'string') {
+      resolvedValue = resolveEmailVariables(value, context);
+    }
+    // For numbers/booleans, keep original value (Task 1.2)
+
     let targetCount = 0;
-    const fieldUpdates: Record<string, any> = { [field]: value };
+    const fieldUpdates: Record<string, any> = {};
+
+    // Task 2.1-2.6: Custom field detection and validation (AC3, AC4)
+    const isCustomField = typeof field === 'string' && field.startsWith('custom_');
+    let validatedValue = resolvedValue;
+
+    if (isCustomField) {
+      // Task 2.2: Query CustomFieldDefinition
+      const fieldDef = await CustomFieldDefinition.findOne({
+        workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
+        fieldKey: field,
+        isActive: true,
+      });
+
+      // Task 2.3: If custom field not found, return error (AC4)
+      if (!fieldDef) {
+        return {
+          success: false,
+          description: `Custom field '${field}' not found. Create field first.`,
+          error: `Custom field '${field}' not found. Create field first.`,
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      // Task 2.4, 2.5: Validate field type
+      switch (fieldDef.fieldType) {
+        case 'text':
+          // Accept any string value
+          validatedValue = String(resolvedValue);
+          break;
+
+        case 'number':
+          const numValue = parseFloat(String(resolvedValue));
+          if (isNaN(numValue)) {
+            return {
+              success: false,
+              description: `Invalid value for custom field '${field}': expected number, got '${resolvedValue}'`,
+              error: `Invalid value for custom field '${field}': expected number, got '${resolvedValue}'`,
+              durationMs: Date.now() - startTime,
+            };
+          }
+          validatedValue = numValue;
+          break;
+
+        case 'select':
+          if (!fieldDef.selectOptions?.includes(String(resolvedValue))) {
+            return {
+              success: false,
+              description: `Invalid value for custom field '${field}': '${resolvedValue}' is not a valid option. Valid options: ${fieldDef.selectOptions?.join(', ')}`,
+              error: `Invalid value for custom field '${field}': '${resolvedValue}' is not a valid option. Valid options: ${fieldDef.selectOptions?.join(', ')}`,
+              durationMs: Date.now() - startTime,
+            };
+          }
+          validatedValue = String(resolvedValue);
+          break;
+      }
+    }
 
     // Update contact if in context
     if (context.contact?._id) {
+      // Task 2.6: For custom fields, use customFields Map
+      const updatePath = isCustomField ? `customFields.${field}` : field;
       await Contact.findOneAndUpdate(
         { _id: context.contact._id, workspace: context.workspaceId },
-        { $set: { [field]: value } }
+        { $set: { [updatePath]: validatedValue } }
       );
       targetCount++;
+      fieldUpdates[updatePath] = validatedValue;
     }
 
-    // Update deal if in context
+    // Update deal if in context (AC2)
     if (context.deal?._id) {
+      // For deals, custom fields also use customFields Map
+      const updatePath = isCustomField ? `customFields.${field}` : field;
       await Opportunity.findOneAndUpdate(
         { _id: context.deal._id, workspace: context.workspaceId },
-        { $set: { [field]: value } }
+        { $set: { [updatePath]: validatedValue } }
       );
       targetCount++;
+      fieldUpdates[updatePath] = validatedValue;
     }
 
     if (targetCount === 0) {
@@ -1106,19 +1191,27 @@ async function executeUpdateField(
       };
     }
 
+    // Task 1.4: Return resolved value in ActionResult data for transparency
     return {
       success: true,
-      description: `Updated ${field} to "${value}" on ${targetCount} record(s)`,
+      description: `Updated ${field} to "${validatedValue}" on ${targetCount} record(s)`,
       targetCount,
       fieldUpdates,
+      data: {
+        field,
+        originalValue: value,
+        resolvedValue: validatedValue,
+        isCustomField,
+        targetCount,
+      },
       durationMs: Date.now() - startTime,
     };
 
   } catch (error: any) {
     return {
       success: false,
-      description: `Update field failed: ${error.message}`,
-      error: error.message,
+      description: `Update field failed: ${sanitizeErrorMessage(error.message)}`,
+      error: sanitizeErrorMessage(error.message),
       durationMs: Date.now() - startTime,
     };
   }
@@ -1126,6 +1219,11 @@ async function executeUpdateField(
 
 /**
  * Execute enrich_contact action using Apollo
+ * Story 3.11: Update Field and Enrich Actions
+ *
+ * AC5: Enrich Contact with Apollo
+ * AC6: Apollo Enrichment No Data
+ * AC7: Apollo Rate Limit Handling
  */
 async function executeEnrichContact(
   action: ParsedAction,
@@ -1143,26 +1241,169 @@ async function executeEnrichContact(
       };
     }
 
-    const fields = action.params?.fields || ['email', 'phone', 'title', 'company'];
+    const contactName = context.contact?.firstName
+      ? `${context.contact.firstName} ${context.contact.lastName || ''}`.trim()
+      : 'Unknown contact';
 
-    // Use ApolloService to enrich
-    await withRetry(async () => {
-      const result = await ApolloService.enrichContact(
-        context.contact!._id.toString(),
-        new mongoose.Types.ObjectId(context.workspaceId)
-      );
-      if (!result.success) {
-        throw new Error(result.error || 'Enrichment failed');
+    // Task 4.1, 4.2: Call ApolloService and get actual fieldsEnriched
+    let enrichmentResult: { success: boolean; data?: any; error?: string; creditsUsed?: number };
+
+    try {
+      enrichmentResult = await withRetry(async () => {
+        const result = await ApolloService.enrichContact(
+          context.contact!._id.toString(),
+          new mongoose.Types.ObjectId(context.workspaceId)
+        );
+        return result;
+      });
+    } catch (retryError: any) {
+      // Task 5.1, 5.2, 5.3: Check for rate limit or credits exhausted errors
+      const errorMessage = retryError.message || String(retryError);
+
+      if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+        // Task 5.4: Set shouldPauseAgent flag and auto-pause agent (AC7)
+        await autoPauseAgent(
+          context.agentId,
+          context.workspaceId,
+          'Apollo API rate limit exceeded'
+        );
+
+        return {
+          success: false,
+          description: 'Apollo API rate limit exceeded',
+          error: 'Apollo API rate limit exceeded',
+          data: {
+            shouldPauseAgent: true,
+            reason: 'rate_limit',
+          },
+          durationMs: Date.now() - startTime,
+        };
       }
-    });
+
+      if (errorMessage.includes('credits exhausted') || errorMessage.includes('No credits')) {
+        // Task 5.4: Set shouldPauseAgent flag and auto-pause agent (AC7)
+        await autoPauseAgent(
+          context.agentId,
+          context.workspaceId,
+          'Apollo credits exhausted'
+        );
+
+        return {
+          success: false,
+          description: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
+          error: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
+          data: {
+            shouldPauseAgent: true,
+            reason: 'credits_exhausted',
+          },
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      // Other errors - throw to be caught by outer catch
+      throw retryError;
+    }
+
+    // Handle enrichment failure
+    if (!enrichmentResult.success) {
+      // Task 5.2, 5.3: Check for rate limit or credits exhausted in response
+      const errorMessage = enrichmentResult.error || '';
+
+      if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+        await autoPauseAgent(
+          context.agentId,
+          context.workspaceId,
+          'Apollo API rate limit exceeded'
+        );
+
+        return {
+          success: false,
+          description: 'Apollo API rate limit exceeded',
+          error: 'Apollo API rate limit exceeded',
+          data: {
+            shouldPauseAgent: true,
+            reason: 'rate_limit',
+          },
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      if (errorMessage.includes('credits exhausted') || errorMessage.includes('No credits') || errorMessage.includes('credits')) {
+        await autoPauseAgent(
+          context.agentId,
+          context.workspaceId,
+          'Apollo credits exhausted'
+        );
+
+        return {
+          success: false,
+          description: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
+          error: 'Apollo credits exhausted. Please add more credits to your Apollo.io account.',
+          data: {
+            shouldPauseAgent: true,
+            reason: 'credits_exhausted',
+          },
+          durationMs: Date.now() - startTime,
+        };
+      }
+
+      return {
+        success: false,
+        description: `Enrich contact failed: ${enrichmentResult.error}`,
+        error: enrichmentResult.error,
+        durationMs: Date.now() - startTime,
+      };
+    }
+
+    // Task 4.1, 4.2: Extract actual fieldsEnriched from result (not hardcoded)
+    const fieldsEnriched = enrichmentResult.data?.enrichedFields || [];
+    const creditsUsed = enrichmentResult.creditsUsed || 1;
+
+    // Task 4.3: Log if no fields enriched (AC6)
+    if (fieldsEnriched.length === 0) {
+      console.log(`Enrichment returned no data for ${contactName}`);
+    }
+
+    // Task 6.1, 6.2: Create Activity record after successful enrichment (AC5)
+    try {
+      await Activity.create({
+        workspaceId: new mongoose.Types.ObjectId(context.workspaceId),
+        type: 'enrichment',
+        title: `Contact enriched via Apollo.io`,
+        direction: 'inbound',
+        automated: true,
+        entityType: 'contact',
+        entityId: new mongoose.Types.ObjectId(context.contact._id),
+        description: fieldsEnriched.length > 0
+          ? `Contact enriched via Apollo.io: ${fieldsEnriched.join(', ')}`
+          : `Enrichment attempted - no new data found for ${contactName}`,
+        metadata: {
+          source: 'apollo',
+          fieldsEnriched,
+          creditsUsed,
+          agentId: context.agentId,
+          executionId: context.executionId,
+        },
+      });
+    } catch (activityError) {
+      // Task 6.2: Handle case where Activity creation fails (log warning, continue)
+      console.warn('Failed to create enrichment activity:', activityError);
+    }
+
+    // Return success with actual fieldsEnriched
+    const description = fieldsEnriched.length > 0
+      ? `Contact enriched with Apollo.io data: ${fieldsEnriched.join(', ')}`
+      : `Enrichment returned no data for ${contactName}`;
 
     return {
       success: true,
-      description: `Contact enriched with Apollo.io data`,
+      description,
       targetCount: 1,
       data: {
         contactId: context.contact._id.toString(),
-        fieldsEnriched: fields,
+        contactName,
+        fieldsEnriched,
+        creditsUsed,
       },
       durationMs: Date.now() - startTime,
     };
@@ -1170,8 +1411,8 @@ async function executeEnrichContact(
   } catch (error: any) {
     return {
       success: false,
-      description: `Enrich contact failed: ${error.message}`,
-      error: error.message,
+      description: `Enrich contact failed: ${sanitizeErrorMessage(error.message)}`,
+      error: sanitizeErrorMessage(error.message),
       durationMs: Date.now() - startTime,
     };
   }

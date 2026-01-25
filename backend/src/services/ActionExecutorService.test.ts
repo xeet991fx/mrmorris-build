@@ -2,6 +2,7 @@
  * ActionExecutorService Tests - Story 3.1: Parse and Execute Instructions
  * Updated Story 3.7: Send Email Action via Gmail API
  * Updated Story 3.10: Task and Tag Actions
+ * Updated Story 3.11: Update Field and Enrich Actions
  *
  * Tests for action execution handlers:
  * - AC1: Each action is executed in sequence
@@ -20,6 +21,14 @@
  * - User notification for task assignment (AC2)
  * - Multiple tags support (AC3, AC4, AC5)
  * - Due date natural language parsing
+ *
+ * Story 3.11 Tests:
+ * - Variable resolution in field values (AC9)
+ * - Custom field validation (text, number, select) (AC3)
+ * - Custom field not found error (AC4)
+ * - Enrich contact with actual fieldsEnriched (AC5, AC6)
+ * - Apollo rate limit handling with agent auto-pause (AC7)
+ * - Activity logging for enrichment (AC5)
  */
 
 import ActionExecutorService, { ActionResult } from './ActionExecutorService';
@@ -136,6 +145,13 @@ jest.mock('../models/Notification', () => ({
   },
 }));
 
+jest.mock('../models/CustomFieldDefinition', () => ({
+  __esModule: true,
+  default: {
+    findOne: jest.fn(),
+  },
+}));
+
 jest.mock('../models/AgentExecution', () => ({
   __esModule: true,
   default: {
@@ -165,6 +181,7 @@ import EmailTemplate from '../models/EmailTemplate';
 import Agent from '../models/Agent';
 import TeamMember from '../models/TeamMember';
 import Notification from '../models/Notification';
+import CustomFieldDefinition from '../models/CustomFieldDefinition';
 
 const mockGmailService = GmailService as jest.Mocked<typeof GmailService>;
 const mockWebSearchService = WebSearchService as jest.Mocked<typeof WebSearchService>;
@@ -177,6 +194,7 @@ const mockEmailTemplate = EmailTemplate as jest.Mocked<typeof EmailTemplate>;
 const mockAgent = Agent as jest.Mocked<typeof Agent>;
 const mockTeamMember = TeamMember as jest.Mocked<typeof TeamMember>;
 const mockNotification = Notification as jest.Mocked<typeof Notification>;
+const mockCustomFieldDefinition = CustomFieldDefinition as jest.Mocked<typeof CustomFieldDefinition>;
 
 describe('ActionExecutorService', () => {
   const workspaceId = '507f1f77bcf86cd799439011';
@@ -906,11 +924,11 @@ describe('ActionExecutorService', () => {
   });
 
   // ==========================================================================
-  // Update Field Tests
+  // Update Field Tests (Story 3.11: Update Field and Enrich Actions)
   // ==========================================================================
 
   describe('update_field action', () => {
-    it('should update field on contact', async () => {
+    it('should update field on contact (AC1)', async () => {
       const context: ExecutionContext = {
         ...baseContext,
         contact: { _id: '507f1f77bcf86cd799439099' },
@@ -933,6 +951,277 @@ describe('ActionExecutorService', () => {
       );
     });
 
+    it('should resolve @contact.firstName variable in field value (AC9)', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: {
+          _id: '507f1f77bcf86cd799439099',
+          firstName: 'John',
+          lastName: 'Doe',
+        } as any,
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'notes',
+        value: 'Discussed with @contact.firstName',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.resolvedValue).toBe('Discussed with John');
+      expect(mockContact.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: '507f1f77bcf86cd799439099', workspace: workspaceId },
+        { $set: { notes: 'Discussed with John' } }
+      );
+    });
+
+    it('should resolve @company.name variable in field value (AC9)', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: {
+          _id: '507f1f77bcf86cd799439099',
+          firstName: 'John',
+          company: { name: 'Acme Corp' },
+        } as any,
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'notes',
+        value: 'Contact from @company.name',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.resolvedValue).toBe('Contact from Acme Corp');
+    });
+
+    it('should not resolve variables in numeric values (Task 1.2)', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'score',
+        value: 100,
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.resolvedValue).toBe(100);
+    });
+
+    it('should return originalValue and resolvedValue in data (Task 1.4)', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: {
+          _id: '507f1f77bcf86cd799439099',
+          firstName: 'Alice',
+        } as any,
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'notes',
+        value: 'Hi @contact.firstName!',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.originalValue).toBe('Hi @contact.firstName!');
+      expect(result.data?.resolvedValue).toBe('Hi Alice!');
+      expect(result.data?.field).toBe('notes');
+    });
+
+    it('should validate custom field exists (AC3, AC4)', async () => {
+      (mockCustomFieldDefinition.findOne as jest.Mock).mockResolvedValue({
+        fieldKey: 'custom_lead_score',
+        fieldType: 'text',
+        isActive: true,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'custom_lead_score',
+        value: 'A',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.isCustomField).toBe(true);
+      expect(mockCustomFieldDefinition.findOne).toHaveBeenCalledWith({
+        workspaceId: expect.any(Object),
+        fieldKey: 'custom_lead_score',
+        isActive: true,
+      });
+      // Should use customFields path
+      expect(mockContact.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.any(Object),
+        { $set: { 'customFields.custom_lead_score': 'A' } }
+      );
+    });
+
+    it('should return error when custom field not found (AC4)', async () => {
+      (mockCustomFieldDefinition.findOne as jest.Mock).mockResolvedValue(null);
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'custom_unknown',
+        value: 'test',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Custom field 'custom_unknown' not found. Create field first.");
+    });
+
+    it('should validate number type for custom field (AC3)', async () => {
+      (mockCustomFieldDefinition.findOne as jest.Mock).mockResolvedValue({
+        fieldKey: 'custom_score',
+        fieldType: 'number',
+        isActive: true,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'custom_score',
+        value: '85',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.resolvedValue).toBe(85); // Parsed as number
+    });
+
+    it('should return error for invalid number in custom field', async () => {
+      (mockCustomFieldDefinition.findOne as jest.Mock).mockResolvedValue({
+        fieldKey: 'custom_score',
+        fieldType: 'number',
+        isActive: true,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'custom_score',
+        value: 'not-a-number',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("expected number, got 'not-a-number'");
+    });
+
+    it('should validate select type with valid option (AC3)', async () => {
+      (mockCustomFieldDefinition.findOne as jest.Mock).mockResolvedValue({
+        fieldKey: 'custom_priority',
+        fieldType: 'select',
+        selectOptions: ['Low', 'Medium', 'High'],
+        isActive: true,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'custom_priority',
+        value: 'High',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.resolvedValue).toBe('High');
+    });
+
+    it('should return error for invalid select option (Task 7.4)', async () => {
+      (mockCustomFieldDefinition.findOne as jest.Mock).mockResolvedValue({
+        fieldKey: 'custom_priority',
+        fieldType: 'select',
+        selectOptions: ['Low', 'Medium', 'High'],
+        isActive: true,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099' },
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'custom_priority',
+        value: 'Invalid',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("'Invalid' is not a valid option");
+      expect(result.error).toContain('Valid options: Low, Medium, High');
+    });
+
+    it('should update deal value (AC2)', async () => {
+      const context: ExecutionContext = {
+        ...baseContext,
+        deal: { _id: '507f1f77bcf86cd799439098', name: 'Big Deal' },
+      };
+
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'value',
+        value: 50000,
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.targetCount).toBe(1);
+    });
+
     it('should fail when no field specified', async () => {
       const action: ParsedAction = {
         type: 'update_field',
@@ -944,6 +1233,20 @@ describe('ActionExecutorService', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('field');
+    });
+
+    it('should fail when no target in context', async () => {
+      const action: ParsedAction = {
+        type: 'update_field',
+        field: 'status',
+        value: 'Active',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, baseContext);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No target to update');
     });
   });
 
@@ -1023,7 +1326,7 @@ describe('ActionExecutorService', () => {
   });
 
   // ==========================================================================
-  // Enrich Contact Tests
+  // Enrich Contact Tests (Story 3.11: Update Field and Enrich Actions)
   // ==========================================================================
 
   describe('enrich_contact action', () => {
@@ -1039,12 +1342,18 @@ describe('ActionExecutorService', () => {
       expect(result.error?.toLowerCase()).toContain('no contact');
     });
 
-    it('should enrich contact with Apollo', async () => {
-      (mockApollo.enrichContact as jest.Mock).mockResolvedValue({ success: true });
+    it('should enrich contact successfully with fieldsEnriched (AC5, Task 7.5)', async () => {
+      (mockApollo.enrichContact as jest.Mock).mockResolvedValue({
+        success: true,
+        data: {
+          enrichedFields: ['email', 'linkedin', 'title'],
+        },
+        creditsUsed: 1,
+      });
 
       const context: ExecutionContext = {
         ...baseContext,
-        contact: { _id: '507f1f77bcf86cd799439099' },
+        contact: { _id: '507f1f77bcf86cd799439099', firstName: 'John', lastName: 'Doe' },
       };
 
       const action: ParsedAction = {
@@ -1056,6 +1365,173 @@ describe('ActionExecutorService', () => {
 
       expect(result.success).toBe(true);
       expect(result.description).toContain('enriched');
+      expect(result.description).toContain('email, linkedin, title');
+      expect(result.data?.fieldsEnriched).toEqual(['email', 'linkedin', 'title']);
+      expect(result.data?.creditsUsed).toBe(1);
+      expect(result.data?.contactName).toBe('John Doe');
+    });
+
+    it('should handle enrichment with no data found (AC6, Task 7.6)', async () => {
+      (mockApollo.enrichContact as jest.Mock).mockResolvedValue({
+        success: true,
+        data: {
+          enrichedFields: [],
+        },
+        creditsUsed: 1,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099', firstName: 'Jane', lastName: 'Smith' },
+      };
+
+      const action: ParsedAction = {
+        type: 'enrich_contact',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.description).toContain('Enrichment returned no data for Jane Smith');
+      expect(result.data?.fieldsEnriched).toEqual([]);
+    });
+
+    it('should create Activity record after successful enrichment (AC5, Task 6.1)', async () => {
+      (mockApollo.enrichContact as jest.Mock).mockResolvedValue({
+        success: true,
+        data: {
+          enrichedFields: ['phone', 'title'],
+        },
+        creditsUsed: 1,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099', firstName: 'Bob' },
+      };
+
+      const action: ParsedAction = {
+        type: 'enrich_contact',
+        order: 1,
+      };
+
+      await ActionExecutorService.executeAction(action, context);
+
+      expect(mockActivity.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'enrichment',
+          title: 'Contact enriched via Apollo.io',
+          entityType: 'contact',
+          metadata: expect.objectContaining({
+            source: 'apollo',
+            fieldsEnriched: ['phone', 'title'],
+            creditsUsed: 1,
+          }),
+        })
+      );
+    });
+
+    it('should handle Apollo rate limit and auto-pause agent (AC7)', async () => {
+      (mockApollo.enrichContact as jest.Mock).mockResolvedValue({
+        success: false,
+        error: 'rate limit exceeded',
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099', firstName: 'Test' },
+      };
+
+      const action: ParsedAction = {
+        type: 'enrich_contact',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Apollo API rate limit exceeded');
+      expect(result.data?.shouldPauseAgent).toBe(true);
+      expect(mockAgent.findOneAndUpdate).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            status: 'Paused',
+            pauseReason: 'Apollo API rate limit exceeded',
+          }),
+        })
+      );
+    });
+
+    it('should handle Apollo credits exhausted and auto-pause agent (AC7)', async () => {
+      (mockApollo.enrichContact as jest.Mock).mockResolvedValue({
+        success: false,
+        error: 'credits exhausted',
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099', firstName: 'Test' },
+      };
+
+      const action: ParsedAction = {
+        type: 'enrich_contact',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Apollo credits exhausted');
+      expect(result.data?.shouldPauseAgent).toBe(true);
+    });
+
+    it('should handle generic enrichment failure', async () => {
+      (mockApollo.enrichContact as jest.Mock).mockResolvedValue({
+        success: false,
+        error: 'Contact not found in Apollo database',
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: '507f1f77bcf86cd799439099', firstName: 'Unknown' },
+      };
+
+      const action: ParsedAction = {
+        type: 'enrich_contact',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Contact not found');
+    });
+
+    it('should return contactId in result data', async () => {
+      (mockApollo.enrichContact as jest.Mock).mockResolvedValue({
+        success: true,
+        data: {
+          enrichedFields: ['email'],
+        },
+        creditsUsed: 1,
+      });
+
+      const context: ExecutionContext = {
+        ...baseContext,
+        contact: { _id: 'contact_abc123', firstName: 'Test' },
+      };
+
+      const action: ParsedAction = {
+        type: 'enrich_contact',
+        order: 1,
+      };
+
+      const result = await ActionExecutorService.executeAction(action, context);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.contactId).toBe('contact_abc123');
     });
   });
 
