@@ -17,6 +17,7 @@ import { ApprovalConfiguration } from '@/components/agents/ApprovalConfiguration
 import { LiveAgentWarningModal } from '@/components/agents/LiveAgentWarningModal';
 import { ConflictWarningModal } from '@/components/agents/ConflictWarningModal';
 import { TestModePanel } from '@/components/agents/TestModePanel';
+import { ExecutionHistoryPanel } from '@/components/agents/ExecutionHistoryPanel';
 
 export default function AgentBuilderPage() {
   const params = useParams();
@@ -443,6 +444,14 @@ export default function AgentBuilderPage() {
               onConflict={handleSectionConflict}
               onUpdateSuccess={handleSectionSaveSuccess}
               onLiveWarningRequired={requestLiveWarning}
+            />
+          </div>
+
+          {/* Story 3.13: Execution History Section */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+            <ExecutionHistoryPanel
+              workspaceId={workspaceId}
+              agentId={agentId}
             />
           </div>
         </div>

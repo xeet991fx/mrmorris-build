@@ -299,3 +299,94 @@ export const triggerAgent = async (
     throw error;
   }
 };
+
+// =============================================================================
+// Story 3.13: Execution History API
+// =============================================================================
+
+export interface ExecutionStep {
+  stepNumber: number;
+  action: string;
+  result: {
+    success: boolean;
+    description: string;
+    data?: any;
+  };
+  executedAt: string;
+  durationMs: number;
+  creditsUsed: number;
+}
+
+export interface ExecutionSummary {
+  totalSteps: number;
+  successfulSteps: number;
+  failedSteps: number;
+  totalCreditsUsed: number;
+  totalDurationMs: number;
+  description?: string; // Story 3.13 AC2: Human-readable summary
+}
+
+export interface Execution {
+  executionId: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'waiting';
+  triggeredBy?: string;
+  trigger: {
+    type: 'manual' | 'scheduled' | 'event';
+  };
+  startedAt: string;
+  completedAt?: string;
+  summary: ExecutionSummary;
+  steps?: ExecutionStep[];
+  duration?: number; // Virtual field from backend
+}
+
+export interface ListExecutionsResponse {
+  success: boolean;
+  executions: Execution[];
+  count: number;
+}
+
+export interface GetExecutionResponse {
+  success: boolean;
+  execution: Execution;
+}
+
+/**
+ * List executions for an agent (Story 3.13)
+ * AC1: Display execution history with filtering and pagination
+ */
+export const listAgentExecutions = async (
+  workspaceId: string,
+  agentId: string,
+  params?: {
+    status?: string;
+    limit?: number;
+    skip?: number;
+  }
+): Promise<ListExecutionsResponse> => {
+  const queryParams = new URLSearchParams();
+  if (params?.status) queryParams.set('status', params.status);
+  if (params?.limit) queryParams.set('limit', params.limit.toString());
+  if (params?.skip) queryParams.set('skip', params.skip.toString());
+
+  const queryString = queryParams.toString();
+  const url = `/workspaces/${workspaceId}/agents/${agentId}/executions${queryString ? `?${queryString}` : ''}`;
+
+  const response = await axios.get(url);
+  return response.data;
+};
+
+/**
+ * Get a specific execution by ID (Story 3.13)
+ * AC6: Role-based data access (owners see full, members see redacted)
+ */
+export const getAgentExecution = async (
+  workspaceId: string,
+  agentId: string,
+  executionId: string
+): Promise<GetExecutionResponse> => {
+  const response = await axios.get(
+    `/workspaces/${workspaceId}/agents/${agentId}/executions/${executionId}`
+  );
+  return response.data;
+};
