@@ -311,6 +311,7 @@ export interface ExecutionStep {
     success: boolean;
     description: string;
     data?: any;
+    error?: string; // Story 3.14 AC7: Error message for failed steps
   };
   executedAt: string;
   durationMs: number;
@@ -352,8 +353,10 @@ export interface GetExecutionResponse {
 }
 
 /**
- * List executions for an agent (Story 3.13)
+ * List executions for an agent (Story 3.13 + 3.14)
  * AC1: Display execution history with filtering and pagination
+ * AC3: Filter by date range (Story 3.14)
+ * AC4: Search executions (Story 3.14)
  */
 export const listAgentExecutions = async (
   workspaceId: string,
@@ -362,12 +365,18 @@ export const listAgentExecutions = async (
     status?: string;
     limit?: number;
     skip?: number;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
   }
 ): Promise<ListExecutionsResponse> => {
   const queryParams = new URLSearchParams();
   if (params?.status) queryParams.set('status', params.status);
   if (params?.limit) queryParams.set('limit', params.limit.toString());
   if (params?.skip) queryParams.set('skip', params.skip.toString());
+  if (params?.startDate) queryParams.set('startDate', params.startDate);
+  if (params?.endDate) queryParams.set('endDate', params.endDate);
+  if (params?.search) queryParams.set('search', params.search);
 
   const queryString = queryParams.toString();
   const url = `/workspaces/${workspaceId}/agents/${agentId}/executions${queryString ? `?${queryString}` : ''}`;
@@ -388,5 +397,47 @@ export const getAgentExecution = async (
   const response = await axios.get(
     `/workspaces/${workspaceId}/agents/${agentId}/executions/${executionId}`
   );
+  return response.data;
+};
+
+/**
+ * Retry a failed execution with same trigger context (Story 3.14 AC9)
+ */
+export const retryAgentExecution = async (
+  workspaceId: string,
+  agentId: string,
+  executionId: string
+): Promise<{ success: boolean; executionId: string; message: string }> => {
+  const response = await axios.post(
+    `/workspaces/${workspaceId}/agents/${agentId}/executions/${executionId}/retry`
+  );
+  return response.data;
+};
+
+/**
+ * Export execution logs as JSON or CSV (Story 3.14 AC10)
+ */
+export const exportAgentExecutions = async (
+  workspaceId: string,
+  agentId: string,
+  params?: {
+    format: 'json' | 'csv';
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }
+): Promise<Blob> => {
+  const queryParams = new URLSearchParams();
+  if (params?.format) queryParams.set('format', params.format);
+  if (params?.status) queryParams.set('status', params.status);
+  if (params?.startDate) queryParams.set('startDate', params.startDate);
+  if (params?.endDate) queryParams.set('endDate', params.endDate);
+
+  const queryString = queryParams.toString();
+  const url = `/workspaces/${workspaceId}/agents/${agentId}/executions/export${queryString ? `?${queryString}` : ''}`;
+
+  const response = await axios.get(url, {
+    responseType: 'blob', // Important for file download
+  });
   return response.data;
 };

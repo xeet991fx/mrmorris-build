@@ -29,6 +29,7 @@ jest.mock('../models/AgentExecution', () => ({
     create: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
+    countDocuments: jest.fn(),
   },
 }));
 
@@ -381,6 +382,97 @@ describe('AgentExecutionService', () => {
       const result = await AgentExecutionService.cancelExecution('nonexistent', workspaceId);
 
       expect(result).toBe(false);
+    });
+  });
+
+  // ==========================================================================
+  // Story 3.14: Date Range Filtering Tests
+  // ==========================================================================
+
+  describe('listExecutions - date range filtering', () => {
+    it('should filter executions by date range', async () => {
+      const startDate = new Date('2024-01-01T00:00:00Z');
+      const endDate = new Date('2024-01-31T23:59:59Z');
+
+      const mockExecutions = [
+        {
+          executionId: 'exec_1',
+          status: 'completed',
+          startedAt: new Date('2024-01-15T10:00:00Z'),
+        },
+      ];
+
+      (mockExecution.find as jest.Mock).mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockResolvedValue(mockExecutions),
+      });
+
+      const result = await AgentExecutionService.listExecutions(agentId, workspaceId, {
+        startDate,
+        endDate,
+      });
+
+      expect(result).toHaveLength(1);
+      expect(mockExecution.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          startedAt: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        })
+      );
+    });
+  });
+
+  // ==========================================================================
+  // Story 3.14: Search Functionality Tests
+  // ==========================================================================
+
+  describe('listExecutions - search functionality', () => {
+    it('should search executions by query string', async () => {
+      const searchQuery = 'john@example.com';
+
+      const mockExecutions = [
+        {
+          executionId: 'exec_1',
+          status: 'completed',
+          steps: [{ result: { description: 'Sent email to john@example.com' } }],
+        },
+      ];
+
+      (mockExecution.find as jest.Mock).mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockResolvedValue(mockExecutions),
+      });
+
+      const result = await AgentExecutionService.listExecutions(agentId, workspaceId, {
+        search: searchQuery,
+      });
+
+      expect(result).toHaveLength(1);
+      expect(mockExecution.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $or: expect.arrayContaining([
+            expect.objectContaining({ 'steps.result.description': expect.any(RegExp) }),
+          ]),
+        })
+      );
+    });
+
+    it('should return empty results when search finds no matches', async () => {
+      (mockExecution.find as jest.Mock).mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockResolvedValue([]),
+      });
+
+      const result = await AgentExecutionService.listExecutions(agentId, workspaceId, {
+        search: 'nonexistent@example.com',
+      });
+
+      expect(result).toHaveLength(0);
     });
   });
 });

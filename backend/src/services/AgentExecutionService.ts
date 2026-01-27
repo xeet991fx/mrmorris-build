@@ -1285,7 +1285,14 @@ export class AgentExecutionService {
   static async listExecutions(
     agentId: string,
     workspaceId: string,
-    options: { limit?: number; skip?: number; status?: ExecutionStatus } = {}
+    options: {
+      limit?: number;
+      skip?: number;
+      status?: ExecutionStatus;
+      startDate?: Date;
+      endDate?: Date;
+      search?: string;
+    } = {}
   ): Promise<IAgentExecution[]> {
     const query: any = {
       agent: new mongoose.Types.ObjectId(agentId),
@@ -1294,6 +1301,29 @@ export class AgentExecutionService {
 
     if (options.status) {
       query.status = options.status;
+    }
+
+    // Story 3.14 AC3: Filter by date range
+    if (options.startDate || options.endDate) {
+      query.startedAt = {};
+      if (options.startDate) {
+        query.startedAt.$gte = options.startDate;
+      }
+      if (options.endDate) {
+        query.startedAt.$lte = options.endDate;
+      }
+    }
+
+    // Story 3.14 AC4: Search across steps, trigger data
+    if (options.search && options.search.trim()) {
+      const searchRegex = new RegExp(options.search.trim(), 'i');
+      query.$or = [
+        { 'steps.result.description': searchRegex },
+        { 'steps.result.data': searchRegex },
+        { 'steps.params': searchRegex },
+        { 'trigger.data': searchRegex },
+        { 'summary.description': searchRegex },
+      ];
     }
 
     return AgentExecution.find(query)

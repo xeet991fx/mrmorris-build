@@ -19,17 +19,24 @@ let agentExecutionNamespace: Namespace | null = null;
 
 /**
  * Initialize the agent execution socket namespace
- * @param httpServer - The HTTP server instance
+ * @param httpServerOrIO - Either HTTP server or existing Socket.IO server instance
  * @returns The Socket.IO server instance
  */
-export function initializeAgentExecutionSocket(httpServer: HTTPServer): SocketIOServer {
-  const io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-      credentials: true,
-    },
-    path: '/socket.io',
-  });
+export function initializeAgentExecutionSocket(httpServerOrIO: HTTPServer | SocketIOServer): SocketIOServer {
+  // If already a Socket.IO server instance, reuse it
+  let io: SocketIOServer;
+  if (httpServerOrIO instanceof SocketIOServer) {
+    io = httpServerOrIO;
+  } else {
+    // Create new Socket.IO server with a different path to avoid conflict
+    io = new SocketIOServer(httpServerOrIO, {
+      cors: {
+        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        credentials: true,
+      },
+      path: '/agent-socket.io',  // Different path to avoid conflict with chat socket
+    });
+  }
 
   // Namespace for agent execution updates
   agentExecutionNamespace = io.of('/agent-execution');

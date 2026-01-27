@@ -468,11 +468,11 @@ const startServer = async () => {
     const httpServer = http.createServer(app);
 
     // Initialize Socket.IO for real-time chat
-    initializeChatSocket(httpServer);
+    const io = initializeChatSocket(httpServer);
     logger.info('Chat Socket.IO initialized');
 
-    // Initialize Socket.IO for agent execution updates (Story 3.2)
-    initializeAgentExecutionSocket(httpServer);
+    // Initialize Socket.IO for agent execution updates (Story 3.2) - REUSE same io server
+    initializeAgentExecutionSocket(io);
     logger.info('Agent Execution Socket.IO initialized');
 
     httpServer.listen(PORT, async () => {

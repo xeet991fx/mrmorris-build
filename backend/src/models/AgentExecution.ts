@@ -272,6 +272,8 @@ AgentExecutionSchema.index({ agent: 1, linkedTestRunId: 1 });
 AgentExecutionSchema.index({ status: 1, resumeAt: 1 });
 // Story 3.13: Index for workspace-wide execution history queries
 AgentExecutionSchema.index({ workspace: 1, startedAt: -1 });
+// Story 3.14: Index for filtered execution history queries (status filter + date range)
+AgentExecutionSchema.index({ workspace: 1, agent: 1, status: 1, startedAt: -1 });
 
 export default mongoose.model<IAgentExecution>('AgentExecution', AgentExecutionSchema);
 

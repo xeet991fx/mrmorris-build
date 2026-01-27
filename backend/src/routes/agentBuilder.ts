@@ -46,9 +46,11 @@ import {
   executeAgent,
   listAgentExecutions,
   getAgentExecution,
+  retryAgentExecution,
   cancelAgentExecution,
   triggerAgent,
-  completeHandoff
+  completeHandoff,
+  exportAgentExecutions
 } from '../controllers/agentController';
 import { searchContacts, searchDeals } from '../controllers/testTargetController';
 import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema, executeAgentSchema, triggerAgentSchema } from '../validations/agentValidation';
@@ -302,6 +304,20 @@ router.post(
 );
 
 /**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions/export
+ * @desc Export executions as JSON or CSV (Story 3.14 AC10)
+ * @access Private (requires authentication and workspace access)
+ *
+ * NOTE: This route MUST come before /executions/:executionId to avoid route collision
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId/executions/export',
+  authenticate,
+  validateWorkspaceAccess,
+  exportAgentExecutions
+);
+
+/**
  * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions
  * @desc List all executions for an agent (Story 3.1)
  * @access Private (requires authentication and workspace access)
@@ -323,6 +339,18 @@ router.get(
   authenticate,
   validateWorkspaceAccess,
   getAgentExecution
+);
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId/retry
+ * @desc Retry a failed execution with same trigger context (Story 3.14 AC9)
+ * @access Private (requires authentication and workspace access)
+ */
+router.post(
+  '/workspaces/:workspaceId/agents/:agentId/executions/:executionId/retry',
+  authenticate,
+  validateWorkspaceAccess,
+  retryAgentExecution
 );
 
 /**

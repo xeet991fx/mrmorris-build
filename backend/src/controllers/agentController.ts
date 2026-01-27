@@ -1536,7 +1536,7 @@ export const executeAgent = async (req: Request, res: Response): Promise<void> =
 export const listAgentExecutions = async (req: Request, res: Response): Promise<void> => {
   try {
     const { workspaceId, agentId } = req.params;
-    const { status, limit = '20', skip = '0' } = req.query;
+    const { status, limit = '20', skip = '0', startDate, endDate, search } = req.query;
     const userId = (req as any).user?._id;
 
     if (!userId) {
@@ -1554,6 +1554,9 @@ export const listAgentExecutions = async (req: Request, res: Response): Promise<
         status: status as any,
         limit: parseInt(limit as string),
         skip: parseInt(skip as string),
+        startDate: startDate ? new Date(startDate as string) : undefined,
+        endDate: endDate ? new Date(endDate as string) : undefined,
+        search: search as string | undefined,
       }
     );
 
@@ -1641,6 +1644,92 @@ export const getAgentExecution = async (req: Request, res: Response): Promise<vo
     res.status(500).json({
       success: false,
       error: 'Failed to get execution'
+    });
+  }
+};
+
+/**
+ * @route POST /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId/retry
+ * @desc Retry a failed execution with same trigger context (Story 3.14 AC9)
+ * @access Private (requires authentication, workspace access)
+ */
+export const retryAgentExecution = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId, executionId } = req.params;
+    const userId = (req as any).user?._id;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Load original execution
+    const originalExecution = await AgentExecution.findOne({
+      executionId,
+      workspace: new mongoose.Types.ObjectId(workspaceId),
+      agent: new mongoose.Types.ObjectId(agentId),
+    });
+
+    if (!originalExecution) {
+      res.status(404).json({
+        success: false,
+        error: 'Execution not found'
+      });
+      return;
+    }
+
+    // Story 3.14 AC9: Only failed executions can be retried
+    if (originalExecution.status !== 'failed') {
+      res.status(400).json({
+        success: false,
+        error: `Only failed executions can be retried. Current status: ${originalExecution.status}`
+      });
+      return;
+    }
+
+    // Get agent
+    const agent = await Agent.findOne({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!agent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // Re-execute with same trigger context
+    const result = await AgentExecutionService.executeAgent(
+      agentId,
+      workspaceId,
+      {
+        type: originalExecution.trigger.type as any,
+        eventDetails: originalExecution.trigger.eventDetails,
+        userId: userId.toString(),
+      },
+      originalExecution.target || undefined
+    );
+
+    // Trigger actual execution (same as triggerAgent)
+    // AgentExecutionService.executeAgent was called above - this line is dead code
+
+    res.json({
+      success: true,
+      executionId: result.executionId,
+      message: 'Execution retried successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Error retrying execution:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retry execution'
     });
   }
 };
@@ -2018,6 +2107,117 @@ export const completeHandoff = async (req: Request, res: Response): Promise<void
     res.status(500).json({
       success: false,
       error: 'Failed to complete handoff'
+    });
+  }
+};
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions/export
+ * @desc Export execution logs as JSON or CSV (Story 3.14 AC10)
+ * @access Private (requires authentication and workspace access)
+ */
+export const exportAgentExecutions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+    const { format = 'json', status, startDate, endDate } = req.query;
+
+    // Validate format
+    if (format !== 'json' && format !== 'csv') {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid format. Must be "json" or "csv"'
+      });
+      return;
+    }
+
+    // Query executions using AgentExecutionService
+    const options: any = {
+      status: status as string,
+      startDate: startDate as string,
+      endDate: endDate as string,
+      limit: 1000, // Export up to 1000 executions
+      skip: 0,
+    };
+
+    const result = await AgentExecutionService.listExecutions(
+      agentId,
+      workspaceId,
+      options
+    );
+
+    const executions = result;
+
+    // Export as JSON
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="executions-${agentId}-${Date.now()}.json"`);
+      res.status(200).json({
+        success: true,
+        count: executions.length,
+        executions,
+        exportedAt: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Export as CSV
+    if (format === 'csv') {
+      // CSV headers
+      const headers = [
+        'ExecutionId',
+        'Status',
+        'TriggerType',
+        'StartedAt',
+        'CompletedAt',
+        'Duration (ms)',
+        'TotalSteps',
+        'SuccessfulSteps',
+        'FailedSteps',
+        'CreditsUsed',
+        'Summary',
+      ];
+
+      // CSV rows
+      const rows = executions.map((execution: any) => [
+        execution.executionId,
+        execution.status,
+        execution.trigger?.type || 'N/A',
+        execution.startedAt,
+        execution.completedAt || '',
+        execution.duration || '',
+        execution.summary?.totalSteps || 0,
+        execution.summary?.successfulSteps || 0,
+        execution.summary?.failedSteps || 0,
+        execution.summary?.totalCreditsUsed || 0,
+        (execution.summary?.description || '').replace(/"/g, '""'), // Escape quotes
+      ]);
+
+      // Build CSV content
+      const csvContent = [
+        headers.join(','),
+        ...rows.map((row: any[]) =>
+          row.map((cell: any) => {
+            // Wrap cell in quotes if it contains comma, newline, or quote
+            const cellStr = String(cell || '');
+            if (cellStr.includes(',') || cellStr.includes('\n') || cellStr.includes('"')) {
+              return `"${cellStr.replace(/"/g, '""')}"`;
+            }
+            return cellStr;
+          }).join(',')
+        ),
+      ].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="executions-${agentId}-${Date.now()}.csv"`);
+      res.status(200).send(csvContent);
+      return;
+    }
+
+  } catch (error: any) {
+    console.error('Error exporting executions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export executions'
     });
   }
 };
