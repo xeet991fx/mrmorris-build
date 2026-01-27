@@ -1486,11 +1486,17 @@ export const executeAgent = async (req: Request, res: Response): Promise<void> =
     // Create abort controller for cancellation
     const abortController = new AbortController();
 
+    // Story 3.13 AC1: Add userId to trigger for tracking who initiated execution
+    const triggerWithUser = {
+      ...trigger,
+      userId: userId.toString()
+    };
+
     // Execute the agent
     const result = await AgentExecutionService.executeAgent(
       agentId,
       workspaceId,
-      trigger,
+      triggerWithUser,
       target,
       {
         testRunId,
@@ -1570,6 +1576,8 @@ export const listAgentExecutions = async (req: Request, res: Response): Promise<
  * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions/:executionId
  * @desc Get a specific execution by ID (Story 3.1)
  * @access Private (requires authentication and workspace access)
+ *
+ * Story 3.13 AC6: RBAC for data redaction - owners/admins see full data, members see redacted
  */
 export const getAgentExecution = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -1594,9 +1602,38 @@ export const getAgentExecution = async (req: Request, res: Response): Promise<vo
       return;
     }
 
+    // Story 3.13 AC6: Determine user role for data redaction
+    const workspace = await Project.findById(workspaceId);
+    let userRole = 'member'; // Default to most restricted
+
+    if (workspace && workspace.userId.toString() === userId.toString()) {
+      userRole = 'owner';
+    } else {
+      const teamMember = await TeamMember.findOne({
+        workspaceId: workspaceId,
+        userId: userId,
+        status: 'active'
+      });
+      if (teamMember) {
+        userRole = teamMember.role;
+      }
+    }
+
+    // Story 3.13 AC6: Apply redaction to step results based on user role
+    const { redactForUser } = await import('../utils/redactSensitiveData');
+    const executionData = execution.toObject();
+
+    // Only redact for non-owner/non-admin users
+    if (userRole !== 'owner' && userRole !== 'admin') {
+      executionData.steps = executionData.steps.map(step => ({
+        ...step,
+        result: redactForUser(step.result, userRole)
+      }));
+    }
+
     res.json({
       success: true,
-      execution
+      execution: executionData
     });
 
   } catch (error: any) {
@@ -1661,7 +1698,12 @@ export const cancelAgentExecution = async (req: Request, res: Response): Promise
     }
 
     // Also update database status
-    const cancelled = await AgentExecutionService.cancelExecution(executionId, workspaceId);
+    // Story 3.13: Pass userId to track who cancelled the execution
+    const cancelled = await AgentExecutionService.cancelExecution(
+      executionId,
+      workspaceId,
+      userId.toString()
+    );
 
     if (cancelled) {
       res.json({
@@ -1796,12 +1838,14 @@ export const triggerAgent = async (req: Request, res: Response): Promise<void> =
     const triggerConfig = manualTrigger?.config || {};
 
     // Execute the agent with manual trigger type
+    // Story 3.13 AC1: Pass userId to track who triggered the execution
     const result = await AgentExecutionService.executeAgent(
       agentId,
       workspaceId,
       {
         type: 'manual',
-        eventDetails: triggerConfig
+        eventDetails: triggerConfig,
+        userId: userId.toString() // Story 3.13 AC1: Track triggeredBy
       },
       target,
       {
@@ -1947,10 +1991,11 @@ export const completeHandoff = async (req: Request, res: Response): Promise<void
           totalSteps: execution.totalSteps,
           successfulSteps: execution.summary.successfulSteps + 1,
           failedSteps: execution.summary.failedSteps,
+          skippedSteps: 0,
           duration: execution.summary.totalDurationMs,
         },
         completedAt,
-        handoffCompletedBy: completedBy,
+
       });
     } catch (socketErr) {
       console.warn('Failed to emit handoff completion notification:', socketErr);

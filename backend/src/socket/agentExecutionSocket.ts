@@ -143,6 +143,13 @@ export interface AgentFailureAlertEvent {
   lastError?: string;
 }
 
+// Story 3.13: Event for execution cancellation
+export interface ExecutionCancelledEvent {
+  executionId: string;
+  canceledAt: Date;
+  canceledBy?: string;  // User ID who cancelled, undefined for system cancellations
+}
+
 // =============================================================================
 // Helper Functions for Emitting Events
 // =============================================================================
@@ -263,4 +270,24 @@ export function emitAgentFailureAlert(
   }
 }
 
+// Story 3.13: Helper function for execution cancellation event
+
+/**
+ * Emit execution:cancelled event when execution is cancelled
+ */
+export function emitExecutionCancelled(
+  workspaceId: string,
+  agentId: string,
+  event: ExecutionCancelledEvent
+): void {
+  const namespace = getAgentExecutionNamespace();
+  if (namespace) {
+    const room = `workspace:${workspaceId}:agent:${agentId}`;
+    namespace.to(room).emit('execution:cancelled', event);
+    // Also emit to workspace-wide room
+    namespace.to(`workspace:${workspaceId}`).emit('execution:cancelled', event);
+  }
+}
+
 export default initializeAgentExecutionSocket;
+

@@ -68,19 +68,19 @@ development_status:
 
   # Epic 3: Live Agent Execution (15 stories)
   epic-3: in-progress
-  3-1-parse-and-execute-instructions: review
-  3-2-manual-trigger-execution: review
-  3-3-scheduled-trigger-execution: review
+  3-1-parse-and-execute-instructions: done
+  3-2-manual-trigger-execution: done
+  3-3-scheduled-trigger-execution: done
   3-4-event-based-trigger-execution: done
   3-5-sequential-multi-step-workflows: done
-  3-6-conditional-logic-execution: review
+  3-6-conditional-logic-execution: done
   3-7-send-email-action: done
   3-8-linkedin-invitation-action: done
   3-9-web-search-action: done
-  3-10-task-and-tag-actions: review
+  3-10-task-and-tag-actions: done
   3-11-update-field-and-enrich-actions: done
   3-12-wait-action-and-human-handoff: review
-  3-13-track-execution-history: backlog
+  3-13-track-execution-history: in-progress
   3-14-view-execution-logs: backlog
   3-15-export-and-dashboard: backlog
   epic-3-retrospective: optional

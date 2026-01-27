@@ -4,6 +4,10 @@ import mongoose, { Document, Schema } from 'mongoose';
  * Story 2.7: AgentExecution Model
  * Stores live execution results for comparison with test predictions.
  * Links to AgentTestRun via linkedTestRunId for accuracy tracking.
+ * 
+ * Story 3.13: Track Execution History
+ * Added fields: triggeredBy, canceledAt, canceledBy, agentDeleted, agentName
+ * Added indexes for workspace-wide history queries and TTL retention
  */
 
 /**
@@ -69,6 +73,8 @@ export interface IAgentExecution extends Document {
     type: 'manual' | 'scheduled' | 'event';
     eventDetails?: Record<string, any>;
   };
+  // Story 3.13: Triggered by user for manual triggers
+  triggeredBy?: mongoose.Types.ObjectId;
   target?: {
     type: 'contact' | 'deal';
     id: string;
@@ -84,6 +90,7 @@ export interface IAgentExecution extends Document {
     failedSteps: number;
     totalCreditsUsed: number;
     totalDurationMs: number;
+    description?: string;  // Story 3.13: Human-readable summary
   };
   comparison?: IAgentExecutionComparison;
   // Story 3.5: Resume capability fields
@@ -92,9 +99,17 @@ export interface IAgentExecution extends Document {
   resumeFromStep?: number;              // Step index to resume from
   resumeAt?: Date;                      // Scheduled resume time
   resumeJobId?: string;                 // BullMQ job ID for cancellation
+  // Story 3.13: Cancel tracking fields
+  canceledAt?: Date;
+  canceledBy?: mongoose.Types.ObjectId;
+  // Story 3.13: Agent deletion preservation
+  agentDeleted: boolean;
+  agentName?: string;                   // Preserved agent name after deletion
   startedAt: Date;
   completedAt?: Date;
   createdAt: Date;
+  // Story 3.13: Virtual field for duration
+  duration?: number;                    // Computed: completedAt - startedAt in ms
 }
 
 const AgentExecutionSchema = new Schema<IAgentExecution>(
@@ -132,6 +147,8 @@ const AgentExecutionSchema = new Schema<IAgentExecution>(
       },
       eventDetails: Schema.Types.Mixed,
     },
+    // Story 3.13: Triggered by user for manual triggers
+    triggeredBy: { type: Schema.Types.ObjectId, ref: 'User' },
     target: {
       type: {
         type: String,
@@ -196,6 +213,7 @@ const AgentExecutionSchema = new Schema<IAgentExecution>(
       failedSteps: { type: Number, required: true },
       totalCreditsUsed: { type: Number, required: true },
       totalDurationMs: { type: Number, required: true },
+      description: { type: String },  // Story 3.13: Human-readable summary
     },
     comparison: {
       linkedTestRunId: String,
@@ -216,6 +234,12 @@ const AgentExecutionSchema = new Schema<IAgentExecution>(
     resumeFromStep: { type: Number },             // Step index to resume from
     resumeAt: { type: Date },                     // Scheduled resume time
     resumeJobId: { type: String },                // BullMQ job ID for cancellation
+    // Story 3.13: Cancel tracking fields
+    canceledAt: { type: Date },
+    canceledBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    // Story 3.13: Agent deletion preservation
+    agentDeleted: { type: Boolean, default: false, index: true },
+    agentName: { type: String },                  // Preserved agent name after deletion
     startedAt: {
       type: Date,
       default: Date.now,
@@ -228,13 +252,26 @@ const AgentExecutionSchema = new Schema<IAgentExecution>(
   },
   {
     timestamps: false,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+
+// Story 3.13: Virtual field for duration (completedAt - startedAt in ms)
+AgentExecutionSchema.virtual('duration').get(function () {
+  if (this.completedAt && this.startedAt) {
+    return this.completedAt.getTime() - this.startedAt.getTime();
+  }
+  return undefined;
+});
 
 // Compound indexes for efficient queries (AC: 1, 2, 3, 4)
 AgentExecutionSchema.index({ agent: 1, workspace: 1, createdAt: -1 });
 AgentExecutionSchema.index({ agent: 1, linkedTestRunId: 1 });
 // Story 3.5: Index for querying waiting executions (for resume job scanning)
 AgentExecutionSchema.index({ status: 1, resumeAt: 1 });
+// Story 3.13: Index for workspace-wide execution history queries
+AgentExecutionSchema.index({ workspace: 1, startedAt: -1 });
 
 export default mongoose.model<IAgentExecution>('AgentExecution', AgentExecutionSchema);
+

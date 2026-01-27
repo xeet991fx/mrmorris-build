@@ -375,6 +375,54 @@ AgentSchema.pre('deleteMany', function () {
   }
 });
 
+// Story 3.13 AC7: Pre-delete middleware to preserve execution history
+// When an agent is deleted, update all execution records to preserve agent info
+AgentSchema.pre('findOneAndDelete', async function () {
+  const query = this.getQuery();
+  if (!query.workspace) {
+    throw new Error('SECURITY: Workspace filter required for Agent findOneAndDelete queries');
+  }
+
+  // Get the agent before it's deleted to capture the name
+  const Agent = this.model;
+  const agent = await Agent.findOne(query).select('_id name');
+
+  if (agent) {
+    // Import AgentExecution here to avoid circular dependency
+    const AgentExecution = mongoose.model('AgentExecution');
+
+    // Mark all execution records as having deleted agent and preserve agent name
+    // Story 3.13 AC7: Include workspace filter for extra safety in multi-tenant system
+    await AgentExecution.updateMany(
+      { agent: agent._id, workspace: query.workspace },
+      {
+        $set: {
+          agentDeleted: true,
+          agentName: agent.name
+        }
+      }
+    );
+  }
+});
+
+// Story 3.13 AC7: Also handle document-level deleteOne
+AgentSchema.pre('deleteOne', { document: true, query: false }, async function () {
+  // 'this' is the document being deleted
+  const AgentExecution = mongoose.model('AgentExecution');
+
+  // Story 3.13 AC7: Include workspace filter for extra safety
+  await AgentExecution.updateMany(
+    { agent: this._id, workspace: this.workspace },
+    {
+      $set: {
+        agentDeleted: true,
+        agentName: this.name
+      }
+    }
+  );
+});
+
 const Agent = mongoose.model<IAgent>('Agent', AgentSchema);
 
 export default Agent;
+

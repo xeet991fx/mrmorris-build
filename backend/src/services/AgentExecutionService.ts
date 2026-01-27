@@ -27,6 +27,7 @@ import {
   emitExecutionCompleted,
   emitExecutionFailed
 } from '../socket/agentExecutionSocket';
+import { redactSensitiveData } from '../utils/redactSensitiveData';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -340,6 +341,82 @@ function getCreditCost(actionType: string): number {
   return CREDIT_COSTS[actionType.toLowerCase()] || 0;
 }
 
+/**
+ * Story 3.13 AC2: Generate human-readable summary from step results
+ * Examples: "Processed 5 contacts, sent 5 emails", "Updated 3 deals"
+ */
+function generateExecutionSummary(steps: IAgentExecutionStep[]): string {
+  const summaryParts: string[] = [];
+
+  // Count action types
+  const actionCounts: Record<string, number> = {};
+  const recipientCounts: Record<string, number> = {};
+
+  for (const step of steps) {
+    if (!step.result.success) continue;
+
+    const actionType = step.action;
+    actionCounts[actionType] = (actionCounts[actionType] || 0) + 1;
+
+    // Track recipients for email/linkedin actions
+    if (step.result.recipients && step.result.recipients.length > 0) {
+      recipientCounts[actionType] = (recipientCounts[actionType] || 0) + step.result.recipients.length;
+    } else if (step.result.itemsProcessed) {
+      recipientCounts[actionType] = (recipientCounts[actionType] || 0) + step.result.itemsProcessed;
+    }
+  }
+
+  // Build summary string
+  if (recipientCounts['send_email'] || recipientCounts['email']) {
+    const count = (recipientCounts['send_email'] || 0) + (recipientCounts['email'] || 0);
+    summaryParts.push(`sent ${count} email${count !== 1 ? 's' : ''}`);
+  }
+
+  if (recipientCounts['linkedin_invite'] || recipientCounts['linkedin']) {
+    const count = (recipientCounts['linkedin_invite'] || 0) + (recipientCounts['linkedin'] || 0);
+    summaryParts.push(`sent ${count} LinkedIn invitation${count !== 1 ? 's' : ''}`);
+  }
+
+  if (actionCounts['update_field'] || actionCounts['update']) {
+    const count = (actionCounts['update_field'] || 0) + (actionCounts['update'] || 0);
+    summaryParts.push(`updated ${count} field${count !== 1 ? 's' : ''}`);
+  }
+
+  if (actionCounts['add_tag']) {
+    summaryParts.push(`added ${actionCounts['add_tag']} tag${actionCounts['add_tag'] !== 1 ? 's' : ''}`);
+  }
+
+  if (actionCounts['create_task'] || actionCounts['task']) {
+    const count = (actionCounts['create_task'] || 0) + (actionCounts['task'] || 0);
+    summaryParts.push(`created ${count} task${count !== 1 ? 's' : ''}`);
+  }
+
+  if (actionCounts['web_search']) {
+    summaryParts.push(`performed ${actionCounts['web_search']} web search${actionCounts['web_search'] !== 1 ? 'es' : ''}`);
+  }
+
+  if (actionCounts['enrich_contact'] || actionCounts['enrich']) {
+    const count = (actionCounts['enrich_contact'] || 0) + (actionCounts['enrich'] || 0);
+    summaryParts.push(`enriched ${count} contact${count !== 1 ? 's' : ''}`);
+  }
+
+  // Fallback for empty summary
+  if (summaryParts.length === 0) {
+    const successfulSteps = steps.filter(s => s.result.success).length;
+    return `Completed ${successfulSteps} step${successfulSteps !== 1 ? 's' : ''}`;
+  }
+
+  // Join with commas and "and" for last item
+  if (summaryParts.length === 1) {
+    return summaryParts[0].charAt(0).toUpperCase() + summaryParts[0].slice(1);
+  } else if (summaryParts.length === 2) {
+    return summaryParts[0].charAt(0).toUpperCase() + summaryParts[0].slice(1) + ' and ' + summaryParts[1];
+  } else {
+    const last = summaryParts.pop();
+    return summaryParts.join(', ').charAt(0).toUpperCase() + summaryParts.join(', ').slice(1) + ', and ' + last;
+  }
+}
+
 // =============================================================================
 // MAIN SERVICE
 // =============================================================================
@@ -355,7 +432,7 @@ export class AgentExecutionService {
   static async executeAgent(
     agentId: string,
     workspaceId: string,
-    trigger: { type: 'manual' | 'scheduled' | 'event'; eventDetails?: Record<string, any> },
+    trigger: { type: 'manual' | 'scheduled' | 'event'; eventDetails?: Record<string, any>; userId?: string },
     target?: { type: 'contact' | 'deal'; id: string },
     options: ExecutionOptions = {}
   ): Promise<ExecutionResult> {
@@ -366,6 +443,7 @@ export class AgentExecutionService {
 
     try {
       // 1. Create AgentExecution record (status: pending)
+      // Story 3.13 AC1: Add triggeredBy for manual triggers
       executionRecord = await AgentExecution.create({
         executionId,
         agent: new mongoose.Types.ObjectId(agentId),
@@ -376,6 +454,8 @@ export class AgentExecutionService {
           type: trigger.type,
           eventDetails: trigger.eventDetails,
         },
+        // Story 3.13 AC1: Track who triggered the execution (for manual triggers)
+        triggeredBy: trigger.userId ? new mongoose.Types.ObjectId(trigger.userId) : undefined,
         target: target ? {
           type: target.type,
           id: target.id,
@@ -825,10 +905,13 @@ export class AgentExecutionService {
         const creditCost = getCreditCost(action.type);
         totalCreditsUsed += creditCost;
 
+        // Story 3.13 AC6: Redact sensitive data before logging
+        const redactedResult = redactSensitiveData(actionResult);
+
         steps.push({
           stepNumber,
           action: action.type,
-          result: actionResult,
+          result: redactedResult,
           executedAt: new Date(),
           durationMs,
           creditsUsed: creditCost,
@@ -857,6 +940,9 @@ export class AgentExecutionService {
       const successfulSteps = steps.filter(s => s.result.success).length;
       const failedSteps = steps.filter(s => !s.result.success).length;
 
+      // Story 3.13 AC2: Generate human-readable summary description
+      const summaryDescription = generateExecutionSummary(steps);
+
       executionRecord.steps = steps;
       executionRecord.status = hasError ? 'failed' : 'completed';
       executionRecord.completedAt = new Date();
@@ -866,6 +952,7 @@ export class AgentExecutionService {
         failedSteps,
         totalCreditsUsed,
         totalDurationMs,
+        description: summaryDescription, // Story 3.13 AC2
       };
 
       await executionRecord.save();
@@ -1216,27 +1303,71 @@ export class AgentExecutionService {
   }
 
   /**
-   * Cancel an in-progress execution
+   * Story 3.13 AC4: Cancel an in-progress or waiting execution
+   * Enhanced to track canceledBy user, cancel BullMQ jobs, and emit Socket.io events
    */
   static async cancelExecution(
     executionId: string,
-    workspaceId: string
-  ): Promise<boolean> {
+    workspaceId: string,
+    canceledBy?: string  // Story 3.13: User ID who cancelled the execution
+  ): Promise<{ success: boolean; error?: string; execution?: IAgentExecution }> {
     const execution = await AgentExecution.findOne({
       executionId,
-      workspace: workspaceId,
-      status: { $in: ['pending', 'running'] },
+      workspace: new mongoose.Types.ObjectId(workspaceId),
+      status: { $in: ['pending', 'running', 'waiting'] },  // Story 3.13: Include 'waiting' status
     });
 
     if (!execution) {
-      return false;
+      // Check if execution exists but is in wrong status
+      const existingExecution = await AgentExecution.findOne({
+        executionId,
+        workspace: new mongoose.Types.ObjectId(workspaceId),
+      });
+
+      if (!existingExecution) {
+        return { success: false, error: 'Cannot cancel execution: Execution not found' };
+      }
+
+      if (existingExecution.status === 'cancelled') {
+        return { success: false, error: 'Execution already cancelled' };
+      }
+
+      return { success: false, error: `Cannot cancel execution: Execution not in running or waiting state (current: ${existingExecution.status})` };
     }
 
+    // Story 3.13: Cancel BullMQ resume job if execution is waiting
+    if (execution.status === 'waiting' && execution.resumeJobId) {
+      try {
+        const { agentResumeExecutionQueue } = await import('../jobs/agentResumeExecutionJob');
+        await agentResumeExecutionQueue.remove(execution.resumeJobId);
+      } catch (jobError) {
+        console.warn(`Failed to cancel resume job ${execution.resumeJobId}:`, jobError);
+        // Continue with cancellation even if job removal fails
+      }
+    }
+
+    // Story 3.13: Update execution with cancel tracking fields
     execution.status = 'cancelled';
+    execution.canceledAt = new Date();
+    if (canceledBy) {
+      execution.canceledBy = new mongoose.Types.ObjectId(canceledBy);
+    }
     execution.completedAt = new Date();
     await execution.save();
 
-    return true;
+    // Story 3.13: Emit Socket.io event for real-time UI update
+    try {
+      const { emitExecutionCancelled } = await import('../socket/agentExecutionSocket');
+      emitExecutionCancelled(workspaceId, execution.agent.toString(), {
+        executionId,
+        canceledAt: execution.canceledAt,
+        canceledBy,
+      });
+    } catch (socketError) {
+      console.warn('Failed to emit execution:cancelled event:', socketError);
+    }
+
+    return { success: true, execution };
   }
 
   // =============================================================================
