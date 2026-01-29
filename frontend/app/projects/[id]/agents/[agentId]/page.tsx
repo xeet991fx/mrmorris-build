@@ -18,6 +18,7 @@ import { LiveAgentWarningModal } from '@/components/agents/LiveAgentWarningModal
 import { ConflictWarningModal } from '@/components/agents/ConflictWarningModal';
 import { TestModePanel } from '@/components/agents/TestModePanel';
 import { ExecutionHistoryPanel } from '@/components/agents/ExecutionHistoryPanel';
+import { AgentDashboard } from '@/components/agents/AgentDashboard';
 
 export default function AgentBuilderPage() {
   const params = useParams();
@@ -444,6 +445,14 @@ export default function AgentBuilderPage() {
               onConflict={handleSectionConflict}
               onUpdateSuccess={handleSectionSaveSuccess}
               onLiveWarningRequired={requestLiveWarning}
+            />
+          </div>
+
+          {/* Story 3.15: Performance Dashboard Section */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+            <AgentDashboard
+              workspaceId={workspaceId}
+              agentId={agentId}
             />
           </div>
 

@@ -2112,6 +2112,60 @@ export const completeHandoff = async (req: Request, res: Response): Promise<void
 };
 
 /**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/export-config
+ * @desc Export agent configuration as JSON (Story 3.15 Task 5.1 - AC7)
+ * @access Private (requires authentication and workspace access)
+ */
+export const exportAgentConfig = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { workspaceId, agentId } = req.params;
+
+    // Verify agent exists and belongs to workspace
+    const agent = await Agent.findOne({
+      _id: agentId,
+      workspace: workspaceId
+    });
+
+    if (!agent) {
+      res.status(404).json({
+        success: false,
+        error: 'Agent not found'
+      });
+      return;
+    }
+
+    // Format for export (Task 5.1: Exclude internal fields)
+    const config = {
+      name: agent.name,
+      goal: agent.goal,
+      status: agent.status,
+      triggers: agent.triggers || [],
+      instructions: agent.instructions || '',
+      restrictions: agent.restrictions || {},
+      memory: agent.memory || {},
+      approvalConfig: agent.approvalConfig || {},
+      exported: new Date().toISOString(),
+      version: '1.0'
+    };
+
+    // Task 5.4: Set response headers for file download
+    const sanitizedName = agent.name.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const filename = `agent-${sanitizedName}-config-${Date.now()}.json`;
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(config, null, 2));
+  } catch (error: any) {
+    console.error('Error exporting agent config:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export agent configuration',
+      details: error.message
+    });
+  }
+};
+
+/**
  * @route GET /api/workspaces/:workspaceId/agents/:agentId/executions/export
  * @desc Export execution logs as JSON or CSV (Story 3.14 AC10)
  * @access Private (requires authentication and workspace access)

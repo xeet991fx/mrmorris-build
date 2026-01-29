@@ -82,7 +82,7 @@ development_status:
   3-12-wait-action-and-human-handoff: review
   3-13-track-execution-history: in-progress
   3-14-view-execution-logs: review
-  3-15-export-and-dashboard: backlog
+  3-15-export-and-dashboard: review
   epic-3-retrospective: optional
 
   # Epic 4: AI-Powered Agent Building (11 stories)

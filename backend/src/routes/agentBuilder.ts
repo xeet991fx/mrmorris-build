@@ -50,9 +50,11 @@ import {
   cancelAgentExecution,
   triggerAgent,
   completeHandoff,
-  exportAgentExecutions
+  exportAgentExecutions,
+  exportAgentConfig
 } from '../controllers/agentController';
 import { searchContacts, searchDeals } from '../controllers/testTargetController';
+import { getAgentDashboard, getAllAgentsDashboard } from '../controllers/dashboardController';
 import { createAgentSchema, updateAgentSchema, duplicateAgentSchema, updateAgentStatusSchema, testAgentSchema, executeAgentSchema, triggerAgentSchema } from '../validations/agentValidation';
 import { Request, Response, NextFunction } from 'express';
 
@@ -301,6 +303,56 @@ router.post(
   validateWorkspaceAccess,
   validate(executeAgentSchema),
   executeAgent
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/dashboard-all
+ * @desc Get dashboard metrics for all agents in workspace (Story 3.15 AC5)
+ * @access Private (requires authentication and workspace access)
+ *
+ * Query params:
+ * - dateRange: '7d' | '30d' | '90d' | 'all' (default: '30d')
+ * - sortBy: 'name' | 'executions' | 'successRate' | 'lastRun' (default: 'name')
+ * - sortOrder: 'asc' | 'desc' (default: 'asc')
+ *
+ * NOTE: This route MUST come before /:agentId routes to avoid collision
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/dashboard-all',
+  authenticate,
+  validateWorkspaceAccess,
+  getAllAgentsDashboard
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/dashboard
+ * @desc Get dashboard metrics for an agent (Story 3.15 AC1-3)
+ * @access Private (requires authentication and workspace access)
+ *
+ * Query params:
+ * - dateRange: '7d' | '30d' | '90d' | 'all' (default: '30d')
+ *
+ * NOTE: This route MUST come before /executions/:executionId to avoid route collision
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId/dashboard',
+  authenticate,
+  validateWorkspaceAccess,
+  getAgentDashboard
+);
+
+/**
+ * @route GET /api/workspaces/:workspaceId/agents/:agentId/export-config
+ * @desc Export agent configuration as JSON (Story 3.15 AC7)
+ * @access Private (requires authentication and workspace access)
+ *
+ * NOTE: This route MUST come before other routes to avoid collision
+ */
+router.get(
+  '/workspaces/:workspaceId/agents/:agentId/export-config',
+  authenticate,
+  validateWorkspaceAccess,
+  exportAgentConfig
 );
 
 /**

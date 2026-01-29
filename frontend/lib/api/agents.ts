@@ -441,3 +441,91 @@ export const exportAgentExecutions = async (
   });
   return response.data;
 };
+
+/**
+ * Story 3.15: Dashboard metrics types and API
+ */
+export interface DashboardMetrics {
+  totalExecutions: number;
+  successCount: number;
+  failedCount: number;
+  successRate: number;
+  failureRate: number;
+  avgDurationSeconds: number;
+  avgDurationMs: number;
+  totalSteps: number;
+  totalCreditsUsed: number;
+  actionBreakdown: Array<{ action: string; count: number }>;
+  // Task 2.2: Previous period comparison
+  previous?: {
+    totalExecutions: number;
+    successRate: number;
+    avgDurationMs: number;
+  };
+  change?: {
+    totalExecutions: number;
+    successRate: number;
+    avgDurationMs: number;
+  };
+}
+
+export interface DashboardResponse {
+  success: boolean;
+  data: {
+    agentId: string;
+    agentName: string;
+    dateRange: string;
+    metrics: DashboardMetrics;
+  };
+  error?: string;
+}
+
+/**
+ * Story 3.15 Task 1.1: Get dashboard metrics for an agent
+ * GET /api/workspaces/:workspaceId/agents/:agentId/dashboard
+ *
+ * Task 2.1: Added comparePrevious parameter for period comparison
+ */
+export const getAgentDashboard = async (
+  workspaceId: string,
+  agentId: string,
+  dateRange: '7d' | '30d' | '90d' | 'all' = '30d',
+  comparePrevious: boolean = false
+): Promise<DashboardResponse> => {
+  const params = new URLSearchParams({ dateRange });
+  if (comparePrevious) {
+    params.set('comparePrevious', 'true');
+  }
+  const response = await axios.get(
+    `/workspaces/${workspaceId}/agents/${agentId}/dashboard?${params.toString()}`
+  );
+  return response.data;
+};
+
+/**
+ * Story 3.15 Task 5.3: Export agent configuration as JSON
+ * GET /api/workspaces/:workspaceId/agents/:agentId/export-config
+ */
+export const exportAgentConfig = async (
+  workspaceId: string,
+  agentId: string,
+  agentName: string
+): Promise<void> => {
+  const response = await axios.get(
+    `/workspaces/${workspaceId}/agents/${agentId}/export-config`,
+    {
+      responseType: 'blob', // Important for file download
+    }
+  );
+
+  // Task 5.3: Trigger browser download
+  const blob = new Blob([response.data], { type: 'application/json' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `agent-${agentName.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-config-${Date.now()}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};

@@ -988,6 +988,25 @@ export class AgentExecutionService {
         });
       }
 
+      // M4 Fix: Invalidate dashboard cache after execution completion
+      try {
+        const { getRedisClient } = await import('../config/redis');
+        const redis = getRedisClient();
+        if (redis) {
+          // Delete all cache keys for this agent's dashboard (all date ranges)
+          const cachePatterns = ['7d', '30d', '90d', 'all'].flatMap(range => [
+            `dashboard:metrics:${workspaceId}:${agentId}:${range}:true`,
+            `dashboard:metrics:${workspaceId}:${agentId}:${range}:false`,
+          ]);
+          for (const key of cachePatterns) {
+            await redis.del(key);
+          }
+        }
+      } catch (cacheError) {
+        console.warn('Failed to invalidate dashboard cache:', cacheError);
+        // Continue - cache invalidation is not critical
+      }
+
       return {
         success: !hasError,
         executionId,
@@ -1820,6 +1839,253 @@ export class AgentExecutionService {
       currentStep: savedContext.currentStep || 0,
       totalSteps: savedContext.totalSteps || 0,
     };
+  }
+
+  // =============================================================================
+  // STORY 3.15: DASHBOARD METRICS
+  // =============================================================================
+
+  /**
+   * Story 3.15 Task 1.3: Calculate dashboard metrics for an agent
+   * Uses MongoDB aggregation pipeline for efficient metrics calculation
+   *
+   * @param workspaceId - Workspace ID (required for isolation)
+   * @param agentId - Agent ID
+   * @param dateRange - Date range filter ('7d', '30d', '90d', 'all')
+   * @param comparePrevious - If true, also calculate metrics for previous period
+   * @returns Dashboard metrics including success rate, execution time, action breakdown
+   */
+  static async getDashboardMetrics(
+    workspaceId: string,
+    agentId: string,
+    dateRange: '7d' | '30d' | '90d' | 'all' = '30d',
+    comparePrevious: boolean = false
+  ): Promise<{
+    totalExecutions: number;
+    successCount: number;
+    failedCount: number;
+    successRate: number;
+    failureRate: number;
+    avgDurationMs: number;
+    totalSteps: number;
+    totalCredits: number;
+    actionBreakdown: Array<{ action: string; count: number }>;
+    previous?: {
+      totalExecutions: number;
+      successCount: number;
+      failedCount: number;
+      successRate: number;
+      failureRate: number;
+      avgDurationMs: number;
+    };
+    change?: {
+      totalExecutions: number;
+      successRate: number;
+      avgDurationMs: number;
+    };
+  }> {
+    // Calculate start date based on date range
+    let startDate: Date | undefined;
+    if (dateRange !== 'all') {
+      const daysMap = { '7d': 7, '30d': 30, '90d': 90 };
+      const days = daysMap[dateRange];
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+    }
+
+    // Build match stage with workspace isolation
+    const matchStage: any = {
+      workspace: new mongoose.Types.ObjectId(workspaceId),
+      agent: new mongoose.Types.ObjectId(agentId),
+    };
+
+    if (startDate) {
+      matchStage.startedAt = { $gte: startDate };
+    }
+
+    // Main metrics aggregation
+    const metricsResult = await AgentExecution.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: null,
+          totalExecutions: { $sum: 1 },
+          successCount: {
+            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+          },
+          failedCount: {
+            $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] }
+          },
+          avgDuration: {
+            $avg: {
+              $subtract: [
+                { $ifNull: ['$completedAt', '$startedAt'] },
+                '$startedAt'
+              ]
+            }
+          },
+          totalSteps: { $sum: { $size: { $ifNull: ['$steps', []] } } },
+          totalCredits: { $sum: { $ifNull: ['$summary.totalCreditsUsed', 0] } },
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalExecutions: 1,
+          successCount: 1,
+          failedCount: 1,
+          successRate: {
+            $cond: [
+              { $gt: ['$totalExecutions', 0] },
+              { $multiply: [{ $divide: ['$successCount', '$totalExecutions'] }, 100] },
+              0
+            ]
+          },
+          failureRate: {
+            $cond: [
+              { $gt: ['$totalExecutions', 0] },
+              { $multiply: [{ $divide: ['$failedCount', '$totalExecutions'] }, 100] },
+              0
+            ]
+          },
+          avgDurationMs: { $ifNull: ['$avgDuration', 0] },
+          totalSteps: 1,
+          totalCredits: 1,
+        }
+      }
+    ]);
+
+    // Action breakdown aggregation
+    const actionBreakdownResult = await AgentExecution.aggregate([
+      { $match: matchStage },
+      { $unwind: { path: '$steps', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: '$steps.action',
+          count: { $sum: 1 }
+        }
+      },
+      { $match: { _id: { $ne: null } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },  // Top 10 actions
+      {
+        $project: {
+          _id: 0,
+          action: '$_id',
+          count: 1
+        }
+      }
+    ]);
+
+    // Return default metrics if no executions found
+    const defaultMetrics = {
+      totalExecutions: 0,
+      successCount: 0,
+      failedCount: 0,
+      successRate: 0,
+      failureRate: 0,
+      avgDurationMs: 0,
+      totalSteps: 0,
+      totalCredits: 0,
+      actionBreakdown: [],
+    };
+
+    if (!metricsResult || metricsResult.length === 0) {
+      return defaultMetrics;
+    }
+
+    const currentMetrics = {
+      ...metricsResult[0],
+      actionBreakdown: actionBreakdownResult,
+    };
+
+    // Task 2.2: Calculate previous period metrics if requested
+    if (comparePrevious && dateRange !== 'all') {
+      const daysMap = { '7d': 7, '30d': 30, '90d': 90 };
+      const days = daysMap[dateRange];
+
+      // Calculate previous period date range
+      const previousEndDate = startDate!;
+      const previousStartDate = new Date(previousEndDate);
+      previousStartDate.setDate(previousStartDate.getDate() - days);
+
+      const previousMatchStage: any = {
+        workspace: new mongoose.Types.ObjectId(workspaceId),
+        agent: new mongoose.Types.ObjectId(agentId),
+        startedAt: { $gte: previousStartDate, $lt: previousEndDate }
+      };
+
+      const previousMetricsResult = await AgentExecution.aggregate([
+        { $match: previousMatchStage },
+        {
+          $group: {
+            _id: null,
+            totalExecutions: { $sum: 1 },
+            successCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+            },
+            failedCount: {
+              $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] }
+            },
+            avgDuration: {
+              $avg: {
+                $subtract: [
+                  { $ifNull: ['$completedAt', '$startedAt'] },
+                  '$startedAt'
+                ]
+              }
+            },
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            totalExecutions: 1,
+            successCount: 1,
+            failedCount: 1,
+            successRate: {
+              $cond: [
+                { $gt: ['$totalExecutions', 0] },
+                { $multiply: [{ $divide: ['$successCount', '$totalExecutions'] }, 100] },
+                0
+              ]
+            },
+            failureRate: {
+              $cond: [
+                { $gt: ['$totalExecutions', 0] },
+                { $multiply: [{ $divide: ['$failedCount', '$totalExecutions'] }, 100] },
+                0
+              ]
+            },
+            avgDurationMs: { $ifNull: ['$avgDuration', 0] },
+          }
+        }
+      ]);
+
+      const previousMetrics = previousMetricsResult[0] || {
+        totalExecutions: 0,
+        successCount: 0,
+        failedCount: 0,
+        successRate: 0,
+        failureRate: 0,
+        avgDurationMs: 0,
+      };
+
+      // Task 2.2: Calculate change (current - previous)
+      const change = {
+        totalExecutions: currentMetrics.totalExecutions - previousMetrics.totalExecutions,
+        successRate: currentMetrics.successRate - previousMetrics.successRate,
+        avgDurationMs: currentMetrics.avgDurationMs - previousMetrics.avgDurationMs,
+      };
+
+      return {
+        ...currentMetrics,
+        previous: previousMetrics,
+        change,
+      };
+    }
+
+    return currentMetrics;
   }
 }
 
