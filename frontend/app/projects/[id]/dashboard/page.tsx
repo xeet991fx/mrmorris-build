@@ -49,9 +49,9 @@ export default function DashboardPage() {
     };
 
     const quickActions: QuickAction[] = [
+        { label: "Command Center", icon: <BoltIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/command-center` },
         { label: "Contacts", icon: <UserGroupIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/contacts` },
         { label: "Inbox", icon: <EnvelopeIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/inbox` },
-        { label: "Meetings", icon: <CalendarDaysIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/meetings` },
         { label: "Pipelines", icon: <BriefcaseIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/pipelines` },
         { label: "Agents", icon: <CpuChipIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/agents` },
         { label: "Workflows", icon: <BoltIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/workflows` },
@@ -61,7 +61,8 @@ export default function DashboardPage() {
     const aiModules = [
         { label: "Data Quality", icon: <CpuChipIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/data-quality` },
         { label: "Lead Scoring", icon: <ArrowTrendingUpIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/lead-scores` },
-        { label: "Analytics", icon: <ChartBarIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/analytics` },
+        { label: "Website Analytics", icon: <ChartBarIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/website-analytics` },
+        { label: "CRM Analytics", icon: <ChartBarIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/analytics` },
         { label: "Tickets", icon: <TicketIcon className="w-4 h-4" />, href: `/projects/${workspaceId}/tickets` },
     ];
 

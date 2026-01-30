@@ -77,6 +77,7 @@ import referralRoutes from "./routes/referral";
 import leadMagnetRoutes from "./routes/leadMagnet";
 import voiceDropRoutes from "./routes/voiceDrop";
 import formTemplateRoutes from "./routes/formTemplate";
+import leadFormRoutes from "./routes/lead-forms";
 import { workflowScheduler } from "./services/WorkflowScheduler";
 import { startContactSyncScheduler } from "./services/contactSyncService";
 import { startEmailSyncJob } from "./jobs/emailSyncJob";
@@ -197,7 +198,10 @@ const authLimiter = rateLimit({
 // Middleware
 // Conditional CORS: Skip global CORS for tracking routes (handled by secureTrackingCors)
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/public/track') || req.path.startsWith('/v1/sync')) {
+  // Skip global CORS for public endpoints that have their own CORS handling
+  if (req.path.startsWith('/api/public/track') ||
+    req.path.startsWith('/api/public/lead-forms') ||
+    req.path.startsWith('/v1/sync')) {
     return next();
   }
 
@@ -438,6 +442,7 @@ app.use("/api/referrals", referralRoutes); // Referral program with viral growth
 app.use("/api/lead-magnets", leadMagnetRoutes); // Gated content library
 app.use("/api/voice-drops", voiceDropRoutes); // Ringless voicemail campaigns
 app.use("/api/form-templates", formTemplateRoutes); // Smart form templates with conversion optimization
+app.use("/api", leadFormRoutes); // Lead capture popups and inline forms (CRUD + public SDK endpoints)
 app.use("/api", aiNotificationsRoutes); // AI proactive notifications and insights
 app.use("/api/workspaces", businessProfileRoutes); // Business profile for AI context
 

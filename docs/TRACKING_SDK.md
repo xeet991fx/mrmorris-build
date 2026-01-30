@@ -112,10 +112,10 @@ sdk/
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| Consent Management | GDPR/CCPA compliant consent flow | Planned |
-| Anonymous Mode | Track without personal data until consent | Planned |
-| Data Deletion API | Allow users to request data deletion | Planned |
-| Cookie-less Mode | First-party storage only | Planned |
+| Consent Management | GDPR/CCPA compliant consent flow | Complete |
+| Anonymous Mode | Track without personal data until consent | Complete |
+| Data Deletion API | Allow users to request data deletion | Complete |
+| Cookie-less Mode | First-party storage only | Complete |
 
 ---
 
@@ -273,17 +273,17 @@ tracker.debug(true); // Enable verbose logging
 - [x] Error tracking plugin
 - [x] Performance/Web Vitals plugin
 
-### Phase 3: Consent & Privacy (PLANNED)
+### Phase 3: Consent & Privacy (COMPLETED)
 
-- [ ] Consent manager
-- [ ] Anonymous mode
-- [ ] Cookie-less mode
-- [ ] Data deletion API
+- [x] Consent manager (src/consent/manager.ts)
+- [x] Anonymous mode (track without PII until consent)
+- [x] Cookie-less mode (sessionStorage only)
+- [x] Data deletion API (GDPR right-to-erasure)
 
-### Phase 4: Distribution (IN PROGRESS)
+### Phase 4: Distribution (COMPLETED)
 
 - [x] Build system (Rollup config ready)
-- [ ] NPM publishing
+- [x] NPM publishing (@clianta/sdk v1.0.0)
 - [ ] CDN deployment
 - [x] TypeScript definitions
 - [x] Documentation
