@@ -44,8 +44,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+NUL
 nul
+
+# build logs
+build_log*.txt
 
 # secrets
 vertex-key.json
 backend/vertex-key.json
+
+# IDE
+.vscode/

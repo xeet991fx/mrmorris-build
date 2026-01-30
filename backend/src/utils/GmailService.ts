@@ -248,9 +248,10 @@ class GmailService {
         }
 
         // Other errors - don't retry
+        const responseData = axiosError.response?.data as { error?: { message?: string } } | undefined;
         return {
           success: false,
-          error: axiosError.response?.data?.error?.message || error.message,
+          error: responseData?.error?.message || error.message,
           retryAttempts: attempt - 1,
         };
       }

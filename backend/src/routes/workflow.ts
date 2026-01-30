@@ -1429,7 +1429,7 @@ router.post(
             const startTime = Date.now();
 
             // Import and use workflow service
-            const workflowService = (await import("../services/WorkflowService")).default;
+            const workflowService = (await import("../services/workflow")).default;
             await workflowService.processReadyEnrollments();
 
             const duration = Date.now() - startTime;

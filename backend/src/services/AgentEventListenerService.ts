@@ -196,7 +196,7 @@ export class AgentEventListenerService {
       'triggers.enabled': { $ne: false },
     }).lean();
 
-    return agents as IAgent[];
+    return agents as unknown as IAgent[];
   }
 
   /**

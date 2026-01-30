@@ -88,6 +88,9 @@ const ActionSchema = z.object({
   operator: z.string().optional(),
   trueBranch: z.array(z.lazy(() => ActionSchema)).optional(),
   falseBranch: z.array(z.lazy(() => ActionSchema)).optional(),
+  // Story 3.12: Human handoff properties
+  timeout: z.union([z.string(), z.number()]).optional().describe('Timeout for human handoff before auto-resume'),
+  warmLead: z.boolean().optional().describe('Flag to indicate warm lead handoff'),
 });
 
 export type ParsedAction = z.infer<typeof ActionSchema>;

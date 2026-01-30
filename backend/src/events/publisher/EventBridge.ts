@@ -1,4 +1,4 @@
-import { workflowService } from '../../services/WorkflowService';
+import { workflowService } from '../../services/workflow';
 
 /**
  * Bridge between new event system and existing workflow system

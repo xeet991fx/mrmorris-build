@@ -80,23 +80,19 @@ export const queueEventTriggeredExecution = async (
  * Uses the same connection as BullMQ queue
  */
 const getRedisClient = async () => {
-  const { createClient } = await import('redis');
+  const Redis = (await import('ioredis')).default;
   const redisUrl = process.env.REDIS_URL;
 
   if (redisUrl) {
-    const client = createClient({ url: redisUrl });
-    await client.connect();
+    const client = new Redis(redisUrl);
     return client;
   }
 
-  const client = createClient({
-    socket: {
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-    },
+  const client = new Redis({
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
     password: process.env.REDIS_PASSWORD || undefined,
   });
-  await client.connect();
   return client;
 };
 

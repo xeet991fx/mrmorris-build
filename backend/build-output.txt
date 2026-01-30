@@ -1,7 +1,0 @@
-
-> mrmorris-backend@1.0.0 build
-> node --max-old-space-size=8192 node_modules/typescript/bin/tsc --skipLibCheck || echo 'Build completed with warnings'
-
-src/services/workflow/actions/notionAction.ts(165,35): error TS1003: Identifier expected.
-src/services/workflow/fieldFetcher.ts(329,37): error TS1003: Identifier expected.
-'Build completed with warnings'

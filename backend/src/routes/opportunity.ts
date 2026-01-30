@@ -11,7 +11,7 @@ import {
   moveOpportunitySchema,
   opportunityQuerySchema,
 } from "../validations/opportunity";
-import { workflowService } from "../services/WorkflowService";
+import { workflowService } from "../services/workflow";
 import { AgentEventListenerService } from "../services/AgentEventListenerService";
 import { eventPublisher } from "../events/publisher/EventPublisher";
 import { DEAL_EVENTS } from "../events/types/deal.events";

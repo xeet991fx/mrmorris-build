@@ -47,9 +47,9 @@ const TRUNCATE_FIELDS: Record<string, number> = {
 /**
  * Redact sensitive data from a step result
  * @param stepResult - The step result object to redact
- * @returns Redacted copy of the step result
+ * @returns Redacted copy of the step result with the same type structure
  */
-export function redactSensitiveData(stepResult: Record<string, any>): Record<string, any> {
+export function redactSensitiveData<T extends Record<string, any>>(stepResult: T): T {
     if (!stepResult || typeof stepResult !== 'object') {
         return stepResult;
     }
@@ -58,7 +58,7 @@ export function redactSensitiveData(stepResult: Record<string, any>): Record<str
     const redacted = JSON.parse(JSON.stringify(stepResult));
 
     // Recursively process the object
-    return processObject(redacted);
+    return processObject(redacted) as T;
 }
 
 /**

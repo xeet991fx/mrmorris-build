@@ -1,5 +1,5 @@
 import cron, { ScheduledTask } from "node-cron";
-import workflowService from "./WorkflowService";
+import workflowService from "./workflow";
 import { startEmailQueueWorker, queueReadyEnrollments } from "./CampaignEmailQueue";
 
 // ============================================

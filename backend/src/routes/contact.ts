@@ -10,7 +10,7 @@ import {
   updateContactSchema,
   contactQuerySchema,
 } from "../validations/contact";
-import { workflowService } from "../services/WorkflowService";
+import { workflowService } from "../services/workflow";
 import { AgentEventListenerService } from "../services/AgentEventListenerService";
 import { fileParserService } from "../services/FileParserService";
 import { aiDataExtractor } from "../services/AIDataExtractor";

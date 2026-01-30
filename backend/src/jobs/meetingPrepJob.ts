@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import mongoose from 'mongoose';
 import { defaultQueueOptions, defaultWorkerOptions } from '../events/queue/queue.config';
 import CalendarEvent from '../models/CalendarEvent';
-import { invokeAgent } from '../agents';
+import { invokeAgentV2 as invokeAgent } from '../agents';
 
 // Get AINotification model at runtime to avoid import issues
 const getAINotificationModel = () => mongoose.model('AINotification');

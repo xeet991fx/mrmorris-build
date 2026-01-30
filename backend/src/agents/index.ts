@@ -4,10 +4,7 @@
  * This module provides the LangGraph-based multi-agent CRM system.
  */
 
-// Original single-agent system
-export { invokeAgent, agentGraph } from "./supervisor";
-
-// V2 multi-agent coordination system
+// Multi-agent coordination system (V2)
 export { invokeAgentV2, agentGraphV2 } from "./supervisorV2";
 
 // State management
