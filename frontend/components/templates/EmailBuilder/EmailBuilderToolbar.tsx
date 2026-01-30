@@ -39,14 +39,28 @@ export default function EmailBuilderToolbar({
     const router = useRouter();
     const { currentTemplate, isSaving, hasUnsavedChanges, saveTemplate, setHasUnsavedChanges } = useEmailTemplateStore();
 
-    const handleSave = () => {
-        editorRef.current?.exportHtml((data) => {
-            const { design, html } = data;
-            saveTemplate(workspaceId, templateId, {
-                builderJson: design,
-                htmlContent: html,
+    const handleSave = async () => {
+        if (!editorRef.current) {
+            console.error("Editor reference not available");
+            return;
+        }
+
+        try {
+            editorRef.current.exportHtml((data) => {
+                if (!data || !data.design || !data.html) {
+                    console.error("Invalid data from editor:", data);
+                    return;
+                }
+
+                const { design, html } = data;
+                saveTemplate(workspaceId, templateId, {
+                    builderJson: design,
+                    htmlContent: html,
+                });
             });
-        });
+        } catch (error) {
+            console.error("Error during save:", error);
+        }
     };
 
     const handleExit = () => {
