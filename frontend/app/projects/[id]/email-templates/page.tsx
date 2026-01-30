@@ -351,9 +351,14 @@ export default function EmailTemplatesPage() {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const data = await res.json();
-            if (data.success) setTemplates(data.data || []);
+            if (data.success) {
+                // Ensure templates is always an array
+                const templatesData = Array.isArray(data.data) ? data.data : [];
+                setTemplates(templatesData);
+            }
         } catch (error) {
             console.error("Failed to fetch templates:", error);
+            setTemplates([]); // Reset to empty array on error
         } finally {
             setIsLoading(false);
         }
@@ -412,10 +417,10 @@ export default function EmailTemplatesPage() {
         }
     };
 
-    const filteredTemplates = templates.filter((t) => {
+    const filteredTemplates = (templates || []).filter((t) => {
         const matchesSearch = searchQuery === "" ||
-            t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.subject.toLowerCase().includes(searchQuery.toLowerCase());
+            t.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.subject?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = categoryFilter === "all" || t.category === categoryFilter;
         return matchesSearch && matchesCategory;
     });
