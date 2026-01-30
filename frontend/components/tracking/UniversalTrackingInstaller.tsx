@@ -38,59 +38,53 @@ export default function UniversalTrackingInstaller({
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
   const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
 
-  // Universal tracking code (works on ANY website)
-  const simpleCode = `<!-- MorrisB Lead Tracking - Copy & Paste Anywhere -->
+  // Universal tracking code (works on ANY website) - SDK v3
+  const simpleCode = `<!-- MorrisB Lead Tracking SDK v3 -->
 <script src="${backendUrl}/track.js"></script>
 <script>
-  (function checkMorrisB() {
-    if (window.morrisb) {
-      morrisb('${workspaceId}', {
-        apiEndpoint: '${backendUrl}'
-      });
-    } else {
-      setTimeout(checkMorrisB, 100);
-    }
-  })();
+  // Initialize MorrisB tracker with all default plugins
+  morrisb('${workspaceId}', {
+    apiEndpoint: '${backendUrl}'
+  });
 </script>`;
 
-  // Advanced code with custom configuration
-  const advancedCode = `<!-- MorrisB Lead Tracking - Advanced with Custom Config -->
+  // Advanced code with custom configuration - SDK v3
+  const advancedCode = `<!-- MorrisB Lead Tracking SDK v3 - Advanced Config -->
 <script src="${backendUrl}/track.js"></script>
 <script>
-  (function checkMorrisB() {
-    if (window.morrisb) {
-      // Initialize with optional features enabled
-      var tracker = morrisb('${workspaceId}', {
-        // API Configuration
-        apiEndpoint: '${backendUrl}',
+  // Initialize with custom plugin selection
+  var tracker = morrisb('${workspaceId}', {
+    // API Configuration
+    apiEndpoint: '${backendUrl}',
+    
+    // Enable debug mode for testing
+    debug: false,
+    
+    // Select which plugins to enable
+    // Default: ['pageView', 'forms', 'scroll', 'clicks', 'engagement', 'downloads', 'exitIntent']
+    plugins: [
+      'pageView',      // Track page views (with SPA support)
+      'forms',         // Auto-detect forms + auto-identify leads
+      'scroll',        // Track scroll depth milestones
+      'clicks',        // Track button/CTA clicks
+      'engagement',    // Track user engagement + time on page
+      'downloads',     // Track file downloads
+      'exitIntent',    // Detect exit intent
+      'errors',        // Track JavaScript errors (optional)
+      'performance'    // Track Web Vitals (optional)
+    ],
+    
+    // Session configuration
+    sessionTimeout: 30 * 60 * 1000, // 30 minutes
+    batchSize: 10,                   // Events per batch
+    flushInterval: 5000              // Flush every 5 seconds
+  });
 
-        // Core lead gen (enabled by default, shown for reference)
-        autoFormTracking: true,     // Auto-detect forms
-        autoIdentification: true,    // Auto-identify leads
-        scrollDepth: true,           // Track scroll depth
-        timeOnPage: true,            // Track time spent
-        engagement: true,            // Track engagement
-        downloads: true,             // Track file downloads
-        exitIntent: true,            // Exit intent detection
-        ctaClicks: true,             // Button/CTA clicks
-
-        // Optional advanced features (enable as needed)
-        outboundLinks: true,         // Track external links
-        elementVisibility: true,     // Track CTA visibility
-        rageClicks: true,            // Track frustration
-        errorTracking: true,         // Track JS errors
-        performanceTracking: true,   // Track page speed
-        copyTracking: false,         // Track content copying
-        deadClicks: false            // Track dead clicks
-      });
-
-      // Manual tracking (if needed)
-      // tracker.track('custom_event', 'Event Name', { prop: 'value' });
-      // tracker.identify('email@example.com', { firstName: 'John' });
-    } else {
-      setTimeout(checkMorrisB, 100);
-    }
-  })();
+  // Manual tracking examples:
+  // tracker.track('custom', 'Button Clicked', { buttonId: 'cta-1' });
+  // tracker.identify('email@example.com', { firstName: 'John', company: 'Acme' });
+  // tracker.page('Custom Page Name', { category: 'pricing' });
+  // tracker.debug(true); // Enable debug mode
 </script>`;
 
   // Stealth tracking code (AdGuard resistant - v4.0)

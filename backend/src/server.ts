@@ -193,17 +193,25 @@ const authLimiter = rateLimit({
 // This ensures rate-limited responses include proper CORS headers
 
 // Middleware
-app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || "http://localhost:3000",
-    "http://localhost:3001", // Allow both ports for local development
-    "http://localhost:3002", // Allow both ports for local development
-    "https://clianta.online", //vercel dev
-    "https://www.clianta.online", // www subdomain
-    "https://abdulgffarsk.netlify.app", // User's test website
-  ],
-  credentials: true,
-}));
+// Middleware
+// Conditional CORS: Skip global CORS for tracking routes (handled by secureTrackingCors)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/public/track') || req.path.startsWith('/v1/sync')) {
+    return next();
+  }
+
+  cors({
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      "http://localhost:3001", // Allow both ports for local development
+      "http://localhost:3002", // Allow both ports for local development
+      "https://clianta.online", //vercel dev
+      "https://www.clianta.online", // www subdomain
+      "https://abdulgffarsk.netlify.app", // User's test website
+    ],
+    credentials: true,
+  })(req, res, next);
+});
 
 // Security headers using Helmet
 app.use(helmet({
