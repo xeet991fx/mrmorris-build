@@ -352,8 +352,12 @@ export default function EmailTemplatesPage() {
             );
             const data = await res.json();
             if (data.success) {
-                // Ensure templates is always an array
-                const templatesData = Array.isArray(data.data) ? data.data : [];
+                // Backend returns { data: { templates: [...], pagination: {...} } }
+                const templatesData = Array.isArray(data.data?.templates)
+                    ? data.data.templates
+                    : Array.isArray(data.data)
+                    ? data.data
+                    : [];
                 setTemplates(templatesData);
             }
         } catch (error) {

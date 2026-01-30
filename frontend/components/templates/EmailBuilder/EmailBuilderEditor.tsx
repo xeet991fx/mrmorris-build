@@ -280,16 +280,29 @@ const EmailBuilderEditor = forwardRef<EmailBuilderEditorRef, EmailBuilderEditorP
         useImperativeHandle(ref, () => ({
             exportHtml: (callback: (data: { design: any; html: string }) => void) => {
                 if (!isEditorReady) {
-                    console.warn("Editor not ready yet");
+                    console.error("Cannot export: Editor not ready yet");
                     return;
                 }
                 const editor = emailEditorRef.current?.editor;
-                if (editor?.exportHtml) {
+                if (!editor) {
+                    console.error("Cannot export: Editor instance not available");
+                    return;
+                }
+                if (!editor.exportHtml) {
+                    console.error("Cannot export: exportHtml method not available");
+                    return;
+                }
+
+                try {
                     editor.exportHtml((data: { design: any; html: string }) => {
+                        console.log("Export successful, data:", {
+                            hasDesign: !!data.design,
+                            htmlLength: data.html?.length
+                        });
                         callback(data);
                     });
-                } else {
-                    console.error("Editor exportHtml not available");
+                } catch (error) {
+                    console.error("Error during exportHtml:", error);
                 }
             },
             loadDesign: (design: any) => {

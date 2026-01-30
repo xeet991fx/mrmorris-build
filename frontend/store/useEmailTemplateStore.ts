@@ -105,16 +105,29 @@ export const useEmailTemplateStore = create<EmailTemplateState>((set, get) => ({
         set({ isSaving: true });
         try {
             const token = localStorage.getItem("token");
+            if (!token) {
+                throw new Error("No authentication token found");
+            }
+
             const currentTemplate = get().currentTemplate;
+            if (!currentTemplate) {
+                throw new Error("No current template loaded");
+            }
+
+            if (!data.builderJson || !data.htmlContent) {
+                throw new Error("Missing required template data");
+            }
 
             const payload = {
-                name: currentTemplate?.name || data.name,
-                subject: currentTemplate?.subject || data.subject,
-                category: currentTemplate?.category || data.category || "custom",
-                description: currentTemplate?.description || data.description,
+                name: currentTemplate.name || data.name,
+                subject: currentTemplate.subject || data.subject,
+                category: currentTemplate.category || data.category || "custom",
+                description: currentTemplate.description || data.description,
                 builderJson: data.builderJson,
                 htmlContent: data.htmlContent,
             };
+
+            console.log("Saving template to:", `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates/${templateId}`);
 
             const res = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/email-templates/${templateId}`,
@@ -128,7 +141,15 @@ export const useEmailTemplateStore = create<EmailTemplateState>((set, get) => ({
                 }
             );
 
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error("Save failed with status:", res.status, errorText);
+                throw new Error(`Server error: ${res.status} ${res.statusText}`);
+            }
+
             const responseData = await res.json();
+            console.log("Save response:", responseData);
+
             if (responseData.success) {
                 set({
                     currentTemplate: responseData.data,

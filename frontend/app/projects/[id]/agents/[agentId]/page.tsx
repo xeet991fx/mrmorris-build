@@ -19,6 +19,10 @@ import { ConflictWarningModal } from '@/components/agents/ConflictWarningModal';
 import { TestModePanel } from '@/components/agents/TestModePanel';
 import { ExecutionHistoryPanel } from '@/components/agents/ExecutionHistoryPanel';
 import { AgentDashboard } from '@/components/agents/AgentDashboard';
+import CopilotChatPanel from '@/components/agents/copilot/CopilotChatPanel';
+import { useCopilotStore } from '@/store/useCopilotStore';
+import { Sparkles } from 'lucide-react';
+import { useCallback } from 'react';
 
 export default function AgentBuilderPage() {
   const params = useParams();
@@ -55,6 +59,20 @@ export default function AgentBuilderPage() {
 
   // Story 2.1: Test Mode panel state
   const [isTestModePanelOpen, setIsTestModePanelOpen] = useState(false);
+
+  // Story 4.1: AI Copilot state
+  const isCopilotOpen = useCopilotStore((state) => state.isOpen[agentId] || false);
+  const openPanel = useCopilotStore((state) => state.openPanel);
+  const closePanel = useCopilotStore((state) => state.closePanel);
+
+  // Memoize callbacks to prevent re-renders
+  const openCopilot = useCallback(() => {
+    openPanel(agentId);
+  }, [openPanel, agentId]);
+
+  const closeCopilot = useCallback(() => {
+    closePanel(agentId);
+  }, [closePanel, agentId]);
 
   useEffect(() => {
     fetchAgent();
@@ -344,6 +362,15 @@ export default function AgentBuilderPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {/* Story 4.1: AI Copilot Button (AC1) */}
+            <button
+              onClick={openCopilot}
+              className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-full hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/50 dark:hover:to-pink-900/50 transition-all flex items-center gap-2"
+              data-testid="ai-copilot-btn"
+            >
+              <Sparkles className="h-4 w-4" />
+              AI Copilot
+            </button>
             {/* Story 2.1: Test Mode Button (AC1) - Only show when instructions exist */}
             {(agent.instructions && agent.instructions.trim()) && (
               <button
@@ -493,6 +520,14 @@ export default function AgentBuilderPage() {
         agentId={agentId}
         agentName={agent.name}
         hasInstructions={Boolean(agent.instructions && agent.instructions.trim())}
+      />
+
+      {/* Story 4.1: AI Copilot Chat Panel */}
+      <CopilotChatPanel
+        workspaceId={workspaceId}
+        agentId={agentId}
+        isOpen={isCopilotOpen}
+        onClose={closeCopilot}
       />
     </div>
   );
