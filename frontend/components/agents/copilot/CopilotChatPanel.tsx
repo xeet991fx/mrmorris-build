@@ -7,6 +7,9 @@ import ChatInput from './ChatInput';
 import TypingIndicator from './TypingIndicator';
 import { useCopilotStore } from '@/store/useCopilotStore';
 
+// Stable empty array to prevent infinite re-renders from Zustand selectors
+const EMPTY_WARNINGS: string[] = [];
+
 interface CopilotChatPanelProps {
   workspaceId: string;
   agentId: string;
@@ -25,7 +28,7 @@ export default function CopilotChatPanel({
   // Use separate selectors to avoid creating new objects on every render
   const conversationMessages = useCopilotStore((state) => state.conversations[agentId]);
   const isStreaming = useCopilotStore((state) => state.isStreaming[agentId] || false);
-  const validationWarnings = useCopilotStore((state) => state.validationWarnings[workspaceId] || []);
+  const validationWarnings = useCopilotStore((state) => state.validationWarnings[workspaceId] ?? EMPTY_WARNINGS);
   const loadHistoryFn = useCopilotStore((state) => state.loadHistory);
   const sendMessageFn = useCopilotStore((state) => state.sendMessage);
   const clearConversationFn = useCopilotStore((state) => state.clearConversation);

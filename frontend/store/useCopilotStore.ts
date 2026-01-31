@@ -99,7 +99,21 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
     try {
       const token = localStorage.getItem('authToken');
       if (!token) {
-        throw new Error('Not authenticated');
+        // Not authenticated - show welcome message without throwing error
+        set((state) => ({
+          conversations: {
+            ...state.conversations,
+            [agentId]: [
+              {
+                role: 'system' as const,
+                content: "Hi! I'm your AI Copilot. Please log in to access chat history.",
+                timestamp: new Date(),
+              },
+            ],
+          },
+          isLoading: { ...state.isLoading, [agentId]: false },
+        }));
+        return;
       }
 
       const response = await fetch(
@@ -160,6 +174,22 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
    */
   sendMessage: (workspaceId: string, agentId: string, content: string) => {
     const { conversations, addMessage, updateStreamingMessage, finalizeStreamingMessage, setError } = get();
+
+    // Check authentication before attempting to send
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      addMessage(agentId, {
+        role: 'user',
+        content,
+        timestamp: new Date(),
+      });
+      addMessage(agentId, {
+        role: 'system',
+        content: 'Please log in to chat with the AI Copilot.',
+        timestamp: new Date(),
+      });
+      return;
+    }
 
     // Add user message immediately
     const userMessage: Message = {
