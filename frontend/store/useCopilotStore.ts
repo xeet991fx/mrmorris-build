@@ -67,7 +67,7 @@ interface CopilotState {
   validateInstructions: (workspaceId: string, instructions: string) => Promise<void>;
   applyInstructions: (agentId: string, instructions: string) => void;
   clearGeneration: (agentId: string) => void;
-  trackGenerationSuccess: (agentId: string, wasExecutable: boolean) => void;
+  trackGenerationSuccess: (agentId: string, wasExecutable: boolean, durationMs?: number) => void;
 }
 
 export const useCopilotStore = create<CopilotState>((set, get) => ({

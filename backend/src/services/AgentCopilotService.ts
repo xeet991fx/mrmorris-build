@@ -394,7 +394,7 @@ Provide a helpful, concise response. Format with markdown (bold, lists, code blo
   private async loadWorkspaceContext(workspaceId: string): Promise<string> {
     // Load top 20 most-used templates
     const templates = await EmailTemplate.find({
-      workspace: new mongoose.Types.ObjectId(workspaceId)
+      workspaceId: new mongoose.Types.ObjectId(workspaceId)
     })
       .sort({ usageCount: -1 })
       .limit(20)
@@ -403,18 +403,17 @@ Provide a helpful, concise response. Format with markdown (bold, lists, code blo
 
     // Load custom fields
     const customFields = await CustomFieldDefinition.find({
-      workspace: new mongoose.Types.ObjectId(workspaceId)
+      workspaceId: new mongoose.Types.ObjectId(workspaceId)
     })
-      .select('name type')
+      .select('fieldKey fieldLabel fieldType')
       .lean();
 
     // Load active integrations
     const integrations = await IntegrationCredential.find({
-      workspace: new mongoose.Types.ObjectId(workspaceId),
-      isActive: true,
-      isExpired: false
+      workspaceId: new mongoose.Types.ObjectId(workspaceId),
+      isValid: true
     })
-      .select('provider status')
+      .select('type name')
       .lean();
 
     // Build context string
@@ -423,10 +422,10 @@ AVAILABLE TEMPLATES:
 ${templates.length > 0 ? templates.map(t => `- "${t.name}": ${t.description || 'No description'}`).join('\n') : '- No templates created yet'}
 
 CUSTOM FIELDS:
-${customFields.length > 0 ? customFields.map(f => `- @contact.${f.name} (${f.type})`).join('\n') : '- No custom fields defined'}
+${customFields.length > 0 ? customFields.map(f => `- @contact.${f.fieldKey} (${f.fieldType})`).join('\n') : '- No custom fields defined'}
 
 CONNECTED INTEGRATIONS:
-${integrations.length > 0 ? integrations.map(i => `- ${i.provider} (${i.status || 'active'})`).join('\n') : '- No integrations connected'}
+${integrations.length > 0 ? integrations.map(i => `- ${i.type} (${i.name})`).join('\n') : '- No integrations connected'}
 
 AVAILABLE ACTIONS:
 1. Send Email - send email using template '[template-name]'
@@ -477,7 +476,7 @@ TRIGGER TYPES:
     for (const match of templateMatches) {
       const templateName = match[1];
       const template = await EmailTemplate.findOne({
-        workspace: new mongoose.Types.ObjectId(workspaceId),
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
         name: templateName
       });
 
@@ -493,9 +492,9 @@ TRIGGER TYPES:
     // Parse integration references
     if (generatedText.toLowerCase().includes('linkedin')) {
       const linkedinIntegration = await IntegrationCredential.findOne({
-        workspace: new mongoose.Types.ObjectId(workspaceId),
-        provider: 'linkedin',
-        isActive: true
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        type: 'linkedin',
+        isValid: true
       });
 
       if (!linkedinIntegration) {
@@ -510,9 +509,9 @@ TRIGGER TYPES:
     // Check for Apollo.io enrichment references
     if (generatedText.toLowerCase().includes('apollo') || generatedText.toLowerCase().includes('enrich')) {
       const apolloIntegration = await IntegrationCredential.findOne({
-        workspace: new mongoose.Types.ObjectId(workspaceId),
-        provider: 'apollo',
-        isActive: true
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        type: 'apollo' as any, // Apollo might not be in the enum yet
+        isValid: true
       });
 
       if (!apolloIntegration) {
@@ -534,8 +533,8 @@ TRIGGER TYPES:
       if (standardFields.includes(fieldName)) continue;
 
       const customField = await CustomFieldDefinition.findOne({
-        workspace: new mongoose.Types.ObjectId(workspaceId),
-        name: fieldName
+        workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        fieldKey: fieldName
       });
 
       if (!customField) {

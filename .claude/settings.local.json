@@ -113,7 +113,8 @@
       "Bash(git show:*)",
       "Bash(git stash:*)",
       "Bash(npm run test:ci)",
-      "Bash(wsl --status:*)"
+      "Bash(wsl --status:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "ask": []
