@@ -1,587 +1,499 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircleIcon,
   ClipboardDocumentIcon,
-  ExclamationTriangleIcon,
-  SparklesIcon,
   CodeBracketIcon,
-  RocketLaunchIcon,
-  GlobeAltIcon,
   DocumentTextIcon,
-  ShoppingBagIcon,
-  BoltIcon,
-  Square2StackIcon,
-  PaintBrushIcon,
-  BeakerIcon,
-  CircleStackIcon,
-  ChartBarIcon,
+  CubeIcon,
+  CommandLineIcon,
+  GlobeAltIcon,
+  ShieldCheckIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import TrackingTestFile from "./TrackingTestFile";
 import { cn } from "@/lib/utils";
 
-// Updated: No green colors, neutral design
 interface UniversalTrackingInstallerProps {
   workspaceId: string;
 }
 
+type InstallMethod = "npm" | "cdn" | "yarn" | "pnpm";
+type Framework = "nextjs" | "react" | "vue" | "html" | "nodejs";
+
 export default function UniversalTrackingInstaller({
   workspaceId,
 }: UniversalTrackingInstallerProps) {
-  const [copied, setCopied] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<"simple" | "advanced" | "stealth">("simple");
-  const [verificationStatus, setVerificationStatus] = useState<"pending" | "checking" | "success" | "error">("pending");
-  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [installMethod, setInstallMethod] = useState<InstallMethod>("npm");
+  const [selectedFramework, setSelectedFramework] = useState<Framework>("nextjs");
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-  const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000";
+  const cdnUrl = "https://cdn.clianta.online/sdk/v1";
 
-  // Universal tracking code (works on ANY website)
-  const simpleCode = `<!-- MorrisB Lead Tracking - Copy & Paste Anywhere -->
-<script src="${backendUrl}/track.js"></script>
-<script>
-  (function checkMorrisB() {
-    if (window.morrisb) {
-      morrisb('${workspaceId}', {
-        apiEndpoint: '${backendUrl}'
-      });
-    } else {
-      setTimeout(checkMorrisB, 100);
-    }
-  })();
-</script>`;
-
-  // Advanced code with custom configuration
-  const advancedCode = `<!-- MorrisB Lead Tracking - Advanced with Custom Config -->
-<script src="${backendUrl}/track.js"></script>
-<script>
-  (function checkMorrisB() {
-    if (window.morrisb) {
-      // Initialize with optional features enabled
-      var tracker = morrisb('${workspaceId}', {
-        // API Configuration
-        apiEndpoint: '${backendUrl}',
-
-        // Core lead gen (enabled by default, shown for reference)
-        autoFormTracking: true,     // Auto-detect forms
-        autoIdentification: true,    // Auto-identify leads
-        scrollDepth: true,           // Track scroll depth
-        timeOnPage: true,            // Track time spent
-        engagement: true,            // Track engagement
-        downloads: true,             // Track file downloads
-        exitIntent: true,            // Exit intent detection
-        ctaClicks: true,             // Button/CTA clicks
-
-        // Optional advanced features (enable as needed)
-        outboundLinks: true,         // Track external links
-        elementVisibility: true,     // Track CTA visibility
-        rageClicks: true,            // Track frustration
-        errorTracking: true,         // Track JS errors
-        performanceTracking: true,   // Track page speed
-        copyTracking: false,         // Track content copying
-        deadClicks: false            // Track dead clicks
-      });
-
-      // Manual tracking (if needed)
-      // tracker.track('custom_event', 'Event Name', { prop: 'value' });
-      // tracker.identify('email@example.com', { firstName: 'John' });
-    } else {
-      setTimeout(checkMorrisB, 100);
-    }
-  })();
-</script>`;
-
-  // Stealth tracking code (AdGuard resistant - v4.0)
-  // Uses: obfuscated payloads, disguised endpoints, cookie storage, encoded data
-  const stealthCode = `<!-- Performance Optimization Module -->
-<script>
-(function(w,d,n){
-  'use strict';
-  var _={d:'/cdn/fonts/woff2.json',a:'/cdn/assets/manifest.json',p:'/cdn/img/s.gif',b:10,f:5000,x:1800000,m:[25,50,75,100]};
-  var K={c:'_fc_id',r:'_rnd_key',t:'_ts'};
-  function H(){var h='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';return h.replace(/[xy]/g,function(c){var v=Math.random()*16|0;return(c==='x'?v:(v&0x3|0x8)).toString(16);});}
-  function SC(k,v,days){if(v===undefined){var m=d.cookie.match(new RegExp('(^| )'+k+'=([^;]+)'));return m?m[2]:null;}var e='';if(days){var dt=new Date();dt.setTime(dt.getTime()+(days*24*60*60*1000));e='; expires='+dt.toUTCString();}d.cookie=k+'='+v+e+'; path=/; SameSite=Lax';}
-  function SS(k,v){try{if(v===undefined)return sessionStorage.getItem(k);sessionStorage.setItem(k,v);}catch(e){w.__ss=w.__ss||{};if(v===undefined)return w.__ss[k];w.__ss[k]=v;}}
-  function E(s){try{return btoa(unescape(encodeURIComponent(s))).split('').reverse().join('');}catch(e){return s;}}
-  function P(id,cfg){if(!id)return;this.id=id;this.cfg=Object.assign({f:true,s:true,t:true,g:true,l:true,x:true,c:true,m:true},cfg||{});this.api=cfg&&cfg.e||'${backendUrl}';this.v=SC(K.c);if(!this.v){this.v=H();SC(K.c,this.v,365);}this.ss=this._gs();this.q=[];this.ti=null;this.sd=new Set();this.pt=Date.now();this.ms=0;this.en=false;this.et=Date.now();this.fi=new Map();this.dl=new Set();this.ex=false;this._i();}
-  P.prototype._gs=function(){var s=SS(K.r);var la=parseInt(SS(K.t)||'0');if(!s||(Date.now()-la>_.x)){s=H();SS(K.r,s);}SS(K.t,Date.now().toString());return s;};
-  P.prototype._i=function(){this._pv();this._st();this._cl();if(this.cfg.s)this._sc();if(this.cfg.g)this._eg();if(this.cfg.f)this._fm();if(this.cfg.x&&!this._mb())this._xi();if(this.cfg.l)this._lk();};
-  P.prototype._pv=function(){this._e('v','V',{a:d.title,b:w.location.pathname,c:d.referrer||'d',d:w.innerWidth+'x'+w.innerHeight,e:screen.width+'x'+screen.height});};
-  P.prototype._cl=function(){var self=this;w.addEventListener('beforeunload',function(){if(self.cfg.t)self._tp();self._fl(true);});w.addEventListener('visibilitychange',function(){if(d.visibilityState==='hidden'){if(self.cfg.t)self._tp();self._fl(true);}else{self.et=Date.now();}});if(this.cfg.c){d.addEventListener('click',function(e){self._ck(e);},true);}};
-  P.prototype._sc=function(){var self=this,to;w.addEventListener('scroll',function(){clearTimeout(to);to=setTimeout(function(){self._sd();},150);},{passive:true});};
-  P.prototype._sd=function(){var wh=w.innerHeight;var dh=d.documentElement.scrollHeight;var st=w.pageYOffset||d.documentElement.scrollTop;var sp=Math.floor((st/(dh-wh))*100);if(sp>this.ms)this.ms=sp;var self=this;_.m.forEach(function(m){if(sp>=m&&!self.sd.has(m)){self.sd.add(m);self._e('s','S'+m,{a:m,b:Date.now()-self.pt});}});};
-  P.prototype._tp=function(){var ts=Math.floor((Date.now()-this.et)/1000);if(ts>0){this._e('t','T',{a:ts,b:this.ms,c:this.en});}};
-  P.prototype._eg=function(){var self=this,to;var mk=function(){if(!self.en){self.en=true;self._e('g','G',{a:Date.now()-self.pt});}clearTimeout(to);to=setTimeout(function(){self.en=false;},30000);};['mousemove','keydown','touchstart','scroll'].forEach(function(ev){d.addEventListener(ev,mk,{passive:true});});};
-  P.prototype._ck=function(e){var t=e.target;if(['BUTTON','A','INPUT'].includes(t.tagName)||t.dataset.tr){this._e('c','C',{a:(t.innerText||t.textContent||t.value||'').trim().substring(0,100),b:t.tagName.toLowerCase(),c:t.id,d:t.href});}};
-  P.prototype._fm=function(){var self=this;var tr=function(){d.querySelectorAll('form').forEach(function(f){if(f.dataset._p)return;f.dataset._p='1';var id=f.id||f.name||'f'+Math.random().toString(36).substr(2,6);self._e('fv','FV',{a:id,b:f.elements.length});f.addEventListener('submit',function(){self._e('fs','FS',{a:id});var em=f.querySelector('input[type="email"], input[name*="email"]');if(em&&em.value){var dt={a:em.value};var fn=f.querySelector('[name*="first"], [name*="fname"]');var ln=f.querySelector('[name*="last"], [name*="lname"]');var co=f.querySelector('[name*="company"]');var ph=f.querySelector('[type="tel"], [name*="phone"]');if(fn)dt.b=fn.value;if(ln)dt.c=ln.value;if(co)dt.d=co.value;if(ph)dt.e=ph.value;self._id(dt.a,dt);}});});};if(d.readyState==='loading'){d.addEventListener('DOMContentLoaded',tr);}else{tr();}if(typeof MutationObserver!=='undefined'){new MutationObserver(tr).observe(d.body,{childList:true,subtree:true});}};
-  P.prototype._lk=function(){var self=this;d.addEventListener('click',function(e){var a=e.target.closest('a');if(!a||!a.href)return;var u=a.href;var ex=['.pdf','.doc','.docx','.xls','.xlsx','.zip','.csv','.ppt','.pptx'];if(ex.some(function(x){return u.toLowerCase().includes(x);})){var k='d'+u;if(!self.dl.has(k)){self.dl.add(k);self._e('d','D',{a:u,b:u.split('/').pop().split('?')[0]});}}},true);};
-  P.prototype._xi=function(){var self=this;d.addEventListener('mouseleave',function(e){if(e.clientY<=0&&!self.ex){self.ex=true;self._e('x','X',{a:Date.now()-self.pt,b:self.ms});}});};
-  P.prototype._e=function(type,name,props){try{var ev={w:this.id,u:this.v,s:this.ss,e:type||'c',n:name||'E',l:w.location.href,r:d.referrer||undefined,p:props||{},d:{a:n.userAgent,s:screen.width+'x'+screen.height,l:n.language},t:new Date().toISOString()};if(this.cfg.m){try{var sp=new URLSearchParams(w.location.search);if(sp.get('utm_source'))ev.us=sp.get('utm_source');if(sp.get('utm_medium'))ev.um=sp.get('utm_medium');if(sp.get('utm_campaign'))ev.uc=sp.get('utm_campaign');}catch(e){}}this.q.push(ev);if(this.q.length>=_.b){this._fl();}}catch(e){}};
-  P.prototype._id=function(email,props){if(!email)return;var dt={w:this.id,u:this.v,em:email,p:props||{}};this._sn(this.api+_.a,dt,true);};
-  P.prototype._fl=function(sync){if(this.q.length===0)return;try{var ev=this.q.splice(0);var payload={q:ev};var body=JSON.stringify({_d:E(JSON.stringify(payload)),_v:2});var url=this.api+_.d;if(sync&&n.sendBeacon){var blob=new Blob([body],{type:'application/json'});if(n.sendBeacon(url,blob))return;}if(w.fetch){w.fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true,mode:'cors',credentials:'omit'}).catch(function(){});return;}var xhr=new XMLHttpRequest();xhr.open('POST',url,true);xhr.setRequestHeader('Content-Type','application/json');xhr.send(body);}catch(e){}};
-  P.prototype._sn=function(url,data,encode){var body=encode?JSON.stringify({_d:E(JSON.stringify(data)),_v:2}):JSON.stringify(data);if(w.fetch){w.fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true}).catch(function(){});}};
-  P.prototype._st=function(){var self=this;if(this.ti)clearInterval(this.ti);this.ti=setInterval(function(){self._fl();},_.f);};
-  P.prototype._mb=function(){return/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(n.userAgent);};
-  P.prototype.getId=function(){return this.v;};
-  P.prototype.getSession=function(){return this.ss;};
-  w.perf=function(id,cfg){if(!w._pi||w._pi.id!==id){w._pi=new P(id,cfg);}return w._pi;};
-  w.metrics=w.perf;w.webvitals=w.perf;
-  w.perf('${workspaceId}',{e:'${backendUrl}'});
-})(window,document,navigator);
-</script>`;
-
-  const copyToClipboard = (code: string) => {
+  const copyToClipboard = (code: string, section: string) => {
     navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+    setCopiedSection(section);
+    setTimeout(() => setCopiedSection(null), 2000);
   };
 
-  const verifyInstallation = async () => {
-    setVerificationStatus("checking");
-
-    try {
-      // Check if we've received any tracking events recently
-      const response = await fetch(`${backendUrl}/api/workspaces/${workspaceId}/tracking/stats`, {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data.totalEvents > 0) {
-          setVerificationStatus("success");
-        } else {
-          setVerificationStatus("pending");
-        }
-      } else {
-        setVerificationStatus("error");
-      }
-    } catch {
-      setVerificationStatus("error");
-    }
+  // Install commands
+  const installCommands: Record<InstallMethod, string> = {
+    npm: "npm install @clianta/sdk",
+    yarn: "yarn add @clianta/sdk",
+    pnpm: "pnpm add @clianta/sdk",
+    cdn: `<script src="${cdnUrl}/clianta.min.js"></script>`,
   };
 
-  // Auto-verify on mount
-  useEffect(() => {
-    verifyInstallation();
-  }, [workspaceId]);
+  // Framework-specific code examples with separate files for each step
+  const frameworkExamples: Record<Framework, { title: string; files: { name: string; path: string; code: string }[] }> = {
+    nextjs: {
+      title: "Next.js (App Router)",
+      files: [
+        {
+          name: "clianta.config.ts",
+          path: "Create in project root: /clianta.config.ts",
+          code: `import { CliantaConfig } from '@clianta/sdk';
 
-  const platforms = [
-    {
-      name: "HTML / Static Sites",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.18L18.09 7 12 10.82 5.91 7 12 4.18zM5 8.09l6 3.27v6.55l-6-3.27V8.09zm8 9.82v-6.55l6-3.27v6.55l-6 3.27z" />
-        </svg>
-      ),
-      instructions: "Paste before closing </head> tag",
+const config: CliantaConfig = {
+  projectId: '${workspaceId}',
+  apiEndpoint: '${backendUrl}',
+  debug: process.env.NODE_ENV === 'development',
+};
+
+export default config;`,
+        },
+        {
+          name: "app/layout.tsx",
+          path: "Update your layout: /app/layout.tsx",
+          code: `import { CliantaProvider } from '@clianta/sdk/react';
+import cliantaConfig from '../clianta.config';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <CliantaProvider config={cliantaConfig}>
+          {children}
+        </CliantaProvider>
+      </body>
+    </html>
+  );
+}`,
+        },
+      ],
     },
-    {
-      name: "WordPress",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <path d="M12.158 12.786L9.46 20.625c.806.237 1.657.366 2.54.366 1.047 0 2.051-.18 2.986-.51-.024-.038-.046-.078-.065-.123l-2.76-7.57zM3.009 12c0 3.559 2.068 6.634 5.067 8.092L3.788 8.341C3.289 9.459 3.009 10.696 3.009 12zm15.54.31c0-1.112-.399-1.881-.742-2.48-.456-.742-.883-1.37-.883-2.11 0-.826.627-1.596 1.51-1.596.04 0 .078.005.116.007-1.598-1.464-3.73-2.36-6.05-2.36-3.131 0-5.891 1.61-7.5 4.049.211.007.41.011.579.011.94 0 2.395-.114 2.395-.114.484-.028.54.684.057.74 0 0-.487.058-1.029.086l3.274 9.739 1.968-5.901-1.401-3.838c-.484-.028-.943-.086-.943-.086-.484-.056-.428-.768.056-.74 0 0 1.484.114 2.368.114.94 0 2.397-.114 2.397-.114.486-.028.543.684.058.74 0 0-.488.058-1.03.086l3.25 9.665.897-2.996c.456-1.17.684-2.137.684-2.907z" />
-        </svg>
-      ),
-      instructions: "Appearance → Theme Editor → header.php",
+    react: {
+      title: "React (Vite / CRA)",
+      files: [
+        {
+          name: "clianta.config.ts",
+          path: "Create in project root: /clianta.config.ts",
+          code: `import { CliantaConfig } from '@clianta/sdk';
+
+const config: CliantaConfig = {
+  projectId: '${workspaceId}',
+  apiEndpoint: '${backendUrl}',
+};
+
+export default config;`,
+        },
+        {
+          name: "src/main.tsx",
+          path: "Update your entry point: /src/main.tsx",
+          code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { CliantaProvider } from '@clianta/sdk/react';
+import cliantaConfig from '../clianta.config';
+import App from './App';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <CliantaProvider config={cliantaConfig}>
+      <App />
+    </CliantaProvider>
+  </React.StrictMode>
+);`,
+        },
+      ],
     },
-    {
-      name: "Shopify",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <path d="M15.337 2.126c-.034-.018-.063-.018-.086 0-.022.017-.166.086-.359.189-.107-1.001-.524-1.909-1.245-2.702-.048-.052-.1-.052-.149 0C13.464-.36 13.39-.343 13.316-.308c-.03.017-.06.035-.089.052-.036.017-.071.035-.107.069-.834.499-1.439 1.252-1.786 2.237-.277.776-.396 1.716-.368 2.701-.63.193-1.067.33-1.108.347-.623.189-1.263.381-1.902.577-.015.005-.03.012-.044.02-.521.155-.788.241-.853 1.502-.044.897-1.191 9.148-1.191 9.148l10.14 1.912 4.632-1.035S16.034 2.471 15.948 2.299c-.034-.086-.121-.155-.611-.173zm-1.245.604c-.193.06-.412.121-.659.19-.013-.435-.052-.861-.115-1.27.354.19.629.556.774 1.08zm-1.174-1.08c.074.382.119.782.135 1.197-.372.114-.774.237-1.194.363.229-.946.64-1.367 1.059-1.56zm-.504 3.943l-.659 1.964s-.574-.261-1.263-.261c-1.02 0-1.073.646-1.073.808 0 .888 2.301 1.227 2.301 3.303 0 1.633-.904 2.683-2.127 2.683-1.467 0-2.214-1.167-2.214-1.167l.395-1.313s.76.647 1.401.647c.425 0 .599-.339 .599-.604 0-1.054-1.887-1.105-1.887-3.114 0-1.601.951-3.152 2.877-3.152.741 0 1.105.213 1.105.213l-.455 1.993z" />
-        </svg>
-      ),
-      instructions: "Online Store → Themes → Edit Code → theme.liquid",
+    vue: {
+      title: "Vue.js 3",
+      files: [
+        {
+          name: "clianta.config.ts",
+          path: "Create in project root: /clianta.config.ts",
+          code: `import { CliantaConfig } from '@clianta/sdk';
+
+const config: CliantaConfig = {
+  projectId: '${workspaceId}',
+  apiEndpoint: '${backendUrl}',
+};
+
+export default config;`,
+        },
+        {
+          name: "src/main.ts",
+          path: "Update your entry point: /src/main.ts",
+          code: `import { createApp } from 'vue';
+import { createClianta } from '@clianta/sdk/vue';
+import cliantaConfig from '../clianta.config';
+import App from './App.vue';
+
+const app = createApp(App);
+app.use(createClianta(cliantaConfig));
+app.mount('#app');`,
+        },
+      ],
     },
-    {
-      name: "Webflow",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <path d="M14.4 10.8s1.6-4.8 1.6-4.9c.8-2.4 2.4-3.5 4.8-3.3 0 0-2.4 11.3-2.4 11.5-.8 3.7-3.2 5.6-6.4 5.6-2.4 0-3.2-.8-3.2-2.4 0-.8.8-4.8.8-4.8S7.2 18 7.2 18.3C6.4 21.1 4 22.7 1.6 22.7 1.6 22.7 4 11.3 4 11.1c.8-3.7 3.2-5.6 6.4-5.6 2.4 0 3.2.8 3.2 2.4 0 .8-.8 2.9-.8 2.9z" />
-        </svg>
-      ),
-      instructions: "Project Settings → Custom Code → Head Code",
+    html: {
+      title: "HTML / Static Sites",
+      files: [
+        {
+          name: "index.html",
+          path: "Add to your HTML file: /index.html",
+          code: `<!DOCTYPE html>
+<html>
+<head>
+  <script src="${cdnUrl}/clianta.min.js"></script>
+  <script>
+    Clianta.init({
+      projectId: '${workspaceId}',
+      apiEndpoint: '${backendUrl}'
+    });
+  </script>
+</head>
+<body>
+  <button onclick="Clianta.track('click', 'CTA Button')">
+    Click Me
+  </button>
+</body>
+</html>`,
+        },
+      ],
     },
-    {
-      name: "Squarespace",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <path d="M20.1 11.3l-3.5-3.5c-.5-.5-1.2-.5-1.7 0-.5.5-.5 1.2 0 1.7l3.5 3.5c.5.5 1.2.5 1.7 0 .5-.5.5-1.2 0-1.7zm-4.2-4.2l-3.5-3.5c-.5-.5-1.2-.5-1.7 0-.5.5-.5 1.2 0 1.7l3.5 3.5c.5.5 1.2.5 1.7 0 .5-.5.5-1.2 0-1.7zM11.7 11.3l-3.5-3.5c-.5-.5-1.2-.5-1.7 0-.5.5-.5 1.2 0 1.7l3.5 3.5c.5.5 1.2.5 1.7 0 .5-.5.5-1.2 0-1.7zm-4.2 4.2l-3.5-3.5c-.5-.5-1.2-.5-1.7 0-.5.5-.5 1.2 0 1.7l3.5 3.5c.5.5 1.2.5 1.7 0 .5-.5.5-1.2 0-1.7zm12.6.9l-3.5 3.5c-.5.5-.5 1.2 0 1.7.5.5 1.2.5 1.7 0l3.5-3.5c.5-.5.5-1.2 0-1.7-.5-.5-1.2-.5-1.7 0z" />
-        </svg>
-      ),
-      instructions: "Settings → Advanced → Code Injection → Header",
+    nodejs: {
+      title: "Node.js / Server-Side",
+      files: [
+        {
+          name: "clianta.config.ts",
+          path: "Create in project root: /clianta.config.ts",
+          code: `import { CliantaConfig } from '@clianta/sdk';
+
+const config: CliantaConfig = {
+  projectId: '${workspaceId}',
+  apiEndpoint: '${backendUrl}',
+  authToken: process.env.CLIANTA_AUTH_TOKEN,
+};
+
+export default config;`,
+        },
+        {
+          name: "server.ts",
+          path: "Use in your server: /server.ts or /src/index.ts",
+          code: `import { CRMClient } from '@clianta/sdk';
+import cliantaConfig from './clianta.config';
+
+const crm = new CRMClient(cliantaConfig);
+
+// Fetch contacts
+const contacts = await crm.getContacts({ page: 1, limit: 50 });
+
+// Create contact
+await crm.createContact({
+  email: 'user@example.com',
+  firstName: 'John',
+});`,
+        },
+      ],
     },
-    {
-      name: "Wix",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <path d="M13.444 8.256c-.4.212-.544.562-.544 1.036 0 .504-.03.9-.096 1.272-.636-.24-1.256-.648-1.736-1.14.044-.432.12-.892.28-1.368.256-.78.696-1.456 1.244-2.056h-.004c-.12.132-.24.276-.352.428-.576.752-.972 1.604-1.196 2.52-.232-1.024-.616-1.956-1.176-2.72-.128-.176-.268-.344-.42-.508.548.6.988 1.276 1.244 2.056.16.476.236.936.28 1.368-.48.492-1.1.9-1.736 1.14-.064-.372-.096-.768-.096-1.272 0-.474-.144-.824-.544-1.036-.4 1.224-1.212 1.888-1.852 2.188.64.3 1.452.964 1.852 2.188.4-.212.544-.562.544-1.036 0-.504.028-.9.096-1.272.636.24 1.256.648 1.736 1.14-.044.432-.12.892-.28 1.368-.256.78-.696 1.456-1.244 2.056.12-.132.24-.276.352-.428.576-.752.972-1.604 1.196-2.52.232 1.024.616 1.956 1.176 2.72.128.176.268.344.42.508-.548-.6-.988-1.276-1.244-2.056-.16-.476-.236-.936-.28-1.368.48-.492 1.1-.9 1.736-1.14.064.372.096.768.096 1.272 0 .474.144.824.544 1.036.4-1.224 1.212-1.888 1.852-2.188-.64-.3-1.452-.964-1.852-2.188zm7.04 0c-.4.212-.544.562-.544 1.036 0 .504-.03.9-.096 1.272-.636-.24-1.256-.648-1.736-1.14.044-.432.12-.892.28-1.368.256-.78.696-1.456 1.244-2.056h-.004c-.12.132-.24.276-.352.428-.576.752-.972 1.604-1.196 2.52-.232-1.024-.616-1.956-1.176-2.72-.128-.176-.268-.344-.42-.508.548.6.988 1.276 1.244 2.056.16.476.236.936.28 1.368-.48.492-1.1.9-1.736 1.14-.064-.372-.096-.768-.096-1.272 0-.474-.144-.824-.544-1.036-.4 1.224-1.212 1.888-1.852 2.188.64.3 1.452.964 1.852 2.188.4-.212.544-.562.544-1.036 0-.504.028-.9.096-1.272.636.24 1.256.648 1.736 1.14-.044.432-.12.892-.28 1.368-.256.78-.696 1.456-1.244 2.056.12-.132.24-.276.352-.428.576-.752.972-1.604 1.196-2.52.232 1.024.616 1.956 1.176 2.72.128.176.268.344.42.508-.548-.6-.988-1.276-1.244-2.056-.16-.476-.236-.936-.28-1.368.48-.492 1.1-.9 1.736-1.14.064.372.096.768.096 1.272 0 .474.144.824.544 1.036.4-1.224 1.212-1.888 1.852-2.188-.64-.3-1.452-.964-1.852-2.188z" />
-        </svg>
-      ),
-      instructions: "Settings → Custom Code → Head Code",
-    },
-    {
-      name: "Next.js (App Router)",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <path d="M11.214 0c-.3 0-.61.023-.91.065A12.046 12.046 0 002.5 3.278 11.955 11.955 0 00.136 10.5c-.045.3-.068.61-.068.91 0 .3.023.61.068.91.386 2.735 1.772 5.25 3.864 7.028a12.048 12.048 0 007.214 3.218c.3.045.61.068.91.068.3 0 .61-.023.91-.068a12.046 12.046 0 007.214-3.218 11.953 11.953 0 003.864-7.028c.045-.3.068-.61.068-.91 0-.3-.023-.61-.068-.91a11.955 11.955 0 00-3.864-7.028A12.048 12.048 0 0012.124.136c-.3-.045-.61-.068-.91-.068zm-.137 1.636l.007.006c4.654 0 8.682 3.136 9.896 7.636.136.518.228 1.05.273 1.59-.546-.86-1.182-1.682-1.909-2.454L12.87 1.636H11.03zm-2.318.546c-.682.341-1.319.763-1.909 1.227-.227.182-.455.364-.659.568-.136.136-.272.273-.386.41-.159.113-.272.25-.409.386L17.17 16.546c.454-.955.773-1.978.954-3.046.046-.25-.136-.477-.386-.477H8.636c-.386 0-.682-.296-.682-.682s.296-.682.682-.682h7.727c.432 0 .774-.341.774-.773s-.342-.774-.774-.774h-5.681c-.386 0-.682-.295-.682-.681s.296-.682.682-.682h4.09c.41 0 .751-.341.751-.773 0-.409-.34-.773-.75-.773h-2.727c-.409 0-.75-.341-.75-.773 0-.409.341-.773.75-.773h.659c.409 0 .75-.341.75-.773 0-.41-.341-.773-.75-.773h-.819c-.159 0-.318.023-.477.068zM5.716 4.648a10.31 10.31 0 00-2.637 4.477 9.966 9.966 0 00-.386 2.727c0 .796.091 1.59.273 2.363.886 3.773 3.954 6.796 7.773 7.636l8.136-10.272c-.841-1.046-1.864-1.955-3.023-2.705L5.716 4.648z" />
-        </svg>
-      ),
-      instructions: "Add Script to app/layout.tsx",
-    },
-    {
-      name: "Next.js (Pages Router)",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <path d="M11.214 0c-.3 0-.61.023-.91.065A12.046 12.046 0 002.5 3.278 11.955 11.955 0 00.136 10.5c-.045.3-.068.61-.068.91 0 .3.023.61.068.91.386 2.735 1.772 5.25 3.864 7.028a12.048 12.048 0 007.214 3.218c.3.045.61.068.91.068.3 0 .61-.023.91-.068a12.046 12.046 0 007.214-3.218 11.953 11.953 0 003.864-7.028c.045-.3.068-.61.068-.91 0-.3-.023-.61-.068-.91a11.955 11.955 0 00-3.864-7.028A12.048 12.048 0 0012.124.136c-.3-.045-.61-.068-.91-.068zm-.137 1.636l.007.006c4.654 0 8.682 3.136 9.896 7.636.136.518.228 1.05.273 1.59-.546-.86-1.182-1.682-1.909-2.454L12.87 1.636H11.03zm-2.318.546c-.682.341-1.319.763-1.909 1.227-.227.182-.455.364-.659.568-.136.136-.272.273-.386.41-.159.113-.272.25-.409.386L17.17 16.546c.454-.955.773-1.978.954-3.046.046-.25-.136-.477-.386-.477H8.636c-.386 0-.682-.296-.682-.682s.296-.682.682-.682h7.727c.432 0 .774-.341.774-.773s-.342-.774-.774-.774h-5.681c-.386 0-.682-.295-.682-.681s.296-.682.682-.682h4.09c.41 0 .751-.341.751-.773 0-.409-.34-.773-.75-.773h-2.727c-.409 0-.75-.341-.75-.773 0-.409.341-.773.75-.773h.659c.409 0 .75-.341.75-.773 0-.41-.341-.773-.75-.773h-.819c-.159 0-.318.023-.477.068zM5.716 4.648a10.31 10.31 0 00-2.637 4.477 9.966 9.966 0 00-.386 2.727c0 .796.091 1.59.273 2.363.886 3.773 3.954 6.796 7.773 7.636l8.136-10.272c-.841-1.046-1.864-1.955-3.023-2.705L5.716 4.648z" />
-        </svg>
-      ),
-      instructions: "Add Script to pages/_app.tsx",
-    },
-    {
-      name: "React (Vite)",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <circle cx="12" cy="12" r="2.2" />
-          <path d="M12 4.15c1.88 0 3.63.38 5.13 1.03C18.69 5.88 20 6.84 20 8c0 1.16-1.31 2.12-2.87 2.82-1.5.65-3.25 1.03-5.13 1.03s-3.63-.38-5.13-1.03C5.31 10.12 4 9.16 4 8c0-1.16 1.31-2.12 2.87-2.82C8.37 4.53 10.12 4.15 12 4.15m0-1.15c-4.4 0-8 1.79-8 4s3.6 4 8 4 8-1.79 8-4-3.6-4-8-4zm-6 8.15c.94 1.63 2.91 3.39 5.29 4.72 1.63.91 3.24 1.49 4.58 1.49.74 0 1.43-.16 2.03-.51 1.16-.67 1.79-1.88 1.79-3.4 0-1.88-.76-4.09-2.03-5.91-.63-.91-1.33-1.73-2.06-2.42C14.19 3.82 12.94 3 12 3c-.94 0-2.19.82-3.6 2.17-.73.69-1.43 1.51-2.06 2.42C5.07 9.41 4.31 11.62 4.31 13.5c0 1.52.63 2.73 1.79 3.4.6.35 1.29.51 2.03.51 1.34 0 2.95-.58 4.58-1.49 2.38-1.33 4.35-3.09 5.29-4.72m-6 16c-4.4 0-8-1.79-8-4s3.6-4 8-4 8 1.79 8 4-3.6 4-8 4z" />
-        </svg>
-      ),
-      instructions: "Add to index.html in the <head> section",
-    },
-    {
-      name: "Create React App",
-      icon: ({ className }: { className?: string }) => (
-        <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-          <circle cx="12" cy="12" r="2.2" />
-          <path d="M12 4.15c1.88 0 3.63.38 5.13 1.03C18.69 5.88 20 6.84 20 8c0 1.16-1.31 2.12-2.87 2.82-1.5.65-3.25 1.03-5.13 1.03s-3.63-.38-5.13-1.03C5.31 10.12 4 9.16 4 8c0-1.16 1.31-2.12 2.87-2.82C8.37 4.53 10.12 4.15 12 4.15m0-1.15c-4.4 0-8 1.79-8 4s3.6 4 8 4 8-1.79 8-4-3.6-4-8-4zm-6 8.15c.94 1.63 2.91 3.39 5.29 4.72 1.63.91 3.24 1.49 4.58 1.49.74 0 1.43-.16 2.03-.51 1.16-.67 1.79-1.88 1.79-3.4 0-1.88-.76-4.09-2.03-5.91-.63-.91-1.33-1.73-2.06-2.42C14.19 3.82 12.94 3 12 3c-.94 0-2.19.82-3.6 2.17-.73.69-1.43 1.51-2.06 2.42C5.07 9.41 4.31 11.62 4.31 13.5c0 1.52.63 2.73 1.79 3.4.6.35 1.29.51 2.03.51 1.34 0 2.95-.58 4.58-1.49 2.38-1.33 4.35-3.09 5.29-4.72m-6 16c-4.4 0-8-1.79-8-4s3.6-4 8-4 8 1.79 8 4-3.6 4-8 4z" />
-        </svg>
-      ),
-      instructions: "Add to public/index.html",
-    },
+  };
+
+  const frameworks: { id: Framework; name: string; icon: React.ReactNode }[] = [
+    { id: "nextjs", name: "Next.js", icon: <span className="text-lg font-bold">N</span> },
+    { id: "react", name: "React", icon: <span className="text-lg">⚛</span> },
+    { id: "vue", name: "Vue", icon: <span className="text-lg font-bold text-emerald-500">V</span> },
+    { id: "html", name: "HTML", icon: <GlobeAltIcon className="w-4 h-4" /> },
+    { id: "nodejs", name: "Node.js", icon: <span className="text-lg font-bold text-green-500">N</span> },
+  ];
+
+  const apiMethods = [
+    { method: "track()", desc: "Track custom events", example: `tracker.track('purchase', 'Order Completed', { orderId: '123', value: 99 })` },
+    { method: "identify()", desc: "Identify users", example: `tracker.identify('user@email.com', { firstName: 'John', plan: 'pro' })` },
+    { method: "page()", desc: "Track page views", example: `tracker.page('Pricing', { referrer: document.referrer })` },
+    { method: "consent()", desc: "GDPR consent", example: `tracker.consent({ analytics: true, marketing: false })` },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Hero Section - Compact with better readable fonts */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-muted/30 via-background to-background p-5 border border-border/40"
-      >
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-muted/50 rounded-lg">
-            <SparklesIcon className="w-5 h-5 text-primary" />
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="border-b border-border/50 pb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <CubeIcon className="w-6 h-6 text-primary" />
           </div>
-          <div className="flex-1">
-            <h2 className="text-base font-semibold text-foreground mb-1">
-              Website Tracking Script
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-              One powerful snippet that automatically captures visitor behavior, engagement signals, and converts anonymous visitors into qualified leads.
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Clianta SDK</h1>
+            <p className="text-sm text-muted-foreground">
+              Professional tracking SDK for lead generation and analytics
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { icon: BoltIcon, title: "9 Core Features", color: "text-amber-500" },
-                { icon: DocumentTextIcon, title: "Smart Forms", color: "text-emerald-500" },
-                { icon: GlobeAltIcon, title: "Universal", color: "text-blue-500" },
-              ].map((feature, index) => {
-                const Icon = feature.icon;
-                return (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-background/60 border border-border/30"
-                  >
-                    <Icon className={`w-5 h-5 ${feature.color}`} />
-                    <span className="text-xs font-medium text-foreground">{feature.title}</span>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
-      </motion.div>
-
-      {/* Tab Selection - Minimal */}
-      <div className="flex items-center justify-center">
-        <div className="inline-flex gap-1 p-1 bg-muted/40 rounded-lg border border-border/40">
-          <motion.button
-            onClick={() => setSelectedTab("simple")}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 relative",
-              selectedTab === "simple"
-                ? "text-white"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            whileTap={{ scale: 0.98 }}
-          >
-            {selectedTab === "simple" && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute inset-0 bg-primary rounded-md"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="relative z-10">Simple</span>
-          </motion.button>
-          <motion.button
-            onClick={() => setSelectedTab("advanced")}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 relative",
-              selectedTab === "advanced"
-                ? "text-white"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            whileTap={{ scale: 0.98 }}
-          >
-            {selectedTab === "advanced" && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute inset-0 bg-primary rounded-md"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="relative z-10">Advanced</span>
-          </motion.button>
-          <motion.button
-            onClick={() => setSelectedTab("stealth")}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 relative",
-              selectedTab === "stealth"
-                ? "text-white"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            whileTap={{ scale: 0.98 }}
-          >
-            {selectedTab === "stealth" && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute inset-0 bg-primary rounded-md"
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="relative z-10 flex items-center gap-1">
-              Stealth
-              <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded">NEW</span>
-            </span>
-          </motion.button>
+        <div className="flex items-center gap-4 mt-4">
+          <a href="https://www.npmjs.com/package/@clianta/sdk" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs bg-muted/50 px-3 py-1.5 rounded-full hover:bg-muted transition-colors">
+            <span className="text-red-500 font-bold">npm</span>
+            <span className="text-muted-foreground">@clianta/sdk</span>
+          </a>
+          <span className="text-xs text-muted-foreground">v1.0.0</span>
+          <span className="text-xs text-emerald-500 flex items-center gap-1">
+            <ShieldCheckIcon className="w-3.5 h-3.5" />
+            TypeScript
+          </span>
         </div>
       </div>
 
-      {/* Code Display - Compact and clean */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={selectedTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-          className="rounded-xl bg-card border border-border/50 overflow-hidden"
-        >
-          <div className="px-4 py-3 flex items-center justify-between border-b border-border/30 bg-muted/20">
-            <div className="flex items-center gap-2">
-              <CodeBracketIcon className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <div className="text-sm font-semibold text-foreground">
-                  {selectedTab === "simple" ? "Universal Tracking Code" : selectedTab === "advanced" ? "Advanced Configuration" : "Stealth Mode (Anti-Blocker)"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {selectedTab === "simple" ? "Copy & paste anywhere" : selectedTab === "advanced" ? "With optional features" : "Inline code, bypasses ad blockers"}
-                </div>
-              </div>
-            </div>
-            <motion.button
-              onClick={() => copyToClipboard(selectedTab === "simple" ? simpleCode : selectedTab === "advanced" ? advancedCode : stealthCode)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+      {/* Step 1: Installation */}
+      <section>
+        <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">1</span>
+          Install the SDK
+        </h2>
+
+        {/* Install method tabs */}
+        <div className="flex gap-1 p-1 bg-muted/30 rounded-lg w-fit mb-4">
+          {(["npm", "yarn", "pnpm", "cdn"] as InstallMethod[]).map((method) => (
+            <button
+              key={method}
+              onClick={() => setInstallMethod(method)}
+              className={cn(
+                "px-4 py-2 rounded-md text-sm font-medium transition-all",
+                installMethod === method
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              <AnimatePresence mode="wait">
-                {copied ? (
-                  <motion.div
-                    key="copied"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="flex items-center gap-2"
-                  >
-                    <CheckCircleIcon className="w-4 h-4" />
-                    Copied!
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="copy"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="flex items-center gap-2"
-                  >
-                    <ClipboardDocumentIcon className="w-4 h-4" />
-                    Copy Code
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          </div>
-
-          <div className="p-4">
-            <pre className="bg-gray-950 text-gray-300 p-3 rounded-lg overflow-x-auto text-xs font-mono leading-relaxed">
-              {selectedTab === "simple" ? simpleCode : selectedTab === "advanced" ? advancedCode : stealthCode}
-            </pre>
-
-            {selectedTab === "simple" && (
-              <div className="mt-3 space-y-2.5">
-                <div className="p-3 rounded-lg bg-muted/30 border border-border/30">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">✓ All Automatic:</strong> This code captures forms, scroll depth, time on page, downloads, exit intent, and more without any configuration.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { title: "Engagement", desc: "Scroll, time, clicks" },
-                    { title: "Smart Forms", desc: "Auto-detect & identify" },
-                    { title: "Downloads", desc: "Files & links" },
-                    { title: "Performance", desc: "Errors & speed" },
-                  ].map((feature, index) => (
-                    <div
-                      key={index}
-                      className="p-2 rounded-lg bg-muted/20 border border-border/20"
-                    >
-                      <div className="text-xs font-semibold text-foreground mb-0.5">{feature.title}</div>
-                      <div className="text-[11px] text-muted-foreground">{feature.desc}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {selectedTab === "advanced" && (
-              <div className="mt-3 space-y-2.5">
-                <div className="p-3 rounded-lg bg-muted/30 border border-border/30">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">Optional Features:</strong> Enable advanced tracking like rage clicks, error tracking, and performance monitoring. All core features are always enabled.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {selectedTab === "stealth" && (
-              <div className="mt-3 space-y-2.5">
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                  <p className="text-xs text-amber-200 leading-relaxed">
-                    <strong className="text-amber-400">Anti-Blocker Technology:</strong> This inline script bypasses most ad blockers and tracking prevention tools. Uses disguised endpoints, non-suspicious variable names, and multiple fallback methods.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { title: "Inline Code", desc: "No external scripts to block" },
-                    { title: "Disguised APIs", desc: "Non-suspicious endpoint names" },
-                    { title: "Multiple Fallbacks", desc: "Beacon, Fetch, XHR, Pixel" },
-                    { title: "Obfuscated", desc: "Compact, hard to detect" },
-                  ].map((feature, index) => (
-                    <div
-                      key={index}
-                      className="p-2 rounded-lg bg-muted/20 border border-border/20"
-                    >
-                      <div className="text-xs font-semibold text-foreground mb-0.5">{feature.title}</div>
-                      <div className="text-[11px] text-muted-foreground">{feature.desc}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Platform-Specific Instructions - All platforms restored */}
-      <div className="rounded-xl bg-card/40 border border-border/40 p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-1">
-          Platform-Specific Guides
-        </h3>
-        <p className="text-xs text-muted-foreground mb-3">
-          Click your platform for detailed instructions
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-          {platforms.map((platform, index) => {
-            const Icon = platform.icon;
-            const isExpanded = expandedPlatform === platform.name;
-            return (
-              <div key={platform.name} className="relative">
-                <button
-                  onClick={() => setExpandedPlatform(isExpanded ? null : platform.name)}
-                  className="w-full p-3 rounded-lg bg-background/60 border border-border/40 hover:border-border transition-all text-left"
-                >
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-7 h-7 rounded-md bg-muted/50 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <span className="text-xs font-medium text-foreground line-clamp-1">{platform.name}</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground line-clamp-1">
-                    {platform.instructions}
-                  </p>
-                </button>
-
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute z-10 left-0 right-0 top-full mt-1 p-3 rounded-lg bg-card border border-border shadow-xl overflow-hidden min-w-[280px]"
-                    >
-                      <p className="text-xs text-muted-foreground">
-                        Detailed steps available in full documentation
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
+              {method.toUpperCase()}
+            </button>
+          ))}
         </div>
-      </div>
 
-      {/* Test & Verification - Compact side by side */}
+        {/* Install command */}
+        <div className="relative">
+          <div className="flex items-center gap-2 px-4 py-3 bg-gray-950 rounded-lg border border-border/50">
+            <CommandLineIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <code className="text-sm text-gray-300 font-mono flex-1 overflow-x-auto">
+              {installCommands[installMethod]}
+            </code>
+            <button
+              onClick={() => copyToClipboard(installCommands[installMethod], "install")}
+              className="p-1.5 hover:bg-white/10 rounded transition-colors"
+            >
+              {copiedSection === "install" ? (
+                <CheckCircleIcon className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <ClipboardDocumentIcon className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Step 2: Initialize */}
+      <section>
+        <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">2</span>
+          Initialize in your app
+        </h2>
+
+        {/* Pre-configured notice */}
+        <div className="mb-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-3">
+          <CheckCircleIcon className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-emerald-300 font-medium">Ready to copy!</p>
+            <p className="text-xs text-emerald-400/80">
+              The code below is pre-configured with your Project ID (<code className="bg-emerald-500/20 px-1 rounded">{workspaceId.slice(0, 8)}...</code>). Just copy, paste, and you are ready to go.
+            </p>
+          </div>
+        </div>
+
+        {/* Framework tabs */}
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+          {frameworks.map((fw) => (
+            <button
+              key={fw.id}
+              onClick={() => setSelectedFramework(fw.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border whitespace-nowrap",
+                selectedFramework === fw.id
+                  ? "bg-primary/10 border-primary/50 text-primary"
+                  : "bg-muted/20 border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
+              )}
+            >
+              {fw.icon}
+              {fw.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Code examples - each file as separate step */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={selectedFramework}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-4"
+          >
+            {frameworkExamples[selectedFramework].files.map((file, index) => (
+              <div key={file.name} className="rounded-lg border border-border/50 overflow-hidden">
+                {/* File header with step number and path */}
+                <div className="px-4 py-3 bg-muted/30 border-b border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">
+                        2.{index + 1}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <DocumentTextIcon className="w-4 h-4 text-primary" />
+                          <span className="text-sm font-medium text-foreground">
+                            {file.name}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {file.path}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(file.code, `code-${index}`)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
+                    >
+                      {copiedSection === `code-${index}` ? (
+                        <>
+                          <CheckCircleIcon className="w-3.5 h-3.5" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Code block */}
+                <pre className="p-4 bg-gray-950 text-gray-300 text-sm font-mono overflow-x-auto max-h-64">
+                  <code>{file.code}</code>
+                </pre>
+              </div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      </section>
+
+      {/* Step 3: API Reference */}
+      <section>
+        <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs">3</span>
+          Start tracking
+        </h2>
+
+        <div className="grid gap-3">
+          {apiMethods.map((api) => (
+            <div
+              key={api.method}
+              className="p-4 rounded-lg border border-border/50 bg-muted/10 hover:bg-muted/20 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <code className="text-sm font-mono font-semibold text-primary">{api.method}</code>
+                <span className="text-xs text-muted-foreground">{api.desc}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="text-xs font-mono text-muted-foreground flex-1 bg-background/50 px-3 py-1.5 rounded overflow-x-auto">
+                  {api.example}
+                </code>
+                <button
+                  onClick={() => copyToClipboard(api.example, api.method)}
+                  className="p-1.5 hover:bg-muted rounded transition-colors flex-shrink-0"
+                >
+                  {copiedSection === api.method ? (
+                    <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <ClipboardDocumentIcon className="w-4 h-4 text-muted-foreground" />
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Project ID */}
+      <section className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+        <h3 className="text-sm font-semibold text-amber-400 mb-1">Your Project ID</h3>
+        <p className="text-xs text-amber-400/70 mb-3">Use this ID if you need to manually configure the SDK</p>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 px-3 py-2 bg-background/50 rounded font-mono text-sm text-amber-300">
+            {workspaceId}
+          </code>
+          <button
+            onClick={() => copyToClipboard(workspaceId, "workspace")}
+            className="p-2 hover:bg-amber-500/20 rounded transition-colors"
+          >
+            {copiedSection === "workspace" ? (
+              <CheckCircleIcon className="w-4 h-4 text-emerald-400" />
+            ) : (
+              <ClipboardDocumentIcon className="w-4 h-4 text-amber-400" />
+            )}
+          </button>
+        </div>
+      </section>
+
+      {/* Test & Docs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Test File */}
-        <div className="rounded-xl bg-muted/20 border border-border/40 p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5">
-            <BeakerIcon className="w-4 h-4 text-purple-500" />
-            <span>Test First</span>
+        <div className="p-4 rounded-lg border border-border/50 bg-muted/10">
+          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <CodeBracketIcon className="w-4 h-4 text-purple-500" />
+            Test Your Integration
           </h3>
           <p className="text-xs text-muted-foreground mb-3">
-            Download a test page to verify tracking works
+            Download a test page to verify tracking
           </p>
           <TrackingTestFile workspaceId={workspaceId} />
         </div>
 
-        {/* Verification */}
-        <div className="rounded-xl bg-muted/20 border border-border/40 p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5">
-            <ChartBarIcon className="w-4 h-4 text-cyan-500" />
-            <span>Verify Installation</span>
+        <div className="p-4 rounded-lg border border-border/50 bg-muted/10">
+          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <BookOpenIcon className="w-4 h-4 text-blue-500" />
+            Documentation
           </h3>
           <p className="text-xs text-muted-foreground mb-3">
-            Check your dashboard after installing
+            Full API reference and guides
           </p>
-          <motion.a
-            href={`/projects/${workspaceId}/visitors`}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-sm font-medium transition-colors"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <span>View Dashboard</span>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </motion.a>
+          <div className="flex gap-2">
+            <a
+              href="https://docs.clianta.online"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
+            >
+              View Docs
+            </a>
+            <a
+              href="https://github.com/clianta/sdk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-muted text-foreground rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+            >
+              GitHub
+            </a>
+          </div>
         </div>
       </div>
     </div>

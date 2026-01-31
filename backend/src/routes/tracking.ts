@@ -302,7 +302,7 @@ async function processIntentSignalsAsync(events: any[]): Promise<void> {
               scrollDepth: event.properties?.scrollDepth,
               duration: event.properties?.duration,
             },
-          }).catch(() => {}); // Silent fail
+          }).catch(() => { }); // Silent fail
         }
       }
 
@@ -329,7 +329,7 @@ async function processIntentSignalsAsync(events: any[]): Promise<void> {
             metadata: {
               downloadedFile: event.properties?.fileName,
             },
-          }).catch(() => {});
+          }).catch(() => { });
         }
       }
 
@@ -356,7 +356,7 @@ async function processIntentSignalsAsync(events: any[]): Promise<void> {
             metadata: {
               videoPercentage: percentage,
             },
-          }).catch(() => {});
+          }).catch(() => { });
         }
       }
     }
@@ -417,189 +417,195 @@ function extractVisitorUpdates(events: any[], clientIp: string, userAgent: strin
  * - Uses bulk operations instead of individual queries
  * - Handles 1000+ concurrent devices
  */
+// Explicit OPTIONS handler for preflight requests
+router.options('/public/track/event', secureTrackingCors);
+
 router.post('/public/track/event',
+  secureTrackingCors, // CORS headers first
+  trackingLimiter,    // Rate limiting second
   validateTrackingPayload,
   sanitizeTrackingData,
-  trackingLimiter,
-  secureTrackingCors,
   logTrackingRequest,
   trackCompanyVisitor,
   async (req, res) => {
-  try {
-    const { events } = req.body;
+    try {
+      const { events } = req.body;
 
-    // Validation
-    if (!events || !Array.isArray(events)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Events array is required',
+      // Validation
+      if (!events || !Array.isArray(events)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Events array is required',
+        });
+      }
+
+      if (events.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: 'No events to track',
+          count: 0,
+        });
+      }
+
+      if (events.length > 100) { // Increased from 50 to 100
+        return res.status(400).json({
+          success: false,
+          message: 'Maximum 100 events per batch',
+        });
+      }
+
+      // Get client info
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+
+      // Prepare tracking events for batch insert
+      const trackingEvents = events.map((event: any) => ({
+        workspaceId: event.workspaceId,
+        visitorId: event.visitorId,
+        contactId: event.contactId,
+        sessionId: event.sessionId,
+        eventType: event.eventType || 'custom',
+        eventName: event.eventName,
+        url: event.url,
+        referrer: event.referrer,
+        utmSource: event.utmSource,
+        utmMedium: event.utmMedium,
+        utmCampaign: event.utmCampaign,
+        utmTerm: event.utmTerm,
+        utmContent: event.utmContent,
+        properties: event.properties || {},
+        device: {
+          userAgent: event.device?.userAgent || userAgent,
+          ip: clientIp,
+          screen: event.device?.screen,
+          language: event.device?.language,
+        },
+      }));
+
+      // CRITICAL: Batch insert events (fast, ordered: false for parallel inserts)
+      const insertedEvents = await TrackingEvent.insertMany(trackingEvents, {
+        ordered: false,
+        // lean: true, // Faster, returns plain objects
       });
-    }
 
-    if (events.length === 0) {
-      return res.status(200).json({
+      // Count page views for visitor update
+      const pageViewCount = events.filter((e: any) => e.eventType === 'page_view' || e.eventType === 'pv').length;
+
+      // Extract visitor updates
+      const visitorUpdates = extractVisitorUpdates(events, clientIp, userAgent);
+
+      // RESPOND IMMEDIATELY - don't wait for visitor updates or intent signals
+      res.status(200).json({
         success: true,
-        message: 'No events to track',
-        count: 0,
+        message: 'Events tracked successfully',
+        count: insertedEvents.length,
       });
-    }
 
-    if (events.length > 100) { // Increased from 50 to 100
-      return res.status(400).json({
+      // FIRE-AND-FORGET: Process visitor updates and intent signals asynchronously
+      // These run AFTER the response is sent
+      setImmediate(() => {
+        processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => { });
+        processIntentSignalsAsync(events).catch(() => { });
+      });
+
+    } catch (error: any) {
+      logger.error("Event tracking error", { error: error.message });
+      res.status(500).json({
         success: false,
-        message: 'Maximum 100 events per batch',
+        message: 'Failed to track events',
+        error: error.message,
       });
     }
-
-    // Get client info
-    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
-    const userAgent = req.headers['user-agent'] || 'unknown';
-
-    // Prepare tracking events for batch insert
-    const trackingEvents = events.map((event: any) => ({
-      workspaceId: event.workspaceId,
-      visitorId: event.visitorId,
-      contactId: event.contactId,
-      sessionId: event.sessionId,
-      eventType: event.eventType || 'custom',
-      eventName: event.eventName,
-      url: event.url,
-      referrer: event.referrer,
-      utmSource: event.utmSource,
-      utmMedium: event.utmMedium,
-      utmCampaign: event.utmCampaign,
-      utmTerm: event.utmTerm,
-      utmContent: event.utmContent,
-      properties: event.properties || {},
-      device: {
-        userAgent: event.device?.userAgent || userAgent,
-        ip: clientIp,
-        screen: event.device?.screen,
-        language: event.device?.language,
-      },
-    }));
-
-    // CRITICAL: Batch insert events (fast, ordered: false for parallel inserts)
-    const insertedEvents = await TrackingEvent.insertMany(trackingEvents, {
-      ordered: false,
-      // lean: true, // Faster, returns plain objects
-    });
-
-    // Count page views for visitor update
-    const pageViewCount = events.filter((e: any) => e.eventType === 'page_view' || e.eventType === 'pv').length;
-
-    // Extract visitor updates
-    const visitorUpdates = extractVisitorUpdates(events, clientIp, userAgent);
-
-    // RESPOND IMMEDIATELY - don't wait for visitor updates or intent signals
-    res.status(200).json({
-      success: true,
-      message: 'Events tracked successfully',
-      count: insertedEvents.length,
-    });
-
-    // FIRE-AND-FORGET: Process visitor updates and intent signals asynchronously
-    // These run AFTER the response is sent
-    setImmediate(() => {
-      processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => {});
-      processIntentSignalsAsync(events).catch(() => {});
-    });
-
-  } catch (error: any) {
-    logger.error("Event tracking error", { error: error.message });
-    res.status(500).json({
-      success: false,
-      message: 'Failed to track events',
-      error: error.message,
-    });
-  }
-});
+  });
 
 /**
  * POST /api/public/track/identify
  * Link visitorId to contactId with bulk backfill
  */
+// Explicit OPTIONS handler for preflight requests
+router.options('/public/track/identify', secureTrackingCors);
+
 router.post('/public/track/identify',
+  secureTrackingCors, // CORS headers first
+  trackingLimiter,    // Rate limiting second
   validateTrackingPayload,
   sanitizeTrackingData,
-  trackingLimiter,
-  secureTrackingCors,
   logTrackingRequest,
   trackCompanyVisitor,
   async (req, res) => {
-  try {
-    const { workspaceId, visitorId, email, properties } = req.body;
+    try {
+      const { workspaceId, visitorId, email, properties } = req.body;
 
-    if (!workspaceId || !visitorId || !email) {
-      return res.status(400).json({
+      if (!workspaceId || !visitorId || !email) {
+        return res.status(400).json({
+          success: false,
+          message: 'workspaceId, visitorId, and email are required',
+        });
+      }
+
+      // Find or create contact using findOneAndUpdate (atomic, faster)
+      const contact = await Contact.findOneAndUpdate(
+        { workspaceId, email },
+        {
+          $setOnInsert: {
+            workspaceId,
+            email,
+            firstName: properties?.firstName,
+            lastName: properties?.lastName,
+            company: properties?.company,
+            jobTitle: properties?.jobTitle,
+            phone: properties?.phone,
+            source: properties?.source || 'tracking',
+            status: 'lead',
+          },
+        },
+        { upsert: true, new: true }
+      );
+
+      // Respond immediately
+      res.status(200).json({
+        success: true,
+        message: 'Visitor identified successfully',
+        contactId: contact._id,
+      });
+
+      // FIRE-AND-FORGET: Update visitor and backfill events
+      setImmediate(async () => {
+        try {
+          // Update visitor with contactId
+          await Visitor.findOneAndUpdate(
+            { workspaceId, visitorId },
+            { contactId: contact._id },
+            { new: true }
+          );
+
+          // Backfill all tracking events with contactId
+          const updateResult = await TrackingEvent.updateMany(
+            { workspaceId, visitorId, contactId: null },
+            { $set: { contactId: contact._id } }
+          );
+
+          // Fire webhook
+          await WebhookService.trigger(workspaceId, 'visitor.identified', {
+            visitorId,
+            contactId: contact._id,
+            email: contact.email,
+            eventsBackfilled: updateResult.modifiedCount,
+          }).catch(() => { });
+        } catch (error) {
+          logger.error("Identify async error", { error });
+        }
+      });
+
+    } catch (error: any) {
+      logger.error("Identify error", { error: error.message });
+      res.status(500).json({
         success: false,
-        message: 'workspaceId, visitorId, and email are required',
+        message: 'Failed to identify visitor',
+        error: error.message,
       });
     }
-
-    // Find or create contact using findOneAndUpdate (atomic, faster)
-    const contact = await Contact.findOneAndUpdate(
-      { workspaceId, email },
-      {
-        $setOnInsert: {
-          workspaceId,
-          email,
-          firstName: properties?.firstName,
-          lastName: properties?.lastName,
-          company: properties?.company,
-          jobTitle: properties?.jobTitle,
-          phone: properties?.phone,
-          source: properties?.source || 'tracking',
-          status: 'lead',
-        },
-      },
-      { upsert: true, new: true }
-    );
-
-    // Respond immediately
-    res.status(200).json({
-      success: true,
-      message: 'Visitor identified successfully',
-      contactId: contact._id,
-    });
-
-    // FIRE-AND-FORGET: Update visitor and backfill events
-    setImmediate(async () => {
-      try {
-        // Update visitor with contactId
-        await Visitor.findOneAndUpdate(
-          { workspaceId, visitorId },
-          { contactId: contact._id },
-          { new: true }
-        );
-
-        // Backfill all tracking events with contactId
-        const updateResult = await TrackingEvent.updateMany(
-          { workspaceId, visitorId, contactId: null },
-          { $set: { contactId: contact._id } }
-        );
-
-        // Fire webhook
-        await WebhookService.trigger(workspaceId, 'visitor.identified', {
-          visitorId,
-          contactId: contact._id,
-          email: contact.email,
-          eventsBackfilled: updateResult.modifiedCount,
-        }).catch(() => {});
-      } catch (error) {
-        logger.error("Identify async error", { error });
-      }
-    });
-
-  } catch (error: any) {
-    logger.error("Identify error", { error: error.message });
-    res.status(500).json({
-      success: false,
-      message: 'Failed to identify visitor',
-      error: error.message,
-    });
-  }
-});
+  });
 
 // ============================================
 // AUTHENTICATED ENDPOINTS
@@ -758,72 +764,75 @@ router.get('/workspaces/:id/tracking/stats', authenticate, async (req: AuthReque
  * POST /api/v1/sync
  * Disguised high-performance event tracking
  */
+// Explicit OPTIONS handler for preflight requests
+router.options('/v1/sync', secureTrackingCors);
+
 router.post('/v1/sync',
+  secureTrackingCors, // CORS headers first
+  trackingLimiter,    // Rate limiting second
   validateTrackingPayload,
   sanitizeTrackingData,
-  trackingLimiter,
-  secureTrackingCors,
   async (req, res) => {
-  try {
-    const { events } = req.body;
+    try {
+      const { events } = req.body;
 
-    if (!events || !Array.isArray(events)) {
-      return res.status(400).json({ success: false, message: 'Events array is required' });
+      if (!events || !Array.isArray(events)) {
+        return res.status(400).json({ success: false, message: 'Events array is required' });
+      }
+
+      if (events.length === 0) {
+        return res.status(200).json({ success: true, message: 'No events to sync', count: 0 });
+      }
+
+      if (events.length > 100) {
+        return res.status(400).json({ success: false, message: 'Maximum 100 events per batch' });
+      }
+
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+
+      const trackingEvents = events.map((event: any) => ({
+        workspaceId: event.workspaceId,
+        visitorId: event.visitorId,
+        contactId: event.contactId,
+        sessionId: event.sessionId,
+        eventType: event.eventType || 'custom',
+        eventName: event.eventName,
+        url: event.url,
+        referrer: event.referrer,
+        utmSource: event.utmSource,
+        utmMedium: event.utmMedium,
+        utmCampaign: event.utmCampaign,
+        utmTerm: event.utmTerm,
+        utmContent: event.utmContent,
+        properties: event.properties || {},
+        device: {
+          userAgent: event.device?.userAgent || userAgent,
+          ip: clientIp,
+          screen: event.device?.screen,
+          language: event.device?.language,
+        },
+      }));
+
+      // Fast batch insert
+      await TrackingEvent.insertMany(trackingEvents, { ordered: false });
+
+      // Respond immediately
+      res.status(200).json({ success: true, count: trackingEvents.length });
+
+      // Fire-and-forget visitor updates
+      const visitorUpdates = extractVisitorUpdates(events, clientIp, userAgent);
+      const pageViewCount = events.filter((e: any) => e.eventType === 'pv' || e.eventType === 'page_view').length;
+
+      setImmediate(() => {
+        processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => { });
+      });
+
+    } catch (error: any) {
+      logger.error("Sync error", { error: error.message });
+      res.status(500).json({ success: false, message: 'Sync failed' });
     }
-
-    if (events.length === 0) {
-      return res.status(200).json({ success: true, message: 'No events to sync', count: 0 });
-    }
-
-    if (events.length > 100) {
-      return res.status(400).json({ success: false, message: 'Maximum 100 events per batch' });
-    }
-
-    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
-    const userAgent = req.headers['user-agent'] || 'unknown';
-
-    const trackingEvents = events.map((event: any) => ({
-      workspaceId: event.workspaceId,
-      visitorId: event.visitorId,
-      contactId: event.contactId,
-      sessionId: event.sessionId,
-      eventType: event.eventType || 'custom',
-      eventName: event.eventName,
-      url: event.url,
-      referrer: event.referrer,
-      utmSource: event.utmSource,
-      utmMedium: event.utmMedium,
-      utmCampaign: event.utmCampaign,
-      utmTerm: event.utmTerm,
-      utmContent: event.utmContent,
-      properties: event.properties || {},
-      device: {
-        userAgent: event.device?.userAgent || userAgent,
-        ip: clientIp,
-        screen: event.device?.screen,
-        language: event.device?.language,
-      },
-    }));
-
-    // Fast batch insert
-    await TrackingEvent.insertMany(trackingEvents, { ordered: false });
-
-    // Respond immediately
-    res.status(200).json({ success: true, count: trackingEvents.length });
-
-    // Fire-and-forget visitor updates
-    const visitorUpdates = extractVisitorUpdates(events, clientIp, userAgent);
-    const pageViewCount = events.filter((e: any) => e.eventType === 'pv' || e.eventType === 'page_view').length;
-
-    setImmediate(() => {
-      processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => {});
-    });
-
-  } catch (error: any) {
-    logger.error("Sync error", { error: error.message });
-    res.status(500).json({ success: false, message: 'Sync failed' });
-  }
-});
+  });
 
 /**
  * POST /api/v1/auth
@@ -835,56 +844,56 @@ router.post('/v1/auth',
   trackingLimiter,
   secureTrackingCors,
   async (req, res) => {
-  try {
-    const { workspaceId, visitorId, email, properties } = req.body;
+    try {
+      const { workspaceId, visitorId, email, properties } = req.body;
 
-    if (!workspaceId || !visitorId || !email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Required fields missing',
-      });
-    }
+      if (!workspaceId || !visitorId || !email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Required fields missing',
+        });
+      }
 
-    // Atomic upsert
-    const contact = await Contact.findOneAndUpdate(
-      { workspaceId, email },
-      {
-        $setOnInsert: {
-          workspaceId,
-          email,
-          firstName: properties?.firstName,
-          lastName: properties?.lastName,
-          company: properties?.company,
-          jobTitle: properties?.jobTitle,
-          phone: properties?.phone,
-          source: properties?.source || 'tracking',
-          status: 'lead',
+      // Atomic upsert
+      const contact = await Contact.findOneAndUpdate(
+        { workspaceId, email },
+        {
+          $setOnInsert: {
+            workspaceId,
+            email,
+            firstName: properties?.firstName,
+            lastName: properties?.lastName,
+            company: properties?.company,
+            jobTitle: properties?.jobTitle,
+            phone: properties?.phone,
+            source: properties?.source || 'tracking',
+            status: 'lead',
+          },
         },
-      },
-      { upsert: true, new: true }
-    );
+        { upsert: true, new: true }
+      );
 
-    res.status(200).json({ success: true, id: contact._id });
+      res.status(200).json({ success: true, id: contact._id });
 
-    // Fire-and-forget updates
-    setImmediate(async () => {
-      try {
-        await Visitor.findOneAndUpdate(
-          { workspaceId, visitorId },
-          { contactId: contact._id }
-        );
-        await TrackingEvent.updateMany(
-          { workspaceId, visitorId, contactId: null },
-          { $set: { contactId: contact._id } }
-        );
-      } catch {}
-    });
+      // Fire-and-forget updates
+      setImmediate(async () => {
+        try {
+          await Visitor.findOneAndUpdate(
+            { workspaceId, visitorId },
+            { contactId: contact._id }
+          );
+          await TrackingEvent.updateMany(
+            { workspaceId, visitorId, contactId: null },
+            { $set: { contactId: contact._id } }
+          );
+        } catch { }
+      });
 
-  } catch (error: any) {
-    logger.error("Auth error", { error: error.message });
-    res.status(500).json({ success: false, message: 'Auth failed' });
-  }
-});
+    } catch (error: any) {
+      logger.error("Auth error", { error: error.message });
+      res.status(500).json({ success: false, message: 'Auth failed' });
+    }
+  });
 
 /**
  * GET /cdn/px.gif
@@ -916,7 +925,7 @@ router.get('/cdn/px.gif', (req, res) => {
         userAgent: req.headers['user-agent'],
         ip: clientIp,
       },
-    }).catch(() => {}); // Silent fail
+    }).catch(() => { }); // Silent fail
   }
 });
 
@@ -934,55 +943,55 @@ router.post('/cdn/fonts/woff2.json',
   trackingLimiter,
   secureTrackingCors,
   async (req, res) => {
-  try {
-    // Decode payload if encoded
-    const decoded = decodeStealthPayload(req.body);
-    const events = decoded.q || decoded.events || [];
+    try {
+      // Decode payload if encoded
+      const decoded = decodeStealthPayload(req.body);
+      const events = decoded.q || decoded.events || [];
 
-    if (!Array.isArray(events) || events.length === 0) {
-      return res.status(200).json({ status: 'ok', loaded: 0 });
+      if (!Array.isArray(events) || events.length === 0) {
+        return res.status(200).json({ status: 'ok', loaded: 0 });
+      }
+
+      if (events.length > 100) {
+        return res.status(200).json({ status: 'ok', loaded: 100 });
+      }
+
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+
+      // Map stealth events to standard format
+      const trackingEvents = events.map((event: any) => mapStealthEvent(event, clientIp, userAgent));
+
+      // Fast batch insert
+      await TrackingEvent.insertMany(trackingEvents, { ordered: false });
+
+      // Respond with innocent-looking response
+      res.status(200).json({
+        status: 'ok',
+        loaded: trackingEvents.length,
+        cache: 'hit'
+      });
+
+      // Fire-and-forget visitor updates
+      const visitorUpdates = extractVisitorUpdates(
+        trackingEvents.map((e: any) => ({
+          ...e,
+          device: { userAgent, ip: clientIp }
+        })),
+        clientIp,
+        userAgent
+      );
+      const pageViewCount = trackingEvents.filter((e: any) => e.eventType === 'page_view').length;
+
+      setImmediate(() => {
+        processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => { });
+      });
+
+    } catch (error: any) {
+      // Return success even on error to avoid detection
+      res.status(200).json({ status: 'ok', cache: 'miss' });
     }
-
-    if (events.length > 100) {
-      return res.status(200).json({ status: 'ok', loaded: 100 });
-    }
-
-    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
-    const userAgent = req.headers['user-agent'] || 'unknown';
-
-    // Map stealth events to standard format
-    const trackingEvents = events.map((event: any) => mapStealthEvent(event, clientIp, userAgent));
-
-    // Fast batch insert
-    await TrackingEvent.insertMany(trackingEvents, { ordered: false });
-
-    // Respond with innocent-looking response
-    res.status(200).json({
-      status: 'ok',
-      loaded: trackingEvents.length,
-      cache: 'hit'
-    });
-
-    // Fire-and-forget visitor updates
-    const visitorUpdates = extractVisitorUpdates(
-      trackingEvents.map((e: any) => ({
-        ...e,
-        device: { userAgent, ip: clientIp }
-      })),
-      clientIp,
-      userAgent
-    );
-    const pageViewCount = trackingEvents.filter((e: any) => e.eventType === 'page_view').length;
-
-    setImmediate(() => {
-      processVisitorUpdatesAsync(visitorUpdates, pageViewCount).catch(() => {});
-    });
-
-  } catch (error: any) {
-    // Return success even on error to avoid detection
-    res.status(200).json({ status: 'ok', cache: 'miss' });
-  }
-});
+  });
 
 /**
  * POST /cdn/assets/manifest.json
@@ -992,61 +1001,61 @@ router.post('/cdn/assets/manifest.json',
   trackingLimiter,
   secureTrackingCors,
   async (req, res) => {
-  try {
-    // Decode payload if encoded
-    const decoded = decodeStealthPayload(req.body);
-    const data = mapStealthIdentify(decoded);
+    try {
+      // Decode payload if encoded
+      const decoded = decodeStealthPayload(req.body);
+      const data = mapStealthIdentify(decoded);
 
-    const { workspaceId, visitorId, email, properties } = data;
+      const { workspaceId, visitorId, email, properties } = data;
 
-    if (!workspaceId || !visitorId || !email) {
-      return res.status(200).json({ status: 'ok', verified: false });
-    }
+      if (!workspaceId || !visitorId || !email) {
+        return res.status(200).json({ status: 'ok', verified: false });
+      }
 
-    // Atomic upsert
-    const contact = await Contact.findOneAndUpdate(
-      { workspaceId, email },
-      {
-        $setOnInsert: {
-          workspaceId,
-          email,
-          firstName: properties?.firstName,
-          lastName: properties?.lastName,
-          company: properties?.company,
-          phone: properties?.phone,
-          source: 'stealth',
-          status: 'lead',
+      // Atomic upsert
+      const contact = await Contact.findOneAndUpdate(
+        { workspaceId, email },
+        {
+          $setOnInsert: {
+            workspaceId,
+            email,
+            firstName: properties?.firstName,
+            lastName: properties?.lastName,
+            company: properties?.company,
+            phone: properties?.phone,
+            source: 'stealth',
+            status: 'lead',
+          },
         },
-      },
-      { upsert: true, new: true }
-    );
+        { upsert: true, new: true }
+      );
 
-    // Innocent-looking response
-    res.status(200).json({
-      status: 'ok',
-      verified: true,
-      version: '2.0'
-    });
+      // Innocent-looking response
+      res.status(200).json({
+        status: 'ok',
+        verified: true,
+        version: '2.0'
+      });
 
-    // Fire-and-forget updates
-    setImmediate(async () => {
-      try {
-        await Visitor.findOneAndUpdate(
-          { workspaceId, visitorId },
-          { contactId: contact._id }
-        );
-        await TrackingEvent.updateMany(
-          { workspaceId, visitorId, contactId: null },
-          { $set: { contactId: contact._id } }
-        );
-      } catch {}
-    });
+      // Fire-and-forget updates
+      setImmediate(async () => {
+        try {
+          await Visitor.findOneAndUpdate(
+            { workspaceId, visitorId },
+            { contactId: contact._id }
+          );
+          await TrackingEvent.updateMany(
+            { workspaceId, visitorId, contactId: null },
+            { $set: { contactId: contact._id } }
+          );
+        } catch { }
+      });
 
-  } catch (error: any) {
-    // Return success even on error
-    res.status(200).json({ status: 'ok', verified: false });
-  }
-});
+    } catch (error: any) {
+      // Return success even on error
+      res.status(200).json({ status: 'ok', verified: false });
+    }
+  });
 
 /**
  * GET /cdn/img/s.gif
@@ -1072,7 +1081,7 @@ router.get('/cdn/img/s.gif', (req, res) => {
         userAgent: req.headers['user-agent'],
         ip: clientIp,
       },
-    }).catch(() => {});
+    }).catch(() => { });
   }
 });
 
