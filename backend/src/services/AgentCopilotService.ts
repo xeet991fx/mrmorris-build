@@ -127,12 +127,9 @@ class AgentCopilotService {
       const prompt = this.buildAutomationQAPrompt(userMessage, workspaceContext, historyText);
 
       // Start streaming from Gemini 2.5 Pro with timeout
-      // Story 4.3 Task 2.5: Use thinking_level: "low" for educational Q&A
+      // Story 4.3 Task 2.5: Use standard generation for educational Q&A
       const model = genAI.getGenerativeModel({
         model: 'gemini-2.5-pro',
-        generationConfig: {
-          thinking_level: 'low' as any, // Educational Q&A (faster, cheaper)
-        }
       });
 
       // Create timeout promise (Story 4.3 Task 2.4)
