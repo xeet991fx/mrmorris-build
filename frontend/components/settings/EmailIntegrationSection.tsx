@@ -52,15 +52,37 @@ export default function EmailIntegrationSection({
   const handleConnectGmail = async () => {
     setConnecting(true);
     try {
+      // Story 5.1: Use new OAuth popup pattern
       const result = await getGmailConnectUrl(workspaceId);
       if (result.success && result.data.authUrl) {
-        window.location.href = result.data.authUrl;
+        // Open OAuth popup window
+        const width = 600;
+        const height = 700;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2;
+
+        const popup = window.open(
+          result.data.authUrl,
+          'gmail-oauth-popup',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+
+        // Poll for popup close (OAuth callback auto-closes popup)
+        const checkPopup = setInterval(() => {
+          if (popup?.closed) {
+            clearInterval(checkPopup);
+            setConnecting(false);
+            // Refresh integrations list after OAuth completion
+            loadIntegrations();
+            toast.success("Gmail connection successful!");
+          }
+        }, 500);
       } else {
         toast.error(result.error || "Failed to connect Gmail");
+        setConnecting(false);
       }
     } catch (error) {
       toast.error("Failed to connect Gmail");
-    } finally {
       setConnecting(false);
     }
   };
@@ -345,15 +367,21 @@ export default function EmailIntegrationSection({
                         <span className="text-sm font-medium text-foreground">
                           {integration.email}
                         </span>
-                        {integration.isActive ? (
+                        {/* Story 5.1: Use status field from IntegrationCredential model */}
+                        {integration.isActive || integration.status === 'Connected' ? (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] font-medium text-emerald-400">
                             <CheckCircleIcon className="w-3 h-3" />
-                            Active
+                            Connected
+                          </span>
+                        ) : integration.status === 'Expired' ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/10 text-[10px] font-medium text-yellow-400">
+                            <ExclamationCircleIcon className="w-3 h-3" />
+                            Expired
                           </span>
                         ) : (
                           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-[10px] font-medium text-red-400">
                             <ExclamationCircleIcon className="w-3 h-3" />
-                            Error
+                            {integration.status || 'Error'}
                           </span>
                         )}
                       </div>

@@ -18,6 +18,7 @@ import {
   completeRegistrationSchema,
 } from "../validations/auth";
 import { logger } from "../utils/logger";
+import oauthRoutes from "./auth/oauth"; // Story 5.1: OAuth routes
 
 const router = express.Router();
 
@@ -945,5 +946,9 @@ router.get(
     }
   }
 );
+
+// Story 5.1: Mount OAuth routes
+// Routes: /api/auth/oauth/:provider/authorize, /api/auth/oauth/:provider/callback
+router.use("/oauth", oauthRoutes);
 
 export default router;

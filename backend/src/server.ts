@@ -33,6 +33,7 @@ import credentialsRoutes from "./routes/credentials";
 import googleSheetsRoutes from "./routes/integrations/googleSheets";
 import notionRoutes from "./routes/integrations/notion";
 import slackRoutes from "./routes/integrations/slack";
+import integrationsRoutes from "./routes/integrations"; // Story 5.1: Generic integrations routes
 import emailTemplateRoutes from "./routes/emailTemplate";
 import sequenceRoutes from "./routes/sequence";
 import emailTrackingRoutes from "./routes/emailTracking";
@@ -393,6 +394,7 @@ app.use("/api/workspaces", workflowRoutes);
 app.use("/api/workspaces", workflowDataSourcesRoutes);
 app.use("/api/workspaces", fieldFetchingRoutes);
 app.use("/api/workspaces", credentialsRoutes);
+app.use("/api/integrations", integrationsRoutes); // Story 5.1: GET/DELETE integrations
 app.use("/api/integrations", googleSheetsRoutes);
 app.use("/api/integrations", notionRoutes);
 app.use("/api/integrations", slackRoutes);

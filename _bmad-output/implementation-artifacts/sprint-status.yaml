@@ -101,8 +101,8 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5: External Integrations (12 stories)
-  epic-5: backlog
-  5-1-oauth-authentication-flow: backlog
+  epic-5: in-progress
+  5-1-oauth-authentication-flow: done
   5-2-automatic-token-refresh: backlog
   5-3-integration-expiration-notifications: backlog
   5-4-gmail-integration-for-emails: backlog

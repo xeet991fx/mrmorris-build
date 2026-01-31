@@ -24,6 +24,17 @@ export interface IIntegrationCredential extends Document {
     linkedinSentToday?: number;
     linkedinLastSentDate?: Date;
 
+    // Story 5.1: OAuth Authentication Flow - New fields
+    expiresAt?: Date; // Token expiration timestamp
+    scopes?: string[]; // Granted OAuth scopes
+    profileInfo?: {
+        email?: string;
+        name?: string;
+        avatarUrl?: string;
+    }; // Connected account display info
+    status: 'Connected' | 'Expired' | 'Error' | 'Revoked'; // Connection status
+    lastUsed?: Date; // Last time integration was used by an agent
+
     // Methods
     setCredentialData(data: any): void;
     getCredentialData(): any;
@@ -71,15 +82,39 @@ const integrationCredentialSchema = new Schema<IIntegrationCredential>(
         linkedinLastSentDate: {
             type: Date,
         },
+        // Story 5.1: OAuth Authentication Flow - New fields
+        expiresAt: {
+            type: Date,
+        },
+        scopes: {
+            type: [String],
+        },
+        profileInfo: {
+            type: {
+                email: String,
+                name: String,
+                avatarUrl: String,
+            },
+            required: false,
+        },
+        status: {
+            type: String,
+            enum: ['Connected', 'Expired', 'Error', 'Revoked'],
+            default: 'Connected',
+        },
+        lastUsed: {
+            type: Date,
+        },
     },
     {
         timestamps: true,
     }
 );
 
-// Compound index to ensure unique credential names per workspace/type
+// Compound index to ensure one integration per workspace/type
+// Story 5.1: Removed 'name' from unique index to allow reconnecting with different accounts
 integrationCredentialSchema.index(
-    { workspaceId: 1, type: 1, name: 1 },
+    { workspaceId: 1, type: 1 },
     { unique: true }
 );
 

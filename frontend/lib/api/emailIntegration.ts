@@ -9,6 +9,7 @@ export interface EmailIntegration {
     provider: 'gmail' | 'outlook';
     email: string;
     isActive: boolean;
+    status?: 'Connected' | 'Expired' | 'Error' | 'Revoked'; // Story 5.1: New status field from IntegrationCredential
     lastSyncAt?: string;
     syncError?: string;
     createdAt: string;
@@ -17,15 +18,42 @@ export interface EmailIntegration {
 
 /**
  * Get Gmail OAuth URL to start connection
+ * Story 5.1: Updated to use new OAuth routes
  */
 export async function getGmailConnectUrl(workspaceId: string) {
     try {
+        // Story 5.1: Use new OAuth authorize endpoint
         const response = await axiosInstance.get(
-            `/email/connect/gmail?workspaceId=${workspaceId}`
+            `/auth/oauth/gmail/authorize?workspaceId=${workspaceId}`
         );
-        return response.data;
+        return {
+            success: true,
+            data: { authUrl: response.data.url }
+        };
     } catch (error: any) {
         console.error('Get Gmail connect URL error:', error);
+        return {
+            success: false,
+            error: error.response?.data?.error || error.message,
+        };
+    }
+}
+
+/**
+ * Get LinkedIn OAuth URL to start connection
+ * Story 5.1: New LinkedIn integration
+ */
+export async function getLinkedInConnectUrl(workspaceId: string) {
+    try {
+        const response = await axiosInstance.get(
+            `/auth/oauth/linkedin/authorize?workspaceId=${workspaceId}`
+        );
+        return {
+            success: true,
+            data: { authUrl: response.data.url }
+        };
+    } catch (error: any) {
+        console.error('Get LinkedIn connect URL error:', error);
         return {
             success: false,
             error: error.response?.data?.error || error.message,
