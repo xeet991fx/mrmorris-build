@@ -112,7 +112,8 @@
       "Bash(xxd:*)",
       "Bash(git show:*)",
       "Bash(git stash:*)",
-      "Bash(npm run test:ci)"
+      "Bash(npm run test:ci)",
+      "Bash(wsl --status:*)"
     ],
     "deny": [],
     "ask": []

@@ -25,9 +25,11 @@ export default function CopilotChatPanel({
   // Use separate selectors to avoid creating new objects on every render
   const conversationMessages = useCopilotStore((state) => state.conversations[agentId]);
   const isStreaming = useCopilotStore((state) => state.isStreaming[agentId] || false);
+  const validationWarnings = useCopilotStore((state) => state.validationWarnings[workspaceId] || []);
   const loadHistoryFn = useCopilotStore((state) => state.loadHistory);
   const sendMessageFn = useCopilotStore((state) => state.sendMessage);
   const clearConversationFn = useCopilotStore((state) => state.clearConversation);
+  const applyInstructionsFn = useCopilotStore((state) => state.applyInstructions);
 
   // Memoize messages array to prevent unnecessary re-renders
   const messages = useMemo(() => conversationMessages || [], [conversationMessages]);
@@ -73,6 +75,13 @@ export default function CopilotChatPanel({
     }
   };
 
+  const handleApplyInstructions = useCallback(
+    (instructions: string) => {
+      applyInstructionsFn(agentId, instructions);
+    },
+    [applyInstructionsFn, agentId]
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -117,6 +126,8 @@ export default function CopilotChatPanel({
             role={msg.role}
             content={msg.content}
             timestamp={msg.timestamp}
+            warnings={validationWarnings}
+            onApplyInstructions={handleApplyInstructions}
           />
         ))}
         {isStreaming && <TypingIndicator />}

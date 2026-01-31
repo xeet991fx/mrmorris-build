@@ -6,14 +6,30 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check } from 'lucide-react';
 import { useState } from 'react';
+import ApplyInstructionsButton from './ApplyInstructionsButton';
+import ValidationWarningsList from './ValidationWarningsList';
+
+interface ValidationWarning {
+  type: 'missing_template' | 'missing_field' | 'missing_integration' | 'invalid_syntax';
+  message: string;
+  line: number;
+}
 
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  warnings?: ValidationWarning[];
+  onApplyInstructions?: (instructions: string) => void;
 }
 
-export default function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
+export default function ChatMessage({
+  role,
+  content,
+  timestamp,
+  warnings = [],
+  onApplyInstructions
+}: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyCode = (code: string) => {
@@ -21,6 +37,9 @@ export default function ChatMessage({ role, content, timestamp }: ChatMessagePro
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Detect if this is a generated workflow (numbered list format)
+  const isWorkflow = !role.includes('user') && /^\d+\.\s/.test(content.trim());
 
   if (role === 'system') {
     return (
@@ -96,6 +115,20 @@ export default function ChatMessage({ role, content, timestamp }: ChatMessagePro
             </div>
           )}
         </div>
+
+        {/* Show Apply button for generated workflows */}
+        {isWorkflow && onApplyInstructions && (
+          <>
+            <ApplyInstructionsButton
+              generatedInstructions={content}
+              onApply={onApplyInstructions}
+              warnings={warnings}
+            />
+            {warnings.length > 0 && (
+              <ValidationWarningsList warnings={warnings} />
+            )}
+          </>
+        )}
 
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
           {new Date(timestamp).toLocaleTimeString()}

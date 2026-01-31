@@ -2,6 +2,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Response } from 'express';
 import AgentCopilotConversation, { IAgentCopilotConversation } from '../models/AgentCopilotConversation';
 import Agent from '../models/Agent';
+import EmailTemplate from '../models/EmailTemplate';
+import CustomFieldDefinition from '../models/CustomFieldDefinition';
+import IntegrationCredential from '../models/IntegrationCredential';
 import mongoose from 'mongoose';
 
 // Initialize Gemini API
@@ -293,6 +296,402 @@ Provide a helpful, concise response. Format with markdown (bold, lists, code blo
     // For now, always return true (placeholder)
     // In Epic 7, this will check actual workspace.creditsRemaining
     return true;
+  }
+
+  /**
+   * Generate complete agent workflow from user description
+   * Story 4.2, Task 1.1
+   */
+  async generateWorkflow(
+    workspaceId: string,
+    userDescription: string,
+    res: Response,
+    agentId?: string
+  ): Promise<void> {
+    const startTime = Date.now();
+
+    try {
+      // Pre-flight credit check (max cost is 3 credits)
+      const hasCredits = await this.checkWorkspaceCredits(
+        new mongoose.Types.ObjectId(workspaceId),
+        3
+      );
+      if (!hasCredits) {
+        res.write(`data: ${JSON.stringify({ error: 'Insufficient credits for workflow generation' })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // Load workspace context for generation
+      const context = await this.loadWorkspaceContext(workspaceId);
+
+      // Build generation prompt
+      const prompt = this.buildGenerationPrompt(userDescription, context);
+
+      // Start streaming from Gemini 2.5 Pro with 8-second timeout
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Workflow generation timeout after 8 seconds')), 8000);
+      });
+
+      const result = await Promise.race([
+        model.generateContentStream(prompt),
+        timeoutPromise
+      ]);
+
+      // Stream tokens via SSE
+      let fullResponse = '';
+      for await (const chunk of result.stream) {
+        const token = chunk.text();
+        fullResponse += token;
+        res.write(`data: ${JSON.stringify({ token })}\n\n`);
+      }
+
+      const duration = Date.now() - startTime;
+      console.info(`[Performance] Workflow generation completed in ${duration}ms`);
+
+      // Validate generated instructions for missing resources (AC3 requirement)
+      const validation = await this.validateGeneratedInstructions(workspaceId, fullResponse);
+
+      // Send validation warnings as separate SSE event if any exist
+      if (validation.warnings.length > 0) {
+        res.write(`data: ${JSON.stringify({
+          event: 'validation',
+          warnings: validation.warnings,
+          suggestions: validation.suggestions
+        })}\n\n`);
+      }
+
+      // Send completion event
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+
+      // Track credits based on complexity (fire-and-forget)
+      const stepCount = (fullResponse.match(/^\d+\./gm) || []).length;
+      const credits = stepCount > 10 ? 3 : 2;
+      this.deductCredits(new mongoose.Types.ObjectId(workspaceId), credits).catch(err => {
+        console.error('[Credit Deduction Error]', err);
+      });
+
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      console.error(`[Error] Workflow generation failed after ${duration}ms:`, error);
+
+      const errorMessage = error.message.includes('timeout')
+        ? 'Workflow generation timeout. Please try with a simpler description.'
+        : 'Failed to generate workflow. Please try again.';
+
+      res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
+      res.end();
+    }
+  }
+
+  /**
+   * Load workspace context for workflow generation
+   * Story 4.2, Task 1.1 (Context Injection)
+   */
+  private async loadWorkspaceContext(workspaceId: string): Promise<string> {
+    // Load top 20 most-used templates
+    const templates = await EmailTemplate.find({
+      workspace: new mongoose.Types.ObjectId(workspaceId)
+    })
+      .sort({ usageCount: -1 })
+      .limit(20)
+      .select('name description')
+      .lean();
+
+    // Load custom fields
+    const customFields = await CustomFieldDefinition.find({
+      workspace: new mongoose.Types.ObjectId(workspaceId)
+    })
+      .select('name type')
+      .lean();
+
+    // Load active integrations
+    const integrations = await IntegrationCredential.find({
+      workspace: new mongoose.Types.ObjectId(workspaceId),
+      isActive: true,
+      isExpired: false
+    })
+      .select('provider status')
+      .lean();
+
+    // Build context string
+    const contextString = `
+AVAILABLE TEMPLATES:
+${templates.length > 0 ? templates.map(t => `- "${t.name}": ${t.description || 'No description'}`).join('\n') : '- No templates created yet'}
+
+CUSTOM FIELDS:
+${customFields.length > 0 ? customFields.map(f => `- @contact.${f.name} (${f.type})`).join('\n') : '- No custom fields defined'}
+
+CONNECTED INTEGRATIONS:
+${integrations.length > 0 ? integrations.map(i => `- ${i.provider} (${i.status || 'active'})`).join('\n') : '- No integrations connected'}
+
+AVAILABLE ACTIONS:
+1. Send Email - send email using template '[template-name]'
+2. LinkedIn Invitation - send LinkedIn invitation with note '[message]'
+3. Web Search - search web for '[query]'
+4. Create Task - create task '[task-name]' for team
+5. Add Tag - add tag '[tag-name]'
+6. Remove Tag - remove tag '[tag-name]'
+7. Update Field - update [field-name] to [value]
+8. Enrich Contact - enrich contact with Apollo.io
+9. Wait - wait [X] days
+
+TRIGGER TYPES:
+- Manual: Run on demand
+- Scheduled: Daily/weekly/monthly
+- Event: contact_created, deal_updated, form_submitted
+`;
+
+    return contextString;
+  }
+
+  /**
+   * Validate generated instructions for missing resources
+   * Story 4.2, Task 1.2
+   */
+  async validateGeneratedInstructions(
+    workspaceId: string,
+    generatedText: string
+  ): Promise<{
+    isValid: boolean;
+    warnings: Array<{
+      type: 'missing_template' | 'missing_field' | 'missing_integration' | 'invalid_syntax';
+      message: string;
+      line: number;
+    }>;
+    suggestions: string[];
+  }> {
+    const warnings: Array<{
+      type: 'missing_template' | 'missing_field' | 'missing_integration' | 'invalid_syntax';
+      message: string;
+      line: number;
+    }> = [];
+
+    // Parse template references: "using template 'xyz'"
+    const templateRegex = /using template ['"](.*?)['"]/gi;
+    const templateMatches = [...generatedText.matchAll(templateRegex)];
+
+    for (const match of templateMatches) {
+      const templateName = match[1];
+      const template = await EmailTemplate.findOne({
+        workspace: new mongoose.Types.ObjectId(workspaceId),
+        name: templateName
+      });
+
+      if (!template) {
+        warnings.push({
+          type: 'missing_template',
+          message: `Template '${templateName}' not found. Create this template or update the name.`,
+          line: this.getLineNumber(generatedText, match.index!)
+        });
+      }
+    }
+
+    // Parse integration references
+    if (generatedText.toLowerCase().includes('linkedin')) {
+      const linkedinIntegration = await IntegrationCredential.findOne({
+        workspace: new mongoose.Types.ObjectId(workspaceId),
+        provider: 'linkedin',
+        isActive: true
+      });
+
+      if (!linkedinIntegration) {
+        warnings.push({
+          type: 'missing_integration',
+          message: 'LinkedIn integration not connected. Connect in Settings > Integrations.',
+          line: 0
+        });
+      }
+    }
+
+    // Check for Apollo.io enrichment references
+    if (generatedText.toLowerCase().includes('apollo') || generatedText.toLowerCase().includes('enrich')) {
+      const apolloIntegration = await IntegrationCredential.findOne({
+        workspace: new mongoose.Types.ObjectId(workspaceId),
+        provider: 'apollo',
+        isActive: true
+      });
+
+      if (!apolloIntegration) {
+        warnings.push({
+          type: 'missing_integration',
+          message: 'Apollo.io integration not connected. Connect in Settings > Integrations for contact enrichment.',
+          line: 0
+        });
+      }
+    }
+
+    // Parse custom field references: @contact.customField
+    const fieldRegex = /@contact\.(\w+)/g;
+    const fieldMatches = [...generatedText.matchAll(fieldRegex)];
+
+    for (const match of fieldMatches) {
+      const fieldName = match[1];
+      const standardFields = ['firstName', 'lastName', 'email', 'title', 'company'];
+      if (standardFields.includes(fieldName)) continue;
+
+      const customField = await CustomFieldDefinition.findOne({
+        workspace: new mongoose.Types.ObjectId(workspaceId),
+        name: fieldName
+      });
+
+      if (!customField) {
+        warnings.push({
+          type: 'missing_field',
+          message: `Custom field '@contact.${fieldName}' not defined.`,
+          line: this.getLineNumber(generatedText, match.index!)
+        });
+      }
+    }
+
+    // Validate conditional syntax
+    const conditionalRegex = /if\s+(.+?),?\s+(?:then\s+)?(.+)/gi;
+    const conditionalMatches = [...generatedText.matchAll(conditionalRegex)];
+
+    for (const match of conditionalMatches) {
+      const condition = match[1];
+      const validOperators = ['contains', 'equals', 'is', 'greater than', 'less than', 'exists'];
+      const hasValidOperator = validOperators.some(op => condition.toLowerCase().includes(op));
+
+      if (!hasValidOperator) {
+        warnings.push({
+          type: 'invalid_syntax',
+          message: `Invalid condition syntax: "${condition}". Use operators: contains, equals, is, greater than, less than, exists`,
+          line: this.getLineNumber(generatedText, match.index!)
+        });
+      }
+    }
+
+    return {
+      isValid: warnings.length === 0,
+      warnings,
+      suggestions: this.generateSuggestions(warnings)
+    };
+  }
+
+  /**
+   * Suggest splitting complex workflows
+   * Story 4.2, Task 1.3
+   */
+  async suggestWorkflowSplit(instructions: string): Promise<string | null> {
+    const stepCount = (instructions.match(/^\d+\./gm) || []).length;
+
+    if (stepCount <= 15) {
+      return null; // No split needed
+    }
+
+    return `This workflow is complex with ${stepCount} steps. Consider breaking into 2-3 agents:
+- Agent 1: Setup and Filtering (steps 1-7)
+- Agent 2: Execution and Follow-up (steps 8-${stepCount})
+
+Would you like me to show how to break this up?`;
+  }
+
+  /**
+   * Ask clarifying questions for vague descriptions
+   * Story 4.2, Task 1.4
+   */
+  async askClarifyingQuestions(userDescription: string): Promise<string[]> {
+    // Use simple heuristics to detect vagueness
+    const questions: string[] = [];
+
+    if (!userDescription.toLowerCase().match(/(ceo|vp|director|manager|lead)/)) {
+      questions.push('What specific sales task should this agent handle?');
+    }
+
+    if (!userDescription.toLowerCase().match(/(email|linkedin|call|message)/)) {
+      questions.push('What action should the agent take (email, LinkedIn, etc.)?');
+    }
+
+    if (!userDescription.toLowerCase().match(/(contact|company|lead|deal)/)) {
+      questions.push('Who is the target audience (CEOs, VPs, etc.)?');
+    }
+
+    return questions.length > 0 ? questions : [];
+  }
+
+  /**
+   * Get line number from text index
+   */
+  private getLineNumber(text: string, index: number): number {
+    const lines = text.substring(0, index).split('\n');
+    return lines.length;
+  }
+
+  /**
+   * Generate suggestions from warnings
+   */
+  private generateSuggestions(warnings: Array<{ type: string; message: string; line: number }>): string[] {
+    const suggestions: string[] = [];
+
+    const missingTemplates = warnings.filter(w => w.type === 'missing_template');
+    if (missingTemplates.length > 0) {
+      suggestions.push('Create the missing email templates in Settings > Email Templates');
+    }
+
+    const missingIntegrations = warnings.filter(w => w.type === 'missing_integration');
+    if (missingIntegrations.length > 0) {
+      suggestions.push('Connect required integrations in Settings > Integrations');
+    }
+
+    const syntaxErrors = warnings.filter(w => w.type === 'invalid_syntax');
+    if (syntaxErrors.length > 0) {
+      suggestions.push('Review conditional syntax. Use format: "If contact.title contains \'CEO\', send email..."');
+    }
+
+    return suggestions;
+  }
+
+  /**
+   * Build prompt for workflow generation
+   * Story 4.2, Task 1.1 (System Prompt Design)
+   */
+  private buildGenerationPrompt(userDescription: string, context: string): string {
+    return `You are a sales automation expert creating executable agent workflows for Clianta CRM.
+
+CRITICAL RULES:
+- Generate ONLY numbered list format (1. Action, 2. Action, etc.)
+- Use EXACT template names from available templates
+- Use EXACT custom field names from workspace
+- Maximum 15 steps (suggest split if more complex)
+- Include conditional logic with "If [condition], then [action]"
+- Use wait steps for follow-up timing
+- Always use workspace-specific data (don't invent template names)
+
+WORKSPACE CONTEXT:
+${context}
+
+USER REQUEST:
+"${userDescription}"
+
+GENERATION STRATEGY:
+1. If description is vague (missing audience/action/trigger) → ASK 2-4 clarifying questions instead of generating
+2. If workflow needs >15 steps → SUGGEST splitting into 2-3 agents
+3. If template referenced doesn't exist → INCLUDE WARNING: "⚠️ Template '[name]' not found"
+4. If integration needed but not connected → INCLUDE WARNING: "🔌 [Integration] not connected"
+
+FORMAT OUTPUT:
+Either:
+A) NUMBERED WORKFLOW (if clear description):
+1. [Action with specific parameters]
+2. [Action with specific parameters]
+...
+
+B) CLARIFYING QUESTIONS (if vague):
+Before I generate, I need to clarify:
+- [Question 1]
+- [Question 2]
+- [Question 3]
+
+C) SPLIT SUGGESTION (if complex):
+This workflow is complex. Consider breaking into:
+- Agent 1: [Purpose] (steps 1-7)
+- Agent 2: [Purpose] (steps 8-15)
+
+Now generate:`;
   }
 
   /**

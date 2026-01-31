@@ -88,7 +88,7 @@ development_status:
   # Epic 4: AI-Powered Agent Building (11 stories)
   epic-4: in-progress
   4-1-ai-copilot-chat-interface: done
-  4-2-generate-complete-agent-instructions: backlog
+  4-2-generate-complete-agent-instructions: review
   4-3-answer-questions-about-automation: backlog
   4-4-suggest-improvements-to-instructions: backlog
   4-5-analyze-failed-executions: backlog

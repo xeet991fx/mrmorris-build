@@ -226,4 +226,140 @@ router.delete(
   }
 );
 
+/**
+ * POST /api/workspaces/:workspaceId/copilot/generate-workflow
+ *
+ * Generate complete agent workflow from description
+ * Story 4.2, Task 3.1
+ *
+ * @auth Required
+ * @body { description: string, agentId?: string }
+ * @response text/event-stream (SSE)
+ */
+router.post(
+  '/:workspaceId/copilot/generate-workflow',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { description, agentId } = req.body;
+      const userId = req.user!._id.toString();
+
+      // Validate input
+      if (!description || description.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Description is required.',
+        });
+      }
+
+      if (description.length > 2000) {
+        return res.status(400).json({
+          success: false,
+          error: 'Description too long. Maximum 2000 characters.',
+        });
+      }
+
+      // Validate workspace access
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: 'Workspace not found',
+        });
+      }
+
+      if (workspace.userId.toString() !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied',
+        });
+      }
+
+      // Set SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+
+      // Generate workflow
+      await copilotService.generateWorkflow(workspaceId, description, res, agentId);
+
+    } catch (error: any) {
+      console.error('Generate workflow error:', error);
+
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to generate workflow.',
+        });
+      }
+
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
+  }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/copilot/validate-instructions
+ *
+ * Validate generated instructions for missing resources
+ * Story 4.2, Task 3.2
+ *
+ * @auth Required
+ * @body { instructions: string }
+ * @response { success: true, data: { isValid, warnings, suggestions } }
+ */
+router.post(
+  '/:workspaceId/copilot/validate-instructions',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId } = req.params;
+      const { instructions } = req.body;
+      const userId = req.user!._id.toString();
+
+      // Validate input
+      if (!instructions || instructions.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Instructions are required.',
+        });
+      }
+
+      // Validate workspace access
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: 'Workspace not found',
+        });
+      }
+
+      if (workspace.userId.toString() !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied',
+        });
+      }
+
+      // Validate instructions
+      const validation = await copilotService.validateGeneratedInstructions(workspaceId, instructions);
+
+      return res.json({
+        success: true,
+        data: validation,
+      });
+
+    } catch (error: any) {
+      console.error('Validate instructions error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to validate instructions.',
+      });
+    }
+  }
+);
+
 export default router;

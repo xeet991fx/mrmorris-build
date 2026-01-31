@@ -7,11 +7,26 @@
 
 import { create } from 'zustand';
 import { streamCopilotResponse } from '@/lib/api/sse';
+import { toast } from 'sonner';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+}
+
+interface ValidationWarning {
+  type: 'missing_template' | 'missing_field' | 'missing_integration' | 'invalid_syntax';
+  message: string;
+  line: number;
+}
+
+interface GenerationRecord {
+  timestamp: Date;
+  description: string;
+  generatedInstructions: string;
+  wasExecutable: boolean;
+  editsMade: boolean;
 }
 
 interface CopilotState {
@@ -30,6 +45,12 @@ interface CopilotState {
   // Current streaming message content per agent
   streamingContent: Record<string, string>;
 
+  // Story 4.2, Task 5.1: Generation state
+  generatedInstructions: Record<string, string | null>;
+  validationWarnings: Record<string, ValidationWarning[]>;
+  isGenerating: Record<string, boolean>;
+  generationHistory: Record<string, GenerationRecord[]>;
+
   // Actions
   loadHistory: (workspaceId: string, agentId: string) => Promise<void>;
   sendMessage: (workspaceId: string, agentId: string, content: string) => void;
@@ -40,6 +61,13 @@ interface CopilotState {
   openPanel: (agentId: string) => void;
   closePanel: (agentId: string) => void;
   setError: (agentId: string, error: string) => void;
+
+  // Story 4.2, Task 5.1: Generation actions
+  generateWorkflow: (workspaceId: string, description: string) => Promise<void>;
+  validateInstructions: (workspaceId: string, instructions: string) => Promise<void>;
+  applyInstructions: (agentId: string, instructions: string) => void;
+  clearGeneration: (agentId: string) => void;
+  trackGenerationSuccess: (agentId: string, wasExecutable: boolean) => void;
 }
 
 export const useCopilotStore = create<CopilotState>((set, get) => ({
@@ -48,6 +76,10 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
   isLoading: {},
   isStreaming: {},
   streamingContent: {},
+  generatedInstructions: {},
+  validationWarnings: {},
+  isGenerating: {},
+  generationHistory: {},
 
   /**
    * Load conversation history from API (last 10 messages)
@@ -325,6 +357,238 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
         },
         isStreaming: { ...state.isStreaming, [agentId]: false },
         streamingContent: { ...state.streamingContent, [agentId]: '' },
+      };
+    });
+  },
+
+  /**
+   * Generate workflow from description
+   * Story 4.2, Task 5.1
+   */
+  generateWorkflow: async (workspaceId: string, description: string) => {
+    // Debounce protection: Prevent double-clicks from triggering multiple generations
+    const { isGenerating } = get();
+    if (isGenerating[workspaceId]) {
+      console.warn('Generation already in progress, ignoring duplicate request');
+      return;
+    }
+
+    set((state) => ({
+      isGenerating: { ...state.isGenerating, [workspaceId]: true },
+      generatedInstructions: { ...state.generatedInstructions, [workspaceId]: '' },
+      validationWarnings: { ...state.validationWarnings, [workspaceId]: [] },
+    }));
+
+    // Helper function to make the generation request
+    const makeGenerationRequest = async (): Promise<void> => {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/copilot/generate-workflow`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ description }),
+        }
+      );
+
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let fullInstructions = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n\n');
+
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith('data:')) continue;
+
+          const data = JSON.parse(line.replace('data: ', ''));
+
+          if (data.token) {
+            fullInstructions += data.token;
+            set((state) => ({
+              generatedInstructions: {
+                ...state.generatedInstructions,
+                [workspaceId]: fullInstructions,
+              },
+            }));
+          } else if (data.event === 'validation') {
+            set((state) => ({
+              validationWarnings: {
+                ...state.validationWarnings,
+                [workspaceId]: data.warnings,
+              },
+            }));
+          } else if (data.done) {
+            set((state) => ({
+              isGenerating: { ...state.isGenerating, [workspaceId]: false },
+            }));
+          } else if (data.error) {
+            throw new Error(data.error);
+          }
+        }
+      }
+    };
+
+    // Retry logic: max 1 retry on timeout (Task 9.2)
+    const MAX_RETRIES = 1;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await makeGenerationRequest();
+        return; // Success, exit
+      } catch (error: any) {
+        lastError = error;
+        const isTimeout = error.message?.toLowerCase().includes('timeout');
+
+        if (isTimeout && attempt < MAX_RETRIES) {
+          console.warn(`Generation timeout, retrying (attempt ${attempt + 1}/${MAX_RETRIES})...`);
+          // Reset state for retry
+          set((state) => ({
+            generatedInstructions: { ...state.generatedInstructions, [workspaceId]: '' },
+          }));
+          continue;
+        }
+        break; // Non-timeout error or max retries reached
+      }
+    }
+
+    // All retries exhausted
+    console.error('Generation error after retries:', lastError);
+    set((state) => ({
+      isGenerating: { ...state.isGenerating, [workspaceId]: false },
+    }));
+    throw lastError;
+  },
+
+  /**
+   * Validate instructions
+   * Story 4.2, Task 5.1
+   */
+  validateInstructions: async (workspaceId: string, instructions: string) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(
+        `/api/workspaces/${workspaceId}/copilot/validate-instructions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ instructions }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        set((state) => ({
+          validationWarnings: {
+            ...state.validationWarnings,
+            [workspaceId]: result.data.warnings || [],
+          },
+        }));
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+    }
+  },
+
+  /**
+   * Apply instructions to agent form
+   * Story 4.2, Task 5.1
+   */
+  applyInstructions: (agentId: string, instructions: string) => {
+    const instructionField = document.querySelector(
+      `#agent-${agentId}-instructions`
+    ) as HTMLTextAreaElement;
+
+    if (instructionField) {
+      const currentValue = instructionField.value;
+
+      if (currentValue.trim()) {
+        const action = window.confirm(
+          'Instructions field has content. Click OK to append, Cancel to replace.'
+        );
+
+        if (action) {
+          instructionField.value = `${currentValue}\n\n--- Generated by AI Copilot ---\n\n${instructions}`;
+        } else {
+          instructionField.value = instructions;
+        }
+      } else {
+        instructionField.value = instructions;
+      }
+
+      const event = new Event('input', { bubbles: true });
+      instructionField.dispatchEvent(event);
+
+      instructionField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      instructionField.focus();
+
+      toast.success('Instructions applied. Review and test before going live.');
+    }
+  },
+
+  /**
+   * Clear generation state
+   * Story 4.2, Task 5.1
+   */
+  clearGeneration: (agentId: string) => {
+    set((state) => ({
+      generatedInstructions: { ...state.generatedInstructions, [agentId]: null },
+      validationWarnings: { ...state.validationWarnings, [agentId]: [] },
+      isGenerating: { ...state.isGenerating, [agentId]: false },
+    }));
+  },
+
+  /**
+   * Track generation success for metrics
+   * Story 4.2, Task 5.2 + Task 9.3 (Performance Monitoring)
+   */
+  trackGenerationSuccess: (agentId: string, wasExecutable: boolean, durationMs?: number) => {
+    set((state) => {
+      const history = [...(state.generationHistory[agentId] || [])];
+      const lastGeneration = history[history.length - 1];
+
+      if (lastGeneration) {
+        lastGeneration.wasExecutable = wasExecutable;
+      }
+
+      // Calculate success rate (NFR54: 85% target)
+      const totalGenerations = history.length;
+      const successCount = history.filter(g => g.wasExecutable).length;
+      const successRate = totalGenerations > 0
+        ? Math.round((successCount / totalGenerations) * 100)
+        : 0;
+
+      // Log metrics for monitoring (Task 9.3)
+      console.info(`[Generation Metrics] Agent: ${agentId}`, {
+        wasExecutable,
+        durationMs: durationMs || 'N/A',
+        totalGenerations,
+        successRate: `${successRate}%`,
+        targetRate: '85%'
+      });
+
+      // Alert if success rate drops below threshold (Task 9.3)
+      if (totalGenerations >= 5 && successRate < 80) {
+        console.warn(`[Quality Alert] Generation success rate (${successRate}%) below 80% threshold for agent ${agentId}`);
+      }
+
+      return {
+        generationHistory: {
+          ...state.generationHistory,
+          [agentId]: history,
+        },
       };
     });
   },
