@@ -68,23 +68,24 @@ export default function ChatMessage({
         )}
 
         <div
-          className={`rounded-lg p-3 ${
-            isUser
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-          }`}
+          className={`rounded-lg p-3 [overflow-wrap:anywhere] ${isUser
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+            }`}
         >
           {isUser ? (
-            <p className="text-sm whitespace-pre-wrap">{content}</p>
+            <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{content}</p>
           ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none">
+            <div className="prose prose-sm dark:prose-invert max-w-none [overflow-wrap:anywhere]">
               <ReactMarkdown
                 components={{
-                  code({ node, inline, className, children, ...props }) {
+                  code({ node, className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
                     const codeString = String(children).replace(/\n$/, '');
+                    // In react-markdown v6+, inline is detected from whether the parent is 'pre'
+                    const isInline = !match;
 
-                    return !inline && match ? (
+                    return !isInline && match ? (
                       <div className="relative group">
                         <button
                           onClick={() => handleCopyCode(codeString)}
@@ -94,16 +95,15 @@ export default function ChatMessage({
                           {copied ? <Check size={14} /> : <Copy size={14} />}
                         </button>
                         <SyntaxHighlighter
-                          style={vscDarkPlus}
+                          style={vscDarkPlus as { [key: string]: React.CSSProperties }}
                           language={match[1]}
                           PreTag="div"
-                          {...props}
                         >
                           {codeString}
                         </SyntaxHighlighter>
                       </div>
                     ) : (
-                      <code className={className} {...props}>
+                      <code className={`${className || ''} break-all`} {...props}>
                         {children}
                       </code>
                     );

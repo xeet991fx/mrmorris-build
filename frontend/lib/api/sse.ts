@@ -11,6 +11,9 @@ interface SSEMessage {
   error?: string;
 }
 
+// API base URL - use environment variable or fallback to localhost
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
 interface StreamOptions {
   onToken: (token: string) => void;
   onComplete: () => void;
@@ -52,7 +55,7 @@ export function streamCopilotResponse(
 
     try {
       // Get JWT token from localStorage
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) {
         onError('Authentication token not found');
         return;
@@ -69,7 +72,7 @@ export function streamCopilotResponse(
 
       // Use fetch() with POST to send message (EventSource can't POST)
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/agents/${agentId}/copilot/chat`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/agents/${agentId}/copilot/chat`,
         {
           method: 'POST',
           headers: {
@@ -195,13 +198,13 @@ export async function* streamCopilotResponseAsync(
   agentId: string,
   message: string
 ): AsyncGenerator<string, void, unknown> {
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Authentication token not found');
   }
 
   const response = await fetch(
-    `/api/workspaces/${workspaceId}/agents/${agentId}/copilot/chat`,
+    `${API_BASE_URL}/workspaces/${workspaceId}/agents/${agentId}/copilot/chat`,
     {
       method: 'POST',
       headers: {

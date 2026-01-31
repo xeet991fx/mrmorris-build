@@ -9,6 +9,9 @@ import { create } from 'zustand';
 import { streamCopilotResponse } from '@/lib/api/sse';
 import { toast } from 'sonner';
 
+// API base URL - use environment variable or fallback to localhost
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
 interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
@@ -97,7 +100,7 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
     }));
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) {
         // Not authenticated - show welcome message without throwing error
         set((state) => ({
@@ -117,7 +120,7 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
       }
 
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/agents/${agentId}/copilot/history`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/agents/${agentId}/copilot/history`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -176,7 +179,7 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
     const { conversations, addMessage, updateStreamingMessage, finalizeStreamingMessage, setError } = get();
 
     // Check authentication before attempting to send
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('token');
     if (!token) {
       addMessage(agentId, {
         role: 'user',
@@ -297,13 +300,13 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
    */
   clearConversation: async (workspaceId: string, agentId: string) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('Not authenticated');
       }
 
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/agents/${agentId}/copilot/clear`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/agents/${agentId}/copilot/clear`,
         {
           method: 'DELETE',
           headers: {
@@ -411,9 +414,9 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
 
     // Helper function to make the generation request
     const makeGenerationRequest = async (): Promise<void> => {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/copilot/generate-workflow`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/copilot/generate-workflow`,
         {
           method: 'POST',
           headers: {
@@ -504,9 +507,9 @@ export const useCopilotStore = create<CopilotState>((set, get) => ({
    */
   validateInstructions: async (workspaceId: string, instructions: string) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/copilot/validate-instructions`,
+        `${API_BASE_URL}/workspaces/${workspaceId}/copilot/validate-instructions`,
         {
           method: 'POST',
           headers: {

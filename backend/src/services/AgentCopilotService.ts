@@ -94,8 +94,11 @@ class AgentCopilotService {
         creditsUsed: 0,
       });
 
-      // Load agent for context
-      const agent = await Agent.findById(conversation.agent);
+      // Load agent for context (include workspace filter for security)
+      const agent = await Agent.findOne({
+        _id: conversation.agent,
+        workspace: conversation.workspace
+      });
 
       // Build prompt with context
       const prompt = this.buildPrompt(conversation, agent, userMessage);
@@ -109,9 +112,9 @@ class AgentCopilotService {
         }
       });
 
-      // Create timeout promise (5 seconds as per story requirement)
+      // Create timeout promise (30 seconds for Gemini API)
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Gemini API timeout after 5 seconds')), 5000);
+        setTimeout(() => reject(new Error('Gemini API timeout after 30 seconds')), 30000);
       });
 
       // Race between Gemini call and timeout
