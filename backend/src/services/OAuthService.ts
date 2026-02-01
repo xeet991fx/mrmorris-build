@@ -150,20 +150,27 @@ export class OAuthService {
     }
 
     /**
-     * Fetch user profile from Google OAuth
+     * Fetch user profile from Google OAuth using userinfo endpoint
      */
     static async fetchGoogleProfile(accessToken: string): Promise<UserProfile> {
-        const oauth2Client = new google.auth.OAuth2();
-        oauth2Client.setCredentials({ access_token: accessToken });
+        try {
+            // Use direct HTTP call to Google userinfo endpoint (more reliable than v3 API)
+            const response = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
 
-        const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-        const { data } = await oauth2.userinfo.get();
-
-        return {
-            email: data.email || undefined,
-            name: data.name || undefined,
-            avatarUrl: data.picture || undefined,
-        };
+            const data = response.data;
+            return {
+                email: data.email || undefined,
+                name: data.name || undefined,
+                avatarUrl: data.picture || undefined,
+            };
+        } catch (error: any) {
+            console.error('[OAuthService] Failed to fetch Google profile:', error.message);
+            throw new Error(`Failed to fetch Google profile: ${error.message}`);
+        }
     }
 
     /**

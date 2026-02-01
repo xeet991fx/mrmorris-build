@@ -95,8 +95,8 @@ router.get('/google_sheets/oauth/callback', async (req, res) => {
         // Set credentials to fetch user info
         oauth2Client.setCredentials(tokens);
 
-        // Fetch user's Google account info
-        const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+        // Fetch user's Google account info using OAuth2 v3
+        const oauth2 = google.oauth2({ version: "v3", auth: oauth2Client });
         const userInfo = await oauth2.userinfo.get();
 
         const email = userInfo.data.email || 'Unknown';

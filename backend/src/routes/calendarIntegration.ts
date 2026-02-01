@@ -102,9 +102,9 @@ router.get("/callback/google", async (req, res) => {
             );
         }
 
-        // Get user email from Google
+        // Get user email from Google using OAuth2 v3
         oauth2Client.setCredentials(tokens);
-        const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+        const oauth2 = google.oauth2({ version: "v3", auth: oauth2Client });
         const { data: userInfo } = await oauth2.userinfo.get();
 
         if (!userInfo.email) {

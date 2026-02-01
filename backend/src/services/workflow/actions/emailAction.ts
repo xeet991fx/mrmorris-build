@@ -12,6 +12,7 @@ import { google } from "googleapis";
 import { Types } from "mongoose";
 import Activity from "../../../models/Activity";
 import EmailIntegration from "../../../models/EmailIntegration";
+import IntegrationCredential from "../../../models/IntegrationCredential";
 import EmailMessage from "../../../models/EmailMessage";
 import Contact from "../../../models/Contact";
 import emailService from "../../email";
@@ -143,10 +144,36 @@ export class EmailActionExecutor extends BaseActionExecutor {
             // Send via Gmail API
             result = await this.sendViaGmail(gmailIntegration, toEmail, subject, body);
         } else {
-            console.log("⚠️ No Gmail integration found, using SMTP fallback");
-            // Fallback to SMTP
-            result = await emailService.sendWorkflowEmail(toEmail, subject, body, entityData);
-            result.sentVia = "smtp";
+            // Try IntegrationCredential model (where Gmail OAuth is stored)
+            const workspaceObjId = new Types.ObjectId(enrollment.workspaceId.toString());
+            console.log("🔍 Checking IntegrationCredential with:", {
+                workspaceId: workspaceObjId.toString(),
+                type: 'gmail',
+                status: 'Connected',
+            });
+
+            const gmailCredential = await IntegrationCredential.findOne({
+                workspaceId: workspaceObjId,
+                type: 'gmail',
+                status: 'Connected',
+            }).select('+encryptedData');
+
+            console.log("🔍 IntegrationCredential query result:", gmailCredential ? "FOUND" : "NOT FOUND");
+
+            if (gmailCredential) {
+                const credData = gmailCredential.getCredentialData();
+                const senderEmail = gmailCredential.profileInfo?.email || credData.email;
+                console.log("✅ Found Gmail credential:", senderEmail);
+
+                // Send via Gmail API using stored credentials
+                result = await this.sendViaGmailCredential(credData, senderEmail, toEmail, subject, body);
+                result.sentVia = 'gmail';
+            } else {
+                console.log("⚠️ No Gmail integration found, using SMTP fallback");
+                // Fallback to SMTP
+                result = await emailService.sendWorkflowEmail(toEmail, subject, body, entityData);
+                result.sentVia = "smtp";
+            }
         }
 
         if (!result.success) {
@@ -154,7 +181,21 @@ export class EmailActionExecutor extends BaseActionExecutor {
             return this.error(result.error || "Failed to send email");
         }
 
-        const sentFrom = gmailIntegration?.email || process.env.EMAIL_USER || "system";
+        // Determine sender email for logging/display
+        let sentFrom = process.env.EMAIL_USER || "system";
+        if (gmailIntegration) {
+            sentFrom = gmailIntegration.email;
+        } else if (result.sentVia === 'gmail') {
+            // Gmail credential was used, get the email from IntegrationCredential
+            const gmailCred = await IntegrationCredential.findOne({
+                workspaceId: new Types.ObjectId(enrollment.workspaceId.toString()),
+                type: 'gmail',
+                status: 'Connected',
+            });
+            if (gmailCred) {
+                sentFrom = gmailCred.profileInfo?.email || sentFrom;
+            }
+        }
 
         // Save email to EmailMessage for inbox display
         try {
@@ -287,6 +328,64 @@ export class EmailActionExecutor extends BaseActionExecutor {
                 await integration.save();
             }
 
+            return {
+                success: false,
+                error: `Gmail error: ${error.message}`,
+                sentVia: "gmail",
+            };
+        }
+    }
+
+    /**
+     * Send email via Gmail API using IntegrationCredential data
+     */
+    private async sendViaGmailCredential(
+        credData: any,
+        fromEmail: string,
+        to: string,
+        subject: string,
+        body: string
+    ): Promise<{ success: boolean; messageId?: string; error?: string; sentVia: string }> {
+        try {
+            const oauth2Client = getOAuth2Client();
+            oauth2Client.setCredentials({
+                access_token: credData.accessToken,
+                refresh_token: credData.refreshToken,
+            });
+
+            const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+            // Create email message in RFC 2822 format
+            const emailLines = [
+                `From: ${fromEmail}`,
+                `To: ${to}`,
+                `Subject: ${subject}`,
+                "Content-Type: text/html; charset=utf-8",
+                "",
+                body,
+            ];
+
+            const rawMessage = emailLines.join("\r\n");
+            const encodedMessage = Buffer.from(rawMessage)
+                .toString("base64")
+                .replace(/\+/g, "-")
+                .replace(/\//g, "_")
+                .replace(/=+$/, "");
+
+            const response = await gmail.users.messages.send({
+                userId: "me",
+                requestBody: {
+                    raw: encodedMessage,
+                },
+            });
+
+            return {
+                success: true,
+                messageId: response.data.id || undefined,
+                sentVia: "gmail",
+            };
+        } catch (error: any) {
+            console.error("Gmail credential send error:", error.message);
             return {
                 success: false,
                 error: `Gmail error: ${error.message}`,
