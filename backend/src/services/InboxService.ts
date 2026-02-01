@@ -1030,6 +1030,9 @@ Write the email reply now (body only, no subject):`;
         try {
             // Get Gmail integrations - filter by workspace if provided
             const EmailIntegration = (await import("../models/EmailIntegration")).default;
+            const IntegrationCredential = (await import("../models/IntegrationCredential")).default;
+            const { Types } = await import("mongoose");
+
             const query: any = {
                 provider: "gmail",
                 isActive: true,
@@ -1041,16 +1044,78 @@ Write the email reply now (body only, no subject):`;
 
             const integrations = await EmailIntegration.find(query).select("+accessToken +refreshToken");
 
-            logger.debug("Found Gmail integrations", { count: integrations.length, workspaceId: workspaceId || "all" });
+            logger.debug("Found Gmail integrations (EmailIntegration)", { count: integrations.length, workspaceId: workspaceId || "all" });
 
-            if (integrations.length === 0) {
+            // ALSO check IntegrationCredential model (where OAuth flow saves Gmail credentials)
+            const credQuery: any = {
+                type: "gmail",
+                status: "Connected",
+            };
+            if (workspaceId) {
+                credQuery.workspaceId = new Types.ObjectId(workspaceId);
+            }
+
+            const gmailCredentials = await IntegrationCredential.find(credQuery).select("+encryptedData");
+            logger.debug("Found Gmail credentials (IntegrationCredential)", { count: gmailCredentials.length });
+
+            // Combine both sources - create unified integration objects
+            const allIntegrations: Array<{
+                workspaceId: any;
+                getAccessToken: () => string;
+                getRefreshToken: () => string;
+                email: string;
+                save: () => Promise<void>;
+                lastSyncAt?: Date;
+            }> = [];
+
+            // Add EmailIntegration entries
+            for (const integration of integrations) {
+                allIntegrations.push({
+                    workspaceId: integration.workspaceId,
+                    getAccessToken: () => integration.getAccessToken(),
+                    getRefreshToken: () => integration.getRefreshToken(),
+                    email: integration.email,
+                    save: async () => {
+                        integration.lastSyncAt = new Date();
+                        await integration.save();
+                    },
+                    lastSyncAt: integration.lastSyncAt,
+                });
+            }
+
+            // Add IntegrationCredential entries (avoid duplicates by workspaceId)
+            const existingWorkspaces = new Set(integrations.map(i => i.workspaceId.toString()));
+            for (const cred of gmailCredentials) {
+                if (!existingWorkspaces.has(cred.workspaceId.toString())) {
+                    try {
+                        const credData = cred.getCredentialData();
+                        allIntegrations.push({
+                            workspaceId: cred.workspaceId,
+                            getAccessToken: () => credData.accessToken,
+                            getRefreshToken: () => credData.refreshToken,
+                            email: cred.profileInfo?.email || "",
+                            save: async () => {
+                                cred.lastUsed = new Date();
+                                await cred.save();
+                            },
+                            lastSyncAt: cred.lastUsed,
+                        });
+                    } catch (e: any) {
+                        logger.warn("Failed to decrypt IntegrationCredential", { id: cred._id, error: e.message });
+                    }
+                }
+            }
+
+            logger.debug("Total Gmail integrations to process", { count: allIntegrations.length });
+
+            if (allIntegrations.length === 0) {
                 logger.debug("No active Gmail integrations found");
                 return 0;
             }
 
             const { google } = await import("googleapis");
 
-            for (const integration of integrations) {
+            for (const integration of allIntegrations) {
                 try {
                     logger.debug("Processing integration", { workspaceId: integration.workspaceId });
 
@@ -1213,7 +1278,6 @@ Write the email reply now (body only, no subject):`;
                     }
 
                     // Update last sync time
-                    integration.lastSyncAt = new Date();
                     await integration.save();
 
                 } catch (integrationError: any) {

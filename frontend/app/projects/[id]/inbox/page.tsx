@@ -295,6 +295,39 @@ export default function InboxPage() {
         return <EnvelopeIcon className="w-3.5 h-3.5 text-zinc-400" />;
     };
 
+    // Strip quoted email content from reply body
+    const formatReplyBody = (body?: string) => {
+        if (!body) return "";
+
+        const lines = body.split('\n');
+        const cleanLines: string[] = [];
+        let foundQuoteMarker = false;
+
+        for (const line of lines) {
+            // Stop at "On ... wrote:" patterns (Gmail quote header)
+            if (/^On .+ wrote:$/.test(line.trim())) {
+                foundQuoteMarker = true;
+                break;
+            }
+            // Skip lines starting with > (quoted text)
+            if (line.trim().startsWith('>')) {
+                foundQuoteMarker = true;
+                continue;
+            }
+            // If we've already seen quote markers, skip remaining content
+            if (foundQuoteMarker) continue;
+
+            cleanLines.push(line);
+        }
+
+        // Trim trailing empty lines
+        while (cleanLines.length > 0 && cleanLines[cleanLines.length - 1].trim() === '') {
+            cleanLines.pop();
+        }
+
+        return cleanLines.join('\n').trim() || body; // Fallback to original if nothing left
+    };
+
     if (isLoading) {
         return (
             <div className="h-full flex items-center justify-center">
@@ -588,7 +621,7 @@ export default function InboxPage() {
                                                         <span className="ml-auto text-xs text-zinc-400">{formatDate(message.repliedAt)}</span>
                                                     </div>
                                                     <p className="text-sm text-zinc-600 dark:text-zinc-400 truncate mb-0.5">{message.replySubject || message.subject}</p>
-                                                    <p className="text-xs text-zinc-400 truncate">{message.replyBody?.substring(0, 80)}...</p>
+                                                    <p className="text-xs text-zinc-400 truncate">{formatReplyBody(message.replyBody)?.substring(0, 80)}...</p>
                                                 </div>
 
                                                 <div className={cn("flex-shrink-0", sentiment.color)}>
@@ -709,7 +742,7 @@ export default function InboxPage() {
                                                                         <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">{msg.replySubject}</p>
                                                                     )}
                                                                     <div className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                                                                        {msg.replyBody}
+                                                                        {formatReplyBody(msg.replyBody)}
                                                                     </div>
                                                                 </div>
                                                             </div>
