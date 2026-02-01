@@ -38,6 +38,73 @@ const getOAuth2Client = () => {
 };
 
 /**
+ * Helper function to get Gmail integration from either EmailIntegration or IntegrationCredential
+ * Returns normalized integration object with tokens and workspaceId
+ */
+async function getGmailIntegration(integrationId: string, userId: string) {
+    // Try EmailIntegration first
+    const emailIntegration = await EmailIntegration.findOne({
+        _id: integrationId,
+        userId,
+    }).select("+accessToken +refreshToken");
+
+    if (emailIntegration) {
+        return {
+            type: 'emailIntegration' as const,
+            integration: emailIntegration,
+            workspaceId: emailIntegration.workspaceId,
+            isActive: emailIntegration.isActive,
+            getAccessToken: () => emailIntegration.getAccessToken(),
+            getRefreshToken: () => emailIntegration.getRefreshToken(),
+            updateTokens: async (accessToken: string, refreshToken: string, expiresAt?: Date) => {
+                emailIntegration.setTokens(accessToken, refreshToken);
+                if (expiresAt) emailIntegration.expiresAt = expiresAt;
+                await emailIntegration.save();
+            },
+            updateLastSync: async () => {
+                emailIntegration.lastSyncAt = new Date();
+                await emailIntegration.save();
+            },
+        };
+    }
+
+    // Try IntegrationCredential (OAuth flow)
+    // Must include +encryptedData since it has select: false in schema
+    const oauthCredential = await IntegrationCredential.findOne({
+        _id: integrationId,
+        type: 'gmail',
+    }).select("+encryptedData");
+
+    if (oauthCredential) {
+        const credData = oauthCredential.getCredentialData();
+        return {
+            type: 'oauthCredential' as const,
+            integration: oauthCredential,
+            workspaceId: oauthCredential.workspaceId,
+            isActive: oauthCredential.status === 'Connected' && oauthCredential.isValid,
+            getAccessToken: () => credData.accessToken,
+            getRefreshToken: () => credData.refreshToken,
+            updateTokens: async (accessToken: string, refreshToken: string, expiresAt?: Date) => {
+                oauthCredential.setCredentialData({
+                    ...credData,
+                    accessToken,
+                    refreshToken,
+                    expiresAt,
+                });
+                if (expiresAt) oauthCredential.expiresAt = expiresAt;
+                await oauthCredential.save();
+            },
+            updateLastSync: async () => {
+                oauthCredential.lastUsed = new Date();
+                await oauthCredential.save();
+            },
+        };
+    }
+
+    return null;
+}
+
+/**
  * GET /api/email/connect/gmail
  * Start Gmail OAuth flow
  */
@@ -341,20 +408,17 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
     try {
         const { integrationId } = req.params;
 
-        // Get integration with tokens
-        const integration = await EmailIntegration.findOne({
-            _id: integrationId,
-            userId: req.user?._id,
-        }).select("+accessToken +refreshToken");
+        // Get integration from either EmailIntegration or IntegrationCredential
+        const integrationData = await getGmailIntegration(integrationId, req.user?._id?.toString() || '');
 
-        if (!integration) {
+        if (!integrationData) {
             return res.status(404).json({
                 success: false,
                 error: "Integration not found",
             });
         }
 
-        if (!integration.isActive) {
+        if (!integrationData.isActive) {
             return res.status(400).json({
                 success: false,
                 error: "Integration is not active",
@@ -364,21 +428,18 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
         // Set up OAuth client with tokens
         const oauth2Client = getOAuth2Client();
         oauth2Client.setCredentials({
-            access_token: integration.getAccessToken(),
-            refresh_token: integration.getRefreshToken(),
+            access_token: integrationData.getAccessToken(),
+            refresh_token: integrationData.getRefreshToken(),
         });
 
         // Handle token refresh
         oauth2Client.on("tokens", async (tokens: { access_token?: string | null; refresh_token?: string | null; expiry_date?: number | null }) => {
             if (tokens.access_token) {
-                integration.setTokens(
+                await integrationData.updateTokens(
                     tokens.access_token,
-                    tokens.refresh_token || integration.getRefreshToken()
+                    tokens.refresh_token || integrationData.getRefreshToken(),
+                    tokens.expiry_date ? new Date(tokens.expiry_date) : undefined
                 );
-                if (tokens.expiry_date) {
-                    integration.expiresAt = new Date(tokens.expiry_date);
-                }
-                await integration.save();
             }
         });
 
@@ -386,7 +447,10 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
         // Fetch recent emails (last 7 days)
-        const lastSync = integration.lastSyncAt || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const lastSyncDate = integrationData.type === 'emailIntegration'
+            ? (integrationData.integration as any).lastSyncAt
+            : (integrationData.integration as any).lastUsed;
+        const lastSync = lastSyncDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const query = `after:${Math.floor(lastSync.getTime() / 1000)}`;
 
         const messagesResponse = await gmail.users.messages.list({
@@ -405,13 +469,13 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
         let genericEmailsSkipped = 0;
 
         // Get contacts for matching
-        const contacts = await Contact.find({ workspaceId: integration.workspaceId });
+        const contacts = await Contact.find({ workspaceId: integrationData.workspaceId });
         const contactEmails = new Map(
             contacts.map((c) => [c.email?.toLowerCase(), c])
         );
 
         // Get companies for matching
-        const companies = await Company.find({ workspaceId: integration.workspaceId });
+        const companies = await Company.find({ workspaceId: integrationData.workspaceId });
         const companiesMap = new Map(
             companies.map((c) => [c.name.toLowerCase(), c])
         );
@@ -489,8 +553,11 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
                 }
 
                 // Filter out the integration's own email
+                const userEmail = integrationData.type === 'emailIntegration'
+                    ? (integrationData.integration as any).email
+                    : (integrationData.integration as any).profileInfo?.email;
                 const externalParticipants = participants.filter(
-                    p => p.email.toLowerCase() !== integration.email.toLowerCase()
+                    p => p.email.toLowerCase() !== (userEmail || '').toLowerCase()
                 );
 
                 // Extract sender email to match with signature
@@ -507,8 +574,8 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
 
                         const result = await autoCreateContactFromEmail(
                             participant,
-                            integration.workspaceId.toString(),
-                            integration.userId.toString(),
+                            integrationData.workspaceId.toString(),
+                            req.user?._id?.toString() || '',
                             contactEmails,
                             companiesMap,
                             participantSignature // Only sender gets signature data
@@ -551,7 +618,7 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
                 if (matchedContact) {
                     // Find opportunity for this contact
                     const opportunity = await Opportunity.findOne({
-                        workspaceId: integration.workspaceId,
+                        workspaceId: integrationData.workspaceId,
                         contactId: matchedContact._id,
                         status: "open",
                     });
@@ -566,11 +633,14 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
 
                         if (!existingActivity) {
                             // Create activity
-                            const isInbound = fromEmail.toLowerCase() !== integration.email.toLowerCase();
+                            const userEmail = integrationData.type === 'emailIntegration'
+                                ? (integrationData.integration as any).email
+                                : (integrationData.integration as any).profileInfo?.email;
+                            const isInbound = fromEmail.toLowerCase() !== (userEmail || '').toLowerCase();
 
                             await Activity.create({
-                                workspaceId: integration.workspaceId,
-                                userId: integration.userId,
+                                workspaceId: integrationData.workspaceId,
+                                userId: req.user?._id,
                                 opportunityId: opportunity._id,
                                 type: "email",
                                 title: isInbound ? `Email from ${fromEmail}` : `Email to ${toEmail}`,
@@ -596,9 +666,7 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
         }
 
         // Update last sync time
-        integration.lastSyncAt = new Date();
-        integration.syncError = undefined;
-        await integration.save();
+        await integrationData.updateLastSync();
 
         console.log(`\n📊 Email Sync Complete:`);
         console.log(`   📧 Emails processed: ${messages.length}`);
@@ -618,7 +686,7 @@ router.post("/:integrationId/sync", authenticate, async (req: AuthRequest, res: 
                 contactsCreated,
                 contactsUpdated,
                 signaturesParsed,
-                lastSyncAt: integration.lastSyncAt,
+                lastSyncAt: new Date(),
             },
         });
     } catch (error: any) {
@@ -675,20 +743,17 @@ router.post("/:integrationId/sync-contacts", authenticate, async (req: AuthReque
         const { integrationId } = req.params;
         const { autoExtractFromEmails = false } = req.body;
 
-        // Get integration with tokens
-        const integration = await EmailIntegration.findOne({
-            _id: integrationId,
-            userId: req.user?._id,
-        }).select("+accessToken +refreshToken");
+        // Get integration from either EmailIntegration or IntegrationCredential
+        const integrationData = await getGmailIntegration(integrationId, req.user?._id?.toString() || '');
 
-        if (!integration) {
+        if (!integrationData) {
             return res.status(404).json({
                 success: false,
                 error: "Integration not found",
             });
         }
 
-        if (!integration.isActive) {
+        if (!integrationData.isActive) {
             return res.status(400).json({
                 success: false,
                 error: "Integration is not active",
@@ -698,21 +763,18 @@ router.post("/:integrationId/sync-contacts", authenticate, async (req: AuthReque
         // Set up OAuth client with tokens
         const oauth2Client = getOAuth2Client();
         oauth2Client.setCredentials({
-            access_token: integration.getAccessToken(),
-            refresh_token: integration.getRefreshToken(),
+            access_token: integrationData.getAccessToken(),
+            refresh_token: integrationData.getRefreshToken(),
         });
 
         // Handle token refresh
         oauth2Client.on("tokens", async (tokens: { access_token?: string | null; refresh_token?: string | null; expiry_date?: number | null }) => {
             if (tokens.access_token) {
-                integration.setTokens(
+                await integrationData.updateTokens(
                     tokens.access_token,
-                    tokens.refresh_token || integration.getRefreshToken()
+                    tokens.refresh_token || integrationData.getRefreshToken(),
+                    tokens.expiry_date ? new Date(tokens.expiry_date) : undefined
                 );
-                if (tokens.expiry_date) {
-                    integration.expiresAt = new Date(tokens.expiry_date);
-                }
-                await integration.save();
             }
         });
 
@@ -723,7 +785,7 @@ router.post("/:integrationId/sync-contacts", authenticate, async (req: AuthReque
 
         // Get existing contacts for deduplication (declared here for use in multiple sections)
         const existingContacts = await Contact.find({
-            workspaceId: integration.workspaceId,
+            workspaceId: integrationData.workspaceId,
         });
         const emailToContactMap = new Map(
             existingContacts
@@ -828,8 +890,8 @@ router.post("/:integrationId/sync-contacts", authenticate, async (req: AuthReque
                         // Create new contact
                         await Contact.create({
                             ...contactData,
-                            workspaceId: integration.workspaceId,
-                            userId: integration.userId,
+                            workspaceId: integrationData.workspaceId,
+                            userId: req.user?._id,
                         });
                         createdCount++;
                         console.log(`   ✅ Created ${primaryEmail}`);
@@ -909,8 +971,8 @@ router.post("/:integrationId/sync-contacts", authenticate, async (req: AuthReque
                                 email,
                                 source: "email_extraction",
                                 status: "lead",
-                                workspaceId: integration.workspaceId,
-                                userId: integration.userId,
+                                workspaceId: integrationData.workspaceId,
+                                userId: req.user?._id,
                             });
                             createdCount++;
                             emailToContactMap.set(email, null as any);
