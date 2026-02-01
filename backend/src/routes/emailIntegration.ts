@@ -294,21 +294,35 @@ router.delete("/:integrationId/disconnect", authenticate, async (req: AuthReques
     try {
         const { integrationId } = req.params;
 
+        // Try to delete from EmailIntegration first
         const integration = await EmailIntegration.findOneAndDelete({
             _id: integrationId,
             userId: req.user?._id,
         });
 
-        if (!integration) {
-            return res.status(404).json({
-                success: false,
-                error: "Integration not found",
+        if (integration) {
+            return res.json({
+                success: true,
+                message: "Email integration disconnected",
             });
         }
 
-        res.json({
-            success: true,
-            message: "Email integration disconnected",
+        // If not found in EmailIntegration, try IntegrationCredential (OAuth flow)
+        const oauthCredential = await IntegrationCredential.findOneAndDelete({
+            _id: integrationId,
+            type: 'gmail',
+        });
+
+        if (oauthCredential) {
+            return res.json({
+                success: true,
+                message: "Email integration disconnected",
+            });
+        }
+
+        return res.status(404).json({
+            success: false,
+            error: "Integration not found",
         });
     } catch (error: any) {
         console.error("Disconnect error:", error);
