@@ -12,6 +12,7 @@ import { TriggerConfiguration } from '@/components/agents/TriggerConfiguration';
 import { InstructionsEditor } from '@/components/agents/InstructionsEditor';
 import { InstructionExamples } from '@/components/agents/InstructionExamples';
 import { RestrictionsConfiguration } from '@/components/agents/RestrictionsConfiguration';
+import { IntegrationsConfiguration } from '@/components/agents/IntegrationsConfiguration';
 import { MemoryConfiguration } from '@/components/agents/MemoryConfiguration';
 import { ApprovalConfiguration } from '@/components/agents/ApprovalConfiguration';
 import { LiveAgentWarningModal } from '@/components/agents/LiveAgentWarningModal';
@@ -286,6 +287,18 @@ export default function AgentBuilderPage() {
     }
   };
 
+  // Handle integrations save callback
+  const handleIntegrationsSaved = (allowedIntegrations: string[]) => {
+    const updatedRestrictions = {
+      ...restrictions,
+      allowedIntegrations
+    } as IAgentRestrictions;
+    setRestrictions(updatedRestrictions);
+    if (agent) {
+      setAgent({ ...agent, restrictions: updatedRestrictions });
+    }
+  };
+
   // Story 1.5: Handle memory save callback
   const handleMemorySaved = (newMemory: IAgentMemory) => {
     setMemory(newMemory);
@@ -345,47 +358,49 @@ export default function AgentBuilderPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
+          className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
         >
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100" data-testid="agent-name">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <h1 className="text-lg sm:text-xl font-semibold text-zinc-900 dark:text-zinc-100 truncate" data-testid="agent-name">
               {agent.name}
             </h1>
-            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusStyles(agent.status)}`} data-testid="agent-status">
+            <span className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${getStatusStyles(agent.status)}`} data-testid="agent-status">
               {agent.status}
             </span>
-            <span className="text-sm text-zinc-500 dark:text-zinc-400 hidden sm:inline">
+            <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 hidden md:inline truncate">
               {agent.goal}
             </span>
-            <span className="text-xs text-zinc-400 hidden md:inline">
+            <span className="text-xs text-zinc-400 hidden xl:inline whitespace-nowrap">
               · {formatDistanceToNow(new Date(agent.createdAt), { addSuffix: true })}
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {/* Story 4.1: AI Copilot Button (AC1) */}
             <button
               onClick={openCopilot}
-              className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-full hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/50 dark:hover:to-pink-900/50 transition-all flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-full hover:from-purple-100 hover:to-pink-100 dark:hover:from-purple-900/50 dark:hover:to-pink-900/50 transition-all flex items-center gap-1.5 sm:gap-2 whitespace-nowrap"
               data-testid="ai-copilot-btn"
             >
-              <Sparkles className="h-4 w-4" />
-              AI Copilot
+              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">AI Copilot</span>
+              <span className="sm:hidden">Copilot</span>
             </button>
             {/* Story 2.1: Test Mode Button (AC1) - Only show when instructions exist */}
             {(agent.instructions && agent.instructions.trim()) && (
               <button
                 onClick={() => setIsTestModePanelOpen(true)}
-                className="px-4 py-2 text-sm font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-2"
+                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap"
                 data-testid="test-mode-btn"
               >
-                <BeakerIcon className="h-4 w-4" />
-                Test Mode
+                <BeakerIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Test Mode</span>
+                <span className="sm:hidden">Test</span>
               </button>
             )}
             <button
               onClick={handleSaveTriggers}
               disabled={isSaving || triggers.length === 0}
-              className="px-4 py-2 text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm whitespace-nowrap"
               data-testid="save-triggers-btn"
             >
               {isSaving ? 'Saving...' : 'Save Changes'}
@@ -399,9 +414,9 @@ export default function AgentBuilderPage() {
 
       {/* Main Content */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="max-w-3xl space-y-6">
+        <div className="max-w-full lg:max-w-6xl xl:max-w-7xl mx-auto space-y-4 sm:space-y-6">
           {/* Triggers Section */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
             <TriggerConfiguration
               triggers={triggers}
               onChange={setTriggers}
@@ -410,7 +425,7 @@ export default function AgentBuilderPage() {
           </div>
 
           {/* Story 1.3: Instructions Section */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
             <InstructionsEditor
               agentId={agentId}
               workspaceId={workspaceId}
@@ -428,7 +443,7 @@ export default function AgentBuilderPage() {
           <InstructionExamples onCopyToEditor={handleCopyToEditor} />
 
           {/* Story 1.4: Restrictions Section */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
             <RestrictionsConfiguration
               workspaceId={workspaceId}
               agentId={agentId}
@@ -443,8 +458,25 @@ export default function AgentBuilderPage() {
             />
           </div>
 
+          {/* Integrations Configuration Section */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
+            <IntegrationsConfiguration
+              workspaceId={workspaceId}
+              agentId={agentId}
+              initialAllowedIntegrations={restrictions?.allowedIntegrations || null}
+              instructions={instructions}
+              onSave={handleIntegrationsSaved}
+              disabled={isSaving}
+              agentStatus={agent.status}
+              expectedUpdatedAt={originalUpdatedAt}
+              onConflict={handleSectionConflict}
+              onUpdateSuccess={handleSectionSaveSuccess}
+              onLiveWarningRequired={requestLiveWarning}
+            />
+          </div>
+
           {/* Story 1.5: Memory Section */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
             <MemoryConfiguration
               workspaceId={workspaceId}
               agentId={agentId}
@@ -460,7 +492,7 @@ export default function AgentBuilderPage() {
           </div>
 
           {/* Story 1.6: Approval Configuration Section */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
             <ApprovalConfiguration
               workspaceId={workspaceId}
               agentId={agentId}
@@ -476,7 +508,7 @@ export default function AgentBuilderPage() {
           </div>
 
           {/* Story 3.15: Performance Dashboard Section */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
             <AgentDashboard
               workspaceId={workspaceId}
               agentId={agentId}
@@ -484,7 +516,7 @@ export default function AgentBuilderPage() {
           </div>
 
           {/* Story 3.13: Execution History Section */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
             <ExecutionHistoryPanel
               workspaceId={workspaceId}
               agentId={agentId}

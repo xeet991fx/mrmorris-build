@@ -7,6 +7,7 @@ import TeamMember from '../models/TeamMember';
 import Project from '../models/Project';
 import TestModeService from '../services/TestModeService';
 import InstructionValidationService from '../services/InstructionValidationService';
+import InstructionParserService from '../services/InstructionParserService';
 import ExecutionComparisonService from '../services/ExecutionComparisonService';
 import AgentExecution from '../models/AgentExecution';
 import AgentExecutionService from '../services/AgentExecutionService';
@@ -351,6 +352,10 @@ export const updateAgent = async (req: Request, res: Response): Promise<void> =>
     // Story 1.3: Instructions field update
     if (updateData.instructions !== undefined) {
       agent.instructions = updateData.instructions;
+      // Clear parsed actions when instructions change to force re-parsing
+      agent.parsedActions = [];
+      // Clear the instruction parser cache to ensure fresh parsing
+      InstructionParserService.clearCache();
     }
     // Story 1.4: Restrictions field update - merge with defaults
     if (updateData.restrictions !== undefined) {

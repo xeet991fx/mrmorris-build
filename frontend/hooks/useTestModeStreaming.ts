@@ -10,6 +10,8 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { TestStepResult, ExecutionEstimate } from '@/types/agent';
+import { testAgent } from '@/lib/api/agents';
+import { toast } from 'react-hot-toast';
 
 // =============================================================================
 // TYPES
@@ -54,6 +56,7 @@ export interface UseTestModeStreamingReturn {
   result: TestStreamResult | null;
   error: string | null;
   elapsedTimeMs: number;
+  isFallbackMode: boolean;
   startTest: (targetIds?: string[], targetType?: 'contact' | 'deal') => void;
   cancelTest: () => Promise<void>;
   reset: () => void;
@@ -78,6 +81,7 @@ export function useTestModeStreaming({
   const [result, setResult] = useState<TestStreamResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const elapsedIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -120,6 +124,71 @@ export function useTestModeStreaming({
   }, []);
 
   /**
+   * Run test using POST endpoint (fallback mode)
+   */
+  const runFallbackTest = useCallback(
+    async (targetIds?: string[], targetType?: 'contact' | 'deal') => {
+      try {
+        // Build test target input
+        const testTarget = targetIds && targetIds.length > 0 && targetType
+          ? { type: targetType, id: targetIds[0] }
+          : undefined;
+
+        // Call POST endpoint
+        const response = await testAgent(workspaceId, agentId, { testTarget });
+
+        // Transform response to match streaming format
+        const streamResult: TestStreamResult = {
+          success: response.success,
+          timedOut: response.timedOut,
+          totalEstimatedCredits: response.totalEstimatedCredits,
+          totalEstimatedDuration: response.totalEstimatedDuration,
+          executionTimeMs: response.executionTimeMs,
+          warnings: response.warnings,
+          estimates: response.estimates,
+          error: response.error,
+        };
+
+        // Update state with all steps at once
+        setSteps(response.steps);
+
+        // Set final progress
+        setProgress({
+          current: response.steps.length,
+          total: response.steps.length,
+          executionTimeMs: response.executionTimeMs,
+        });
+
+        // Call onStep for each step
+        response.steps.forEach((step) => {
+          onStep?.(step);
+        });
+
+        // Call onProgress callback
+        onProgress?.({
+          current: response.steps.length,
+          total: response.steps.length,
+          executionTimeMs: response.executionTimeMs,
+        });
+
+        // Set result and complete
+        setResult(streamResult);
+        onComplete?.(streamResult);
+
+        setIsRunning(false);
+        stopElapsedTracking();
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.error || err.message || 'Test failed';
+        setError(errorMessage);
+        onError?.(errorMessage);
+        setIsRunning(false);
+        stopElapsedTracking();
+      }
+    },
+    [workspaceId, agentId, onStep, onProgress, onComplete, onError, stopElapsedTracking]
+  );
+
+  /**
    * Start streaming test execution
    */
   const startTest = useCallback(
@@ -132,12 +201,25 @@ export function useTestModeStreaming({
       setTestRunId(null);
       setElapsedTimeMs(0);
       setIsRunning(true);
+      setIsFallbackMode(false);
 
       // Cleanup any existing connection
       cleanup();
 
       // Start elapsed time tracking
       startElapsedTracking();
+
+      // Check if EventSource is available
+      if (typeof EventSource === 'undefined') {
+        // EventSource not available, use fallback immediately
+        toast('Running test in compatibility mode', {
+          icon: 'ℹ️',
+          duration: 3000,
+        });
+        setIsFallbackMode(true);
+        runFallbackTest(targetIds, targetType);
+        return;
+      }
 
       // Build URL with query params
       const params = new URLSearchParams();
@@ -158,8 +240,21 @@ export function useTestModeStreaming({
       const url = `${backendUrl}/workspaces/${workspaceId}/agents/${agentId}/test/stream?${params.toString()}`;
 
       // Create EventSource for SSE
-      const eventSource = new EventSource(url, { withCredentials: true });
-      eventSourceRef.current = eventSource;
+      let eventSource: EventSource;
+      try {
+        eventSource = new EventSource(url, { withCredentials: true });
+        eventSourceRef.current = eventSource;
+      } catch (err) {
+        // EventSource creation failed, use fallback
+        console.error('Failed to create EventSource:', err);
+        toast('Running test in compatibility mode', {
+          icon: 'ℹ️',
+          duration: 3000,
+        });
+        setIsFallbackMode(true);
+        runFallbackTest(targetIds, targetType);
+        return;
+      }
 
       // Handle 'started' event
       eventSource.addEventListener('started', (e: MessageEvent) => {
@@ -175,6 +270,7 @@ export function useTestModeStreaming({
       eventSource.addEventListener('step', (e: MessageEvent) => {
         try {
           const step: TestStepResult = JSON.parse(e.data);
+          console.log('Received step:', step);
           setSteps((prev) => [...prev, step]);
           onStep?.(step);
         } catch (err) {
@@ -197,6 +293,13 @@ export function useTestModeStreaming({
       eventSource.addEventListener('complete', (e: MessageEvent) => {
         try {
           const resultData: TestStreamResult = JSON.parse(e.data);
+          console.log('Test completed with result:', resultData);
+          if (resultData.warnings && resultData.warnings.length > 0) {
+            console.warn('Test warnings:', resultData.warnings);
+            resultData.warnings.forEach((w, i) => {
+              console.warn(`Warning ${i + 1}:`, w.message, w.suggestion ? `\nSuggestion: ${w.suggestion}` : '');
+            });
+          }
           setResult(resultData);
           setIsRunning(false);
           stopElapsedTracking();
@@ -232,19 +335,27 @@ export function useTestModeStreaming({
       });
 
       // Handle EventSource errors (connection issues)
-      eventSource.onerror = () => {
+      eventSource.onerror = (e) => {
+        console.log('EventSource onerror fired', {
+          readyState: eventSource.readyState,
+          CONNECTING: EventSource.CONNECTING,
+          OPEN: EventSource.OPEN,
+          CLOSED: EventSource.CLOSED
+        });
+
         if (eventSource.readyState === EventSource.CLOSED) {
-          // Connection was closed normally by server
-          if (!result && !error) {
-            setError('Connection closed unexpectedly');
-            onError?.('Connection closed unexpectedly');
-          }
+          // Connection was closed - set error state
+          // Note: The 'complete' event handler will close the connection normally,
+          // so this only fires for unexpected closures
+          setError('Connection closed unexpectedly');
+          onError?.('Connection closed unexpectedly');
           setIsRunning(false);
           stopElapsedTracking();
         }
+        // Don't trigger fallback here - SSE errors are normal during shutdown
       };
     },
-    [agentId, workspaceId, cleanup, startElapsedTracking, stopElapsedTracking, onStep, onProgress, onComplete, onError, result, error]
+    [agentId, workspaceId, cleanup, startElapsedTracking, stopElapsedTracking, onStep, onProgress, onComplete, onError, runFallbackTest]
   );
 
   /**
@@ -301,6 +412,7 @@ export function useTestModeStreaming({
     setResult(null);
     setError(null);
     setElapsedTimeMs(0);
+    setIsFallbackMode(false);
   }, [cleanup]);
 
   return {
@@ -311,6 +423,7 @@ export function useTestModeStreaming({
     result,
     error,
     elapsedTimeMs,
+    isFallbackMode,
     startTest,
     cancelTest,
     reset,
