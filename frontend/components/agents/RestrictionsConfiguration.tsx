@@ -4,18 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { updateAgent } from '@/lib/api/agents';
 import {
     IAgentRestrictions,
-    VALID_INTEGRATIONS,
     RESTRICTIONS_DEFAULTS,
     RESTRICTIONS_LIMITS,
     GUARDRAILS_MAX_LENGTH
 } from '@/types/agent';
 import { toast } from 'sonner';
 import {
-    EnvelopeIcon,
     BoltIcon,
-    CheckIcon,
     XMarkIcon,
-    GlobeAltIcon,
     DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
@@ -108,37 +104,6 @@ export function RestrictionsConfiguration({
         setRestrictions(prev => ({
             ...prev,
             [field]: finalValue
-        }));
-        setHasChanges(true);
-    };
-
-    const handleIntegrationToggle = (integrationId: string) => {
-        setRestrictions(prev => {
-            const current = prev.allowedIntegrations || [];
-            const isSelected = current.includes(integrationId);
-
-            return {
-                ...prev,
-                allowedIntegrations: isSelected
-                    ? current.filter(id => id !== integrationId)
-                    : [...current, integrationId]
-            };
-        });
-        setHasChanges(true);
-    };
-
-    const handleSelectAllIntegrations = () => {
-        setRestrictions(prev => ({
-            ...prev,
-            allowedIntegrations: VALID_INTEGRATIONS.map(i => i.id)
-        }));
-        setHasChanges(true);
-    };
-
-    const handleClearAllIntegrations = () => {
-        setRestrictions(prev => ({
-            ...prev,
-            allowedIntegrations: []
         }));
         setHasChanges(true);
     };
@@ -246,28 +211,6 @@ export function RestrictionsConfiguration({
         }
     };
 
-    const getIntegrationIcon = (iconName: string) => {
-        // Simple icon mapping - in a real app, you'd use actual integration icons
-        switch (iconName) {
-            case 'mail':
-                return <EnvelopeIcon className="w-4 h-4" />;
-            case 'linkedin':
-                return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                    </svg>
-                );
-            case 'slack':
-                return (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
-                    </svg>
-                );
-            default:
-                return <GlobeAltIcon className="w-4 h-4" />;
-        }
-    };
-
     return (
         <div className="space-y-6" data-testid="restrictions-configuration">
             {/* Header */}
@@ -365,74 +308,6 @@ export function RestrictionsConfiguration({
                             </p>
                         )}
                     </div>
-                </div>
-            </div>
-
-            {/* Integration Permissions Section */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
-                        <GlobeAltIcon className="w-4 h-4" />
-                        Allowed Integrations
-                    </h4>
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={handleSelectAllIntegrations}
-                            disabled={disabled || isSaving}
-                            className="text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 disabled:opacity-50"
-                            data-testid="select-all-integrations"
-                        >
-                            Select All
-                        </button>
-                        <span className="text-zinc-300 dark:text-zinc-600">|</span>
-                        <button
-                            type="button"
-                            onClick={handleClearAllIntegrations}
-                            disabled={disabled || isSaving}
-                            className="text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 disabled:opacity-50"
-                            data-testid="clear-all-integrations"
-                        >
-                            Clear All
-                        </button>
-                    </div>
-                </div>
-
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {restrictions.allowedIntegrations.length === 0
-                        ? 'All integrations are currently allowed. Select specific ones to restrict access.'
-                        : `${restrictions.allowedIntegrations.length} of ${VALID_INTEGRATIONS.length} integrations allowed`
-                    }
-                </p>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {VALID_INTEGRATIONS.map((integration) => {
-                        const isSelected = restrictions.allowedIntegrations.length === 0 ||
-                            restrictions.allowedIntegrations.includes(integration.id);
-                        const isExplicitlySelected = restrictions.allowedIntegrations.includes(integration.id);
-
-                        return (
-                            <button
-                                key={integration.id}
-                                type="button"
-                                onClick={() => handleIntegrationToggle(integration.id)}
-                                disabled={disabled || isSaving}
-                                data-testid={`integration-${integration.id}`}
-                                className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isExplicitlySelected
-                                    ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white'
-                                    : isSelected && restrictions.allowedIntegrations.length === 0
-                                        ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700'
-                                        : 'bg-white dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 border-zinc-200 dark:border-zinc-700'
-                                    }`}
-                            >
-                                {getIntegrationIcon(integration.icon)}
-                                <span>{integration.name}</span>
-                                {isExplicitlySelected && (
-                                    <CheckIcon className="w-4 h-4 ml-auto" />
-                                )}
-                            </button>
-                        );
-                    })}
                 </div>
             </div>
 

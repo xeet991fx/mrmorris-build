@@ -321,9 +321,12 @@ export class InstructionParserService {
   private static getModel(): ChatVertexAI {
     if (!this.model) {
       this.model = new ChatVertexAI({
-        model: 'gemini-2.5-pro-preview-05-06',
+        model: 'gemini-2.5-pro', // Using same model as other agents
         temperature: 0.1, // Low temperature for consistent parsing
         maxOutputTokens: 4096,
+        authOptions: {
+          keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || './vertex-key.json',
+        },
       });
     }
     return this.model;

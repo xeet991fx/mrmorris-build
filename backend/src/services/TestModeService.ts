@@ -23,6 +23,7 @@ const TEST_MODE_RECORD_LIMIT = 100;     // Max records in test mode queries (AC4
 import Contact from '../models/Contact';
 import Opportunity from '../models/Opportunity';
 import InstructionValidationService from './InstructionValidationService';
+import InstructionParserService from './InstructionParserService';
 
 // =============================================================================
 // TYPE DEFINITIONS (matching frontend/types/agent.ts)
@@ -1406,16 +1407,39 @@ export class TestModeService {
         // Continue with test even if validation fails
       }
 
-      const parsedActions: ParsedAction[] = agent.parsedActions || [];
+      let parsedActions: ParsedAction[] = agent.parsedActions || [];
 
-      // Warn if instructions exist but no parsed actions
-      if (agent.instructions && parsedActions.length === 0) {
-        warnings.push({
-          step: 0,
-          severity: 'warning',
-          message: 'Agent has instructions but no parsed actions. Instructions may need to be re-parsed.',
-          suggestion: 'Save the agent to trigger instruction parsing',
-        });
+      // Parse instructions on-demand if not already parsed
+      if (parsedActions.length === 0 && agent.instructions) {
+        try {
+          const parseResult = await InstructionParserService.parseInstructions(
+            agent.instructions,
+            workspaceId
+          );
+
+          if (parseResult.success && parseResult.actions.length > 0) {
+            parsedActions = parseResult.actions;
+
+            // Save parsed actions to agent for future use
+            agent.parsedActions = parsedActions;
+            await agent.save();
+          } else if (parseResult.error) {
+            warnings.push({
+              step: 0,
+              severity: 'error',
+              message: `Instruction parsing failed: ${parseResult.error}`,
+              suggestion: 'Check your instructions format and try again',
+            });
+          }
+        } catch (parseError: any) {
+          console.error('Failed to parse instructions in test mode:', parseError);
+          warnings.push({
+            step: 0,
+            severity: 'error',
+            message: `Instruction parsing error: ${parseError.message}`,
+            suggestion: 'Check your instructions and try again',
+          });
+        }
       }
 
       if (parsedActions.length === 0) {

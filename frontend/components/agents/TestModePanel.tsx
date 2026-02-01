@@ -91,6 +91,7 @@ export function TestModePanel({
     result,
     error: streamError,
     elapsedTimeMs,
+    isFallbackMode,
     startTest,
     cancelTest,
     reset: resetStreaming,
@@ -323,9 +324,35 @@ export function TestModePanel({
               total={progress.total}
               elapsedTimeMs={elapsedTimeMs}
               isRunning={isRunning}
-              onCancel={handleCancel}
+              onCancel={isFallbackMode ? undefined : handleCancel}
               isCancelling={isCancelling}
             />
+          )}
+
+          {/* Fallback mode notice */}
+          {isFallbackMode && isRunning && (
+            <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+                />
+              </svg>
+              <div className="flex-1">
+                <p className="font-medium text-blue-900 dark:text-blue-100">Compatibility Mode</p>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  Test running in non-streaming mode. Results will appear when complete.
+                </p>
+              </div>
+            </div>
           )}
 
           {/* Story 2.6: Progressive step display during streaming */}
