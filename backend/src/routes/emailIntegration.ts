@@ -3,6 +3,7 @@ import { google } from "googleapis";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import EmailIntegration from "../models/EmailIntegration";
 import CalendarIntegration from "../models/CalendarIntegration";
+import IntegrationCredential from "../models/IntegrationCredential";
 import Project from "../models/Project";
 import Contact from "../models/Contact";
 import Company from "../models/Company";
@@ -248,9 +249,33 @@ router.get("/integrations", authenticate, async (req: AuthRequest, res: Response
             userId: req.user?._id,
         }).select("-accessToken -refreshToken"); // Don't return tokens
 
+        // Also fetch Gmail integrations from IntegrationCredential (OAuth flow)
+        const oauthCredentials = await IntegrationCredential.find({
+            workspaceId,
+            type: 'gmail',
+        }).select("-encryptedData"); // Don't return encrypted tokens
+
+        // Convert OAuth credentials to match EmailIntegration format
+        const oauthIntegrations = oauthCredentials.map(cred => ({
+            _id: cred._id,
+            provider: 'gmail' as const,
+            email: cred.profileInfo?.email || cred.name,
+            isActive: cred.status === 'Connected' && cred.isValid,
+            status: cred.status,
+            lastSyncAt: cred.lastUsed,
+            createdAt: cred.createdAt,
+            updatedAt: cred.updatedAt,
+            // Mark as OAuth credential for frontend differentiation
+            isOAuthCredential: true,
+            profileInfo: cred.profileInfo,
+        }));
+
+        // Merge both types of integrations
+        const allIntegrations = [...integrations, ...oauthIntegrations];
+
         res.json({
             success: true,
-            data: { integrations },
+            data: { integrations: allIntegrations },
         });
     } catch (error: any) {
         console.error("Get integrations error:", error);
