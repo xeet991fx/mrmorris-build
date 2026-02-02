@@ -10,6 +10,7 @@ export interface EmailIntegration {
     email: string;
     isActive: boolean;
     status?: 'Connected' | 'Expired' | 'Error' | 'Revoked'; // Story 5.1: New status field from IntegrationCredential
+    tokenExpiry?: string; // Story 5.2: Token expiration date for warning display
     lastSyncAt?: string;
     syncError?: string;
     createdAt: string;

@@ -28,6 +28,29 @@ interface IntegrationsConfigurationProps {
     onLiveWarningRequired?: () => Promise<boolean>;
 }
 
+/**
+ * Map frontend integration IDs to backend IntegrationCredential types
+ * Frontend uses 'google-calendar', backend stores 'calendar'
+ */
+const mapIntegrationIdToBackendType = (frontendId: string): string => {
+    const mapping: Record<string, string> = {
+        'google-calendar': 'calendar',
+        'google-sheets': 'google_sheets',
+    };
+    return mapping[frontendId] || frontendId;
+};
+
+/**
+ * Map backend IntegrationCredential types to frontend IDs
+ */
+const mapBackendTypeToIntegrationId = (backendType: string): string => {
+    const mapping: Record<string, string> = {
+        'calendar': 'google-calendar',
+        'google_sheets': 'google-sheets',
+    };
+    return mapping[backendType] || backendType;
+};
+
 export function IntegrationsConfiguration({
     workspaceId,
     agentId,
@@ -156,50 +179,71 @@ export function IntegrationsConfiguration({
 
     const handleConnect = async (integrationType: string) => {
         try {
-            // Map integration type to OAuth provider
-            let provider: 'gmail' | 'linkedin' | 'google-calendar' = 'gmail';
-            if (integrationType === 'gmail') provider = 'gmail';
-            else if (integrationType === 'linkedin') provider = 'linkedin';
-            else if (integrationType === 'google-calendar') provider = 'google-calendar';
-            else {
-                toast.error(`OAuth connection for ${integrationType} not yet implemented`);
-                return;
-            }
+            let authUrl: string;
 
-            const response = await connectIntegration(workspaceId, provider);
-            if (response.success && response.data?.authUrl) {
-                // Open OAuth popup
-                const width = 600;
-                const height = 800;
-                const left = window.screen.width / 2 - width / 2;
-                const top = window.screen.height / 2 - height / 2;
-
-                const popup = window.open(
-                    response.data.authUrl,
-                    'OAuth Authorization',
-                    `width=${width},height=${height},left=${left},top=${top}`
+            // Use the legacy calendar OAuth flow for Google Calendar (has registered redirect URI)
+            if (integrationType === 'google-calendar') {
+                const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/calendar/connect/google?workspaceId=${workspaceId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem('token')}`,
+                        },
+                    }
                 );
-
-                // Poll for popup closure
-                const pollInterval = setInterval(() => {
-                    if (!popup || popup.closed) {
-                        clearInterval(pollInterval);
-                        // Refresh integrations after popup closes
-                        fetchIntegrations();
-                        toast.success('Integration connected successfully!');
-                    }
-                }, 500);
-
-                // Cleanup after 5 minutes
-                setTimeout(() => {
-                    clearInterval(pollInterval);
-                    if (popup && !popup.closed) {
-                        popup.close();
-                    }
-                }, 300000);
+                const data = await response.json();
+                if (!data.success || !data.data?.authUrl) {
+                    toast.error(data.error || 'Failed to get authorization URL');
+                    return;
+                }
+                authUrl = data.data.authUrl;
             } else {
-                toast.error(response.error || 'Failed to get authorization URL');
+                // Use new OAuth flow for other integrations
+                let provider: 'gmail' | 'linkedin' | 'google-calendar' = 'gmail';
+                if (integrationType === 'gmail') provider = 'gmail';
+                else if (integrationType === 'linkedin') provider = 'linkedin';
+                else {
+                    toast.error(`OAuth connection for ${integrationType} not yet implemented`);
+                    return;
+                }
+
+                const response = await connectIntegration(workspaceId, provider);
+                if (!response.success || !response.data?.authUrl) {
+                    toast.error(response.error || 'Failed to get authorization URL');
+                    return;
+                }
+                authUrl = response.data.authUrl;
             }
+
+            // Open OAuth popup
+            const width = 600;
+            const height = 800;
+            const left = window.screen.width / 2 - width / 2;
+            const top = window.screen.height / 2 - height / 2;
+
+            const popup = window.open(
+                authUrl,
+                'OAuth Authorization',
+                `width=${width},height=${height},left=${left},top=${top}`
+            );
+
+            // Poll for popup closure
+            const pollInterval = setInterval(() => {
+                if (!popup || popup.closed) {
+                    clearInterval(pollInterval);
+                    // Refresh integrations after popup closes
+                    fetchIntegrations();
+                    toast.success('Integration connected successfully!');
+                }
+            }, 500);
+
+            // Cleanup after 5 minutes
+            setTimeout(() => {
+                clearInterval(pollInterval);
+                if (popup && !popup.closed) {
+                    popup.close();
+                }
+            }, 300000);
         } catch (error: any) {
             console.error('Error connecting integration:', error);
             toast.error('Failed to connect integration');
@@ -264,7 +308,8 @@ export function IntegrationsConfiguration({
 
     // Get integration credential by type
     const getIntegrationCredential = (integrationId: string): Integration | null => {
-        return integrations.find((i) => i.type === integrationId) || null;
+        const backendType = mapIntegrationIdToBackendType(integrationId);
+        return integrations.find((i) => i.type === backendType) || null;
     };
 
     // Check if integration is allowed for this agent
