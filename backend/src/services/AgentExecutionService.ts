@@ -28,6 +28,8 @@ import {
   emitExecutionFailed
 } from '../socket/agentExecutionSocket';
 import { redactSensitiveData } from '../utils/redactSensitiveData';
+import { IntegrationExpiredError } from './TokenRefreshService';
+import { NotificationService } from './NotificationService';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -1023,6 +1025,34 @@ export class AgentExecutionService {
       };
 
     } catch (error: any) {
+      // Story 5.3 AC3: Handle expired integration errors during agent execution
+      if (error instanceof IntegrationExpiredError) {
+        try {
+          // Get agent details for notification
+          const agent = await Agent.findById(agentId);
+          if (agent) {
+            // Auto-pause the agent (AC3 requirement)
+            agent.status = 'Paused';
+            agent.pauseReason = `${error.integrationType} integration expired`;
+            await agent.save();
+
+            console.info(`[AC3] Agent ${agent.name} auto-paused due to expired ${error.integrationType} integration`);
+
+            // Send notification: "Agent [name] failed: [Integration] integration expired" (AC3 requirement)
+            await NotificationService.notifyIntegrationExpired(
+              workspaceId,
+              error.integrationType,
+              [agent.name]
+            );
+
+            console.info(`[AC3] Sent notification for agent ${agent.name} failure due to expired ${error.integrationType}`);
+          }
+        } catch (notifyError) {
+          console.error('[AC3] Failed to handle expired integration error:', notifyError);
+          // Continue with normal error handling
+        }
+      }
+
       // Update execution record with error
       if (executionRecord) {
         executionRecord.status = 'failed';

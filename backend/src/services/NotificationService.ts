@@ -1,15 +1,19 @@
 /**
  * Notification Service
  * Story 5.2 - Automatic Token Refresh
+ * Story 5.3 - Integration Expiration Notifications (Email Delivery)
  *
  * Provides notification functionality for integration-related events.
  * Uses AINotification model to store and deliver notifications.
+ * Sends email notifications for integration expiration warnings.
  */
 
 import AINotification from '../models/AINotification';
 import User from '../models/User';
 import Project from '../models/Project';
 import { IntegrationType } from '../models/IntegrationCredential';
+import EmailService from './email';
+import { renderIntegrationExpiringEmail, renderIntegrationExpiredEmail } from '../utils/emailTemplates';
 
 /**
  * Integration type display names for user-friendly notifications
@@ -56,15 +60,18 @@ export class NotificationService {
 
     /**
      * Notify that an integration is about to expire
+     * Story 5.3 Task 3: Added email delivery
      *
      * @param workspaceId - Workspace ID
      * @param integrationType - Type of integration
      * @param daysRemaining - Days until expiration
+     * @param affectedAgents - Optional list of affected agent names
      */
     static async notifyIntegrationExpiring(
         workspaceId: string,
         integrationType: string,
-        daysRemaining: number
+        daysRemaining: number,
+        affectedAgents?: string[]
     ): Promise<void> {
         const userId = await this.getWorkspaceOwner(workspaceId);
         if (!userId) {
@@ -76,6 +83,7 @@ export class NotificationService {
         const dayText = daysRemaining === 1 ? 'day' : 'days';
         const priority = daysRemaining <= 1 ? 'urgent' : daysRemaining <= 3 ? 'high' : 'medium';
 
+        // Create in-app notification
         await AINotification.create({
             workspaceId,
             userId,
@@ -87,6 +95,7 @@ export class NotificationService {
             metadata: {
                 integrationType,
                 daysRemaining,
+                affectedAgents: affectedAgents || [],
             },
             suggestedAction: {
                 label: 'Reconnect Now',
@@ -97,10 +106,42 @@ export class NotificationService {
         });
 
         console.info(`Created integration expiring notification for ${displayName}, workspace ${workspaceId}`);
+
+        // Story 5.3 Task 3.3: Send email notification
+        try {
+            const user = await User.findById(userId);
+            if (user && user.email) {
+                const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+                const reconnectUrl = `${baseUrl}/settings/integrations`;
+                const urgencyClass = daysRemaining <= 1 ? 'urgency-high' : 'urgency-medium';
+
+                const emailHtml = renderIntegrationExpiringEmail({
+                    userName: user.name || 'there',
+                    integrationName: displayName,
+                    daysRemaining,
+                    dayText,
+                    urgencyClass,
+                    reconnectUrl,
+                    affectedAgents,
+                });
+
+                await EmailService.sendEmail({
+                    to: user.email,
+                    subject: `${displayName} integration expires in ${daysRemaining} ${dayText}`,
+                    html: emailHtml,
+                });
+
+                console.info(`Sent integration expiring email to ${user.email} for ${displayName}`);
+            }
+        } catch (error) {
+            console.error(`Failed to send integration expiring email:`, error);
+            // Don't fail notification creation if email fails
+        }
     }
 
     /**
      * Notify that an integration has expired
+     * Story 5.3 Task 3: Added email delivery
      *
      * @param workspaceId - Workspace ID
      * @param integrationType - Type of integration
@@ -131,6 +172,7 @@ export class NotificationService {
         }
         message += ` Reconnect to resume operations.`;
 
+        // Create in-app notification
         await AINotification.create({
             workspaceId,
             userId,
@@ -153,6 +195,33 @@ export class NotificationService {
         });
 
         console.info(`Created integration expired notification for ${displayName}, workspace ${workspaceId}, affected agents: ${affectedAgents?.length || 0}`);
+
+        // Story 5.3 Task 3.3: Send email notification
+        try {
+            const user = await User.findById(userId);
+            if (user && user.email) {
+                const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+                const reconnectUrl = `${baseUrl}/settings/integrations`;
+
+                const emailHtml = renderIntegrationExpiredEmail({
+                    userName: user.name || 'there',
+                    integrationName: displayName,
+                    reconnectUrl,
+                    affectedAgents,
+                });
+
+                await EmailService.sendEmail({
+                    to: user.email,
+                    subject: `${displayName} integration has expired`,
+                    html: emailHtml,
+                });
+
+                console.info(`Sent integration expired email to ${user.email} for ${displayName}`);
+            }
+        } catch (error) {
+            console.error(`Failed to send integration expired email:`, error);
+            // Don't fail notification creation if email fails
+        }
     }
 
     /**
@@ -175,6 +244,80 @@ export class NotificationService {
         affectedAgents?: string[]
     ): Promise<void> {
         return this.notifyIntegrationExpired(workspaceId, integrationType, affectedAgents);
+    }
+
+    /**
+     * Notify that an integration has persistent errors
+     * Story 5.3 Code Review Fix: Separate method for Error status (not Expired)
+     *
+     * @param workspaceId - Workspace ID
+     * @param integrationType - Type of integration
+     * @param errorDurationHours - How long the error has persisted
+     */
+    static async notifyIntegrationError(
+        workspaceId: string,
+        integrationType: string,
+        errorDurationHours: number
+    ): Promise<void> {
+        const userId = await this.getWorkspaceOwner(workspaceId);
+        if (!userId) {
+            console.warn(`Cannot send integration error notification: no user for workspace ${workspaceId}`);
+            return;
+        }
+
+        const displayName = this.getIntegrationDisplayName(integrationType);
+
+        // Create in-app notification
+        await AINotification.create({
+            workspaceId,
+            userId,
+            type: 'integration_error',
+            title: `⚠️ ${displayName} integration error`,
+            message: `Your ${displayName} integration has been experiencing errors for ${errorDurationHours} hour${errorDurationHours > 1 ? 's' : ''}. Please check your connection and reconnect if needed.`,
+            priority: 'high',
+            status: 'pending',
+            metadata: {
+                integrationType,
+                errorDurationHours,
+                errorDetectedAt: new Date().toISOString(),
+            },
+            suggestedAction: {
+                label: 'Check Integration',
+                url: `/settings/integrations`,
+                actionType: 'reconnect_integration',
+            },
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Expire in 7 days
+        });
+
+        console.info(`Created integration error notification for ${displayName}, workspace ${workspaceId}, duration: ${errorDurationHours}h`);
+
+        // Send email notification
+        try {
+            const user = await User.findById(userId);
+            if (user && user.email) {
+                const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+                const reconnectUrl = `${baseUrl}/settings/integrations`;
+
+                // Reuse expired email template with adjusted messaging
+                const emailHtml = renderIntegrationExpiredEmail({
+                    userName: user.name || 'there',
+                    integrationName: displayName,
+                    reconnectUrl,
+                    affectedAgents: [], // Errors don't pause agents yet
+                });
+
+                await EmailService.sendEmail({
+                    to: user.email,
+                    subject: `${displayName} integration experiencing errors`,
+                    html: emailHtml,
+                });
+
+                console.info(`Sent integration error email to ${user.email} for ${displayName}`);
+            }
+        } catch (error) {
+            console.error(`Failed to send integration error email:`, error);
+            // Don't fail notification creation if email fails
+        }
     }
 }
 

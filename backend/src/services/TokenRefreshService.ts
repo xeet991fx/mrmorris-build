@@ -272,6 +272,7 @@ export class TokenRefreshService {
 
     /**
      * Handle token refresh failure
+     * Story 5.3 Task 5.1, 5.2: Enhanced status detection for Revoked vs Expired vs Error
      * Updates credential status and prepares for notification
      */
     private async handleRefreshFailure(credentialId: string, error: any): Promise<void> {
@@ -280,14 +281,27 @@ export class TokenRefreshService {
             return;
         }
 
-        // Determine new status based on error type
-        let newStatus: 'Expired' | 'Error';
-        if (isAuthError(error) || error.code === 'no_refresh_support' || error.code === 'no_refresh_token') {
-            // Permanent failure - token is invalid/revoked
+        // Story 5.3 Task 5.1: Determine new status based on error type
+        let newStatus: 'Expired' | 'Revoked' | 'Error';
+
+        // Check for 401 Unauthorized - user revoked access on provider side
+        const is401 = error.response?.status === 401 || error.status === 401 || error.statusCode === 401;
+        const isInvalidGrant = error.code === 'invalid_grant' || error.message?.includes('invalid_grant');
+
+        if (is401 || isInvalidGrant) {
+            // Story 5.3 Task 5.1: 401 = Revoked status (user action on provider side)
+            newStatus = 'Revoked';
+            console.error(`Token revoked by user for ${credential.type} credential ${credentialId}: ${error.message}`);
+        } else if (error.code === 'no_refresh_support' || error.code === 'no_refresh_token' || isAuthError(error)) {
+            // Permanent failure - token expired naturally
             newStatus = 'Expired';
-            console.error(`Token refresh failed permanently for ${credential.type} credential ${credentialId}: ${error.message}`);
+            console.error(`Token expired for ${credential.type} credential ${credentialId}: ${error.message}`);
+        } else if (error.response?.status >= 500 || error.status >= 500 || error.statusCode >= 500) {
+            // Story 5.3 Task 5.2: 5xx = temporary Error status (provider issue)
+            newStatus = 'Error';
+            console.warn(`Token refresh failed temporarily (5xx) for ${credential.type} credential ${credentialId}: ${error.message}`);
         } else {
-            // Temporary failure - might recover later
+            // Other temporary failures
             newStatus = 'Error';
             console.warn(`Token refresh failed temporarily for ${credential.type} credential ${credentialId}: ${error.message}`);
         }
@@ -296,6 +310,13 @@ export class TokenRefreshService {
         credential.status = newStatus;
         credential.validationError = error.message;
         credential.lastUsed = new Date();
+
+        // Story 5.3 Task 5.3: Track when error first occurred for persistent error detection
+        if (newStatus === 'Error' && (!credential.lastValidated || credential.status !== 'Error')) {
+            // First error or status changed to Error - track timestamp
+            credential.lastValidated = new Date();
+        }
+
         await credential.save();
 
         console.info(`Updated credential ${credentialId} status to ${newStatus}`);

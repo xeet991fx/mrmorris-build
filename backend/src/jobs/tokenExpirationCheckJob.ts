@@ -94,7 +94,19 @@ async function pauseAgentsUsingIntegration(credentialId: string, workspaceId: st
             agent.pauseReason = `${integrationType} integration expired`;
             await agent.save();
             agentNames.push(agent.name);
-            console.info(`Paused agent "${agent.name}" due to expired ${integrationType} integration`);
+
+            // Story 5.3 Task 4.4: Enhanced audit logging
+            console.info(`[INTEGRATION-EXPIRATION] Agent paused`, {
+                timestamp: new Date().toISOString(),
+                agentId: agent._id.toString(),
+                agentName: agent.name,
+                workspaceId,
+                integrationType,
+                credentialId,
+                previousStatus: 'Live',
+                newStatus: 'Paused',
+                pauseReason: agent.pauseReason,
+            });
         }
 
         return { count: agentNames.length, agentNames };
@@ -123,6 +135,7 @@ const tokenExpirationWorker = new Worker(
                 warningsSent: 0,
                 integrationsExpired: 0,
                 agentsPaused: 0,
+                errorNotifications: 0, // Story 5.3 Task 5.3
             };
 
             // 1. Find integrations expiring within 7 days (only Connected ones)
@@ -202,6 +215,48 @@ const tokenExpirationWorker = new Worker(
                     );
                 } catch (notifyError) {
                     console.warn(`Failed to send expired notification for credential ${credential._id}:`, notifyError);
+                }
+            }
+
+            // Story 5.3 Task 5.3: Check for persistent errors (> 1 hour) and notify
+            // Code Review Fix: Only notify once per error period, use proper error notification method
+            const ONE_HOUR_MS = 60 * 60 * 1000;
+            const oneHourAgo = new Date(now.getTime() - ONE_HOUR_MS);
+            const persistentErrorCredentials = await IntegrationCredential.find({
+                status: 'Error',
+                lastValidated: { $lte: oneHourAgo, $exists: true },
+            });
+
+            for (const credential of persistentErrorCredentials) {
+                // Check if we've already notified about this error period
+                // If validationError hasn't changed, skip (already notified)
+                const errorKey = `${credential._id}:error`;
+                if (sentWarnings.has(errorKey)) {
+                    continue;
+                }
+
+                try {
+                    const errorDurationHours = Math.floor(
+                        (now.getTime() - (credential.lastValidated?.getTime() || now.getTime())) / (60 * 60 * 1000)
+                    );
+
+                    // Code Review Fix: Use notifyIntegrationError instead of notifyIntegrationExpired
+                    await NotificationService.notifyIntegrationError(
+                        credential.workspaceId.toString(),
+                        credential.type,
+                        errorDurationHours
+                    );
+
+                    console.info(
+                        `Notified user about persistent error for ${credential.type} (${errorDurationHours}h), workspace ${credential.workspaceId}`
+                    );
+                    results.errorNotifications++;
+
+                    // Mark as notified to prevent duplicate notifications
+                    // Will notify again if error clears and reoccurs
+                    sentWarnings.set(errorKey, Date.now());
+                } catch (notifyError) {
+                    console.warn(`Failed to send persistent error notification for credential ${credential._id}:`, notifyError);
                 }
             }
 
