@@ -12,7 +12,7 @@ import { TriggerConfiguration } from '@/components/agents/TriggerConfiguration';
 import { InstructionsEditor } from '@/components/agents/InstructionsEditor';
 import { InstructionExamples } from '@/components/agents/InstructionExamples';
 import { RestrictionsConfiguration } from '@/components/agents/RestrictionsConfiguration';
-import { IntegrationsConfiguration } from '@/components/agents/IntegrationsConfiguration';
+import { AgentIntegrationAccess } from '@/components/agents/AgentIntegrationAccess';
 import { MemoryConfiguration } from '@/components/agents/MemoryConfiguration';
 import { ApprovalConfiguration } from '@/components/agents/ApprovalConfiguration';
 import { LiveAgentWarningModal } from '@/components/agents/LiveAgentWarningModal';
@@ -21,8 +21,9 @@ import { TestModePanel } from '@/components/agents/TestModePanel';
 import { ExecutionHistoryPanel } from '@/components/agents/ExecutionHistoryPanel';
 import { AgentDashboard } from '@/components/agents/AgentDashboard';
 import CopilotChatPanel from '@/components/agents/copilot/CopilotChatPanel';
+import { IntegrationsModal } from '@/components/modals/IntegrationsModal';
 import { useCopilotStore } from '@/store/useCopilotStore';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, PlugZap } from 'lucide-react';
 import { useCallback } from 'react';
 
 export default function AgentBuilderPage() {
@@ -60,6 +61,9 @@ export default function AgentBuilderPage() {
 
   // Story 2.1: Test Mode panel state
   const [isTestModePanelOpen, setIsTestModePanelOpen] = useState(false);
+
+  // Integrations modal state
+  const [isIntegrationsModalOpen, setIsIntegrationsModalOpen] = useState(false);
 
   // Story 4.1: AI Copilot state
   const isCopilotOpen = useCopilotStore((state) => state.isOpen[agentId] || false);
@@ -375,6 +379,16 @@ export default function AgentBuilderPage() {
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Integrations Button */}
+            <button
+              onClick={() => setIsIntegrationsModalOpen(true)}
+              className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap"
+              data-testid="integrations-btn"
+            >
+              <PlugZap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Integrations</span>
+              <span className="sm:hidden">Integrations</span>
+            </button>
             {/* Story 4.1: AI Copilot Button (AC1) */}
             <button
               onClick={openCopilot}
@@ -458,20 +472,19 @@ export default function AgentBuilderPage() {
             />
           </div>
 
-          {/* Integrations Configuration Section */}
+          {/* Agent Integration Access Section */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg sm:rounded-xl p-4 sm:p-6">
-            <IntegrationsConfiguration
+            <AgentIntegrationAccess
               workspaceId={workspaceId}
               agentId={agentId}
               initialAllowedIntegrations={restrictions?.allowedIntegrations || null}
-              instructions={instructions}
-              onSave={handleIntegrationsSaved}
+              onSave={(allowedIntegrations) => {
+                if (restrictions) {
+                  setRestrictions({ ...restrictions, allowedIntegrations });
+                }
+              }}
               disabled={isSaving}
-              agentStatus={agent.status}
-              expectedUpdatedAt={originalUpdatedAt}
-              onConflict={handleSectionConflict}
-              onUpdateSuccess={handleSectionSaveSuccess}
-              onLiveWarningRequired={requestLiveWarning}
+              onOpenModal={() => setIsIntegrationsModalOpen(true)}
             />
           </div>
 
@@ -560,6 +573,13 @@ export default function AgentBuilderPage() {
         agentId={agentId}
         isOpen={isCopilotOpen}
         onClose={closeCopilot}
+      />
+
+      {/* Integrations Modal */}
+      <IntegrationsModal
+        isOpen={isIntegrationsModalOpen}
+        onClose={() => setIsIntegrationsModalOpen(false)}
+        workspaceId={workspaceId}
       />
     </div>
   );

@@ -292,4 +292,62 @@ export class OAuthService {
             prompt: 'consent',
         });
     }
+
+    /**
+     * Refresh Google OAuth access token using refresh token
+     * Story 5.2 - Automatic Token Refresh
+     *
+     * @param refreshToken - The refresh token stored in IntegrationCredential
+     * @returns New access token and expiry information
+     * @throws Error if refresh fails (invalid_grant, revoked, etc.)
+     */
+    static async refreshGoogleToken(refreshToken: string): Promise<{
+        access_token: string;
+        expires_in: number;
+        token_type: string;
+    }> {
+        if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+            throw new Error('Google OAuth credentials not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.');
+        }
+
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET
+        );
+
+        oauth2Client.setCredentials({
+            refresh_token: refreshToken,
+        });
+
+        try {
+            // Use getAccessToken which handles refresh automatically
+            const { token, res } = await oauth2Client.getAccessToken();
+
+            if (!token) {
+                throw new Error('Failed to refresh token: No access token returned');
+            }
+
+            // Get expiry from credentials
+            const credentials = oauth2Client.credentials;
+            const expiresIn = credentials.expiry_date
+                ? Math.floor((credentials.expiry_date - Date.now()) / 1000)
+                : 3600; // Default 1 hour
+
+            return {
+                access_token: token,
+                expires_in: expiresIn,
+                token_type: 'Bearer',
+            };
+        } catch (error: any) {
+            // Handle specific Google OAuth errors
+            if (error.message?.includes('invalid_grant') ||
+                error.message?.includes('Token has been revoked')) {
+                const refreshError = new Error('Refresh token is invalid or revoked. Please reconnect the integration.');
+                (refreshError as any).code = 'invalid_grant';
+                throw refreshError;
+            }
+            throw error;
+        }
+    }
 }
+

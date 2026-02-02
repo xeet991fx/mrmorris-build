@@ -9,7 +9,8 @@ interface IntegrationCardProps {
   title: string;
   description: string;
   icon: ReactNode;
-  status: "connected" | "not-connected" | "coming-soon";
+  status: "connected" | "not-connected" | "coming-soon" | "expiring" | "expired" | "error";
+  expiresInDays?: number; // For expiring status
   isExpanded: boolean;
   onToggle: () => void;
   children: ReactNode;
@@ -21,6 +22,7 @@ export default function IntegrationCard({
   description,
   icon,
   status,
+  expiresInDays,
   isExpanded,
   onToggle,
   children,
@@ -38,6 +40,18 @@ export default function IntegrationCard({
     "coming-soon": {
       badge: "Coming Soon",
       className: "bg-blue-500/10 text-blue-400",
+    },
+    expiring: {
+      badge: expiresInDays ? `Expires in ${expiresInDays} day${expiresInDays > 1 ? 's' : ''}` : "Expiring Soon",
+      className: "bg-amber-500/10 text-amber-400 animate-pulse",
+    },
+    expired: {
+      badge: "Expired - Reconnect",
+      className: "bg-red-500/10 text-red-400",
+    },
+    error: {
+      badge: "Error - Reconnect",
+      className: "bg-red-500/10 text-red-400",
     },
   };
 
