@@ -7,7 +7,8 @@
 
 import { axiosInstance } from '../axios';
 
-export type IntegrationType = 'gmail' | 'linkedin' | 'slack' | 'google_sheets' | 'calendar';
+// Backend IntegrationCredential.type values
+export type IntegrationType = 'gmail' | 'linkedin' | 'slack' | 'google_sheets' | 'calendar' | 'notion';
 export type IntegrationStatus = 'Connected' | 'Expired' | 'Error' | 'Revoked';
 
 export interface Integration {

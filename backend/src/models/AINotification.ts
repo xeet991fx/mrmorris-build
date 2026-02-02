@@ -16,7 +16,9 @@ export type NotificationType =
     | 'campaign_insight'
     | 'workflow_suggestion'
     | 'daily_digest'
-    | 'urgent_action';
+    | 'urgent_action'
+    | 'integration_expiring'  // Story 5.2: Token about to expire
+    | 'integration_expired';  // Story 5.2: Token expired
 
 export type NotificationPriority = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -92,6 +94,8 @@ const aiNotificationSchema = new Schema<IAINotification>(
                 'workflow_suggestion',
                 'daily_digest',
                 'urgent_action',
+                'integration_expiring',
+                'integration_expired',
             ],
             index: true,
         },

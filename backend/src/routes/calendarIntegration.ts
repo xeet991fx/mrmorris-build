@@ -4,6 +4,8 @@ import { authenticate, AuthRequest } from "../middleware/auth";
 import CalendarIntegration from "../models/CalendarIntegration";
 import CalendarEvent from "../models/CalendarEvent";
 import Contact from "../models/Contact";
+import IntegrationCredential from "../models/IntegrationCredential";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -77,15 +79,44 @@ router.get("/callback/google", async (req, res) => {
 
         if (error) {
             console.error("Calendar OAuth error:", error);
-            return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/integrations?error=calendar_denied`
-            );
+            return res.send(`
+                <html>
+                    <head>
+                        <title>Authorization Canceled</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                            h2 { color: #dc3545; }
+                            p { color: #6c757d; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>✗ Authorization Canceled</h2>
+                        <p>You denied access to Google Calendar.</p>
+                        <p>You can close this window now.</p>
+                        <script>setTimeout(() => window.close(), 3000);</script>
+                    </body>
+                </html>
+            `);
         }
 
         if (!code || !state) {
-            return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/integrations?error=missing_params`
-            );
+            return res.send(`
+                <html>
+                    <head>
+                        <title>Authorization Failed</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                            h2 { color: #dc3545; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>✗ Missing Parameters</h2>
+                        <p>Authorization code or state is missing.</p>
+                        <p>Please try again.</p>
+                        <script>setTimeout(() => window.close(), 3000);</script>
+                    </body>
+                </html>
+            `);
         }
 
         // Decode state
@@ -97,9 +128,23 @@ router.get("/callback/google", async (req, res) => {
         const { tokens } = await oauth2Client.getToken(code as string);
 
         if (!tokens.access_token || !tokens.refresh_token) {
-            return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/integrations?error=no_tokens`
-            );
+            return res.send(`
+                <html>
+                    <head>
+                        <title>Token Error</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                            h2 { color: #dc3545; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>✗ Token Error</h2>
+                        <p>Failed to get access or refresh token from Google.</p>
+                        <p>Please try again.</p>
+                        <script>setTimeout(() => window.close(), 3000);</script>
+                    </body>
+                </html>
+            `);
         }
 
         // Get user email from Google
@@ -108,9 +153,23 @@ router.get("/callback/google", async (req, res) => {
         const { data: userInfo } = await oauth2.userinfo.get();
 
         if (!userInfo.email) {
-            return res.redirect(
-                `${process.env.FRONTEND_URL}/settings/integrations?error=no_email`
-            );
+            return res.send(`
+                <html>
+                    <head>
+                        <title>Email Error</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                            h2 { color: #dc3545; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>✗ Email Not Found</h2>
+                        <p>Could not retrieve email from Google account.</p>
+                        <p>Please try again.</p>
+                        <script>setTimeout(() => window.close(), 3000);</script>
+                    </body>
+                </html>
+            `);
         }
 
         // Calculate expiry
@@ -145,15 +204,116 @@ router.get("/callback/google", async (req, res) => {
 
         await integration.save();
 
-        // Redirect to success
-        res.redirect(
-            `${process.env.FRONTEND_URL}/projects/${stateData.workspaceId}/settings/integrations?success=calendar_connected`
-        );
+        // Story 5.1/5.2: Also create/update IntegrationCredential for agent config visibility
+        try {
+            let credential = await IntegrationCredential.findOne({
+                workspaceId: new mongoose.Types.ObjectId(stateData.workspaceId),
+                type: 'calendar',
+            }).select('+encryptedData');
+
+            const credentialData = {
+                access_token: tokens.access_token!,
+                refresh_token: tokens.refresh_token!,
+                expiry_date: tokens.expiry_date,
+                email: userInfo.email,
+            };
+
+            if (credential) {
+                // Update existing credential
+                credential.setCredentialData(credentialData);
+                credential.status = 'Connected';
+                credential.expiresAt = expiresAt;
+                credential.lastValidated = new Date();
+                credential.isValid = true;
+                credential.validationError = undefined;
+                credential.profileInfo = {
+                    email: userInfo.email,
+                    name: userInfo.name || undefined,
+                    avatarUrl: userInfo.picture || undefined,
+                };
+            } else {
+                // Create new credential
+                credential = new IntegrationCredential({
+                    workspaceId: new mongoose.Types.ObjectId(stateData.workspaceId),
+                    type: 'calendar',
+                    name: `Google Calendar - ${userInfo.email}`,
+                    status: 'Connected',
+                    expiresAt,
+                    isValid: true,
+                    lastValidated: new Date(),
+                    scopes: CALENDAR_SCOPES,
+                    profileInfo: {
+                        email: userInfo.email,
+                        name: userInfo.name || undefined,
+                        avatarUrl: userInfo.picture || undefined,
+                    },
+                });
+                credential.setCredentialData(credentialData);
+            }
+
+            await credential.save();
+            console.log(`[Calendar OAuth] Synced IntegrationCredential for workspace ${stateData.workspaceId}`);
+        } catch (credError: any) {
+            console.error('[Calendar OAuth] Failed to sync IntegrationCredential:', credError);
+            // Don't fail the whole flow - CalendarIntegration is still saved
+        }
+
+        // Return success HTML with auto-close script (Story 5.1 pattern)
+        res.send(`
+            <html>
+                <head>
+                    <title>Calendar Connected</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f8f9fa; }
+                        .container { max-width: 500px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                        h2 { color: #28a745; margin-bottom: 20px; }
+                        .success-icon { font-size: 48px; margin-bottom: 20px; }
+                        p { color: #6c757d; line-height: 1.6; }
+                        strong { color: #212529; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="success-icon">✓</div>
+                        <h2>Google Calendar Connected</h2>
+                        <p>Account: <strong>${userInfo.email}</strong></p>
+                        ${userInfo.name ? `<p>Name: ${userInfo.name}</p>` : ''}
+                        <p style="margin-top: 20px;">This window will close automatically...</p>
+                    </div>
+                    <script>
+                        // Auto-close popup after 2 seconds
+                        setTimeout(() => {
+                            window.close();
+                            // If window.close() doesn't work (not a popup), redirect to dashboard
+                            setTimeout(() => {
+                                window.location.href = '${process.env.FRONTEND_URL}/projects/${stateData.workspaceId}';
+                            }, 500);
+                        }, 2000);
+                    </script>
+                </body>
+            </html>
+        `);
     } catch (error: any) {
         console.error("Calendar callback error:", error);
-        res.redirect(
-            `${process.env.FRONTEND_URL}/settings/integrations?error=callback_failed`
-        );
+        res.send(`
+            <html>
+                <head>
+                    <title>Connection Failed</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+                        h2 { color: #dc3545; }
+                        pre { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: left; max-width: 600px; margin: 20px auto; overflow-x: auto; }
+                    </style>
+                </head>
+                <body>
+                    <h2>✗ Connection Failed</h2>
+                    <p>An error occurred while connecting your calendar.</p>
+                    <pre>${error.message}</pre>
+                    <p>Please try again. If the problem persists, contact support.</p>
+                    <script>setTimeout(() => window.close(), 5000);</script>
+                </body>
+            </html>
+        `);
     }
 });
 

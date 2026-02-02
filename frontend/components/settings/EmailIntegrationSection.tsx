@@ -45,6 +45,31 @@ export default function EmailIntegrationSection({
     const result = await getEmailIntegrations(workspaceId);
     if (result.success) {
       setIntegrations(result.data.integrations);
+
+      // Story 5.2 Task 9.5: Show toast for expired/expiring integrations on load
+      const integrationList = result.data.integrations as EmailIntegration[];
+      const expiredIntegrations = integrationList.filter(
+        (i) => i.status === 'Expired' || i.status === 'Error' || i.status === 'Revoked'
+      );
+      const expiringIntegrations = integrationList.filter((i) => {
+        if (i.tokenExpiry) {
+          const daysLeft = Math.ceil((new Date(i.tokenExpiry).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+          return daysLeft > 0 && daysLeft <= 7 && i.status === 'Connected';
+        }
+        return false;
+      });
+
+      if (expiredIntegrations.length > 0) {
+        toast.error(
+          `⚠️ ${expiredIntegrations.length} integration${expiredIntegrations.length > 1 ? 's' : ''} expired. Agents may be paused.`,
+          { duration: 6000 }
+        );
+      } else if (expiringIntegrations.length > 0) {
+        toast(
+          `🔔 ${expiringIntegrations.length} integration${expiringIntegrations.length > 1 ? 's' : ''} expiring soon.`,
+          { duration: 5000, icon: '⏰' }
+        );
+      }
     }
     setLoading(false);
   };
@@ -186,6 +211,32 @@ export default function EmailIntegrationSection({
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
+  };
+
+  // Story 5.2: Compute expiration status with days warning
+  const computeExpirationStatus = (integration: EmailIntegration) => {
+    if (integration.status === 'Expired' || integration.status === 'Revoked') {
+      return { status: 'expired' as const, daysLeft: 0 };
+    }
+    if (integration.status === 'Error') {
+      return { status: 'error' as const, daysLeft: 0 };
+    }
+
+    // Check token expiration date
+    if (integration.tokenExpiry) {
+      const expiryDate = new Date(integration.tokenExpiry);
+      const now = new Date();
+      const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+
+      if (daysLeft <= 0) {
+        return { status: 'expired' as const, daysLeft: 0 };
+      }
+      if (daysLeft <= 7) {
+        return { status: 'expiring' as const, daysLeft };
+      }
+    }
+
+    return { status: 'connected' as const, daysLeft: 0 };
   };
 
   return (
@@ -367,23 +418,84 @@ export default function EmailIntegrationSection({
                         <span className="text-sm font-medium text-foreground">
                           {integration.email}
                         </span>
-                        {/* Story 5.1: Use status field from IntegrationCredential model */}
-                        {integration.isActive || integration.status === 'Connected' ? (
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] font-medium text-emerald-400">
-                            <CheckCircleIcon className="w-3 h-3" />
-                            Connected
-                          </span>
-                        ) : integration.status === 'Expired' ? (
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/10 text-[10px] font-medium text-yellow-400">
-                            <ExclamationCircleIcon className="w-3 h-3" />
-                            Expired
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-[10px] font-medium text-red-400">
-                            <ExclamationCircleIcon className="w-3 h-3" />
-                            {integration.status || 'Error'}
-                          </span>
-                        )}
+                        {/* Story 5.2: Enhanced status badges with expiration warnings */}
+                        {(() => {
+                          const { status, daysLeft } = computeExpirationStatus(integration);
+                          if (status === 'connected') {
+                            return (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] font-medium text-emerald-400">
+                                <CheckCircleIcon className="w-3 h-3" />
+                                Connected
+                              </span>
+                            );
+                          } else if (status === 'expiring') {
+                            const expiryDate = integration.tokenExpiry
+                              ? new Date(integration.tokenExpiry).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })
+                              : 'soon';
+                            return (
+                              <div className="relative group">
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-[10px] font-medium text-amber-400 animate-pulse cursor-help">
+                                  <ExclamationCircleIcon className="w-3 h-3" />
+                                  Expires in {daysLeft} day{daysLeft > 1 ? 's' : ''}
+                                </span>
+                                {/* Story 5.2 Task 8.2: Tooltip with exact expiration date */}
+                                <div className="absolute z-50 bottom-full left-0 mb-2 hidden group-hover:block">
+                                  <div className="bg-popover border border-border rounded-lg shadow-lg p-3 min-w-[180px]">
+                                    <p className="text-xs text-foreground font-medium mb-1">Token Expires</p>
+                                    <p className="text-xs text-muted-foreground mb-2">{expiryDate}</p>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleConnectGmail();
+                                      }}
+                                      className="w-full px-2 py-1.5 text-[10px] font-medium bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors"
+                                    >
+                                      Reconnect Now
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          } else if (status === 'expired') {
+                            return (
+                              <div className="relative group">
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-[10px] font-medium text-red-400 cursor-help">
+                                  <ExclamationCircleIcon className="w-3 h-3" />
+                                  Expired - Reconnect
+                                </span>
+                                {/* Story 5.2 Task 9.4: Tooltip showing affected agents info */}
+                                <div className="absolute z-50 bottom-full left-0 mb-2 hidden group-hover:block">
+                                  <div className="bg-popover border border-border rounded-lg shadow-lg p-3 min-w-[200px]">
+                                    <p className="text-xs text-red-400 font-medium mb-1">⚠️ Integration Expired</p>
+                                    <p className="text-xs text-muted-foreground mb-2">
+                                      Agents using this integration have been automatically paused. Check your notifications for details.
+                                    </p>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleConnectGmail();
+                                      }}
+                                      className="w-full px-2 py-1.5 text-[10px] font-medium bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                                    >
+                                      Reconnect Now
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-[10px] font-medium text-red-400">
+                                <ExclamationCircleIcon className="w-3 h-3" />
+                                Error - Reconnect
+                              </span>
+                            );
+                          }
+                        })()}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         Last synced: {formatTimeAgo(integration.lastSyncAt)}
