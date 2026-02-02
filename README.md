@@ -6,6 +6,8 @@ An intelligent AI-native CRM powered by autonomous AI agents. Built with Google 
 
 **Live**: https://clianta.online
 
+**Last Updated**: February 2, 2026
+
 ## 🚀 Overview
 
 **Clianta** is an AI-native CRM that understands your business, knows your customers, and works like your best employee. Built with Google Gemini 2.5 Pro, DeepAgents framework, and multi-agent coordination architecture, it provides deep context awareness, autonomous task execution, workflow automation, and proactive insights across sales and customer success.
@@ -71,6 +73,7 @@ Comprehensive documentation for production deployment and repository restructuri
 ### Integrations & Configuration
 - **[Integrations Guide](docs/INTEGRATIONS.md)** - Third-party integrations (Salesforce, Apollo, Google, Slack, etc.)
 - **[Environment Configuration](docs/ENVIRONMENT_CONFIGURATION.md)** - Environment variables and setup guide
+- **[Tracking SDK](docs/TRACKING_SDK.md)** - Website visitor tracking SDK documentation
 
 ### Deployment & Migration
 - **[Build & Deployment](docs/BUILD_AND_DEPLOYMENT.md)** - Build process and production deployment guide
@@ -82,136 +85,114 @@ Comprehensive documentation for production deployment and repository restructuri
 ## 📁 Project Structure
 
 ```
-mrmorris-build/
+morrisB/
 ├── frontend/                           # Next.js Frontend Application
 │   ├── app/                           # App Router pages
-│   │   ├── (auth)/                   # Authentication routes
-│   │   │   ├── login/
-│   │   │   └── register/
-│   │   ├── (workspace)/              # Main workspace routes
-│   │   │   ├── contacts/             # Contact management
-│   │   │   ├── companies/            # Company management
-│   │   │   ├── deals/                # Deal/opportunity pipeline
-│   │   │   ├── activities/           # Activity tracking
-│   │   │   ├── analytics/            # Analytics & reports
-│   │   │   ├── workflows/            # Workflow automation
-│   │   │   ├── campaigns/            # Email campaigns
-│   │   │   ├── forms/                # Form builder
-│   │   │   ├── chatbot/              # AI chatbot builder
-│   │   │   ├── tracking/             # Website tracking
-│   │   │   └── settings/             # Workspace settings
-│   │   ├── dashboard/                # Main dashboard
-│   │   ├── globals.css               # Global styles
-│   │   ├── layout.tsx                # Root layout
-│   │   └── page.tsx                  # Landing page
+│   │   ├── auth/                      # OAuth callback routes
+│   │   ├── dashboard/                 # Main dashboard
+│   │   ├── forms/                     # Public form routes
+│   │   ├── invite/                    # Team invite pages
+│   │   ├── login/                     # Login page
+│   │   ├── register/                  # Registration page
+│   │   ├── meet/                      # Meeting scheduling
+│   │   ├── p/                         # Public pages
+│   │   ├── projects/                  # Workspace routes
+│   │   │   └── [id]/                  # Dynamic workspace routes
+│   │   │       ├── agents/            # AI agents management
+│   │   │       ├── analytics/         # Analytics & reports
+│   │   │       ├── campaigns/         # Email campaigns
+│   │   │       ├── chatbots/          # AI chatbot builder
+│   │   │       ├── companies/         # Company management
+│   │   │       ├── contacts/          # Contact management
+│   │   │       ├── dashboard/         # Workspace dashboard
+│   │   │       ├── email-accounts/    # Email account settings
+│   │   │       ├── email-templates/   # Email template builder
+│   │   │       ├── forms/             # Form builder
+│   │   │       ├── inbox/             # Unified inbox
+│   │   │       ├── meetings/          # Meeting management
+│   │   │       ├── pages/             # Landing page builder
+│   │   │       ├── pipelines/         # Deal pipelines
+│   │   │       ├── sequences/         # Email sequences
+│   │   │       ├── settings/          # Workspace settings
+│   │   │       ├── tasks/             # Task management
+│   │   │       ├── workflows/         # Workflow automation
+│   │   │       └── ...                # Other features
+│   │   ├── sdk-test/                  # SDK testing page
+│   │   └── verify-email/              # Email verification
 │   ├── components/                    # React components
-│   │   ├── analytics/                # Analytics components
-│   │   ├── chatbot/                  # Chatbot UI
-│   │   ├── contacts/                 # Contact views
-│   │   ├── dashboard/                # Dashboard widgets
-│   │   ├── deals/                    # Deal kanban & views
-│   │   ├── forms/                    # Form builder
-│   │   ├── landing/                  # Landing page sections
-│   │   ├── layout/                   # Layout components
-│   │   ├── shared/                   # Shared components
-│   │   ├── ui/                       # shadcn/ui components
-│   │   └── workflows/                # Workflow builder
-│   ├── lib/                          # Utilities & configurations
-│   │   ├── api/                      # API client functions
-│   │   ├── validations/              # Zod validation schemas
-│   │   ├── axios.ts                  # Axios instance
-│   │   └── utils.ts                  # Utility functions
-│   ├── store/                        # Zustand state stores
-│   │   ├── useAuthStore.ts           # Auth state
-│   │   ├── useWorkspaceStore.ts      # Workspace state
-│   │   └── useThemeStore.ts          # Theme state
-│   ├── .env.local                    # Frontend environment variables
-│   └── package.json                  # Frontend dependencies
+│   │   ├── agents/                    # Agent UI components
+│   │   ├── analytics/                 # Analytics components
+│   │   ├── chatbot/                   # Chatbot UI
+│   │   ├── contacts/                  # Contact views
+│   │   ├── dashboard/                 # Dashboard widgets
+│   │   ├── forms/                     # Form builder
+│   │   ├── landing/                   # Landing page sections
+│   │   ├── layout/                    # Layout components
+│   │   ├── settings/                  # Settings components
+│   │   ├── ui/                        # shadcn/ui components
+│   │   └── workflows/                 # Workflow builder
+│   ├── hooks/                         # Custom React hooks
+│   ├── lib/                           # Utilities & configurations
+│   ├── store/                         # Zustand state stores
+│   ├── types/                         # TypeScript type definitions
+│   └── utils/                         # Utility functions
 │
 ├── backend/                           # Express Backend Application
 │   ├── src/
+│   │   ├── agents/                   # AI agent implementations
 │   │   ├── config/                   # Configuration files
-│   │   │   ├── database.ts           # MongoDB connection
-│   │   │   ├── passport.ts           # Passport auth strategies
-│   │   │   └── redis.ts              # Redis connection
-│   │   ├── models/                   # Mongoose models
-│   │   │   ├── User.ts               # User model
-│   │   │   ├── Project.ts            # Workspace/project model
-│   │   │   ├── Contact.ts            # Contact model
-│   │   │   ├── Company.ts            # Company model
-│   │   │   ├── Opportunity.ts        # Deal/opportunity model
-│   │   │   ├── Activity.ts           # Activity model
-│   │   │   ├── Workflow.ts           # Workflow model
-│   │   │   ├── Campaign.ts           # Campaign model
-│   │   │   ├── Form.ts               # Form model
-│   │   │   ├── Chatbot.ts            # Chatbot model
-│   │   │   ├── AIMemory.ts           # AI memory/context model
-│   │   │   └── ...                   # Other models
-│   │   ├── routes/                   # Express routes
-│   │   │   ├── auth.ts               # Authentication
-│   │   │   ├── contact.ts            # Contacts CRUD
-│   │   │   ├── company.ts            # Companies CRUD
-│   │   │   ├── opportunity.ts        # Deals/opportunities
-│   │   │   ├── workflow.ts           # Workflows
-│   │   │   ├── campaign.ts           # Email campaigns
-│   │   │   ├── form.ts               # Forms
-│   │   │   ├── chatbot.ts            # Chatbot
-│   │   │   ├── analytics.ts          # Analytics
-│   │   │   ├── agent.ts              # AI agents
-│   │   │   ├── aiMemory.ts           # AI memory
-│   │   │   ├── aiContent.ts          # AI content generation
-│   │   │   └── integrations/         # Integration routes
-│   │   │       ├── googleSheets.ts
-│   │   │       ├── notion.ts
-│   │   │       └── slack.ts
-│   │   ├── services/                 # Business logic services
-│   │   │   ├── AIMemoryService.ts    # AI memory & context
-│   │   │   ├── AIContentService.ts   # AI content generation
-│   │   │   ├── IntentScoreService.ts # Intent scoring
-│   │   │   ├── EnrichmentService.ts  # Data enrichment
-│   │   │   ├── WorkflowScheduler.ts  # Workflow execution
-│   │   │   ├── EmailService.ts       # Email sending
-│   │   │   ├── SalesforceService.ts  # Salesforce sync
-│   │   │   └── ...                   # Other services
-│   │   ├── jobs/                     # Background jobs
-│   │   │   ├── emailSyncJob.ts       # Email sync
-│   │   │   ├── salesforceSyncJob.ts  # Salesforce sync
-│   │   │   ├── intentScoreDecayJob.ts
-│   │   │   ├── lifecycleProgressionJob.ts
-│   │   │   ├── leadRecyclingJob.ts
-│   │   │   ├── meetingPrepJob.ts     # AI meeting prep
-│   │   │   ├── dailyInsightJob.ts    # AI insights
-│   │   │   └── proactiveAI/          # Proactive AI jobs
-│   │   ├── middleware/               # Express middleware
-│   │   │   └── auth.ts               # Auth middleware
+│   │   ├── controllers/              # Route controllers
+│   │   ├── errors/                   # Custom error classes
 │   │   ├── events/                   # Event-driven architecture
-│   │   │   ├── consumers/            # Event consumers
-│   │   │   ├── queue/                # Queue management
-│   │   │   └── types.ts              # Event types
+│   │   ├── jobs/                     # Background jobs (BullMQ)
+│   │   ├── middleware/               # Express middleware
+│   │   ├── migrations/               # Database migrations
+│   │   ├── models/                   # Mongoose models
+│   │   ├── routes/                   # Express routes
+│   │   ├── scripts/                  # Utility scripts
+│   │   ├── seeds/                    # Database seeds
+│   │   ├── services/                 # Business logic services
 │   │   ├── socket/                   # Socket.io handlers
-│   │   │   └── chatSocket.ts         # Real-time chat
+│   │   ├── tests/                    # Test files
+│   │   ├── utils/                    # Utility functions
 │   │   ├── validations/              # Zod validation schemas
-│   │   ├── types/                    # TypeScript types
+│   │   ├── cluster.ts                # Cluster mode setup
 │   │   └── server.ts                 # Express server setup
-│   ├── .env                          # Backend environment variables
-│   ├── vertex-key.json               # Google Cloud credentials (gitignored)
-│   ├── tsconfig.json                 # TypeScript config
-│   └── package.json                  # Backend dependencies
+│   └── logs/                         # Application logs
 │
-├── agent-os/                          # Agent OS framework
-│   ├── standards/                    # Development standards
-│   │   ├── frontend/                 # Frontend guidelines
-│   │   └── backend/                  # Backend guidelines
-│   └── workflows/                    # Workflow definitions
+├── sdk/                               # Tracking SDK
+│   ├── src/                          # SDK source code
+│   ├── examples/                     # Usage examples
+│   └── tests/                        # SDK tests
+│
+├── integrations/                      # External integrations
+│   └── wordpress/                    # WordPress plugin
 │
 ├── docs/                             # Documentation
-│   ├── API_DOCUMENTATION.md          # API docs
-│   ├── INTEGRATION_STATUS.md         # Integration status
-│   ├── WORKFLOW_DATA_FLOW.md         # Workflow architecture
-│   └── ...                           # Other docs
+│   ├── AGENT_SYSTEM.md               # AI agent architecture
+│   ├── API_ROUTES_MAP.md             # API endpoint reference
+│   ├── ARCHITECTURE.md               # System architecture
+│   ├── BACKGROUND_JOBS.md            # Background job docs
+│   ├── BUILD_AND_DEPLOYMENT.md       # Deployment guide
+│   ├── DEPENDENCIES.md               # Package dependencies
+│   ├── ENVIRONMENT_CONFIGURATION.md  # Environment setup
+│   ├── FOLDER_STRUCTURE.md           # Project structure
+│   ├── INTEGRATIONS.md               # Integration guides
+│   ├── MODELS_AND_SCHEMAS.md         # Database schemas
+│   └── TRACKING_SDK.md               # SDK documentation
 │
-├── .env                              # Root environment variables
-├── package.json                      # Root package for concurrent scripts
+├── agent-os/                         # Agent OS framework
+│   ├── standards/                    # Development standards
+│   └── config.yml                    # Agent configuration
+│
+├── _bmad/                            # BMAD framework configs
+│   ├── bmm/                          # Business model configs
+│   └── core/                         # Core configurations
+│
+├── _bmad-output/                     # Generated artifacts
+│
+├── docker-compose.yml                # Docker compose config
+├── package.json                      # Root package for scripts
 └── README.md                         # This file
 ```
 
@@ -538,41 +519,50 @@ cd backend && npm test
 - ✅ DeepAgents framework integration
 - ✅ AI-powered meeting prep and briefings
 - ✅ Lead scoring with decay rules
+- ✅ Agent test mode with step-by-step preview
 
 ### Phase 5: Integrations ✅ Complete
 - ✅ Salesforce bi-directional sync
 - ✅ Apollo.io enrichment
-- ✅ Google Calendar, Sheets, Gmail
+- ✅ Google Calendar, Sheets, Gmail OAuth
 - ✅ Slack and Twilio
+- ✅ Email integration (OAuth popup pattern)
 
-### Phase 6: Advanced Features ⏳ In Progress
+### Phase 6: Advanced Features ✅ Complete
 - ✅ Lead score analytics
 - ✅ Data stewardship and verification
-- ⏳ Form and landing page builder
-- ⏳ Website visitor tracking
-- ⏳ Custom reports builder
-- ⏳ Developer API
+- ✅ Form and landing page builder
+- ✅ Website visitor tracking SDK
+- ✅ Meeting scheduling system
+- ✅ Forecasting and ML scoring
+
+### Phase 7: Production Ready 🚀 Current
+- ✅ Docker deployment configuration
+- ✅ Comprehensive documentation
+- ⏳ Performance optimization
+- ⏳ Extended API documentation
+- ⏳ Developer SDK improvements
 
 ## 📝 Documentation
 
 ### Core Documentation
-- [Feature Status Guide](docs/FEATURE_STATUS.md) - Complete feature overview and requirements
-- [CRM Features Guide](docs/CRM_FEATURES_GUIDE.md) - Detailed CRM functionality guide
-- [Progress Notes](docs/progress%20note.md) - Latest development status
+- [Architecture](docs/ARCHITECTURE.md) - System architecture overview
+- [API Routes Map](docs/API_ROUTES_MAP.md) - Complete API endpoint reference
+- [Models & Schemas](docs/MODELS_AND_SCHEMAS.md) - Database schema documentation
+- [Folder Structure](docs/FOLDER_STRUCTURE.md) - Project organization
 
 ### AI & Automation
-- [Multi-Agent Architecture](docs/MULTI_AGENT_ARCHITECTURE.md) - AI agent system documentation
-- [Multi-Agent README](backend/src/agents/MULTI_AGENT_README.md) - Agent coordination guide
-- [Workflow Documentation](docs/WORKFLOW_COMPLETION_SUMMARY.md) - Workflow system guide
-- [Lead Scoring](docs/LEAD_SCORING_COMPLETE.md) - Lead scoring implementation
+- [Agent System](docs/AGENT_SYSTEM.md) - AI agent system documentation
+- [Background Jobs](docs/BACKGROUND_JOBS.md) - Queue and scheduled tasks
 
-### Integrations
-- [Apollo Setup Guide](docs/APOLLO_SETUP_GUIDE.md) - Apollo.io integration
-- [Salesforce Sync](docs/SALESFORCE_SYNC_DETAILS.md) - Salesforce integration
-- [Email Integration](docs/APOLLO_EMAIL_INTEGRATION_SUMMARY.md) - Email system setup
+### Integrations & SDK
+- [Integrations Guide](docs/INTEGRATIONS.md) - Third-party integration guides
+- [Tracking SDK](docs/TRACKING_SDK.md) - Website visitor tracking SDK
+- [Environment Config](docs/ENVIRONMENT_CONFIGURATION.md) - Environment setup
 
-### Troubleshooting
-- [MongoDB & Redis Troubleshooting](docs/TROUBLESHOOTING_MONGODB_REDIS.md)
+### Deployment
+- [Build & Deployment](docs/BUILD_AND_DEPLOYMENT.md) - Production deployment guide
+- [Dependencies](docs/DEPENDENCIES.md) - Package dependency management
 
 ## 🤝 Contributing
 
@@ -580,8 +570,9 @@ This is a private project. For access or questions, contact the development team
 
 ## 📄 License
 
-Proprietary software for MrMorris.
+Proprietary software for Clianta.
 
 ---
 
-Built with ❤️ using Google Gemini 2.5 Pro and Vertex AI
+
+**Version**: 0.1.0 | **Last Updated**: February 2026
