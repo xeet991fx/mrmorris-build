@@ -54,7 +54,7 @@ export default function EmailIntegrationSection({
     try {
       // Story 5.1: Use new OAuth popup pattern
       const result = await getGmailConnectUrl(workspaceId);
-      if (result.success && result.data.authUrl) {
+      if (result.success && result.data?.authUrl) {
         // Open OAuth popup window
         const width = 600;
         const height = 700;

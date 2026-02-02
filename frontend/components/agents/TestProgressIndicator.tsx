@@ -28,8 +28,8 @@ interface TestProgressIndicatorProps {
   elapsedTimeMs: number;
   /** Whether the test is currently running */
   isRunning: boolean;
-  /** Callback to cancel the test */
-  onCancel: () => void;
+  /** Callback to cancel the test (optional - if not provided, cancel button won't be shown) */
+  onCancel?: () => void;
   /** Whether cancel is in progress */
   isCancelling?: boolean;
 }
@@ -130,7 +130,7 @@ export function TestProgressIndicator({
       )}
 
       {/* AC3: Cancel button (appears after 5 seconds) */}
-      {showCancel && (
+      {showCancel && onCancel && (
         <Button
           variant="outline"
           size="sm"
