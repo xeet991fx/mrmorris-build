@@ -18,7 +18,7 @@ module.exports = {
             script: "./dist/server.js",
 
             // Cluster mode: 2 instances for Railway trial (2 vCores)
-            instances: process.env.NODE_ENV === "production" ? 2 : 4,
+            instances: process.env.NODE_ENV === "production" ? 2 : 6,
             exec_mode: "cluster",
 
             // Auto-restart configuration
