@@ -36,6 +36,7 @@ import {
 } from '@/lib/api/agents';
 import { getErrorSuggestion } from '@/utils/errorSuggestions';
 import { useAgentExecution } from '@/hooks/useAgentExecution';
+import { EmailExecutionProgress } from './EmailExecutionProgress';
 
 interface ExecutionHistoryPanelProps {
   workspaceId: string;
@@ -567,6 +568,13 @@ export function ExecutionHistoryPanel({ workspaceId, agentId }: ExecutionHistory
                             </button>
                           )}
                         </div>
+
+                        {/* Story 5.4 Task 9: Email Execution Progress (AC3, AC5, AC6) */}
+                        <EmailExecutionProgress
+                          execution={details || execution}
+                          liveProgress={liveProgress}
+                          isExpanded={isExpanded}
+                        />
 
                         {/* Steps */}
                         {details?.steps && details.steps.length > 0 && (

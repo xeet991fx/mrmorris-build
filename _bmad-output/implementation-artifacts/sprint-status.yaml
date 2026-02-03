@@ -90,7 +90,7 @@ development_status:
   4-1-ai-copilot-chat-interface: done
   4-2-generate-complete-agent-instructions: review
   4-3-answer-questions-about-automation: done
-  4-4-suggest-improvements-to-instructions: backlog
+  4-4-suggest-improvements-to-instructions: ready-for-dev
   4-5-analyze-failed-executions: backlog
   4-6-access-workspace-context: backlog
   4-7-auto-complete-suggestions: backlog
@@ -105,7 +105,7 @@ development_status:
   5-1-oauth-authentication-flow: done
   5-2-automatic-token-refresh: done
   5-3-integration-expiration-notifications: review
-  5-4-gmail-integration-for-emails: backlog
+  5-4-gmail-integration-for-emails: done
   5-5-linkedin-integration-for-connection-requests: backlog
   5-6-slack-integration-for-notifications: backlog
   5-7-apollo-io-integration-for-enrichment: backlog

@@ -32,6 +32,12 @@ export function IntegrationStatusCard({
     const isExpired = credential?.status === 'Expired';
     const hasError = credential?.status === 'Error';
 
+    // Story 5.4 Task 8.3: Calculate days until token expiration
+    const daysUntilExpiry = credential?.expiresAt
+        ? Math.ceil((new Date(credential.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : null;
+    const showExpiryWarning = isConnected && daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
+
     const getIntegrationIcon = (iconName: string) => {
         const iconClass = "w-5 h-5";
 
@@ -129,6 +135,13 @@ export function IntegrationStatusCard({
                         <p className="text-xs text-zinc-500 dark:text-zinc-500 flex items-center gap-1.5">
                             <span className="inline-block w-1 h-1 rounded-full bg-zinc-400"></span>
                             Last used {formatDistanceToNow(new Date(credential.lastUsed), { addSuffix: true })}
+                        </p>
+                    )}
+                    {/* Story 5.4 Task 8.3: Show expiration warning if <7 days */}
+                    {showExpiryWarning && (
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1.5 font-medium">
+                            <span className="inline-block w-1 h-1 rounded-full bg-yellow-500"></span>
+                            Expires in {daysUntilExpiry} day{daysUntilExpiry !== 1 ? 's' : ''}
                         </p>
                     )}
                 </div>

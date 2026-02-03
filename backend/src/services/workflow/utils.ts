@@ -36,17 +36,41 @@ export function calculateDelayMs(
 // ============================================
 
 /**
- * Replace template placeholders like {{firstName}} or {{contact.name}} with actual values
+ * Replace template placeholders like {{firstName}}, {{contact.name}}, or @contact.firstName with actual values
+ * Story 5.4 AC2: Support both {{}} and @ syntax for variable resolution
  */
 export function replacePlaceholders(text: string, entity: any): string {
     if (!text) return "";
 
-    // Match both simple patterns like {{firstName}} and dot notation like {{contact.name}}
-    return text.replace(/\{\{([\w.]+)\}\}/g, (match, field) => {
+    // First, replace @contact.field and @company.field patterns (Story 5.4 AC2)
+    let result = text.replace(/@(contact|company)\.([\w.]+)/g, (match, entityType, field) => {
+        // For @contact.*, use the entity directly
+        // For @company.*, try entity.company or entity.companyName
+        if (entityType === 'contact') {
+            const value = getNestedValue(entity, field);
+            return value !== undefined ? String(value) : match;
+        } else if (entityType === 'company') {
+            // Try entity.company[field] or entity.companyField
+            const companyValue = getNestedValue(entity, 'company') || entity.companyName || entity.company;
+            if (typeof companyValue === 'object') {
+                const value = getNestedValue(companyValue, field);
+                return value !== undefined ? String(value) : match;
+            } else if (field === 'name') {
+                return companyValue ? String(companyValue) : match;
+            }
+            return match;
+        }
+        return match;
+    });
+
+    // Then, replace {{field}} patterns
+    result = result.replace(/\{\{([\w.]+)\}\}/g, (match, field) => {
         // Handle nested fields like contact.firstName
         const value = getNestedValue(entity, field);
         return value !== undefined ? String(value) : match;
     });
+
+    return result;
 }
 
 /**
