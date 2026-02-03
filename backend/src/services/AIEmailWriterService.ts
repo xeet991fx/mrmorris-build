@@ -5,19 +5,19 @@
 
 import { IntelligentOnboardingService } from "./IntelligentOnboardingService";
 import { IBusinessProfile } from "../models/BusinessProfile";
-import { getProModel } from "../agents/modelFactory";
+import { getProModel } from "../chatbot/modelFactory";
 
 interface EmailRequest {
   purpose:
-    | "cold_outreach"
-    | "follow_up"
-    | "demo_invite"
-    | "proposal"
-    | "nurture"
-    | "customer_onboarding"
-    | "event_invite"
-    | "content_share"
-    | "custom";
+  | "cold_outreach"
+  | "follow_up"
+  | "demo_invite"
+  | "proposal"
+  | "nurture"
+  | "customer_onboarding"
+  | "event_invite"
+  | "content_share"
+  | "custom";
   customPurpose?: string;
   recipientInfo?: {
     name?: string;

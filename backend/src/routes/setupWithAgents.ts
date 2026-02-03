@@ -8,8 +8,8 @@
 
 import express, { Request, Response } from "express";
 import { authenticate } from "../middleware/auth";
-import { invokeAgentV2 } from "../agents";
-import { getProModel } from "../agents/modelFactory";
+import { invokeAgentV2 } from "../chatbot";
+import { getProModel } from "../chatbot/modelFactory";
 
 const router = express.Router();
 

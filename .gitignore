@@ -56,3 +56,4 @@ backend/vertex-key.json
 
 # IDE
 .vscode/
+.idea/

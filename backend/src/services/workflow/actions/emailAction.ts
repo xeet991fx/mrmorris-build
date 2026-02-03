@@ -18,7 +18,7 @@ import emailService from "../../email";
 import { replacePlaceholders } from "../utils";
 import { ActionContext, ActionResult, BaseActionExecutor } from "./types";
 import { generateTrackingId, getTrackingPixelUrl } from "../../../routes/emailTracking";
-import { getProModel } from "../../../agents/modelFactory";
+import { getProModel } from "../../../chatbot/modelFactory";
 import { tokenRefreshService, IntegrationExpiredError } from "../../TokenRefreshService";
 
 // Gmail OAuth client factory

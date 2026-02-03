@@ -11,6 +11,7 @@ import Contact from "../models/Contact";
 import CampaignEnrollment from "../models/CampaignEnrollment";
 import { Types } from "mongoose";
 import { logger } from "../utils/logger";
+import { tokenRefreshService, IntegrationExpiredError } from "./TokenRefreshService";
 
 // ============================================
 // INBOX SERVICE
@@ -1061,7 +1062,8 @@ Write the email reply now (body only, no subject):`;
             // Combine both sources - create unified integration objects
             const allIntegrations: Array<{
                 workspaceId: any;
-                getAccessToken: () => string;
+                credentialId?: string;  // For IntegrationCredential token refresh
+                getAccessToken: () => Promise<string>;
                 getRefreshToken: () => string;
                 email: string;
                 save: () => Promise<void>;
@@ -1072,7 +1074,7 @@ Write the email reply now (body only, no subject):`;
             for (const integration of integrations) {
                 allIntegrations.push({
                     workspaceId: integration.workspaceId,
-                    getAccessToken: () => integration.getAccessToken(),
+                    getAccessToken: async () => integration.getAccessToken(),
                     getRefreshToken: () => integration.getRefreshToken(),
                     email: integration.email,
                     save: async () => {
@@ -1089,9 +1091,23 @@ Write the email reply now (body only, no subject):`;
                 if (!existingWorkspaces.has(cred.workspaceId.toString())) {
                     try {
                         const credData = cred.getCredentialData();
+                        const credId = cred._id.toString();
                         allIntegrations.push({
                             workspaceId: cred.workspaceId,
-                            getAccessToken: () => credData.accessToken,
+                            credentialId: credId,
+                            getAccessToken: async () => {
+                                // Use token refresh service to get valid token
+                                try {
+                                    return await tokenRefreshService.ensureValidToken(credId);
+                                } catch (err: any) {
+                                    if (err instanceof IntegrationExpiredError) {
+                                        logger.warn("Gmail integration expired, skipping", { credentialId: credId });
+                                        throw err;
+                                    }
+                                    // Fallback to stored token
+                                    return credData.accessToken;
+                                }
+                            },
                             getRefreshToken: () => credData.refreshToken,
                             email: cred.profileInfo?.email || "",
                             save: async () => {
@@ -1126,8 +1142,11 @@ Write the email reply now (body only, no subject):`;
                         `${process.env.BACKEND_URL || "http://localhost:5000"}/api/email/callback/gmail`
                     );
 
+                    // Get fresh access token (auto-refreshes if expired)
+                    const accessToken = await integration.getAccessToken();
+
                     oauth2Client.setCredentials({
-                        access_token: integration.getAccessToken(),
+                        access_token: accessToken,
                         refresh_token: integration.getRefreshToken(),
                     });
 

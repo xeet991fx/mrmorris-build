@@ -12,7 +12,7 @@ import Contact from "../models/Contact";
 import EmailAccountService from "./EmailAccountService";
 import nodemailer, { Transporter } from "nodemailer";
 import { Types } from "mongoose";
-import { getProModel } from "../agents/modelFactory";
+import { getProModel } from "../chatbot/modelFactory";
 import { processBatches } from "../utils/batchProcessor";
 import crypto from "crypto";
 

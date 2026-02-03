@@ -5,7 +5,7 @@
 
 import { IntelligentOnboardingService } from "./IntelligentOnboardingService";
 import { IBusinessProfile } from "../models/BusinessProfile";
-import { getProModel } from "../agents/modelFactory";
+import { getProModel } from "../chatbot/modelFactory";
 
 interface FormField {
   id: string;

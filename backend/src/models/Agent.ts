@@ -338,7 +338,12 @@ AgentSchema.index({ status: 1, 'triggers.type': 1, 'triggers.enabled': 1 });
 AgentSchema.index({ workspace: 1, status: 1, 'triggers.type': 1, 'triggers.config.eventType': 1, 'triggers.enabled': 1 });
 
 // CRITICAL: Workspace isolation middleware - prevents cross-workspace data leaks
+// Note: Can be bypassed with .setOptions({ bypassSecurityCheck: true }) for admin-level operations (e.g., startup schedule registration)
 AgentSchema.pre('find', function () {
+  const options = this.getOptions();
+  if (options.bypassSecurityCheck) {
+    return; // Allow admin-level queries without workspace filter
+  }
   if (!this.getQuery().workspace) {
     throw new Error('SECURITY: Workspace filter required for Agent find queries');
   }

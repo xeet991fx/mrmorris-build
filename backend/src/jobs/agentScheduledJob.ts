@@ -82,11 +82,14 @@ export const registerAllLiveAgentSchedules = async (): Promise<void> => {
     const Agent = (await import('../models/Agent')).default;
 
     // Find all Live agents with scheduled triggers
+    // Note: Using setOptions to bypass workspace filter for startup registry (admin-level operation)
     const liveAgents = await Agent.find({
       status: 'Live',
       'triggers.type': 'scheduled',
       'triggers.enabled': { $ne: false },
-    }).select('_id workspace triggers');
+    })
+      .setOptions({ bypassSecurityCheck: true })
+      .select('_id workspace triggers');
 
     let registeredCount = 0;
 

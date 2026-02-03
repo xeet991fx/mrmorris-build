@@ -544,9 +544,9 @@ export function startSequenceEmailWorker(): Worker {
         processSequenceEmailJob,
         {
             ...defaultWorkerOptions,
-            concurrency: parseInt(process.env.SEQUENCE_WORKER_CONCURRENCY || '3'),
+            concurrency: parseInt(process.env.SEQUENCE_WORKER_CONCURRENCY || '10'),  // Increased from 3 to 10
             limiter: {
-                max: parseInt(process.env.SEQUENCE_RATE_LIMIT || '5'),
+                max: parseInt(process.env.SEQUENCE_RATE_LIMIT || '20'),  // Increased from 5 to 20
                 duration: 1000,
             },
         }
@@ -564,7 +564,7 @@ export function startSequenceEmailWorker(): Worker {
         console.error('❌ Sequence worker error:', err);
     });
 
-    console.log(`🚀 Sequence email worker started (concurrency: ${process.env.SEQUENCE_WORKER_CONCURRENCY || '3'})`);
+    console.log(`🚀 Sequence email worker started (concurrency: ${process.env.SEQUENCE_WORKER_CONCURRENCY || '10'})`);
     return sequenceWorker;
 }
 

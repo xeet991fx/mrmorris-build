@@ -5,73 +5,73 @@
  * Creates personalized headlines, value props, and CTAs based on business context.
  */
 
-import { getProModel } from '../agents/modelFactory';
+import { getProModel } from '../chatbot/modelFactory';
 import { IntelligentOnboardingService } from './IntelligentOnboardingService';
 
 export interface GeneratedPageContent {
-    hero: {
-        headline: string;
-        subheadline: string;
-        ctaText: string;
-        ctaSecondary?: string;
-    };
-    features: {
-        sectionTitle: string;
-        items: Array<{
-            title: string;
-            description: string;
-            icon?: string;
-        }>;
-    };
-    benefits: {
-        sectionTitle: string;
-        items: string[];
-    };
-    socialProof: {
-        headline: string;
-        stats: Array<{ value: string; label: string }>;
-        testimonials: Array<{
-            quote: string;
-            author: string;
-            role: string;
-            company: string;
-        }>;
-    };
-    cta: {
-        headline: string;
-        subheadline: string;
-        buttonText: string;
-    };
-    seo: {
-        title: string;
-        description: string;
-        keywords: string[];
-    };
-    reasoning: string;
+  hero: {
+    headline: string;
+    subheadline: string;
+    ctaText: string;
+    ctaSecondary?: string;
+  };
+  features: {
+    sectionTitle: string;
+    items: Array<{
+      title: string;
+      description: string;
+      icon?: string;
+    }>;
+  };
+  benefits: {
+    sectionTitle: string;
+    items: string[];
+  };
+  socialProof: {
+    headline: string;
+    stats: Array<{ value: string; label: string }>;
+    testimonials: Array<{
+      quote: string;
+      author: string;
+      role: string;
+      company: string;
+    }>;
+  };
+  cta: {
+    headline: string;
+    subheadline: string;
+    buttonText: string;
+  };
+  seo: {
+    title: string;
+    description: string;
+    keywords: string[];
+  };
+  reasoning: string;
 }
 
 export class AILandingPageContentGenerator {
 
-    /**
-     * Generate complete landing page content using AI
-     */
-    static async generateContent(
-        workspaceId: string,
-        pageDescription: string,
-        options?: {
-            tone?: 'professional' | 'casual' | 'bold' | 'friendly';
-            industry?: string;
-            targetAudience?: string;
-        }
-    ): Promise<GeneratedPageContent> {
-        const model = getProModel();
+  /**
+   * Generate complete landing page content using AI
+   */
+  static async generateContent(
+    workspaceId: string,
+    pageDescription: string,
+    options?: {
+      tone?: 'professional' | 'casual' | 'bold' | 'friendly';
+      industry?: string;
+      targetAudience?: string;
+    }
+  ): Promise<GeneratedPageContent> {
+    const model = getProModel();
 
-        // Get business profile for context
-        let businessContext = '';
-        try {
-            const profile = await IntelligentOnboardingService.getBusinessProfile(workspaceId);
-            if (profile) {
-                businessContext = `
+    // Get business profile for context
+    let businessContext = '';
+    try {
+      const profile = await IntelligentOnboardingService.getBusinessProfile(workspaceId);
+      if (profile) {
+        businessContext = `
 ## BUSINESS CONTEXT:
 - Company Name: ${profile.companyName || 'Not specified'}
 - Industry: ${profile.industry}${profile.industrySpecific ? ` (${profile.industrySpecific})` : ''}
@@ -82,12 +82,12 @@ export class AILandingPageContentGenerator {
 - Primary Goal: ${profile.primaryGoal}
 - Average Deal: ${profile.averageDealSize || 'Not specified'}
 `;
-            }
-        } catch (e) {
-            console.warn('Could not load business profile:', e);
-        }
+      }
+    } catch (e) {
+      console.warn('Could not load business profile:', e);
+    }
 
-        const prompt = `You are the world's best landing page copywriter, powered by Gemini 2.5 Pro.
+    const prompt = `You are the world's best landing page copywriter, powered by Gemini 2.5 Pro.
 
 You've written copy for billion-dollar SaaS companies and consistently achieve 30%+ conversion rates.
 
@@ -189,28 +189,28 @@ ${options?.targetAudience ? `## TARGET AUDIENCE: ${options.targetAudience}` : ''
 
 Return ONLY valid JSON. No markdown.`;
 
-        const result = await model.invoke(prompt);
-        const content = typeof result.content === 'string' ? result.content : String(result.content);
+    const result = await model.invoke(prompt);
+    const content = typeof result.content === 'string' ? result.content : String(result.content);
 
-        // Extract JSON
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error('Invalid AI response - no JSON found');
-        }
-
-        return JSON.parse(jsonMatch[0]) as GeneratedPageContent;
+    // Extract JSON
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Invalid AI response - no JSON found');
     }
 
-    /**
-     * Generate headlines only (for quick iterations)
-     */
-    static async generateHeadlines(
-        pageDescription: string,
-        count: number = 5
-    ): Promise<string[]> {
-        const model = getProModel();
+    return JSON.parse(jsonMatch[0]) as GeneratedPageContent;
+  }
 
-        const prompt = `Generate ${count} high-converting landing page headlines for: "${pageDescription}"
+  /**
+   * Generate headlines only (for quick iterations)
+   */
+  static async generateHeadlines(
+    pageDescription: string,
+    count: number = 5
+  ): Promise<string[]> {
+    const model = getProModel();
+
+    const prompt = `Generate ${count} high-converting landing page headlines for: "${pageDescription}"
 
 Rules:
 - Lead with outcomes/benefits
@@ -220,41 +220,41 @@ Rules:
 
 Return as JSON array: ["Headline 1", "Headline 2", ...]`;
 
-        const result = await model.invoke(prompt);
-        const content = typeof result.content === 'string' ? result.content : String(result.content);
+    const result = await model.invoke(prompt);
+    const content = typeof result.content === 'string' ? result.content : String(result.content);
 
-        const jsonMatch = content.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-        }
-        return ['Transform Your Business Today'];
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
     }
+    return ['Transform Your Business Today'];
+  }
 
-    /**
-     * Improve existing copy
-     */
-    static async improveCopy(
-        currentCopy: string,
-        goal: string
-    ): Promise<{ improved: string; explanation: string }> {
-        const model = getProModel();
+  /**
+   * Improve existing copy
+   */
+  static async improveCopy(
+    currentCopy: string,
+    goal: string
+  ): Promise<{ improved: string; explanation: string }> {
+    const model = getProModel();
 
-        const prompt = `Improve this landing page copy for better conversions.
+    const prompt = `Improve this landing page copy for better conversions.
 
 CURRENT COPY: "${currentCopy}"
 GOAL: ${goal}
 
 Return JSON: { "improved": "better version", "explanation": "what you changed and why" }`;
 
-        const result = await model.invoke(prompt);
-        const content = typeof result.content === 'string' ? result.content : String(result.content);
+    const result = await model.invoke(prompt);
+    const content = typeof result.content === 'string' ? result.content : String(result.content);
 
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-        }
-        return { improved: currentCopy, explanation: 'Could not improve' };
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
     }
+    return { improved: currentCopy, explanation: 'Could not improve' };
+  }
 }
 
 export default AILandingPageContentGenerator;

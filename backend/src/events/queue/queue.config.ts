@@ -63,11 +63,12 @@ export const defaultQueueOptions: QueueOptions = {
 };
 
 // Worker options - Optimized for Upstash to reduce Redis requests
+// Increased concurrency for production scale (10 clients x 100 contacts = 1000 emails)
 export const defaultWorkerOptions: WorkerOptions = {
   connection: defaultQueueOptions.connection,
-  concurrency: parseInt(process.env.QUEUE_CONCURRENCY || '3'),
+  concurrency: parseInt(process.env.QUEUE_CONCURRENCY || '10'),  // Increased from 3 to 10
   limiter: {
-    max: parseInt(process.env.QUEUE_MAX_JOBS_PER_SECOND || '5'),
+    max: parseInt(process.env.QUEUE_MAX_JOBS_PER_SECOND || '20'),  // Increased from 5 to 20
     duration: 1000, // per second
   },
   autorun: true,

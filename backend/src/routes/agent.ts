@@ -8,7 +8,7 @@ import { Router, Response } from "express";
 import { AuthRequest, authenticate } from "../middleware/auth";
 import { agentChatLimiter, agentStatusLimiter } from "../middleware/rateLimiter";
 import Project from "../models/Project";
-import { invokeAgentV2 } from "../agents";
+import { invokeAgentV2 } from "../chatbot";
 
 const router = Router();
 

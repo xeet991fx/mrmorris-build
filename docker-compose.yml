@@ -4,10 +4,21 @@ services:
     container_name: morrisb-redis
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
+    # Production-optimized Redis settings:
+    # - maxmemory: 512MB limit for queue data
+    # - noeviction: BullMQ requires this - returns error when full instead of deleting jobs
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2' # Max 2 vCores (plenty for 10+ clients)
+          memory: 1G # Max 1GB RAM
+        reservations:
+          cpus: '0.5' # Minimum 0.5 vCores guaranteed
+          memory: 256M # Minimum 256MB guaranteed
 
 volumes:
   redis_data:

@@ -76,6 +76,7 @@ const ActionSchema = z.object({
   query: z.string().optional(),
   field: z.string().optional(),
   value: z.any().optional(),
+  newValue: z.any().optional().describe('New value for update_field action'),
   tag: z.string().optional(),
   tags: z.union([z.string(), z.array(z.string())]).optional().describe('Story 3.10: Multiple tags support - string or array'),
   dueDate: z.union([z.string(), z.number()]).optional().describe('Story 3.10: Natural language or explicit due date'),
@@ -86,11 +87,18 @@ const ActionSchema = z.object({
   dueIn: z.number().optional(),
   target: z.enum(['contacts', 'deals']).optional(),
   operator: z.string().optional(),
+  operation: z.enum(['add', 'remove']).optional().describe('Operation type for tag actions'),
   trueBranch: z.array(z.lazy(() => ActionSchema)).optional(),
   falseBranch: z.array(z.lazy(() => ActionSchema)).optional(),
   // Story 3.12: Human handoff properties
   timeout: z.union([z.string(), z.number()]).optional().describe('Timeout for human handoff before auto-resume'),
   warmLead: z.boolean().optional().describe('Flag to indicate warm lead handoff'),
+  // Enrichment fields
+  source: z.string().optional().describe('Data source for enrichment (e.g., Apollo.io)'),
+  fields: z.array(z.string()).optional().describe('Fields to enrich'),
+  // Parsing metadata
+  lineNumber: z.number().optional().describe('Line number in original instructions'),
+  rawInstruction: z.string().optional().describe('Raw instruction text for error context'),
 });
 
 export type ParsedAction = z.infer<typeof ActionSchema>;
