@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { DocumentTextIcon, CheckCircleIcon, ExclamationCircleIcon, ShieldCheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { updateAgent, validateAgentInstructions } from '@/lib/api/agents';
+import { updateAgent, validateAgentInstructions, reviewAgentInstructions } from '@/lib/api/agents';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ValidationResultsPanel } from './ValidationResultsPanel';
@@ -169,32 +169,21 @@ export function InstructionsEditor({
     }, [instructions]);
 
     // Story 4.4: Handle review instructions (Task 8.3)
+    // Fixed: Use proper API function with auth instead of raw fetch
     const handleReview = useCallback(async () => {
         if (disabled || isReviewing) return;
 
         setIsReviewing(true);
         try {
-            const response = await fetch(`/api/workspaces/${workspaceId}/agents/${agentId}/copilot/review`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ instructions }),
-            });
+            const response = await reviewAgentInstructions(workspaceId, agentId, instructions);
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to review instructions');
-            }
-
-            const data = await response.json();
-            if (data.success) {
-                setReviewResults(data.data);
+            if (response.success) {
+                setReviewResults(response.data);
                 setShowReviewPanel(true);
             }
         } catch (error: any) {
             console.error('Review error:', error);
-            toast.error(error.message || 'Failed to review instructions');
+            toast.error(error.response?.data?.error || error.message || 'Failed to review instructions');
         } finally {
             setIsReviewing(false);
         }

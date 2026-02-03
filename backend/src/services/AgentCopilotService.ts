@@ -1,4 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ChatVertexAI } from '@langchain/google-vertexai';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { Response } from 'express';
 import AgentCopilotConversation, { IAgentCopilotConversation } from '../models/AgentCopilotConversation';
 import Agent from '../models/Agent';
@@ -1006,37 +1008,57 @@ Now generate:`;
       const workspaceData = await this._loadWorkspaceData(workspaceId);
 
       // Build comprehensive review prompt (Task 1.3)
-      const prompt = this.buildReviewPrompt(instructions, workspaceData);
+      const systemPrompt = this.buildReviewPrompt(instructions, workspaceData);
 
-      // Call Gemini 2.5 Pro with structured output (Task 1.4)
-      // Fix Issue #8: Add thinking_level per Story 4.4 spec (line 397, 551)
-      const model = genAI.getGenerativeModel({
+      // Use Vertex AI (like rest of codebase) instead of regular Gemini API
+      const model = new ChatVertexAI({
         model: 'gemini-2.5-pro',
-        generationConfig: {
-          temperature: 0.3, // Consistent suggestions
-          responseMimeType: 'application/json', // Force JSON output
-          thinkingLevel: 'medium', // Medium depth for analysis tasks
+        temperature: 0.3, // Consistent suggestions (lower = more deterministic)
+        maxOutputTokens: 8192, // Enough for detailed suggestions
+        authOptions: {
+          keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS || './vertex-key.json',
         },
       });
+
+      // Create messages for LangChain - system prompt already contains instructions
+      const messages = [
+        new SystemMessage(systemPrompt),
+        new HumanMessage('Analyze the instructions above and return JSON review.'),
+      ];
 
       // Create timeout promise (Task 4.4)
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Review timeout')), REVIEW_TIMEOUT_MS);
       });
 
-      // Race between Gemini call and timeout
+      // Race between Vertex AI call and timeout
       const result = await Promise.race([
-        model.generateContent(prompt),
+        model.invoke(messages),
         timeoutPromise,
       ]);
 
       // Parse response into structured format (Task 1.5)
       // Fix Issue #3: Add try-catch for JSON parsing (security)
-      const responseText = result.response.text();
+      const responseText = typeof result.content === 'string'
+        ? result.content
+        : JSON.stringify(result.content);
       let parsedResponse: any;
 
       try {
-        parsedResponse = JSON.parse(responseText);
+        // Remove markdown code blocks if present (Vertex AI sometimes adds these)
+        let jsonContent = responseText.trim();
+        if (jsonContent.startsWith('```json')) {
+          jsonContent = jsonContent.slice(7);
+        }
+        if (jsonContent.startsWith('```')) {
+          jsonContent = jsonContent.slice(3);
+        }
+        if (jsonContent.endsWith('```')) {
+          jsonContent = jsonContent.slice(0, -3);
+        }
+        jsonContent = jsonContent.trim();
+
+        parsedResponse = JSON.parse(jsonContent);
 
         // Validate response structure
         if (!parsedResponse || typeof parsedResponse !== 'object') {
@@ -1050,6 +1072,7 @@ Now generate:`;
 
       } catch (parseError: any) {
         console.error('[JSON Parse Error]', parseError);
+        console.error('[Raw Response]', responseText);
         throw new Error('Failed to parse AI review response. Please try again.');
       }
 
