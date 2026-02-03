@@ -90,7 +90,7 @@ development_status:
   4-1-ai-copilot-chat-interface: done
   4-2-generate-complete-agent-instructions: review
   4-3-answer-questions-about-automation: done
-  4-4-suggest-improvements-to-instructions: ready-for-dev
+  4-4-suggest-improvements-to-instructions: done
   4-5-analyze-failed-executions: backlog
   4-6-access-workspace-context: backlog
   4-7-auto-complete-suggestions: backlog

@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
-import { DocumentTextIcon, CheckCircleIcon, ExclamationCircleIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, CheckCircleIcon, ExclamationCircleIcon, ShieldCheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { updateAgent, validateAgentInstructions } from '@/lib/api/agents';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ValidationResultsPanel } from './ValidationResultsPanel';
+import ReviewSuggestionsPanel from './copilot/ReviewSuggestionsPanel';
+import { useInstructionHistory } from '@/hooks/useInstructionHistory';
 import type { ValidationResult, ValidationIssue } from '@/types/agent';
 
 // Story 1.3: Character thresholds (mirror backend)
@@ -47,6 +49,15 @@ export function InstructionsEditor({
     // Story 2.4: Validation state
     const [isValidating, setIsValidating] = useState(false);
     const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+
+    // Story 4.4: Review state (Task 8)
+    const [isReviewing, setIsReviewing] = useState(false);
+    const [showReviewPanel, setShowReviewPanel] = useState(false);
+    const [reviewResults, setReviewResults] = useState<any | null>(null);
+    const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null);
+
+    // Story 4.4: Instruction history for undo (Task 7)
+    const { pushVersion, undo, canUndo } = useInstructionHistory(initialInstructions || '');
 
     // Update char count when instructions change
     useEffect(() => {
@@ -157,6 +168,102 @@ export function InstructionsEditor({
         textarea.scrollTop = (issue.lineNumber - 1) * 20; // Approximate line height
     }, [instructions]);
 
+    // Story 4.4: Handle review instructions (Task 8.3)
+    const handleReview = useCallback(async () => {
+        if (disabled || isReviewing) return;
+
+        setIsReviewing(true);
+        try {
+            const response = await fetch(`/api/workspaces/${workspaceId}/agents/${agentId}/copilot/review`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ instructions }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to review instructions');
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                setReviewResults(data.data);
+                setShowReviewPanel(true);
+            }
+        } catch (error: any) {
+            console.error('Review error:', error);
+            toast.error(error.message || 'Failed to review instructions');
+        } finally {
+            setIsReviewing(false);
+        }
+    }, [workspaceId, agentId, instructions, disabled, isReviewing]);
+
+    // Story 4.4: Handle applying a suggestion (Task 7.3, 7.4)
+    const handleApplySuggestion = useCallback((suggestionText: string, type: string, index: number) => {
+        // Clear any existing undo timer
+        if (undoTimer) {
+            clearTimeout(undoTimer);
+        }
+
+        // Store current version in history before applying
+        pushVersion(instructions);
+
+        // Fix Issue #7: Improve apply logic (more intelligent merging)
+        let updatedInstructions = instructions;
+
+        // If instructions are empty or very short, replace entirely
+        if (instructions.trim().length < 20) {
+            updatedInstructions = suggestionText;
+        } else {
+            // Smart append: Add suggestion as new step or improvement
+            // Remove trailing whitespace and ensure proper spacing
+            updatedInstructions = instructions.trimEnd() + '\n\n' + suggestionText.trim();
+        }
+
+        setInstructions(updatedInstructions);
+        debouncedSave(updatedInstructions);
+
+        // Show undo toast (Task 7.4, 7.6)
+        let countdown = 5;
+        const toastId = toast.success(
+            `Suggestion applied. Undo in ${countdown}s`,
+            {
+                duration: 5000,
+                action: {
+                    label: 'Undo',
+                    onClick: () => {
+                        handleUndo();
+                        toast.dismiss(toastId);
+                    },
+                },
+            }
+        );
+
+        // Clear undo window after 5 seconds (Task 7.6)
+        const timer = setTimeout(() => {
+            setUndoTimer(null);
+        }, 5000);
+        setUndoTimer(timer);
+    }, [instructions, pushVersion, debouncedSave, undoTimer]);
+
+    // Story 4.4: Handle undo (Task 7.5)
+    const handleUndo = useCallback(() => {
+        const previousContent = undo();
+        if (previousContent !== null) {
+            setInstructions(previousContent);
+            debouncedSave(previousContent);
+            toast.success('Change undone');
+        }
+    }, [undo, debouncedSave]);
+
+    // Story 4.4: Handle dismissing a suggestion
+    const handleDismissSuggestion = useCallback((type: string, index: number) => {
+        // Just visual removal - the ReviewSuggestionsPanel handles this internally
+        toast.info('Suggestion dismissed');
+    }, []);
+
     // Determine character count styling
     const getCharCountStyles = () => {
         if (charCount > INSTRUCTIONS_MAX_LENGTH) {
@@ -230,6 +337,27 @@ export function InstructionsEditor({
                             <>
                                 <ShieldCheckIcon className="w-4 h-4" />
                                 Validate
+                            </>
+                        )}
+                    </button>
+
+                    {/* Story 4.4: Review Button (Task 8.2, 8.3) */}
+                    <button
+                        type="button"
+                        onClick={handleReview}
+                        disabled={disabled || isReviewing || !instructions.trim()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="AI-powered review with suggestions (takes up to 8 seconds)"
+                    >
+                        {isReviewing ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                Analyzing (up to 8s)...
+                            </>
+                        ) : (
+                            <>
+                                <MagnifyingGlassIcon className="w-4 h-4" />
+                                Review Instructions
                             </>
                         )}
                     </button>
@@ -310,6 +438,19 @@ export function InstructionsEditor({
                         onIssueClick={handleIssueClick}
                     />
                 </div>
+            )}
+
+            {/* Story 4.4: Review Suggestions Panel (Task 8.5) */}
+            {showReviewPanel && reviewResults && (
+                <ReviewSuggestionsPanel
+                    good={reviewResults.good || []}
+                    suggestions={reviewResults.suggestions || []}
+                    optimizations={reviewResults.optimizations || []}
+                    validationWarnings={reviewResults.validationWarnings}
+                    onApply={handleApplySuggestion}
+                    onDismiss={handleDismissSuggestion}
+                    onClose={() => setShowReviewPanel(false)}
+                />
             )}
         </div>
     );
