@@ -209,6 +209,46 @@ export const validateAgentInstructions = async (
 };
 
 /**
+ * Review agent instructions and get AI suggestions (Story 4.4)
+ * Returns categorized feedback: good practices, suggestions, optimizations, and resource validation
+ */
+export const reviewAgentInstructions = async (
+  workspaceId: string,
+  agentId: string,
+  instructions: string
+): Promise<{
+  success: boolean;
+  data: {
+    good: string[];
+    suggestions: Array<{
+      category: string;
+      issue: string;
+      suggestion: string;
+      priority: string;
+      example?: string;
+    }>;
+    optimizations: Array<{
+      issue: string;
+      suggestion: string;
+      before?: string;
+      after?: string;
+    }>;
+    validationWarnings: {
+      missingTemplates?: string[];
+      availableTemplates?: string[];
+      missingFields?: string[];
+      availableFields?: string[];
+    };
+  };
+}> => {
+  const response = await axios.post(
+    `/workspaces/${workspaceId}/agents/${agentId}/copilot/review`,
+    { instructions }
+  );
+  return response.data;
+};
+
+/**
  * Compare live execution to linked test run (Story 2.7)
  * AC1, AC5: Returns side-by-side comparison with mismatch detection
  */

@@ -362,4 +362,84 @@ router.post(
   }
 );
 
+/**
+ * POST /api/workspaces/:workspaceId/agents/:agentId/copilot/review
+ *
+ * Review agent instructions and suggest improvements
+ * Story 4.4, Task 5: API route integration
+ *
+ * @auth Required
+ * @body { instructions: string }
+ * @response { success: true, data: { good, suggestions, optimizations, validationWarnings } }
+ */
+router.post(
+  '/:workspaceId/agents/:agentId/copilot/review',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId, agentId } = req.params;
+      const { instructions } = req.body;
+      const userId = req.user!._id.toString();
+
+      // Validate input (Task 5.2)
+      if (!instructions || instructions.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Instructions are required.',
+        });
+      }
+
+      if (instructions.length > 10000) {
+        return res.status(400).json({
+          success: false,
+          error: 'Instructions too long. Maximum 10,000 characters.',
+        });
+      }
+
+      // Validate workspace and agent access
+      const isValid = await validateWorkspaceAndAgent(workspaceId, agentId, userId, res);
+      if (!isValid) return;
+
+      // Call AgentCopilotService.reviewInstructions() (Task 5.3)
+      const result = await copilotService.reviewInstructions(workspaceId, agentId, instructions);
+
+      // Return structured JSON response (Task 5.4, 5.5)
+      return res.json({
+        success: true,
+        data: result,
+      });
+
+    } catch (error: any) {
+      console.error('Review instructions error:', error);
+
+      // Handle errors (Task 5.6)
+      if (error.message === 'Agent not found') {
+        return res.status(404).json({
+          success: false,
+          error: 'Agent not found',
+        });
+      }
+
+      if (error.message === 'Insufficient credits') {
+        return res.status(402).json({
+          success: false,
+          error: 'Insufficient credits. Please purchase more credits to continue.',
+        });
+      }
+
+      if (error.message.includes('timeout')) {
+        return res.status(500).json({
+          success: false,
+          error: 'Review timeout. Please try with shorter instructions.',
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to review instructions.',
+      });
+    }
+  }
+);
+
 export default router;
