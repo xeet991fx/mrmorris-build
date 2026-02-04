@@ -8,6 +8,7 @@ import AgentExecution from '../models/AgentExecution';
 import EmailTemplate from '../models/EmailTemplate';
 import CustomFieldDefinition from '../models/CustomFieldDefinition';
 import IntegrationCredential from '../models/IntegrationCredential';
+import Contact from '../models/Contact';
 import mongoose from 'mongoose';
 
 // Constants for AI Copilot configuration
@@ -18,6 +19,7 @@ const REVIEW_TIMEOUT_MS = 8000; // 8 seconds for review (Story 4.4)
 const REVIEW_CREDIT_COST = 2; // 2 credits per review (Story 4.4)
 const ANALYSIS_TIMEOUT_MS = 10000; // 10 seconds for failure analysis (Story 4.5)
 const ANALYSIS_CREDIT_COST = 2; // 2 credits per analysis (Story 4.5)
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes (Story 4.6, Task 4.1)
 
 // Validate API key at module load time (skip in test environment)
 if (!process.env.GEMINI_API_KEY && process.env.NODE_ENV !== 'test') {
@@ -26,6 +28,21 @@ if (!process.env.GEMINI_API_KEY && process.env.NODE_ENV !== 'test') {
 
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'test-key');
+
+/**
+ * Workspace data cache - Story 4.6, Task 4.2
+ * In-memory cache with 5-minute TTL to reduce DB queries
+ * Key format: ws:${workspaceId}:context:v1 (Task 4.6)
+ */
+const workspaceDataCache = new Map<string, { data: any; timestamp: number }>();
+
+/**
+ * Clear workspace data cache - useful for testing and forced refresh
+ * Story 4.6, Task 4.4
+ */
+export function clearWorkspaceCache() {
+  workspaceDataCache.clear();
+}
 
 /**
  * Auto-fix data structure for applyAutoFix method
@@ -133,6 +150,68 @@ class AgentCopilotService {
         _id: conversation.agent,
         workspace: conversation.workspace
       });
+
+      // Story 4.6 Issue #1 Fix: Detect workspace context queries and respond directly
+      // Check if user is asking about workspace resources (templates, fields, integrations, tags)
+      const queryLower = userMessage.toLowerCase();
+      const isContextQuery =
+        queryLower.includes('template') ||
+        queryLower.includes('field') ||
+        queryLower.includes('integration') ||
+        queryLower.includes('tag') ||
+        queryLower.includes('what do i have') ||
+        queryLower.includes('what can i use');
+
+      if (isContextQuery) {
+        try {
+          // Call queryWorkspaceContext for direct context queries (AC1-AC4)
+          const contextResult = await this.queryWorkspaceContext(
+            conversation.workspace.toString(),
+            userMessage
+          );
+
+          // Stream the formatted response
+          const formattedResponse = contextResult.formattedText;
+
+          // Send response token by token for consistent UX
+          for (let i = 0; i < formattedResponse.length; i += 10) {
+            const chunk = formattedResponse.slice(i, i + 10);
+            res.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+          }
+
+          const duration = Date.now() - startTime;
+          console.info(`[Performance] Context query response time: ${duration}ms`);
+
+          // Add assistant message to conversation
+          conversation.messages.push({
+            role: 'assistant',
+            content: formattedResponse,
+            timestamp: new Date(),
+            creditsUsed: Q_AND_A_CREDIT_COST,
+          });
+
+          // Trim to last 10 messages
+          if (conversation.messages.length > 10) {
+            conversation.messages = conversation.messages.slice(-10);
+          }
+
+          await conversation.save();
+
+          // Send completion
+          res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+          res.end();
+
+          // Deduct credits (fire and forget)
+          this.deductCredits(conversation.workspace, Q_AND_A_CREDIT_COST).catch(err => {
+            console.error('[Credit Deduction Error]', err);
+          });
+
+          return; // Exit early - context query handled
+        } catch (error) {
+          console.error('[Error] Context query failed, falling back to AI:', error);
+          // Fall through to normal AI chat if context query fails
+        }
+      }
 
       // Story 4.3: Load enhanced automation Q&A context
       const workspaceContext = await this.loadAutomationQAContext(conversation.workspace.toString());
@@ -293,6 +372,17 @@ Examples:
 
 WORKSPACE CONTEXT:
 ${workspaceContext}
+
+WORKSPACE CONTEXT AWARENESS (Story 4.6, Task 3):
+- When user asks "What templates do I have?", "What fields?", "What integrations?", or "What tags?", query workspace data and provide actual lists
+- When suggesting workflows, ONLY use templates, fields, and integrations that actually exist in workspace
+- NEVER suggest resources that don't exist (e.g., don't say "use template X" if X isn't in workspace)
+- If workspace has no templates/fields/integrations, tell user: "Create [resource] first in Settings > [Section]"
+- Examples of workspace-aware responses:
+  - "You have 3 email templates: Outbound v2, Follow-up 1, Demo Request"
+  - "Your custom fields are: leadScore (string), leadSource (string), lastContactedDate (date)"
+  - "Connected integrations: ✅ Gmail ✅ LinkedIn. To use Slack, connect it in Settings."
+  - "Popular tags: SaaS (234 contacts), CEO (128 contacts), Replied (89 contacts)"
 
 CONVERSATION HISTORY:
 ${conversationHistory}
@@ -543,8 +633,23 @@ Provide a helpful, concise response. Format with markdown (bold, lists, code blo
   /**
    * Shared method to load workspace data from database
    * Code Review Fix: Extracted to reduce duplication between loadAutomationQAContext and loadWorkspaceContext
+   * Story 4.6, Task 1: Extended to include tags with contact counts
+   * Story 4.6, Task 4: Added caching with 5-minute TTL
    */
   private async _loadWorkspaceData(workspaceId: string) {
+    // Task 4.3: Check cache before querying database
+    const cacheKey = `ws:${workspaceId}:context:v1`; // Task 4.6
+    const cached = workspaceDataCache.get(cacheKey);
+
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      // Task 4.5: Log cache hit for monitoring
+      console.log(`[Cache HIT] Workspace ${workspaceId} context`);
+      return cached.data;
+    }
+
+    // Task 4.5: Log cache miss for monitoring
+    console.log(`[Cache MISS] Loading workspace ${workspaceId} context from DB`);
+
     const templates = await EmailTemplate.find({
       workspaceId: new mongoose.Types.ObjectId(workspaceId)
     })
@@ -566,7 +671,25 @@ Provide a helpful, concise response. Format with markdown (bold, lists, code blo
       .select('type name')
       .lean();
 
-    return { templates, customFields, integrations };
+    // Story 4.6, Task 1.2-1.4: Load popular tags with contact counts
+    const tagsAggregation = await Contact.aggregate([
+      { $match: { workspace: new mongoose.Types.ObjectId(workspaceId) } },
+      { $unwind: '$tags' }, // Flatten tags array
+      { $group: { _id: '$tags', count: { $sum: 1 } } }, // Count contacts per tag
+      { $sort: { count: -1 } }, // Sort by count descending (most popular first)
+      { $limit: 20 } // Top 20 tags only (Task 1.3)
+    ]);
+
+    // Task 1.4: Transform to { tag: string, count: number }[] format
+    const tags = tagsAggregation.map(t => ({ tag: t._id, count: t.count }));
+
+    // Task 1.5: Return type now includes tags
+    const data = { templates, customFields, integrations, tags };
+
+    // Task 4.3: Store in cache with current timestamp
+    workspaceDataCache.set(cacheKey, { data, timestamp: Date.now() });
+
+    return data;
   }
 
   /**
@@ -1851,6 +1974,162 @@ Provide JSON response only (no markdown wrapper).`;
 
       default:
         throw new Error('Invalid fix type');
+    }
+  }
+
+  /**
+   * Query workspace context for direct chat Q&A
+   * Story 4.6, Task 2: Direct workspace context queries
+   *
+   * @param workspaceId - Workspace ID to query
+   * @param query - User query text (e.g., "What templates do I have?")
+   * @returns Structured response with category, data, and formatted text
+   */
+  async queryWorkspaceContext(
+    workspaceId: string,
+    query: string
+  ): Promise<{ category: string; data: any; formattedText: string }> {
+    try {
+      // Task 2.3: Load workspace data using existing method
+      const workspaceData = await this._loadWorkspaceData(workspaceId);
+
+    // Task 2.2: Simple keyword matching to determine query type
+    const queryLower = query.toLowerCase();
+
+    // Check for template query
+    if (queryLower.includes('template') || queryLower.includes('email')) {
+      // Task 2.4: Format response for templates (AC1)
+      if (workspaceData.templates.length === 0) {
+        // Task 2.6, AC6: Handle empty workspace
+        return {
+          category: 'templates',
+          data: [],
+          formattedText: "You don't have any email templates yet. Create one in Settings > Email Templates first.\n\nI can help you write a template. What's your use case?"
+        };
+      }
+
+      const templateList = workspaceData.templates
+        .map((t, i) => `${i + 1}. ${t.name} - ${t.description || 'No description'}`)
+        .join('\n');
+
+      return {
+        category: 'templates',
+        data: workspaceData.templates,
+        formattedText: `You have ${workspaceData.templates.length} email template${workspaceData.templates.length === 1 ? '' : 's'}:\n${templateList}\n\nWhich would you like to use?`
+      };
+    }
+
+    // Check for custom field query
+    if (queryLower.includes('field') || queryLower.includes('custom')) {
+      // Task 2.4: Format response for custom fields (AC2)
+      if (workspaceData.customFields.length === 0) {
+        return {
+          category: 'custom_fields',
+          data: [],
+          formattedText: "You don't have any custom fields yet. Create one in Settings > Custom Fields first."
+        };
+      }
+
+      const fieldList = workspaceData.customFields
+        .map(f => `- ${f.fieldKey} (${f.fieldType}): ${f.fieldLabel}`)
+        .join('\n');
+
+      return {
+        category: 'custom_fields',
+        data: workspaceData.customFields,
+        formattedText: `Your workspace has these custom fields:\n${fieldList}\n\nUse them in instructions like: @contact.${workspaceData.customFields[0]?.fieldKey || 'fieldName'}`
+      };
+    }
+
+    // Check for integration query
+    if (queryLower.includes('integration') || queryLower.includes('connect')) {
+      // Task 2.4: Format response for integrations (AC3)
+      if (workspaceData.integrations.length === 0) {
+        return {
+          category: 'integrations',
+          data: [],
+          formattedText: "You don't have any integrations connected yet. Connect integrations in Settings > Integrations."
+        };
+      }
+
+      const integrationList = workspaceData.integrations
+        .map(i => `✅ ${i.name} - Ready for ${i.type === 'gmail' ? 'email sending' : i.type === 'linkedin' ? 'invitations' : 'use'}`)
+        .join('\n');
+
+      // Note: All loaded integrations have isValid: true, so all are connected
+      return {
+        category: 'integrations',
+        data: workspaceData.integrations,
+        formattedText: `Connected integrations:\n${integrationList}\n\nTo use Slack or Apollo, connect them in Settings.`
+      };
+    }
+
+    // Check for tag query
+    if (queryLower.includes('tag')) {
+      // Task 2.4: Format response for tags (AC4)
+      if (workspaceData.tags.length === 0) {
+        return {
+          category: 'tags',
+          data: [],
+          formattedText: "You don't have any tags yet. Tags are automatically created when you add them to contacts."
+        };
+      }
+
+      const tagList = workspaceData.tags
+        .map(t => `- ${t.tag} (${t.count} contact${t.count === 1 ? '' : 's'})`)
+        .join('\n');
+
+      return {
+        category: 'tags',
+        data: workspaceData.tags,
+        formattedText: `Popular tags in your workspace:\n${tagList}\n\nUse in instructions: "Add tag 'Interested' to contact"`
+      };
+    }
+
+    // Task 2.5: General query - return all categories
+    let allText = '**Your Workspace Setup:**\n\n';
+
+    allText += `**Email Templates** (${workspaceData.templates.length}):\n`;
+    if (workspaceData.templates.length > 0) {
+      allText += workspaceData.templates.map(t => `- ${t.name}`).join('\n') + '\n\n';
+    } else {
+      allText += '- None yet\n\n';
+    }
+
+    allText += `**Custom Fields** (${workspaceData.customFields.length}):\n`;
+    if (workspaceData.customFields.length > 0) {
+      allText += workspaceData.customFields.map(f => `- ${f.fieldKey} (${f.fieldType})`).join('\n') + '\n\n';
+    } else {
+      allText += '- None yet\n\n';
+    }
+
+    allText += `**Connected Integrations** (${workspaceData.integrations.length}):\n`;
+    if (workspaceData.integrations.length > 0) {
+      allText += workspaceData.integrations.map(i => `- ${i.name}`).join('\n') + '\n\n';
+    } else {
+      allText += '- None yet\n\n';
+    }
+
+    allText += `**Popular Tags** (${workspaceData.tags.length}):\n`;
+    if (workspaceData.tags.length > 0) {
+      allText += workspaceData.tags.map(t => `- ${t.tag} (${t.count})`).join('\n');
+    } else {
+      allText += '- None yet';
+    }
+
+      return {
+        category: 'all',
+        data: workspaceData,
+        formattedText: allText
+      };
+    } catch (error) {
+      // Issue #7 Fix: Graceful error handling with fallback response
+      console.error('[Error] queryWorkspaceContext failed:', error);
+      return {
+        category: 'error',
+        data: null,
+        formattedText: "I'm having trouble loading your workspace data right now. Please try again in a moment, or contact support if the issue persists."
+      };
     }
   }
 }

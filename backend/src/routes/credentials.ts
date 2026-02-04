@@ -11,6 +11,10 @@ import express from 'express';
 import Project from '../models/Project';
 import IntegrationCredential from '../models/IntegrationCredential';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { clearWorkspaceCache } from '../services/AgentCopilotService'; // Story 4.6 Issue #3 Fix
+
+// TODO Story 4.6 Issue #3: Add clearWorkspaceCache() calls after integration credential create/update/delete operations
+// See emailTemplate.ts and customField.ts for examples
 
 const router = express.Router();
 

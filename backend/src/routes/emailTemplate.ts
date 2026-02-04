@@ -9,6 +9,7 @@ import Project from "../models/Project";
 import { templateGeneratorService, GenerateTemplateOptions, generateUnlayerTemplate, modifyUnlayerTemplate } from "../services/TemplateGeneratorService";
 import { intelligentTemplateAI, aiConcurrencyLimiter } from "../services/IntelligentTemplateAI";
 import emailService from "../services/email";
+import { clearWorkspaceCache } from "../services/AgentCopilotService"; // Story 4.6 Issue #3 Fix
 
 const router = express.Router();
 
@@ -293,6 +294,9 @@ router.post("/:workspaceId/email-templates", authenticate, async (req: AuthReque
             thumbnailColor,
         });
 
+        // Story 4.6 Issue #3 Fix: Invalidate workspace cache when template created
+        clearWorkspaceCache();
+
         res.status(201).json({
             success: true,
             data: template,
@@ -364,6 +368,9 @@ router.put("/:workspaceId/email-templates/:id", authenticate, async (req: AuthRe
 
         await template.save();
 
+        // Story 4.6 Issue #3 Fix: Invalidate workspace cache when template updated
+        clearWorkspaceCache();
+
         res.json({
             success: true,
             data: template,
@@ -414,6 +421,9 @@ router.delete("/:workspaceId/email-templates/:id", authenticate, async (req: Aut
         }
 
         await EmailTemplate.deleteOne({ _id: id });
+
+        // Story 4.6 Issue #3 Fix: Invalidate workspace cache when template deleted
+        clearWorkspaceCache();
 
         res.json({
             success: true,
