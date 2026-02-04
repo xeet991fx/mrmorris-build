@@ -154,7 +154,36 @@ Remove the deprecation notice at the top of the file.
 
 ## Step 3: Frontend - Uncomment Navigation Links
 
-### 3.1 Dashboard Navigation
+### 3.1 Sidebar Navigation (Main Navigation)
+**File:** `frontend/app/projects/layout.tsx`
+
+Uncomment the Agents navigation item in the automation section (Line 85):
+```typescript
+// BEFORE:
+automation: {
+  label: "Automation",
+  items: [
+    // LEGACY AGENT BUILDER - ARCHIVED 2026-02-04 - Uncomment to restore
+    // { label: "Agents", icon: CpuChipIcon, path: "agents" },
+    { label: "Workflows", icon: BoltIcon, path: "workflows" },
+    { label: "Tasks", icon: CheckCircleIcon, path: "tasks" },
+    { label: "Tickets", icon: TicketIcon, path: "tickets" },
+  ],
+},
+
+// AFTER:
+automation: {
+  label: "Automation",
+  items: [
+    { label: "Agents", icon: CpuChipIcon, path: "agents" },
+    { label: "Workflows", icon: BoltIcon, path: "workflows" },
+    { label: "Tasks", icon: CheckCircleIcon, path: "tasks" },
+    { label: "Tickets", icon: TicketIcon, path: "tickets" },
+  ],
+},
+```
+
+### 3.2 Dashboard Navigation
 **File:** `frontend/app/projects/[id]/dashboard/page.tsx`
 
 Uncomment the Agents quick action (Line 56):
@@ -177,7 +206,7 @@ const quickActions: QuickAction[] = [
 ];
 ```
 
-### 3.2 Landing Page Navigation
+### 3.3 Landing Page Navigation
 **File:** `frontend/components/landing/navbar.tsx`
 
 Uncomment the Agent Builder nav link (Line 15):
@@ -201,7 +230,8 @@ const navLinks = [
 ```
 
 **Verification:**
-- [ ] Dashboard navigation includes Agents link
+- [ ] Sidebar navigation includes Agents link (in Automation section)
+- [ ] Dashboard quick actions include Agents link
 - [ ] Landing page navigation includes Agent Builder link
 
 ---

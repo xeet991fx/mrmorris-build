@@ -31,6 +31,7 @@ The legacy agent builder feature has been disabled to prevent interference with 
 ### Frontend Components Disabled
 
 **Navigation Links Removed:**
+- `frontend/app/projects/layout.tsx` (Line 85) - "Agents" sidebar navigation link (main navigation)
 - `frontend/app/projects/[id]/dashboard/page.tsx` (Line 56) - "Agents" quick action link
 - `frontend/components/landing/navbar.tsx` (Line 15) - "Agent Builder" landing page link
 
@@ -104,6 +105,7 @@ See `AGENT_BUILDER_RECOVERY.md` for detailed step-by-step recovery process.
 - `backend/src/routes/agentCopilot.ts` - Added deprecation notice
 
 ### Frontend
+- `frontend/app/projects/layout.tsx` - Commented "Agents" sidebar navigation link
 - `frontend/app/projects/[id]/dashboard/page.tsx` - Commented "Agents" quick action
 - `frontend/components/landing/navbar.tsx` - Commented "Agent Builder" nav link
 - `frontend/app/projects/[id]/agents/page.tsx` - Added deprecation notice
