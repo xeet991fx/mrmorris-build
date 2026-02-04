@@ -1,3 +1,11 @@
+/**
+ * ⚠️ LEGACY CODE - ARCHIVED 2026-02-04
+ * This route is no longer active. See LEGACY_AGENT_BUILDER.md for details.
+ * Route registration disabled in server.ts
+ *
+ * To restore: Uncomment route registration in server.ts and remove this notice
+ */
+
 import express, { Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import AgentCopilotService from '../services/AgentCopilotService';

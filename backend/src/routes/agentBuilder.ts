@@ -1,4 +1,12 @@
 /**
+ * ⚠️ LEGACY CODE - ARCHIVED 2026-02-04
+ * This route is no longer active. See LEGACY_AGENT_BUILDER.md for details.
+ * Route registration disabled in server.ts
+ *
+ * To restore: Uncomment route registration in server.ts and remove this notice
+ */
+
+/**
  * Agent Builder Routes
  *
  * NOTE: This file is named agentBuilder.ts instead of agent.ts because

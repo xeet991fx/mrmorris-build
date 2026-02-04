@@ -53,7 +53,8 @@ export default function DashboardPage() {
         { label: "Contacts", icon: <UserGroupIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/contacts` },
         { label: "Inbox", icon: <EnvelopeIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/inbox` },
         { label: "Pipelines", icon: <BriefcaseIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/pipelines` },
-        { label: "Agents", icon: <CpuChipIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/agents` },
+        // LEGACY AGENT BUILDER - ARCHIVED 2026-02-04 - Uncomment to restore
+        // { label: "Agents", icon: <CpuChipIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/agents` },
         { label: "Workflows", icon: <BoltIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/workflows` },
         { label: "Campaigns", icon: <RocketLaunchIcon className="w-5 h-5" />, href: `/projects/${workspaceId}/campaigns` },
     ];
