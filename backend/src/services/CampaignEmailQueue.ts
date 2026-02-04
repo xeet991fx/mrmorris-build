@@ -479,9 +479,9 @@ export function startEmailQueueWorker(): Worker {
         processCampaignEmailJob,
         {
             ...defaultWorkerOptions,
-            concurrency: parseInt(process.env.EMAIL_WORKER_CONCURRENCY || '5'),
+            concurrency: parseInt(process.env.EMAIL_WORKER_CONCURRENCY || '15'),  // Increased from 5 to 15
             limiter: {
-                max: parseInt(process.env.EMAIL_RATE_LIMIT || '10'),
+                max: parseInt(process.env.EMAIL_RATE_LIMIT || '30'),  // Increased from 10 to 30
                 duration: 1000, // per second
             },
         }
@@ -499,7 +499,7 @@ export function startEmailQueueWorker(): Worker {
         console.error('❌ Email worker error:', err);
     });
 
-    console.log(`🚀 Email queue worker started (concurrency: ${process.env.EMAIL_WORKER_CONCURRENCY || '5'})`);
+    console.log(`🚀 Email queue worker started (concurrency: ${process.env.EMAIL_WORKER_CONCURRENCY || '15'})`);
     return emailWorker;
 }
 

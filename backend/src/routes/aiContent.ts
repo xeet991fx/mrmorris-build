@@ -138,7 +138,7 @@ router.post("/generate-landing-page", authenticate, async (req: Request, res: Re
     const { IntelligentOnboardingService } = await import(
       "../services/IntelligentOnboardingService"
     );
-    const { getProModel } = await import("../agents/modelFactory");
+    const { getProModel } = await import("../chatbot/modelFactory");
 
     let profileContext = "";
     if (useProfileContext) {

@@ -173,20 +173,21 @@ app.set('trust proxy', 1);
 // ============================================
 // GLOBAL RATE LIMITING
 // ============================================
-// General API rate limit: 100 requests per 15 minutes
+// Production-scale API rate limit: 1000 requests per 5 minutes per IP
+// This allows 10 clients to each create 100 contacts without hitting limits
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  windowMs: 5 * 60 * 1000, // 5 minutes (reduced from 15)
+  max: parseInt(process.env.API_RATE_LIMIT || '1000'), // 1000 requests per window (increased from 100)
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   skip: (req) => req.path.startsWith('/admin'), // Skip admin routes
 });
 
-// Auth rate limit: 5 requests per 15 minutes (stricter for login/register)
+// Auth rate limit: 20 requests per 15 minutes (stricter for login/register)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: parseInt(process.env.AUTH_RATE_LIMIT || '20'), // Increased from 5 to 20
   message: { error: 'Too many authentication attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,

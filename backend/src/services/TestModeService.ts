@@ -23,7 +23,7 @@ const TEST_MODE_RECORD_LIMIT = 100;     // Max records in test mode queries (AC4
 import Contact from '../models/Contact';
 import Opportunity from '../models/Opportunity';
 import InstructionValidationService from './InstructionValidationService';
-import InstructionParserService from './InstructionParserService';
+import InstructionParserService, { ParsedAction } from './InstructionParserService';
 
 // =============================================================================
 // TYPE DEFINITIONS (matching frontend/types/agent.ts)
@@ -239,16 +239,7 @@ interface TestContext {
   variables: Record<string, any>;
 }
 
-interface ParsedAction {
-  type: string;
-  params?: Record<string, any>;
-  condition?: string;
-  trueBranch?: ParsedAction[];
-  falseBranch?: ParsedAction[];
-  lineNumber?: number;
-  rawInstruction?: string;
-  [key: string]: any;
-}
+// ParsedAction is now imported from InstructionParserService
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -759,7 +750,7 @@ async function simulateSearchAction(
       }
     }
 
-    if (target === 'contacts' || target === 'contact') {
+    if (target === 'contacts' || (target as string) === 'contact') {
       // Story 2.6 AC4: Apply TEST_MODE_RECORD_LIMIT to queries
       const results = await Contact.find(query)
         .limit(TEST_MODE_RECORD_LIMIT + 1)  // Fetch one extra to detect if there are more
@@ -1013,7 +1004,7 @@ async function simulateTaskAction(
     type: 'task',
     taskTitle: resolvedTitle,
     assignee,
-    dueDate: resolvedDueDate,
+    dueDate: resolvedDueDate ? String(resolvedDueDate) : undefined,
   };
 
   return {
@@ -1558,7 +1549,7 @@ export class TestModeService {
         }
 
         // Handle conditional logic - mark skipped steps
-        if (action.type === 'conditional' || action.type === 'if') {
+        if (action.type === 'conditional') {
           const conditionResult = result.conditionResult;
           const trueBranch = action.trueBranch || [];
           const falseBranch = action.falseBranch || [];

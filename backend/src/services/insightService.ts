@@ -15,7 +15,7 @@ import {
     EmailContext,
     WorkflowContext
 } from "./contextAnalyzer";
-import { getProModel } from "../agents/modelFactory";
+import { getProModel } from "../chatbot/modelFactory";
 
 // Insight types
 export type InsightType =

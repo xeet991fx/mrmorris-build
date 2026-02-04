@@ -104,13 +104,14 @@ export function createRateLimiter(
 
 /**
  * Pre-configured rate limiters for common use cases
+ * AI chatbot limits can be tuned via environment variables
  */
 export const agentChatLimiter = createRateLimiter(
-    15, // 15 requests
+    parseInt(process.env.AI_CHAT_RATE_LIMIT || '30'), // 30 requests per minute (increased from 15)
     60 * 1000 // per minute
 );
 
 export const agentStatusLimiter = createRateLimiter(
-    30, // 30 requests
+    parseInt(process.env.AI_STATUS_RATE_LIMIT || '60'), // 60 requests per minute (increased from 30)
     60 * 1000 // per minute
 );

@@ -13,7 +13,7 @@ import AIClientMemory, {
     IMemoryInsight
 } from '../models/AIClientMemory';
 import Contact from '../models/Contact';
-import { getProModel } from '../agents/modelFactory';
+import { getProModel } from '../chatbot/modelFactory';
 
 /**
  * Recalled memories formatted for agent context

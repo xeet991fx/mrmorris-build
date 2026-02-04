@@ -6,7 +6,7 @@
  */
 
 import { ActionContext, ActionResult, BaseActionExecutor } from "./types";
-import { invokeAgentV2 } from "../../../agents";
+import { invokeAgentV2 } from "../../../chatbot";
 import { replacePlaceholders } from "../expressionEvaluator";
 
 // ============================================
