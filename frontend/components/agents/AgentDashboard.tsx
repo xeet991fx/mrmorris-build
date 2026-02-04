@@ -26,6 +26,7 @@ import {
 import { getAgentDashboard, exportAgentConfig, type DashboardMetrics } from '@/lib/api/agents';
 import { toast } from 'sonner';
 import { PerformanceWarningCard, detectPerformanceWarnings, type PerformanceWarning } from './PerformanceWarningCard';
+import { PatternDetectionBanner } from './PatternDetectionBanner';
 
 interface AgentDashboardProps {
   workspaceId: string;
@@ -156,6 +157,20 @@ export function AgentDashboard({ workspaceId, agentId }: AgentDashboardProps) {
 
   return (
     <div className="space-y-6">
+      {/* Story 4.5 Task 10: Pattern Detection Banner (AC5) */}
+      <PatternDetectionBanner
+        workspaceId={workspaceId}
+        agentId={agentId}
+        onAnalyze={() => {
+          // Navigate to executions tab with analysis panel
+          toast.info('Opening failure analysis...');
+        }}
+        onPauseAgent={() => {
+          // Refresh dashboard after pausing
+          fetchDashboard();
+        }}
+      />
+
       {/* Header with Date Range Selector and Export Button */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">

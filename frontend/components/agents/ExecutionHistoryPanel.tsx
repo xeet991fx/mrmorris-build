@@ -22,6 +22,7 @@ import {
   UserIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { formatDistanceToNow, format } from 'date-fns';
 import { toast } from 'sonner';
@@ -37,6 +38,7 @@ import {
 import { getErrorSuggestion } from '@/utils/errorSuggestions';
 import { useAgentExecution } from '@/hooks/useAgentExecution';
 import { EmailExecutionProgress } from './EmailExecutionProgress';
+import { FailureAnalysisPanel } from './executions/FailureAnalysisPanel';
 
 interface ExecutionHistoryPanelProps {
   workspaceId: string;
@@ -59,6 +61,7 @@ export function ExecutionHistoryPanel({ workspaceId, agentId }: ExecutionHistory
   const [liveExecutions, setLiveExecutions] = useState<Record<string, { step: number; total: number; action: string; progress?: number }>>({});
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [analyzingExecution, setAnalyzingExecution] = useState<string | null>(null);
 
   // Story 3.14 AC8: Real-time Socket.io updates for execution progress
   useAgentExecution({
@@ -548,24 +551,34 @@ export function ExecutionHistoryPanel({ workspaceId, agentId }: ExecutionHistory
                           </div>
 
                           {/* Story 3.14 AC9: Retry button for failed executions */}
+                          {/* Story 4.5 Task 9: Ask Copilot button for failed executions (AC1) */}
                           {execution.status === 'failed' && (
-                            <button
-                              onClick={() => handleRetryExecution(execution.executionId)}
-                              disabled={retryingExecution === execution.executionId}
-                              className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center gap-1.5"
-                            >
-                              {retryingExecution === execution.executionId ? (
-                                <>
-                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                  Retrying...
-                                </>
-                              ) : (
-                                <>
-                                  <PlayCircleIcon className="w-3.5 h-3.5" />
-                                  Retry
-                                </>
-                              )}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setAnalyzingExecution(execution.executionId)}
+                                className="px-3 py-1.5 text-xs font-medium bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-1.5"
+                              >
+                                <SparklesIcon className="w-3.5 h-3.5" />
+                                Ask Copilot
+                              </button>
+                              <button
+                                onClick={() => handleRetryExecution(execution.executionId)}
+                                disabled={retryingExecution === execution.executionId}
+                                className="px-3 py-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors flex items-center gap-1.5"
+                              >
+                                {retryingExecution === execution.executionId ? (
+                                  <>
+                                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Retrying...
+                                  </>
+                                ) : (
+                                  <>
+                                    <PlayCircleIcon className="w-3.5 h-3.5" />
+                                    Retry
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -665,6 +678,25 @@ export function ExecutionHistoryPanel({ workspaceId, agentId }: ExecutionHistory
           </button>
         </div>
       )}
+
+      {/* Story 4.5 Task 9: Failure Analysis Panel (AC1-6) */}
+      <AnimatePresence>
+        {analyzingExecution && (
+          <FailureAnalysisPanel
+            workspaceId={workspaceId}
+            agentId={agentId}
+            executionId={analyzingExecution}
+            onClose={() => setAnalyzingExecution(null)}
+            onApplyFix={() => {
+              // Refresh executions after fix is applied
+              fetchExecutions();
+              if (analyzingExecution === selectedExecution) {
+                fetchExecutionDetails(analyzingExecution);
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Export Dialog (AC10) */}
       {showExportDialog && (
