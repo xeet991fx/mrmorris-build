@@ -98,15 +98,17 @@ Step-by-step checklist for restructuring the Clianta repository from the current
 
 ---
 
-## Phase 6: AI Agents Separation (Optional)
+## Phase 6: AI Chatbot System Separation (Optional)
 
-- [ ] Decide: Keep in backend OR separate to `services/ai-agents/`
+**Note**: Agent directory renamed from `agents/` to `chatbot/` to better reflect current architecture.
+
+- [ ] Decide: Keep in backend OR separate to `services/ai-chatbot/`
 - [ ] If separating:
-  - [ ] Create `services/ai-agents/` directory
-  - [ ] Move all agent files from `backend/src/agents/`
+  - [ ] Create `services/ai-chatbot/` directory
+  - [ ] Move all chatbot files from `backend/src/chatbot/`
   - [ ] Update import paths in backend routes
   - [ ] Configure as separate service (optional independent deployment)
-  - [ ] Test agent invocation from backend
+  - [ ] Test chatbot invocation from backend
 
 ---
 

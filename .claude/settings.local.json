@@ -115,7 +115,14 @@
       "Bash(npm run test:ci)",
       "Bash(wsl --status:*)",
       "Bash(npm run type-check:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(git push:*)",
+      "Bash(if [ -f \"AGENT_BUILDER_RECOVERY.md\" ])",
+      "Bash(then mv AGENT_BUILDER_RECOVERY.md docs/legacy/)",
+      "Bash(fi)",
+      "Bash(if [ -f \"LEGACY_AGENT_BUILDER.md\" ])",
+      "Bash(then mv LEGACY_AGENT_BUILDER.md docs/legacy/)",
+      "Bash(xargs basename:*)"
     ],
     "deny": [],
     "ask": []

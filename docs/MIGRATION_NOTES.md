@@ -65,9 +65,48 @@ Document decisions, changes, and lessons learned during repository restructuring
 
 ---
 
-### [Date] - AI Agents Separation
+### February 2026 - Agent Directory Rename
 
-**Decision**: _[Keep in backend OR separate to services/ai-agents]_
+**Decision**: Renamed `backend/src/agents/` to `backend/src/chatbot/`
+
+**Rationale**:
+- Better reflects current multi-agent chatbot system architecture
+- Distinguishes from archived "Agent Builder" feature
+- Clarifies purpose: conversational AI assistant with 24 specialized agents
+- Avoids confusion with legacy agent builder models
+
+**Impacts**:
+- All imports updated from `agents/` to `chatbot/`
+- Documentation updated across all files
+- No breaking changes to API endpoints
+- Internal refactor only (no user-facing changes)
+
+---
+
+### February 4, 2026 - Agent Builder Feature Archival
+
+**Decision**: Archive the Agent Builder feature and preserve models for recovery
+
+**Rationale**:
+- Feature complexity vs. actual usage did not justify maintenance overhead
+- Focus shifted to core CRM functionality and multi-agent chatbot system
+- Database models preserved for potential data recovery
+- Documentation moved to `docs/legacy/` for historical reference
+
+**Impacts**:
+- 8 models marked as LEGACY/ARCHIVED (Agent, AgentExecution, AgentTestRun, AgentMemory, AgentSession, AgentPerformance, AgentInsight, AgentCopilotConversation)
+- Feature removed from UI and main documentation
+- Models remain in database for recovery purposes
+- API routes for agent builder removed from active documentation
+- Background jobs related to agent builder marked as inactive
+
+**Recovery Documentation**: See `docs/legacy/AGENT_BUILDER_RECOVERY.md`
+
+---
+
+### [Date] - AI Chatbot System Separation
+
+**Decision**: _[Keep in backend OR separate to services/ai-chatbot]_
 
 **Rationale**:
 - _[Deployment strategy: monolith vs microservices]_

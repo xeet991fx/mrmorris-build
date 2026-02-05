@@ -47,7 +47,7 @@ ACTIVITY_LOG: 'crm-activity-log'       // Activity logging queue
 
 ---
 
-## 2. Scheduled Jobs (8 Active + 1 Legacy)
+## 2. Scheduled Jobs (11 Active + 3 Legacy)
 
 ### Email Sync Job
 
@@ -327,6 +327,107 @@ Daily Insights - Jan 10, 2026
 - Coordinates AI agent background tasks
 
 **Configuration**: Delegates to individual jobs.
+
+---
+
+### Sequence Email Job
+
+**File**: `jobs/sequenceEmailJob.ts`
+**Schedule**: Every 5 minutes
+**Purpose**: Send scheduled emails in multi-step sequences
+
+**What It Does**:
+1. Queries Sequence model for active sequences
+2. Finds contacts enrolled in sequences (via WorkflowEnrollment)
+3. Checks if next email in sequence is due based on delay settings
+4. Sends email via EmailService
+5. Records email sending in Activity model
+6. Updates enrollment status (completed, bounced, unsubscribed)
+
+**Configuration**:
+```typescript
+// Runs every 5 minutes
+schedule: '*/5 * * * *'
+```
+
+---
+
+### Google Sheet Form Sync Job
+
+**File**: `jobs/googleSheetFormSyncJob.ts`
+**Schedule**: Every 10 minutes
+**Purpose**: Sync form submissions from Google Sheets to Clianta
+
+**What It Does**:
+1. Queries Form model for forms with Google Sheets integration
+2. Fetches new rows from connected Google Sheets
+3. Creates Contact records from sheet data
+4. Creates FormSubmission records
+5. Triggers workflows based on form submission events
+
+**Configuration**:
+```typescript
+// Runs every 10 minutes
+schedule: '*/10 * * * *'
+```
+
+---
+
+### Token Expiration Check Job
+
+**File**: `jobs/tokenExpirationCheckJob.ts`
+**Schedule**: Daily at 3:00 AM
+**Purpose**: Check and refresh OAuth tokens before expiration
+
+**What It Does**:
+1. Queries IntegrationCredential model for OAuth tokens expiring in next 7 days
+2. For each expiring token:
+   - Attempts token refresh using refresh token
+   - Updates credentials in database
+   - Logs refresh success/failure
+3. Creates AINotification for failed refreshes
+4. Alerts workspace admin to reconnect integration if refresh fails
+
+**Configuration**:
+```typescript
+// Runs daily at 3 AM
+schedule: '0 3 * * *'
+expirationWarningDays: 7
+```
+
+---
+
+## LEGACY/ARCHIVED Jobs (Agent Builder)
+
+The following jobs were part of the Agent Builder feature that was archived on February 4, 2026. These files remain in `backend/src/jobs/` for reference but are **NOT active** and should **NOT be used** in new development. See `docs/legacy/` for Agent Builder recovery documentation.
+
+### ❌ LEGACY: Agent Event Trigger Job
+
+**File**: `jobs/agentEventTriggerJob.ts`
+**Status**: ARCHIVED - Not in active use
+**Former Purpose**: Triggered agent builder executions based on events
+
+**Note**: This job was part of the deprecated Agent Builder feature. Use the multi-agent chatbot system (`backend/src/chatbot/`) instead.
+
+---
+
+### ❌ LEGACY: Agent Resume Execution Job
+
+**File**: `jobs/agentResumeExecutionJob.ts`
+**Status**: ARCHIVED - Not in active use
+**Former Purpose**: Resumed paused agent builder executions
+
+**Note**: This job was part of the deprecated Agent Builder feature. Use the multi-agent chatbot system (`backend/src/chatbot/`) instead.
+
+---
+
+### ❌ LEGACY: Agent Scheduled Job
+
+**File**: `jobs/agentScheduledJob.ts`
+**Status**: ARCHIVED - Not in active use
+**Former Purpose**: Executed agent builder tasks on schedule
+
+**Note**: This job was part of the deprecated Agent Builder feature. Use the multi-agent chatbot system (`backend/src/chatbot/`) instead.
 
 ---
 

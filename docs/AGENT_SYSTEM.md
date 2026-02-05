@@ -2,9 +2,11 @@
 
 ## Overview
 
-Clianta's AI system is powered by **Google Gemini 2.5 Pro** and the **DeepAgents framework**, featuring **23 specialized worker agents** that can work independently or coordinate together to handle complex CRM tasks autonomously.
+Clianta's AI system is powered by **Google Gemini 2.5 Pro** with a **custom multi-agent coordination system**, featuring **24 specialized worker agents** that can work independently or coordinate together to handle complex CRM tasks autonomously.
 
-**Location**: `backend/src/agents/`
+**Location**: `backend/src/chatbot/`
+
+**Note**: While the DeepAgents package exists as a dependency, Clianta uses a custom-built supervisor/coordinator pattern optimized for CRM workflows rather than the DeepAgents framework.
 
 ## 1. Architecture Overview
 
@@ -50,7 +52,7 @@ Single Agent  Execution Planner
 
 ---
 
-## 2. Specialized Worker Agents (23 Total)
+## 2. Specialized Worker Agents (24 Total)
 
 ### CRM Core Operations Agents
 
@@ -341,7 +343,7 @@ Output: Clean, enriched, scored data
 ### Model Configuration
 
 ```typescript
-// backend/src/agents/modelFactory.ts
+// backend/src/chatbot/modelFactory.ts
 const model = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   .getGenerativeModel({
     model: 'gemini-2.5-pro-latest',
@@ -401,7 +403,7 @@ const contactTools = [
 ### Shared State Manager
 
 ```typescript
-// backend/src/agents/state.ts
+// backend/src/chatbot/state.ts
 interface AgentState {
   sessionId: string;
   workspaceId: string;
@@ -515,7 +517,7 @@ const result = await Promise.race([
 
 ### Creating a New Agent
 
-1. **Create Worker File**: `backend/src/agents/workers/myAgent.ts`
+1. **Create Worker File**: `backend/src/chatbot/workers/myAgent.ts`
 
 ```typescript
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -656,7 +658,7 @@ Ready to send? Reply "yes" to launch campaign.
 
 Clianta's multi-agent system provides:
 
-- **23 Specialized Agents** for every CRM task
+- **24 Specialized Agents** for every CRM task
 - **Intelligent Coordination** via complexity analysis
 - **Parallel & Sequential Execution** for optimal performance
 - **Google Gemini 2.5 Pro** for state-of-the-art AI capabilities
@@ -668,4 +670,4 @@ Clianta's multi-agent system provides:
 For implementation details, see:
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Overall system design
 - [BACKGROUND_JOBS.md](./BACKGROUND_JOBS.md) - Async AI operations
-- Source code: `backend/src/agents/`
+- Source code: `backend/src/chatbot/`
