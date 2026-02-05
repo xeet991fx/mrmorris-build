@@ -33,7 +33,7 @@ frontend/
 │   │   ├── register/
 │   │   └── forgot-password/
 │   ├── dashboard/                      # Main dashboard
-│   ├── projects/[id]/                  # Workspace routes (41 features)
+│   ├── projects/[id]/                  # Workspace routes (46 features)
 │   │   ├── contacts/
 │   │   ├── companies/
 │   │   ├── pipelines/
@@ -51,7 +51,7 @@ frontend/
 │   │   ├── meetings/
 │   │   ├── analytics/
 │   │   ├── settings/
-│   │   └── [25+ more features...]
+│   │   └── [29+ more features...]
 │   ├── layout.tsx                      # Root layout
 │   ├── page.tsx                        # Landing page
 │   └── globals.css
@@ -110,15 +110,16 @@ backend/
 │   │   ├── passport.ts                 # Auth strategies
 │   │   └── redis.ts                    # Redis connection
 │   │
-│   ├── models/                         # Mongoose Models (70 files)
+│   ├── models/                         # Mongoose Models (79 files)
 │   │   ├── User.ts, Project.ts
 │   │   ├── Contact.ts, Company.ts, Opportunity.ts
 │   │   ├── Campaign.ts, Workflow.ts, Form.ts
 │   │   ├── AI*.ts                      # AI-related models
 │   │   ├── *Integration.ts             # Integration models
-│   │   └── [65+ more models...]       # See MODELS_AND_SCHEMAS.md
+│   │   ├── Agent*.ts                   # Legacy agent builder models (archived)
+│   │   └── [71+ more models...]       # See MODELS_AND_SCHEMAS.md
 │   │
-│   ├── routes/                         # Express Routes (60+ files)
+│   ├── routes/                         # Express Routes (70+ files)
 │   │   ├── auth.ts
 │   │   ├── contact.ts, company.ts, opportunity.ts
 │   │   ├── workflow.ts, campaign.ts, sequence.ts
@@ -130,7 +131,7 @@ backend/
 │   │   ├── workflow/                   # Workflow sub-routes
 │   │   │   ├── dataSources.ts
 │   │   │   └── fieldFetching.ts
-│   │   └── [55+ more routes...]
+│   │   └── [63+ more routes...]
 │   │
 │   ├── services/                       # Business Logic (55+ files)
 │   │   ├── ai.service.ts
@@ -145,7 +146,7 @@ backend/
 │   │   │   └── actions/                # 15+ action handlers
 │   │   └── [50+ more services...]
 │   │
-│   ├── agents/                         # AI Agent System
+│   ├── chatbot/                        # AI Agent System (renamed from agents/)
 │   │   ├── supervisor.ts               # Agent supervisor V1
 │   │   ├── supervisorV2.ts             # Multi-agent coordinator
 │   │   ├── complexityAnalyzer.ts       # Task complexity analysis
@@ -153,11 +154,12 @@ backend/
 │   │   ├── coordinator.ts              # Multi-agent execution
 │   │   ├── state.ts                    # Agent state management
 │   │   ├── modelFactory.ts             # Gemini model factory
-│   │   ├── workers/                    # Worker Agents (23 files)
+│   │   ├── workers/                    # Worker Agents (24 files)
 │   │   │   ├── contactAgent.ts
 │   │   │   ├── dealAgent.ts
 │   │   │   ├── campaignAgent.ts
 │   │   │   ├── briefingAgent.ts
+│   │   │   ├── index.ts                # Agent exports
 │   │   │   └── [19 more agents...]    # See AGENT_SYSTEM.md
 │   │   ├── tools/                      # Agent tools
 │   │   ├── utils/                      # Agent utilities
@@ -294,7 +296,11 @@ clianta-production/                     # Use brand name
 │   ├── FOLDER_STRUCTURE.md
 │   ├── API_ROUTES_MAP.md
 │   ├── RESTRUCTURE_CHECKLIST.md
-│   └── MIGRATION_NOTES.md
+│   ├── MIGRATION_NOTES.md
+│   └── legacy/                         # Archived features (for recovery)
+│       ├── README.md
+│       ├── AGENT_BUILDER_RECOVERY.md
+│       └── LEGACY_AGENT_BUILDER.md
 │
 ├── infrastructure/                     # IaC, Scripts (optional)
 │   ├── terraform/ or pulumi/

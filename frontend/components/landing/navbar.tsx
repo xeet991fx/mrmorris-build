@@ -12,7 +12,8 @@ import { ThemeToggle } from "@/components/shared/theme-toggle"
 const navLinks = [
   { href: "#problem", label: "The Trap" },
   { href: "#capabilities", label: "Capabilities" },
-  { href: "#workflow", label: "Agent Builder" },
+  // LEGACY AGENT BUILDER - ARCHIVED 2026-02-04 - Uncomment to restore
+  // { href: "#workflow", label: "Agent Builder" },
   { href: "#target", label: "Solutions" },
 ]
 
