@@ -16,6 +16,13 @@ export interface IUser extends Document {
   verificationTokenExpires?: Date;
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  // Google OAuth tokens for Calendar/Meet integration
+  googleTokens?: {
+    accessToken?: string;
+    refreshToken?: string;
+    expiryDate?: number;
+    connectedAt?: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -92,6 +99,24 @@ const userSchema = new Schema<IUser>(
     resetPasswordExpires: {
       type: Date,
       select: false,
+    },
+    // Google OAuth tokens for Calendar/Meet integration
+    googleTokens: {
+      accessToken: {
+        type: String,
+        select: false, // Don't return tokens by default
+      },
+      refreshToken: {
+        type: String,
+        select: false,
+      },
+      expiryDate: {
+        type: Number,
+        select: false,
+      },
+      connectedAt: {
+        type: Date,
+      },
     },
   },
   {

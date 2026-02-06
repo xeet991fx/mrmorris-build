@@ -38,6 +38,7 @@ import {
   PresentationChartLineIcon,
   CurrencyDollarIcon,
   CpuChipIcon,
+  VideoCameraIcon,
 } from "@heroicons/react/24/outline";
 import { Toaster } from "react-hot-toast";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -55,7 +56,7 @@ const NAV_SECTIONS = {
       { label: "Dashboard", icon: HomeIcon, path: "dashboard" },
       { label: "Contacts", icon: UserGroupIcon, path: "contacts" },
       { label: "Companies", icon: BuildingOffice2Icon, path: "companies" },
-      { label: "Pipelines", icon: ViewColumnsIcon, path: "pipelines" },
+      { label: "Deals", icon: CurrencyDollarIcon, path: "deals" },
       // { label: "Proposals", icon: DocumentTextIcon, path: "proposals" },
     ],
   },
@@ -77,6 +78,7 @@ const NAV_SECTIONS = {
       { label: "Inbox", icon: InboxStackIcon, path: "inbox" },
       { label: "Calls", icon: PhoneArrowDownLeftIcon, path: "calls" },
       { label: "Meetings", icon: CalendarDaysIcon, path: "meetings" },
+      { label: "Recordings", icon: VideoCameraIcon, path: "recordings" },
     ],
   },
   automation: {

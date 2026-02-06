@@ -218,6 +218,7 @@ export class MeetingSchedulerService {
         // Create calendar event if integration enabled
         let calendarEventId: string | undefined;
         let meetLink: string | undefined;
+        let googleMeetData: any = undefined;
 
         if (scheduler.calendarIntegration?.accountId) {
             try {
@@ -246,6 +247,21 @@ export class MeetingSchedulerService {
 
                 calendarEventId = result.eventId;
                 meetLink = result.meetLink;
+
+                // Populate Google Meet data if a Meet link was created
+                if (meetLink && scheduler.location.type === 'google_meet') {
+                    const meetingCode = meetLink.split('/').pop() || '';
+                    googleMeetData = {
+                        meetingCode,
+                        conferenceId: calendarEventId,
+                        hangoutLink: meetLink,
+                        entryPoints: [{
+                            uri: meetLink,
+                            entryPointType: 'video',
+                        }],
+                        recordingEnabled: scheduler.recordingSettings?.enabled || false,
+                    };
+                }
             } catch (error: any) {
                 console.error('Error creating calendar event:', error.message);
                 // Continue without calendar event
@@ -287,6 +303,7 @@ export class MeetingSchedulerService {
             utmSource: request.utmParams?.source,
             utmMedium: request.utmParams?.medium,
             utmCampaign: request.utmParams?.campaign,
+            ...(googleMeetData && { googleMeet: googleMeetData }),
         });
 
         // Update scheduler stats

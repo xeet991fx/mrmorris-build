@@ -78,6 +78,7 @@ export default function CompanyTableRow({
       "status",
       "source",
       "notes",
+      "deals",
       "createdAt",
     ].includes(column);
   };
@@ -158,6 +159,13 @@ export default function CompanyTableRow({
           );
         case "createdAt":
           return format(new Date(company.createdAt), "MMM d, yyyy");
+        case "deals":
+          // Deals count - will show placeholder, actual count requires API call
+          return (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+              View Deals
+            </span>
+          );
         default:
           return "—";
       }

@@ -1,13 +1,22 @@
 import { axiosInstance } from "../axios";
 
 export interface CreateCustomColumnData {
-  entityType: "contact" | "company";
+  entityType: "contact" | "company" | "deal";
   fieldLabel: string;
-  fieldType: "text" | "number" | "select";
+  fieldType: "text" | "number" | "select" | "date" | "multiselect" | "currency" | "person" | "relation";
   selectOptions?: string[];
   isRequired?: boolean;
   defaultValue?: any;
   order?: number;
+  relationConfig?: {
+    targetEntity: "contact" | "company" | "deal";
+    displayFormat: "name" | "badge" | "avatar";
+    allowMultiple: boolean;
+  };
+  currencyConfig?: {
+    defaultCurrency: string;
+    showSymbol: boolean;
+  };
 }
 
 export interface UpdateCustomColumnData {
@@ -16,22 +25,41 @@ export interface UpdateCustomColumnData {
   isRequired?: boolean;
   order?: number;
   isActive?: boolean;
+  relationConfig?: {
+    targetEntity: "contact" | "company" | "deal";
+    displayFormat: "name" | "badge" | "avatar";
+    allowMultiple: boolean;
+  };
+  currencyConfig?: {
+    defaultCurrency: string;
+    showSymbol: boolean;
+  };
 }
 
 export interface CustomColumnDefinition {
   _id: string;
   workspaceId: string;
-  entityType: "contact" | "company";
+  entityType: "contact" | "company" | "deal";
   fieldKey: string;
   fieldLabel: string;
-  fieldType: "text" | "number" | "select";
+  fieldType: "text" | "number" | "select" | "date" | "multiselect" | "currency" | "person" | "relation";
   selectOptions?: string[];
   isRequired: boolean;
   order: number;
   isActive: boolean;
+  relationConfig?: {
+    targetEntity: "contact" | "company" | "deal";
+    displayFormat: "name" | "badge" | "avatar";
+    allowMultiple: boolean;
+  };
+  currencyConfig?: {
+    defaultCurrency: string;
+    showSymbol: boolean;
+  };
   createdAt: string;
   updatedAt: string;
 }
+
 
 export interface CustomFieldResponse<T = any> {
   success: boolean;

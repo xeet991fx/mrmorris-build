@@ -22,6 +22,15 @@ export interface IQualificationQuestion {
     disqualifyValue?: string; // If answer matches this, disqualify the lead
 }
 
+// Recording Settings for Google Meet
+export interface IRecordingSettings {
+    enabled: boolean;               // Enable recording for this scheduler
+    autoStart: boolean;             // Automatically start recording when host joins
+    notifyParticipants: boolean;    // Notify participants that meeting is being recorded
+    accessLevel: 'host' | 'participants' | 'workspace'; // Who can access recordings
+    retentionDays?: number;         // Auto-delete recordings after X days
+}
+
 export interface IMeetingScheduler extends Document {
     workspaceId: Types.ObjectId;
     userId: Types.ObjectId; // Owner of the scheduler
@@ -57,6 +66,15 @@ export interface IMeetingScheduler extends Document {
         provider: 'google' | 'outlook';
         accountId: Types.ObjectId; // Reference to connected calendar account
         checkConflicts: boolean; // Check for conflicts before booking
+    };
+
+    // Google Meet Recording Settings
+    recordingSettings?: IRecordingSettings;
+
+    // Google Calendar Integration for Google Meet
+    googleCalendarIntegration?: {
+        enabled: boolean;
+        calendarId?: string;           // Specific calendar to use (default: primary)
     };
 
     // Lead Qualification
@@ -221,6 +239,40 @@ const meetingSchedulerSchema = new Schema<IMeetingScheduler>(
                 type: Boolean,
                 default: true,
             },
+        },
+
+        // Google Meet Recording Settings
+        recordingSettings: {
+            enabled: {
+                type: Boolean,
+                default: false,
+            },
+            autoStart: {
+                type: Boolean,
+                default: false,
+            },
+            notifyParticipants: {
+                type: Boolean,
+                default: true,
+            },
+            accessLevel: {
+                type: String,
+                enum: ['host', 'participants', 'workspace'],
+                default: 'host',
+            },
+            retentionDays: {
+                type: Number,
+                min: 1,
+            },
+        },
+
+        // Google Calendar Integration
+        googleCalendarIntegration: {
+            enabled: {
+                type: Boolean,
+                default: false,
+            },
+            calendarId: String,
         },
 
         // Lead Qualification

@@ -20,7 +20,7 @@ export interface ICalendarEvent extends Document {
     title: string;
     description?: string;
     location?: string;
-    meetingUrl?: string;
+    meetingLink?: string;
 
     // Timing
     startTime: Date;
@@ -123,7 +123,7 @@ const calendarEventSchema = new Schema<ICalendarEvent>(
         },
         description: { type: String },
         location: { type: String },
-        meetingUrl: { type: String },
+        meetingLink: { type: String },
 
         startTime: {
             type: Date,

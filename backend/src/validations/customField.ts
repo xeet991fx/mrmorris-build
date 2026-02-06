@@ -1,19 +1,45 @@
 import { z } from "zod";
 
+// Field type enum
+export const fieldTypeEnum = z.enum([
+  "text",
+  "number",
+  "select",
+  "date",
+  "multiselect",
+  "currency",
+  "person",
+  "relation",
+]);
+
+export type FieldType = z.infer<typeof fieldTypeEnum>;
+
+// Entity type enum (now includes deal)
+export const entityTypeEnum = z.enum(["contact", "company", "deal"]);
+
+// Relation configuration schema
+const relationConfigSchema = z.object({
+  targetEntity: entityTypeEnum,
+  displayFormat: z.enum(["name", "badge", "avatar"]).default("name"),
+  allowMultiple: z.boolean().default(false),
+});
+
+// Currency configuration schema
+const currencyConfigSchema = z.object({
+  defaultCurrency: z.string().length(3, "Currency code must be 3 characters (ISO 4217)").default("USD"),
+  showSymbol: z.boolean().default(true),
+});
+
 // Create custom field schema
 export const createCustomFieldSchema = z
   .object({
-    entityType: z.enum(["contact", "company"], {
-      errorMap: () => ({ message: "Entity type must be contact or company" }),
-    }),
+    entityType: entityTypeEnum,
     fieldLabel: z
       .string()
       .min(1, "Field label is required")
       .max(100, "Field label must be less than 100 characters")
       .trim(),
-    fieldType: z.enum(["text", "number", "select"], {
-      errorMap: () => ({ message: "Field type must be text, number, or select" }),
-    }),
+    fieldType: fieldTypeEnum,
     selectOptions: z
       .array(z.string().trim())
       .min(1, "At least one option is required for select fields")
@@ -22,18 +48,34 @@ export const createCustomFieldSchema = z
     isRequired: z.boolean().default(false),
     defaultValue: z.any().optional(),
     order: z.number().int().min(0, "Order must be a positive number").optional(),
+    // New configurations
+    relationConfig: relationConfigSchema.optional(),
+    currencyConfig: currencyConfigSchema.optional(),
   })
   .refine(
     (data) => {
-      // If fieldType is select, selectOptions must be provided
-      if (data.fieldType === "select") {
+      // If fieldType is select or multiselect, selectOptions must be provided
+      if (data.fieldType === "select" || data.fieldType === "multiselect") {
         return data.selectOptions && data.selectOptions.length > 0;
       }
       return true;
     },
     {
-      message: "Select type fields must have at least one option",
+      message: "Select/Multiselect type fields must have at least one option",
       path: ["selectOptions"],
+    }
+  )
+  .refine(
+    (data) => {
+      // If fieldType is relation, relationConfig must be provided
+      if (data.fieldType === "relation") {
+        return data.relationConfig && data.relationConfig.targetEntity;
+      }
+      return true;
+    },
+    {
+      message: "Relation type fields must specify a target entity",
+      path: ["relationConfig"],
     }
   );
 
@@ -54,13 +96,15 @@ export const updateCustomFieldSchema = z
     isRequired: z.boolean().optional(),
     order: z.number().int().min(0, "Order must be a positive number").optional(),
     isActive: z.boolean().optional(),
+    relationConfig: relationConfigSchema.optional(),
+    currencyConfig: currencyConfigSchema.optional(),
   })
   .optional();
 
 // Validation for custom field values
 export const validateCustomFieldValue = (
   value: any,
-  fieldType: "text" | "number" | "select",
+  fieldType: FieldType,
   selectOptions?: string[],
   isRequired?: boolean
 ): { valid: boolean; error?: string } => {
@@ -77,6 +121,7 @@ export const validateCustomFieldValue = (
   // Type-specific validation
   switch (fieldType) {
     case "number":
+    case "currency":
       const num = Number(value);
       if (isNaN(num)) {
         return { valid: false, error: "Must be a valid number" };
@@ -86,6 +131,40 @@ export const validateCustomFieldValue = (
     case "select":
       if (selectOptions && !selectOptions.includes(value)) {
         return { valid: false, error: "Invalid selection. Must be one of the available options" };
+      }
+      break;
+
+    case "multiselect":
+      if (!Array.isArray(value)) {
+        return { valid: false, error: "Must be an array of selections" };
+      }
+      if (selectOptions && !value.every((v: string) => selectOptions.includes(v))) {
+        return { valid: false, error: "Invalid selection. All values must be from available options" };
+      }
+      break;
+
+    case "date":
+      const date = new Date(value);
+      if (isNaN(date.getTime())) {
+        return { valid: false, error: "Must be a valid date" };
+      }
+      break;
+
+    case "relation":
+      // Value should be ObjectId string or array of ObjectId strings
+      if (Array.isArray(value)) {
+        if (!value.every((v: string) => typeof v === "string" && v.length === 24)) {
+          return { valid: false, error: "Invalid relation reference(s)" };
+        }
+      } else if (typeof value !== "string" || value.length !== 24) {
+        return { valid: false, error: "Invalid relation reference" };
+      }
+      break;
+
+    case "person":
+      // Value should be ObjectId string (User reference)
+      if (typeof value !== "string" || value.length !== 24) {
+        return { valid: false, error: "Invalid person reference" };
       }
       break;
 

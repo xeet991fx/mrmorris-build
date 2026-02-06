@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CalendarIcon, ClockIcon, CheckCircleIcon, UserIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import axiosInstance from "@/lib/axios";
+import { GoogleMeetJoinButton } from "@/components/meet/GoogleMeetJoinButton";
 
 interface Scheduler {
   _id: string;
@@ -455,6 +456,19 @@ export default function PublicBookingPage() {
                   )}
                 </div>
               </div>
+
+              {/* Google Meet Section */}
+              {bookedMeeting.googleMeet?.hangoutLink && (
+                <div className="mb-6">
+                  <GoogleMeetJoinButton
+                    hangoutLink={bookedMeeting.googleMeet.hangoutLink}
+                    meetingCode={bookedMeeting.googleMeet.meetingCode}
+                    recordingEnabled={bookedMeeting.googleMeet.recordingEnabled}
+                    duration={scheduler.duration}
+                    scheduledAt={bookedMeeting.scheduledAt}
+                  />
+                </div>
+              )}
 
               <p className="text-sm text-gray-500">
                 Check your email for the calendar invitation and meeting details.

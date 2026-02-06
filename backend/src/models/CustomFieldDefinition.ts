@@ -2,18 +2,30 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface ICustomFieldDefinition extends Document {
   workspaceId: Types.ObjectId;
-  entityType: "contact" | "company";
+  entityType: "contact" | "company" | "deal";
   fieldKey: string;
   fieldLabel: string;
-  fieldType: "text" | "number" | "select";
-  selectOptions?: string[];
+  fieldType: "text" | "number" | "select" | "date" | "multiselect" | "currency" | "person" | "relation";
+  selectOptions?: string[]; // For select and multiselect
   isRequired: boolean;
   defaultValue?: any;
   order: number;
   isActive: boolean;
+  // Relation field configuration
+  relationConfig?: {
+    targetEntity: "contact" | "company" | "deal";
+    displayFormat: "name" | "badge" | "avatar"; // How to display the related entity
+    allowMultiple: boolean; // Allow linking multiple records
+  };
+  // Currency field configuration
+  currencyConfig?: {
+    defaultCurrency: string; // ISO 4217 code e.g., "USD"
+    showSymbol: boolean;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
+
 
 const customFieldDefinitionSchema = new Schema<ICustomFieldDefinition>(
   {
@@ -25,7 +37,7 @@ const customFieldDefinitionSchema = new Schema<ICustomFieldDefinition>(
     },
     entityType: {
       type: String,
-      enum: ["contact", "company"],
+      enum: ["contact", "company", "deal"],
       required: [true, "Entity type is required"],
       index: true,
     },
@@ -49,20 +61,20 @@ const customFieldDefinitionSchema = new Schema<ICustomFieldDefinition>(
     },
     fieldType: {
       type: String,
-      enum: ["text", "number", "select"],
+      enum: ["text", "number", "select", "date", "multiselect", "currency", "person", "relation"],
       required: [true, "Field type is required"],
     },
     selectOptions: {
       type: [String],
       validate: {
         validator: function (this: ICustomFieldDefinition, v: string[]) {
-          // If field type is select, options must be provided and non-empty
-          if (this.fieldType === "select") {
+          // If field type is select or multiselect, options must be provided and non-empty
+          if (this.fieldType === "select" || this.fieldType === "multiselect") {
             return v && v.length > 0 && v.length <= 50;
           }
           return true;
         },
-        message: "Select type fields must have 1-50 options",
+        message: "Select/Multiselect type fields must have 1-50 options",
       },
     },
     isRequired: {
@@ -82,11 +94,40 @@ const customFieldDefinitionSchema = new Schema<ICustomFieldDefinition>(
       default: true,
       index: true,
     },
+    // Relation field configuration
+    relationConfig: {
+      targetEntity: {
+        type: String,
+        enum: ["contact", "company", "deal"],
+      },
+      displayFormat: {
+        type: String,
+        enum: ["name", "badge", "avatar"],
+        default: "name",
+      },
+      allowMultiple: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    // Currency field configuration
+    currencyConfig: {
+      defaultCurrency: {
+        type: String,
+        default: "USD",
+        maxlength: 3,
+      },
+      showSymbol: {
+        type: Boolean,
+        default: true,
+      },
+    },
   },
   {
     timestamps: true,
   }
 );
+
 
 // Compound unique index - one fieldKey per workspace per entity type
 customFieldDefinitionSchema.index({ workspaceId: 1, entityType: 1, fieldKey: 1 }, { unique: true });

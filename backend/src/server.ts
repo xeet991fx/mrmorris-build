@@ -21,6 +21,7 @@ import contactRoutes from "./routes/contact";
 import contactDeduplicationRoutes from "./routes/contactDeduplication";
 import companyRoutes from "./routes/company";
 import customFieldRoutes from "./routes/customField";
+import dealRoutes from "./routes/deal";
 import pipelineRoutes from "./routes/pipeline";
 import opportunityRoutes from "./routes/opportunity";
 import activityRoutes from "./routes/activity";
@@ -68,6 +69,8 @@ import chatbotRoutes from "./routes/chatbot";
 import intentScoringRoutes from "./routes/intentScoring";
 import agentCopilotRoutes from "./routes/agentCopilot";
 import meetingSchedulerRoutes from "./routes/meetingScheduler";
+import googleMeetRoutes from "./routes/googleMeet";
+import recordingsRoutes from "./routes/recordings";
 import companyVisitorsRoutes from "./routes/companyVisitors";
 import deliverabilityRoutes from "./routes/deliverability";
 import salesforceIntegrationRoutes from "./routes/salesforceIntegration";
@@ -386,6 +389,7 @@ app.use("/api/workspaces", contactRoutes);
 app.use("/api/workspaces", contactDeduplicationRoutes);
 app.use("/api/workspaces", companyRoutes);
 app.use("/api/workspaces", customFieldRoutes);
+app.use("/api/workspaces", dealRoutes);
 app.use("/api/workspaces", pipelineRoutes);
 app.use("/api/workspaces", opportunityRoutes);
 app.use("/api", activityRoutes);
@@ -426,6 +430,9 @@ app.use("/api/workspaces", analyticsRoutes);
 app.use("/api/workspaces", webhookRoutes);
 app.use("/api/workspaces", forecastRoutes);
 app.use("/api/workspaces", meetingSchedulerRoutes);
+app.use("/api/workspaces", googleMeetRoutes); // Google Meet integration
+app.use("/api/auth", googleMeetRoutes); // Google OAuth callback routes
+app.use("/api/workspaces", recordingsRoutes); // Recording management routes
 app.use("/api/workspaces", companyVisitorsRoutes);
 app.use("/api", deliverabilityRoutes);
 app.use("/api", salesforceIntegrationRoutes); // Salesforce integration routes

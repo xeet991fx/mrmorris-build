@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { XMarkIcon } from "@heroicons/react/24/outline";
@@ -45,6 +45,7 @@ export default function MeetingsPage() {
     const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
     const [saving, setSaving] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<CalendarEvent | null>(null);
+    const [addingMeetToEventId, setAddingMeetToEventId] = useState<string | null>(null);
 
     const [newMeeting, setNewMeeting] = useState({
         title: "",
@@ -56,9 +57,7 @@ export default function MeetingsPage() {
         syncToGoogle: true,
     });
 
-    useEffect(() => { loadData(); }, [workspaceId]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
             const [eventsRes, integrationsRes] = await Promise.all([
@@ -69,7 +68,9 @@ export default function MeetingsPage() {
             if (integrationsRes.success) setIntegrations(integrationsRes.data.integrations);
         } catch (error) { console.error("Failed to load data:", error); }
         setLoading(false);
-    };
+    }, [workspaceId]);
+
+    useEffect(() => { loadData(); }, [loadData]);
 
     const handleCreateMeeting = async () => {
         if (!newMeeting.title || !newMeeting.date || !newMeeting.time) {
@@ -121,6 +122,39 @@ export default function MeetingsPage() {
             else { toast.error(result.error || "Failed to update meeting"); }
         } catch (error) { toast.error("Failed to update meeting"); }
         setSaving(false);
+    };
+
+    const handleAddGoogleMeet = async (eventId: string) => {
+        setAddingMeetToEventId(eventId);
+        try {
+            const result = await syncEventToGoogle(eventId);
+            if (result.success) {
+                toast.success("Google Meet created!");
+                // Get meeting link from response - try both locations
+                const meetingLink = result.data.meetingLink || result.data.event?.meetingLink;
+                console.log("Meet link received:", meetingLink);
+
+                // Update the event in local state with the new meeting link
+                setEvents(events.map(e =>
+                    e._id === eventId
+                        ? { ...e, meetingLink, externalId: result.data.event?.externalId, provider: "google" as const }
+                        : e
+                ));
+
+                // Automatically open the Google Meet link
+                if (meetingLink) {
+                    window.open(meetingLink, '_blank');
+                } else {
+                    toast.error("Meet link not found in response. Try refreshing.");
+                }
+            } else {
+                toast.error(result.error || "Failed to add Google Meet");
+            }
+        } catch (error: any) {
+            console.error("Add Google Meet error:", error);
+            toast.error(error.message || "Failed to add Google Meet. Check if Google Calendar is connected.");
+        }
+        setAddingMeetToEventId(null);
     };
 
     const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -234,9 +268,26 @@ export default function MeetingsPage() {
                                                             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{event.location}</span>
                                                         )}
                                                         {event.meetingLink && (
-                                                            <a href={event.meetingLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline" onClick={(e) => e.stopPropagation()}>
-                                                                <Video className="w-3 h-3" />Join
+                                                            <a
+                                                                href={event.meetingLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors shadow-sm"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <Video className="w-3 h-3" />
+                                                                Start Meeting
                                                             </a>
+                                                        )}
+                                                        {!event.meetingLink && hasCalendarConnected && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleAddGoogleMeet(event._id); }}
+                                                                disabled={addingMeetToEventId === event._id}
+                                                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+                                                            >
+                                                                <Video className="w-3 h-3" />
+                                                                {addingMeetToEventId === event._id ? "Creating Meet..." : "Start with Google Meet"}
+                                                            </button>
                                                         )}
                                                         {event.contactId && (
                                                             <span className="flex items-center gap-1"><Users className="w-3 h-3" />{event.contactId.firstName} {event.contactId.lastName}</span>
@@ -323,9 +374,12 @@ export default function MeetingsPage() {
                                     <input type="text" value={newMeeting.location} onChange={(e) => setNewMeeting({ ...newMeeting, location: e.target.value })} className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Google Meet, Office, etc." />
                                 </div>
                                 {hasCalendarConnected && (
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" checked={newMeeting.syncToGoogle} onChange={(e) => setNewMeeting({ ...newMeeting, syncToGoogle: e.target.checked })} className="w-4 h-4 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500" />
-                                        <span className="text-sm text-zinc-700 dark:text-zinc-300">Add to Google Calendar</span>
+                                    <label className="flex items-center gap-2 cursor-pointer p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
+                                        <input type="checkbox" checked={newMeeting.syncToGoogle} onChange={(e) => setNewMeeting({ ...newMeeting, syncToGoogle: e.target.checked })} className="w-4 h-4 rounded border-zinc-300 text-blue-500 focus:ring-blue-500" />
+                                        <div className="flex items-center gap-2">
+                                            <Video className="w-4 h-4 text-blue-600" />
+                                            <span className="text-sm text-zinc-700 dark:text-zinc-300">Add Google Meet link</span>
+                                        </div>
                                     </label>
                                 )}
                             </div>

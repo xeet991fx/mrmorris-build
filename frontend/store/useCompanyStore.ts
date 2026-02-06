@@ -21,6 +21,7 @@ export type BuiltInColumn =
   | "status"
   | "source"
   | "notes"
+  | "deals"
   | "createdAt";
 
 export type CompanyColumn = BuiltInColumn | string; // string for custom field keys
@@ -37,6 +38,7 @@ export const DEFAULT_COLUMN_WIDTHS: Record<BuiltInColumn, number> = {
   status: 120,
   source: 120,
   notes: 120,
+  deals: 100,
   createdAt: 120,
 };
 
@@ -49,6 +51,7 @@ export const DEFAULT_COLUMN_ORDER: BuiltInColumn[] = [
   "companySize",
   "annualRevenue",
   "employeeCount",
+  "deals",
   "status",
   "source",
   "createdAt",

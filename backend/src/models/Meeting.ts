@@ -5,7 +5,30 @@ import mongoose, { Document, Schema, Types } from "mongoose";
  *
  * Represents an actual booked meeting
  * Tracks scheduling, attendance, and follow-up actions
+ * Includes Google Meet integration with recording support
  */
+
+// Google Meet Data Interface
+export interface IGoogleMeetData {
+    meetingCode: string;           // The meet.google.com/xxx-xxxx-xxx code
+    conferenceId: string;          // Google's internal conference ID
+    hangoutLink: string;           // Full Google Meet URL
+    entryPoints?: {
+        uri: string;
+        label?: string;
+        entryPointType: 'video' | 'phone' | 'sip' | 'more';
+    }[];
+    recordingEnabled: boolean;
+    recording?: {
+        status: 'not_started' | 'recording' | 'completed' | 'failed';
+        driveFileId?: string;      // Google Drive file ID for recording
+        driveFileUrl?: string;     // Shareable link to recording
+        recordedAt?: Date;
+        duration?: number;          // in seconds
+        transcriptFileId?: string;  // Google Drive file ID for transcript
+        transcriptUrl?: string;
+    };
+}
 
 export interface IMeeting extends Document {
     workspaceId: Types.ObjectId;
@@ -38,6 +61,9 @@ export interface IMeeting extends Document {
     // Calendar Integration
     calendarEventId?: string; // Google Calendar or Outlook event ID
     calendarProvider?: 'google' | 'outlook';
+
+    // Google Meet Integration
+    googleMeet?: IGoogleMeetData;
 
     // Qualification Data
     qualificationAnswers?: Record<string, any>;
@@ -159,6 +185,37 @@ const meetingSchema = new Schema<IMeeting>(
         calendarProvider: {
             type: String,
             enum: ['google', 'outlook'],
+        },
+
+        // Google Meet Integration
+        googleMeet: {
+            meetingCode: String,
+            conferenceId: String,
+            hangoutLink: String,
+            entryPoints: [{
+                uri: String,
+                label: String,
+                entryPointType: {
+                    type: String,
+                    enum: ['video', 'phone', 'sip', 'more'],
+                },
+            }],
+            recordingEnabled: {
+                type: Boolean,
+                default: false,
+            },
+            recording: {
+                status: {
+                    type: String,
+                    enum: ['not_started', 'recording', 'completed', 'failed'],
+                },
+                driveFileId: String,
+                driveFileUrl: String,
+                recordedAt: Date,
+                duration: Number,
+                transcriptFileId: String,
+                transcriptUrl: String,
+            },
         },
 
         // Qualification Data

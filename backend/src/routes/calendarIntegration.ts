@@ -644,12 +644,22 @@ router.post("/events", authenticate, async (req: AuthRequest, res: Response) => 
                                 dateTime: (endTime ? new Date(endTime) : new Date(new Date(startTime).getTime() + 30 * 60000)).toISOString(),
                             },
                             attendees: attendees?.map((a: any) => ({ email: a.email })),
+                            conferenceData: {
+                                createRequest: {
+                                    requestId: `meet-${Date.now()}`,
+                                    conferenceSolutionKey: { type: "hangoutsMeet" },
+                                },
+                            },
                         },
+                        conferenceDataVersion: 1,
                     });
 
-                    // Update CRM event with Google ID
+                    // Update CRM event with Google ID and Meet link
                     event.externalId = googleEvent.data.id;
                     event.provider = "google";
+                    if (googleEvent.data.hangoutLink) {
+                        event.meetingLink = googleEvent.data.hangoutLink;
+                    }
                     await event.save();
                 } catch (e) {
                     console.error("Failed to sync to Google Calendar:", e);
@@ -752,11 +762,6 @@ router.post("/events/:eventId/sync-to-google", authenticate, async (req: AuthReq
             return res.status(404).json({ success: false, error: "Event not found" });
         }
 
-        // Already synced?
-        if (event.externalId && event.provider === "google") {
-            return res.json({ success: true, message: "Already synced", data: { event } });
-        }
-
         // Get Google integration
         const integration = await CalendarIntegration.findOne({
             workspaceId: event.workspaceId,
@@ -777,6 +782,38 @@ router.post("/events/:eventId/sync-to-google", authenticate, async (req: AuthReq
 
         const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
+        // Already synced? Check if we need to add Meet link
+        if (event.externalId && event.provider === "google") {
+            // If already has meeting link, just return it
+            if (event.meetingLink) {
+                return res.json({ success: true, message: "Already synced", data: { event: event.toObject(), meetingLink: event.meetingLink } });
+            }
+
+            // Otherwise, update the Google event to add conferenceData
+            console.log("[Sync to Google] Updating existing event to add Meet link");
+            const updatedEvent = await calendar.events.patch({
+                calendarId: "primary",
+                eventId: event.externalId,
+                conferenceDataVersion: 1,
+                requestBody: {
+                    conferenceData: {
+                        createRequest: {
+                            requestId: `meet-${Date.now()}`,
+                            conferenceSolutionKey: { type: "hangoutsMeet" },
+                        },
+                    },
+                },
+            });
+
+            const meetLink = updatedEvent.data.hangoutLink || updatedEvent.data.conferenceData?.entryPoints?.[0]?.uri;
+            if (meetLink) {
+                event.meetingLink = meetLink;
+                await event.save();
+            }
+            console.log("[Sync to Google] Updated Meet link:", meetLink);
+            return res.json({ success: true, data: { event: event.toObject(), meetingLink: meetLink } });
+        }
+
         // Create event in Google Calendar
         const googleEvent = await calendar.events.insert({
             calendarId: "primary",
@@ -786,15 +823,28 @@ router.post("/events/:eventId/sync-to-google", authenticate, async (req: AuthReq
                 location: event.location,
                 start: { dateTime: event.startTime.toISOString() },
                 end: { dateTime: event.endTime.toISOString() },
+                conferenceData: {
+                    createRequest: {
+                        requestId: `meet-${Date.now()}`,
+                        conferenceSolutionKey: { type: "hangoutsMeet" },
+                    },
+                },
             },
+            conferenceDataVersion: 1,
         });
 
-        // Update local event with Google ID
+        // Update local event with Google ID and Meet link
         event.externalId = googleEvent.data.id;
         event.provider = "google";
+        const meetLink = googleEvent.data.hangoutLink || googleEvent.data.conferenceData?.entryPoints?.[0]?.uri;
+        if (meetLink) {
+            event.meetingLink = meetLink;
+        }
         await event.save();
 
-        res.json({ success: true, data: { event } });
+        console.log("[Sync to Google] Meet link:", meetLink);
+
+        res.json({ success: true, data: { event: event.toObject(), meetingLink: meetLink } });
     } catch (error: any) {
         console.error("Sync to Google error:", error);
         res.status(500).json({ success: false, error: error.message || "Failed to sync" });
