@@ -13,7 +13,8 @@ import { ExpressAdapter } from "@bull-board/express";
 import rateLimit from 'express-rate-limit';
 import * as Sentry from "@sentry/node";
 import { initializeChatSocket } from "./socket/chatSocket";
-import { initializeAgentExecutionSocket } from "./socket/agentExecutionSocket";
+// LEGACY AGENT BUILDER - ARCHIVED 2026-02-04
+// import { initializeAgentExecutionSocket } from "./socket/agentExecutionSocket";
 import waitlistRoutes from "./routes/waitlist";
 import authRoutes from "./routes/auth";
 import projectRoutes from "./routes/project";
@@ -50,7 +51,8 @@ import teamRoutes from "./routes/team";
 import ticketRoutes from "./routes/ticket";
 import reportsRoutes from "./routes/reports";
 import agentRoutes from "./routes/agent";
-import agentBuilderRoutes from "./routes/agentBuilder";
+// LEGACY AGENT BUILDER - ARCHIVED 2026-02-04
+// import agentBuilderRoutes from "./routes/agentBuilder";
 import insightsRoutes from "./routes/insights";
 import calendarIntegrationRoutes from "./routes/calendarIntegration";
 import dashboardRoutes from "./routes/dashboard";
@@ -67,7 +69,8 @@ import trackingRoutes from "./routes/tracking";
 import chatRoutes from "./routes/chat";
 import chatbotRoutes from "./routes/chatbot";
 import intentScoringRoutes from "./routes/intentScoring";
-import agentCopilotRoutes from "./routes/agentCopilot";
+// LEGACY AGENT BUILDER - ARCHIVED 2026-02-04
+// import agentCopilotRoutes from "./routes/agentCopilot";
 import meetingSchedulerRoutes from "./routes/meetingScheduler";
 import googleMeetRoutes from "./routes/googleMeet";
 import recordingsRoutes from "./routes/recordings";
@@ -419,8 +422,9 @@ app.use("/api/team", teamRoutes);
 app.use("/api/workspaces", ticketRoutes);
 app.use("/api/workspaces", reportsRoutes);
 app.use("/api/workspaces", agentRoutes);
-app.use("/api", agentBuilderRoutes);
-app.use("/api/workspaces", agentCopilotRoutes);
+// LEGACY AGENT BUILDER - ARCHIVED 2026-02-04
+// app.use("/api", agentBuilderRoutes);
+// app.use("/api/workspaces", agentCopilotRoutes);
 app.use("/api/workspaces", insightsRoutes);
 app.use("/api/workspaces", dashboardRoutes);
 app.use("/api/calendar", calendarIntegrationRoutes);
@@ -496,9 +500,10 @@ const startServer = async () => {
     const io = initializeChatSocket(httpServer);
     logger.info('Chat Socket.IO initialized');
 
+    // LEGACY AGENT BUILDER - ARCHIVED 2026-02-04
     // Initialize Socket.IO for agent execution updates (Story 3.2) - REUSE same io server
-    initializeAgentExecutionSocket(io);
-    logger.info('Agent Execution Socket.IO initialized');
+    // initializeAgentExecutionSocket(io);
+    // logger.info('Agent Execution Socket.IO initialized');
 
     httpServer.listen(PORT, async () => {
       const backendUrl = process.env.BACKEND_URL || `http://localhost:${PORT}`;
@@ -563,6 +568,12 @@ const startServer = async () => {
         logger.error('Failed to start Google Sheet form sync job', { error });
       });
 
+      // ============================================
+      // LEGACY AGENT BUILDER - ARCHIVED 2026-02-04
+      // Jobs disabled to prevent interference with new version
+      // To restore: Uncomment lines below and restart
+      // ============================================
+      /*
       // Story 3.3: Start agent scheduled job worker and register existing schedules
       try {
         await startAgentScheduledJob();
@@ -587,6 +598,7 @@ const startServer = async () => {
       } catch (error) {
         logger.error('Failed to start agent resume execution job', { error });
       }
+      */
 
       logger.info('✅ All background jobs started successfully');
 

@@ -131,7 +131,7 @@ This document catalogs all dependencies across the Clianta monorepo, their purpo
 | `@google/generative-ai` | ^0.24.1 | Google Gemini AI SDK |
 | `@langchain/core` | ^1.1.6 | LangChain core framework |
 | `@langchain/google-vertexai` | ^2.1.1 | LangChain Google Vertex AI integration |
-| `deepagents` | ^1.3.1 | Multi-agent coordination framework |
+| `deepagents` | ^1.3.1 | Multi-agent coordination framework (dependency exists but not used - Clianta uses custom coordination system) |
 | `google-auth-library` | ^10.5.0 | Google authentication library |
 
 ### Authentication & Security
@@ -359,7 +359,7 @@ Monitor these packages for security updates:
 ### Backend Memory Footprint
 **Memory-Intensive Dependencies**:
 - `mongoose`: ~50MB in memory (with models)
-- `@google/generative-ai` + `deepagents`: ~100MB
+- `@google/generative-ai` + AI dependencies: ~100MB
 - TypeScript compilation: Requires 8GB RAM for large codebase
 
 **Optimization**:
@@ -456,7 +456,7 @@ npm run build
 Clianta uses **140+ direct dependencies** across frontend and backend, with a focus on:
 - **Type Safety**: TypeScript throughout, Zod for runtime validation
 - **Modern Stack**: Latest Next.js 15, React 19, Mongoose 8
-- **AI-First**: Google Gemini 2.5 Pro + LangChain + DeepAgents
+- **AI-First**: Google Gemini 2.5 Pro + LangChain + Custom Multi-Agent System (24 specialized agents in `backend/src/chatbot/`)
 - **Production-Ready**: Sentry, rate limiting, security middleware
 - **Developer Experience**: Hot reload, TypeScript, ESLint
 

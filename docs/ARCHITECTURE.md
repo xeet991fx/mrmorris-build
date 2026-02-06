@@ -18,13 +18,13 @@ Clianta follows a **modern monorepo architecture** with clear separation between
 ┌────────────────────────────────────────────────────────────────┐
 │                         FRONTEND LAYER                          │
 │  Next.js 15 (App Router) + React 19 + Tailwind CSS            │
-│  • 41 Workspace Features  • Real-time UI  • shadcn/ui         │
+│  • 46 Workspace Features  • Real-time UI  • shadcn/ui         │
 └────────────────┬───────────────────────────────────────────────┘
                  │ HTTP + WebSocket
 ┌────────────────┴───────────────────────────────────────────────┐
 │                         API GATEWAY LAYER                       │
 │  Express.js + Passport + Rate Limiting + CORS                  │
-│  • 60+ Route Handlers  • JWT Auth  • Request Validation       │
+│  • 66 Route Handlers  • JWT Auth  • Request Validation        │
 └────────────────┬───────────────────────────────────────────────┘
                  │
       ┌──────────┼──────────┬──────────────┬──────────────┐
@@ -92,7 +92,8 @@ Clianta follows a **modern monorepo architecture** with clear separation between
 ### AI & Agent Layer
 - **AI Provider**: Google Gemini 2.5 Pro via @google/generative-ai 0.24.1
 - **Orchestration**: LangChain Core 1.1.6 + LangChain Google VertexAI 2.1.1
-- **Agent Framework**: DeepAgents 1.3.1 - Multi-agent coordination system
+- **Agent Framework**: Custom multi-agent coordination system (DeepAgents package exists but not used)
+- **Location**: `backend/src/chatbot/` - Contains supervisor, coordinator, and 24 worker agents
 - **Agents**: 24 specialized worker agents (see AGENT_SYSTEM.md)
 - **Capabilities**:
   - Multi-agent parallel and sequential execution
@@ -152,7 +153,7 @@ frontend/app/
 │   ├── register/
 │   └── forgot-password/
 ├── dashboard/                         # Main dashboard
-├── projects/[id]/                     # Workspace-scoped routes (41 features)
+├── projects/[id]/                     # Workspace-scoped routes (46 features)
 │   ├── contacts/
 │   ├── companies/
 │   ├── pipelines/                     # Kanban deal management
@@ -248,7 +249,7 @@ Database (MongoDB)
 - **Background**: `EmailWarmupService.ts`, `EmailVerificationService.ts`
 - **Workflow Actions** (15+ services): Email, SMS, enrollWorkflow, assignOwner, updateField, createTask, etc.
 
-### Route Organization (60+ Files)
+### Route Organization (66 Files)
 All routes are scoped under `/api`:
 - **Workspace-scoped**: `/api/workspaces/:workspaceId/[resource]` - Multi-tenancy isolation
 - **Global**: `/api/auth`, `/api/integrations`, `/api/tracking`
@@ -258,14 +259,15 @@ All routes are scoped under `/api`:
 ## 6. Database Architecture (MongoDB + Mongoose)
 
 ### Schema Design
-- **70+ Mongoose Models** organized by category:
+- **79 Mongoose Models** organized by category (see MODELS_AND_SCHEMAS.md for complete list):
   - **Core CRM** (11 models): User, Project, Contact, Company, Opportunity, Pipeline, Activity, Task, Ticket, CustomFieldDefinition, Team
   - **Marketing** (12 models): Campaign, EmailTemplate, Sequence, Form, Chatbot, LandingPage, LeadMagnet, VoiceDrop, FormTemplate, EmailMessage, TrackingEvent, CompanyVisitor
-  - **AI/Agents** (8 models): AgentSession, AgentPerformance, AgentInsight, AIClientMemory, AINotification, Conversation, Meeting, MeetingRecording
+  - **AI/Chatbot** (8 models): AIClientMemory, AINotification, Conversation, Meeting, MeetingRecording, AIMemory, ChatbotMessage, ChatbotSession
+  - **Legacy/Archived** (8 models): Agent, AgentExecution, AgentTestRun, AgentMemory, AgentSession, AgentPerformance, AgentInsight, AgentCopilotConversation (preserved for recovery - see docs/legacy/)
   - **Integrations** (10 models): EmailAccount, EmailIntegration, CalendarIntegration, CalendarEvent, SalesforceSync, NotionIntegration, SlackIntegration, IntegrationCredential, ApollioUsage, Webhook
   - **Analytics** (12 models): LeadScore, IntentScore, LifecycleStage, Attribution, Visitor, EmailTracking, WebsiteTracking, Forecast, Proposal, BuyingCommittee, Battlecard, Competitor
   - **Automation** (7 models): Workflow, WorkflowEnrollment, WorkflowAction, EmailAccount, Campaign, Sequence, LeadRecycling
-  - **Additional** (10+ models): Notification, Referral, Attachment, Waitlist, FormSubmission, AIMemory, and more
+  - **Additional** (11+ models): Notification, Referral, Attachment, Waitlist, FormSubmission, and more
 
 ### Multi-Tenancy Pattern
 - Every resource scoped to `workspace` (Project model)
@@ -360,6 +362,8 @@ Complexity Analyzer (Assess task complexity)
 ```
 
 ### Agent Ecosystem (24 Workers)
+**Location**: `backend/src/chatbot/workers/`
+
 See `AGENT_SYSTEM.md` for detailed documentation.
 
 **Categories**:
@@ -611,10 +615,11 @@ Clianta is a **production-grade, enterprise CRM** built with modern architecture
 - **Monorepo**: Single codebase for coordinated development
 - **Type-Safe**: End-to-end TypeScript from frontend to backend
 - **Event-Driven**: Asynchronous, scalable event processing
-- **AI-Native**: 24 specialized agents with multi-agent coordination
+- **AI-Native**: 24 specialized agents (`backend/src/chatbot/`) with custom multi-agent coordination
 - **Real-Time**: WebSocket-based chat and notifications
 - **Secure**: Multi-layered security (auth, rate limiting, validation)
 - **Scalable**: Designed for horizontal scaling and service separation
+- **Database**: 79 Mongoose models including 8 legacy/archived models preserved for recovery
 
 **Next Steps for Production**:
 1. Separate worker instances for background jobs

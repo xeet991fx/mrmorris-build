@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete reference of all API endpoints in Clianta backend (60+ route files, 200+ endpoints).
+Complete reference of all API endpoints in Clianta backend (70+ route files, 200+ endpoints).
 
 **Base URL**: `http://localhost:5000/api` (development) or `https://api.clianta.online/api` (production)
 **Authentication**: JWT Bearer token (except public routes)

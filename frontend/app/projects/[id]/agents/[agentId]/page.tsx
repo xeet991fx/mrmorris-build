@@ -1,3 +1,11 @@
+/**
+ * ⚠️ LEGACY CODE - ARCHIVED 2026-02-04
+ * This page is no longer accessible via navigation.
+ * See LEGACY_AGENT_BUILDER.md for recovery instructions.
+ *
+ * To restore: Uncomment navigation links in dashboard and landing pages
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';

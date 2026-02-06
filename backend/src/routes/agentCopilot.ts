@@ -1,3 +1,11 @@
+/**
+ * ⚠️ LEGACY CODE - ARCHIVED 2026-02-04
+ * This route is no longer active. See LEGACY_AGENT_BUILDER.md for details.
+ * Route registration disabled in server.ts
+ *
+ * To restore: Uncomment route registration in server.ts and remove this notice
+ */
+
 import express, { Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import AgentCopilotService from '../services/AgentCopilotService';
@@ -437,6 +445,85 @@ router.post(
       return res.status(500).json({
         success: false,
         error: 'Failed to review instructions.',
+      });
+    }
+  }
+);
+
+/**
+ * Story 4.5: Analyze Failed Execution
+ * POST /api/workspaces/:workspaceId/executions/:executionId/analyze
+ * Analyze failed execution and provide actionable fixes
+ */
+router.post(
+  '/:workspaceId/executions/:executionId/analyze',
+  authenticate,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { workspaceId, executionId } = req.params;
+      const userId = req.user?._id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized - user not authenticated'
+        });
+      }
+
+      // Task 6.2: Validate execution exists and belongs to workspace
+      const workspace = await Project.findById(workspaceId);
+      if (!workspace) {
+        return res.status(404).json({
+          success: false,
+          error: 'Workspace not found'
+        });
+      }
+
+      if (workspace.userId.toString() !== userId.toString()) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied - insufficient permissions'
+        });
+      }
+
+      // Task 6.4: Call AgentCopilotService.analyzeFailedExecution()
+      const analysis = await copilotService.analyzeFailedExecution(workspaceId, executionId);
+
+      // Task 6.5: Return structured JSON response
+      res.json({
+        success: true,
+        analysis
+      });
+
+    } catch (error: any) {
+      console.error('[Error] Analyze failed execution route:', error);
+
+      // Task 6.6: Handle errors
+      if (error.message === 'Execution not found') {
+        return res.status(404).json({
+          success: false,
+          error: 'Execution not found'
+        });
+      }
+
+      if (error.message === 'Can only analyze failed executions') {
+        return res.status(400).json({
+          success: false,
+          error: 'Can only analyze failed executions'
+        });
+      }
+
+      if (error.message === 'Insufficient credits') {
+        return res.status(402).json({
+          success: false,
+          error: 'Insufficient credits for failure analysis'
+        });
+      }
+
+      // 500 server error
+      res.status(500).json({
+        success: false,
+        error: 'Failed to analyze execution failure'
       });
     }
   }

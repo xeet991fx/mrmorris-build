@@ -2,9 +2,11 @@
 
 ## Overview
 
-Clianta uses **MongoDB** with **Mongoose ODM** for data persistence. The application has **70 Mongoose models** organized by functional category, all implementing multi-tenancy via workspace isolation.
+Clianta uses **MongoDB** with **Mongoose ODM** for data persistence. The application has **79 Mongoose models** organized by functional category, all implementing multi-tenancy via workspace isolation.
 
 **Location**: `backend/src/models/`
+
+**Note**: 8 models related to the legacy Agent Builder feature are preserved for data recovery but are marked as **LEGACY/ARCHIVED** and not used in active features. See `docs/legacy/` for recovery documentation.
 
 ## 1. Model Categories
 
@@ -47,26 +49,40 @@ Email campaigns, lead generation, and visitor tracking.
 
 ---
 
-### AI & Agent Models (8 models)
-Multi-agent system, memory, and AI-generated insights.
+### AI & Chatbot Models (5 active models)
+Multi-agent chatbot system, memory, and AI-generated insights.
 
+**Active Models**:
 | Model | File | Purpose |
 |-------|------|---------|
-| **AgentSession** | `AgentSession.ts` | AI agent conversation sessions |
-| **AgentPerformance** | `AgentPerformance.ts` | Agent performance metrics and analytics |
-| **AgentInsight** | `AgentInsight.ts` | AI-generated insights and recommendations |
 | **AIClientMemory** | `AIClientMemory.ts` | Long-term memory for AI agents (workspace context) |
 | **AINotification** | `AINotification.ts` | Proactive AI notifications and alerts |
 | **Conversation** | `Conversation.ts` | Chat conversations with AI |
 | **ChatMessage** | `ChatMessage.ts` | Individual chat messages |
 | **Meeting** | `Meeting.ts` | Meeting records with AI-generated briefings |
 
+**LEGACY/ARCHIVED Models** (preserved for recovery only - see `docs/legacy/`):
+
+These 8 models were part of the Agent Builder feature that was archived on February 4, 2026. They remain in the database for data recovery purposes but are **NOT** used in active features:
+
+| Model | File | Status |
+|-------|------|--------|
+| **Agent** | `Agent.ts` | ❌ LEGACY - Agent Builder configurations |
+| **AgentSession** | `AgentSession.ts` | ❌ LEGACY - Agent Builder sessions (different from Conversation) |
+| **AgentExecution** | `AgentExecution.ts` | ❌ LEGACY - Agent Builder execution logs |
+| **AgentTestRun** | `AgentTestRun.ts` | ❌ LEGACY - Agent Builder test runs |
+| **AgentMemory** | `AgentMemory.ts` | ❌ LEGACY - Agent Builder memory (different from AIClientMemory) |
+| **AgentPerformance** | `AgentPerformance.ts` | ❌ LEGACY - Agent Builder analytics |
+| **AgentInsight** | `AgentInsight.ts` | ❌ LEGACY - Agent Builder insights |
+| **AgentCopilotConversation** | `AgentCopilotConversation.ts` | ❌ LEGACY - Agent Builder copilot chats |
+
+⚠️ **Important**: These models are NOT documented in active feature lists and should NOT be referenced in new development.
+
 ---
 
-### Integration Models (8 active + 3 legacy)
+### Integration Models (11 models)
 Third-party service connections and sync configurations.
 
-**Active Models**:
 | Model | File | Purpose |
 |-------|------|---------|
 | **EmailAccount** | `EmailAccount.ts` | Connected email accounts (Gmail, Outlook, SMTP) |
@@ -77,11 +93,9 @@ Third-party service connections and sync configurations.
 | **IntegrationCredential** | `IntegrationCredential.ts` | Encrypted OAuth tokens and API keys |
 | **ApolloUsage** | `ApolloUsage.ts` | Apollo.io API usage tracking |
 | **WebhookSubscription** | `WebhookSubscription.ts` | Webhook configurations for integrations |
-
-**Legacy Models (not in active use)**:
-- **SalesforceIntegration** - Salesforce sync configuration (legacy)
-- **FieldMapping** - Field mappings for Salesforce (legacy)
-- **SyncLog** - Integration sync logs (legacy)
+| **SalesforceIntegration** | `SalesforceIntegration.ts` | Salesforce sync configuration |
+| **FieldMapping** | `FieldMapping.ts` | Field mappings for integrations |
+| **SyncLog** | `SyncLog.ts` | Integration sync logs and history |
 
 ---
 
@@ -130,7 +144,7 @@ Workflow automation and lead lifecycle.
 
 ---
 
-### Miscellaneous Models (8 models)
+### Miscellaneous Models (10 models)
 Supporting models for various features.
 
 | Model | File | Purpose |
@@ -143,6 +157,8 @@ Supporting models for various features.
 | **MeetingScheduler** | `MeetingScheduler.ts` | Meeting booking configurations |
 | **DeliverabilityTest** | `DeliverabilityTest.ts` | Email deliverability test results |
 | **OTP** | `OTP.ts` | One-time passwords for auth |
+| **LeadForm** | `LeadForm.ts` | Lead capture form configurations |
+| **SalesforceIntegration** | `SalesforceIntegration.ts` | Salesforce sync configuration |
 
 ---
 
@@ -647,12 +663,24 @@ Project (Workspace) [Multi-Tenancy Container]
 ## Summary
 
 Clianta's data layer consists of:
-- **70 Mongoose models** across 7 functional categories
+- **79 Mongoose models** across 8 functional categories
+  - 71 active models in current features
+  - 8 legacy/archived models (Agent Builder) preserved for recovery
 - **Multi-tenancy** via workspace isolation on all models
 - **Custom fields** for dynamic schema extension
 - **Comprehensive indexing** for performance
 - **Referential integrity** via Mongoose middleware
 - **Event-driven updates** via BullMQ for async processing
+
+**Model Breakdown**:
+- Core CRM: 11 models
+- Sales Engagement & Campaigns: 12 models
+- AI & Chatbot: 5 active models (+ 8 legacy/archived)
+- Integrations: 11 models
+- Analytics & Tracking: 12 models
+- Sales Intelligence: 5 models
+- Automation & Workflow: 4 models
+- Miscellaneous: 10 models
 
 **Best Practices**:
 1. Always filter by `workspace` in queries
@@ -661,8 +689,10 @@ Clianta's data layer consists of:
 4. Use `.lean()` for read-only operations
 5. Implement cascade delete via middleware
 6. Validate custom fields against definitions
+7. Do NOT use legacy Agent Builder models in new development
 
 For schema-specific implementation details, see:
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Database architecture overview
 - [API_ROUTES_MAP.md](./API_ROUTES_MAP.md) - API endpoints for each model
 - [INTEGRATIONS.md](./INTEGRATIONS.md) - Integration-specific models
+- [legacy/](./legacy/) - Archived Agent Builder models and recovery documentation

@@ -9,6 +9,7 @@ import {
   createCustomFieldSchema,
   updateCustomFieldSchema,
 } from "../validations/customField";
+import { clearWorkspaceCache } from "../services/AgentCopilotService"; // Story 4.6 Issue #3 Fix
 
 const router = express.Router();
 
@@ -152,6 +153,9 @@ router.post(
       });
 
       await customField.save();
+
+      // Story 4.6 Issue #3 Fix: Invalidate workspace cache when custom field created
+      clearWorkspaceCache();
 
       res.status(201).json({
         success: true,
@@ -326,6 +330,9 @@ router.patch(
 
       await customField.save();
 
+      // Story 4.6 Issue #3 Fix: Invalidate workspace cache when custom field updated
+      clearWorkspaceCache();
+
       res.status(200).json({
         success: true,
         data: {
@@ -390,6 +397,9 @@ router.delete(
         // Delete the definition
         await CustomFieldDefinition.findByIdAndDelete(fieldId);
 
+        // Story 4.6 Issue #3 Fix: Invalidate workspace cache when custom field deleted
+        clearWorkspaceCache();
+
         res.status(200).json({
           success: true,
           message: "Custom field and all associated data deleted successfully.",
@@ -398,6 +408,9 @@ router.delete(
         // Soft delete: Just mark as inactive
         customField.isActive = false;
         await customField.save();
+
+        // Story 4.6 Issue #3 Fix: Invalidate workspace cache when custom field deactivated
+        clearWorkspaceCache();
 
         res.status(200).json({
           success: true,

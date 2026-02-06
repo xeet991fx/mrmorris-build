@@ -84,7 +84,8 @@ const NAV_SECTIONS = {
   automation: {
     label: "Automation",
     items: [
-      { label: "Agents", icon: CpuChipIcon, path: "agents" },
+      // LEGACY AGENT BUILDER - ARCHIVED 2026-02-04 - Uncomment to restore
+      // { label: "Agents", icon: CpuChipIcon, path: "agents" },
       { label: "Workflows", icon: BoltIcon, path: "workflows" },
       { label: "Tasks", icon: CheckCircleIcon, path: "tasks" },
       { label: "Tickets", icon: TicketIcon, path: "tickets" },

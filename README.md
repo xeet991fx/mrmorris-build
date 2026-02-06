@@ -2,7 +2,7 @@
 
 > **Note**: This repository uses "mrmorris" in folder/package names (legacy from product pivot). The product name is **Clianta**.
 
-An intelligent AI-native CRM powered by autonomous AI agents. Built with Google Gemini 2.5 Pro and DeepAgents framework, Clianta features multi-agent coordination, workflow automation, and AI-driven insights where agents work side-by-side with humans to execute complex CRM tasks autonomously.
+An intelligent AI-native CRM powered by autonomous AI agents. Built with Google Gemini 2.5 Pro and a custom multi-agent coordination system, Clianta features 24 specialized agents, workflow automation, and AI-driven insights where agents work side-by-side with humans to execute complex CRM tasks autonomously.
 
 **Live**: https://clianta.online
 
@@ -10,7 +10,7 @@ An intelligent AI-native CRM powered by autonomous AI agents. Built with Google 
 
 ## 🚀 Overview
 
-**Clianta** is an AI-native CRM that understands your business, knows your customers, and works like your best employee. Built with Google Gemini 2.5 Pro, DeepAgents framework, and multi-agent coordination architecture, it provides deep context awareness, autonomous task execution, workflow automation, and proactive insights across sales and customer success.
+**Clianta** is an AI-native CRM that understands your business, knows your customers, and works like your best employee. Built with Google Gemini 2.5 Pro and a custom multi-agent coordination architecture featuring 24 specialized agents, it provides deep context awareness, autonomous task execution, workflow automation, and proactive insights across sales and customer success.
 
 ## 🛠️ Tech Stack
 
@@ -36,7 +36,7 @@ An intelligent AI-native CRM powered by autonomous AI agents. Built with Google 
 - **Queue**: BullMQ (background jobs, scheduled tasks)
 - **AI Provider**: Google Gemini 2.5 Pro (via @google/generative-ai)
 - **AI Orchestration**: LangChain + @langchain/google-vertexai
-- **Agent Framework**: DeepAgents (Multi-agent coordination)
+- **Agent System**: Custom multi-agent coordination (24 specialized agents in `backend/src/chatbot/`)
 - **Authentication**: Passport.js (JWT, Local, Google OAuth)
 - **Validation**: Zod
 - **File Upload**: Multer with Sharp (image processing)
@@ -60,15 +60,18 @@ Comprehensive documentation for production deployment and repository restructuri
 ### Architecture & Design
 - **[Architecture Overview](docs/ARCHITECTURE.md)** - System design, technology stack, and architectural patterns
 - **[Folder Structure](docs/FOLDER_STRUCTURE.md)** - Repository organization and recommended production structure
-- **[API Routes Map](docs/API_ROUTES_MAP.md)** - Complete API endpoint reference (200+ endpoints)
+- **[API Routes Map](docs/API_ROUTES_MAP.md)** - Complete API endpoint reference (70+ route handlers)
 
 ### Data & Models
-- **[Models & Schemas](docs/MODELS_AND_SCHEMAS.md)** - Database schema documentation (70+ MongoDB models)
+- **[Models & Schemas](docs/MODELS_AND_SCHEMAS.md)** - Database schema documentation (79 MongoDB models)
 - **[Dependencies](docs/DEPENDENCIES.md)** - Package dependency catalog and version management
 
 ### AI & Automation
-- **[Agent System](docs/AGENT_SYSTEM.md)** - Multi-agent AI architecture (23 specialized agents)
-- **[Background Jobs](docs/BACKGROUND_JOBS.md)** - Queue system and scheduled tasks (9 jobs)
+- **[Agent System](docs/AGENT_SYSTEM.md)** - Multi-agent AI architecture (24 specialized agents)
+- **[Background Jobs](docs/BACKGROUND_JOBS.md)** - Queue system and scheduled tasks
+
+### Legacy Features
+- **[Legacy Documentation](docs/legacy/)** - Archived features preserved for recovery (Agent Builder)
 
 ### Integrations & Configuration
 - **[Integrations Guide](docs/INTEGRATIONS.md)** - Third-party integrations (Salesforce, Apollo, Google, Slack, etc.)
@@ -139,7 +142,7 @@ morrisB/
 │
 ├── backend/                           # Express Backend Application
 │   ├── src/
-│   │   ├── agents/                   # AI agent implementations
+│   │   ├── chatbot/                  # AI agent implementations (24 specialized agents)
 │   │   ├── config/                   # Configuration files
 │   │   ├── controllers/              # Route controllers
 │   │   ├── errors/                   # Custom error classes
@@ -365,14 +368,15 @@ npm run install:all      # Install all dependencies
 - **Data Stewardship**: Automated data quality checks and verification
 
 ### AI-Powered (Multi-Agent Architecture)
-- **Autonomous Agents**: 20+ specialized AI agents (contact, deal, campaign, briefing, etc.)
+- **Autonomous Agents**: 24 specialized AI agents (contact, deal, campaign, briefing, workflow, and more)
 - **Multi-Agent Coordination**: Dynamic 2-4 agent collaboration for complex tasks
 - **AI Assistant**: Natural language queries with intelligent routing
 - **AI Memory**: Context-aware knowledge base with workspace context
-- **AI Content**: Generate emails, campaigns, and responses with Gemini
+- **AI Content**: Generate emails, campaigns, and responses with Gemini 2.5 Pro
 - **Lead Scoring**: Automated behavioral scoring with intent analysis
 - **Meeting Preparation**: Multi-agent briefings combining contact, deal, and company intel
 - **Proactive Insights**: Automated deal health, forecast generation, competitive analysis
+- **Workspace Context**: AI copilot with full access to workspace data (Epic 4-6)
 
 ### Automation
 - **Visual Workflow Builder**: Drag-and-drop editor with triggers and actions
