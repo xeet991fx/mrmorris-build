@@ -41,6 +41,7 @@ import { EmailInsightsPanel } from "@/components/inbox/EmailInsightsPanel";
 import { useInsightTracking } from "@/hooks/useInsightTracking";
 import { cn } from "@/lib/utils";
 import { GroupedInboxView } from "@/components/inbox/GroupedInboxView";
+import { LinkedInInboxSection } from "@/components/inbox/LinkedInInboxSection";
 
 interface LocalInboxMessage {
     _id: string;
@@ -510,31 +511,44 @@ export default function InboxPage() {
                         {/* Messages */}
                         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 pb-6">
                             {viewMode === 'grouped' && groupedData ? (
-                                <GroupedInboxView
-                                    groupedData={{
-                                        campaigns: filters.source === 'all' || filters.source === 'campaign'
-                                            ? filters.campaign
-                                                ? groupedData.campaigns.filter((c: any) => c.id === filters.campaign)
-                                                : groupedData.campaigns
-                                            : [],
-                                        workflows: filters.source === 'all' || filters.source === 'workflow'
-                                            ? filters.workflow
-                                                ? groupedData.workflows.filter((w: any) => w.id === filters.workflow)
-                                                : groupedData.workflows
-                                            : [],
-                                        direct: filters.source === 'all' || filters.source === 'direct'
-                                            ? groupedData.direct
-                                            : []
-                                    }}
-                                    onConversationClick={(conversation) => {
-                                        setSelectedConversation(conversation);
-                                        // Also set the first message as selected for the reply composer
-                                        if (conversation.messages && conversation.messages.length > 0) {
-                                            const latestReply = conversation.messages.find(m => m.replied) || conversation.messages[conversation.messages.length - 1];
-                                            setSelectedMessage(latestReply as LocalInboxMessage);
-                                        }
-                                    }}
-                                />
+                                <>
+                                    <GroupedInboxView
+                                        groupedData={{
+                                            campaigns: filters.source === 'all' || filters.source === 'campaign'
+                                                ? filters.campaign
+                                                    ? (groupedData.campaigns || []).filter((c: any) => c.id === filters.campaign)
+                                                    : (groupedData.campaigns || [])
+                                                : [],
+                                            workflows: filters.source === 'all' || filters.source === 'workflow'
+                                                ? filters.workflow
+                                                    ? (groupedData.workflows || []).filter((w: any) => w.id === filters.workflow)
+                                                    : (groupedData.workflows || [])
+                                                : [],
+                                            direct: filters.source === 'all' || filters.source === 'direct'
+                                                ? (groupedData.direct || [])
+                                                : []
+                                        }}
+                                        onConversationClick={(conversation) => {
+                                            setSelectedConversation(conversation);
+                                            // Also set the first message as selected for the reply composer
+                                            if (conversation.messages && conversation.messages.length > 0) {
+                                                const latestReply = conversation.messages.find(m => m.replied) || conversation.messages[conversation.messages.length - 1];
+                                                setSelectedMessage(latestReply as LocalInboxMessage);
+                                            }
+                                        }}
+                                    />
+
+                                    {/* LinkedIn Section */}
+                                    <LinkedInInboxSection
+                                        workspaceId={workspaceId}
+                                        onConversationClick={(conv) => {
+                                            // Open LinkedIn profile when clicking a conversation
+                                            if (conv.contactLinkedIn) {
+                                                window.open(conv.contactLinkedIn, '_blank', 'noopener,noreferrer');
+                                            }
+                                        }}
+                                    />
+                                </>
                             ) : messages.length === 0 ? (
                                 /* Empty State */
                                 <motion.div

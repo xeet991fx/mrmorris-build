@@ -680,4 +680,341 @@ router.post("/enrich-from-apollo/:contactId", authenticate, async (req: AuthRequ
     }
 });
 
+// ============================================
+// LINKEDIN ACTIVITY LOGGING (For Inbox Integration)
+// ============================================
+
+import LinkedInActivity, { LinkedInActivityType } from "../models/LinkedInActivity";
+
+/**
+ * POST /api/linkedin/activities
+ * Log a new LinkedIn activity (message, connection request, note, etc.)
+ */
+router.post("/activities", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, contactId, type, subject, content, linkedinUrl, direction, activityDate } = req.body;
+
+        if (!workspaceId || !contactId || !type || !content) {
+            return res.status(400).json({
+                success: false,
+                error: "workspaceId, contactId, type, and content are required",
+            });
+        }
+
+        // Validate contact exists
+        const contact = await Contact.findOne({
+            _id: contactId,
+            workspaceId: new mongoose.Types.ObjectId(workspaceId),
+        });
+
+        if (!contact) {
+            return res.status(404).json({
+                success: false,
+                error: "Contact not found",
+            });
+        }
+
+        const activity = new LinkedInActivity({
+            workspaceId: new mongoose.Types.ObjectId(workspaceId),
+            contactId: new mongoose.Types.ObjectId(contactId),
+            userId: req.user?._id,
+            type,
+            subject,
+            content,
+            linkedinUrl: linkedinUrl || contact.linkedin,
+            direction: direction || "outbound",
+            activityDate: activityDate ? new Date(activityDate) : new Date(),
+            isRead: direction === "outbound", // Outbound activities are auto-read
+        });
+
+        await activity.save();
+
+        // Populate for response
+        const populatedActivity = await LinkedInActivity.findById(activity._id)
+            .populate("contactId", "firstName lastName email linkedin")
+            .populate("userId", "firstName lastName email");
+
+        res.status(201).json({
+            success: true,
+            data: { activity: populatedActivity },
+        });
+    } catch (error: any) {
+        console.error("Log LinkedIn activity error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to log LinkedIn activity",
+        });
+    }
+});
+
+/**
+ * GET /api/linkedin/activities
+ * Get LinkedIn activities for inbox view
+ */
+router.get("/activities", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId, contactId, type, isRead, page = 1, limit = 50 } = req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                error: "workspaceId is required",
+            });
+        }
+
+        const query: any = {
+            workspaceId: new mongoose.Types.ObjectId(workspaceId as string),
+        };
+
+        if (contactId) {
+            query.contactId = new mongoose.Types.ObjectId(contactId as string);
+        }
+
+        if (type) {
+            query.type = type;
+        }
+
+        if (isRead !== undefined) {
+            query.isRead = isRead === "true";
+        }
+
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const [activities, total] = await Promise.all([
+            LinkedInActivity.find(query)
+                .populate("contactId", "firstName lastName email linkedin company")
+                .populate("userId", "firstName lastName email")
+                .sort({ activityDate: -1 })
+                .skip(skip)
+                .limit(Number(limit)),
+            LinkedInActivity.countDocuments(query),
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                activities,
+                total,
+                page: Number(page),
+                totalPages: Math.ceil(total / Number(limit)),
+            },
+        });
+    } catch (error: any) {
+        console.error("Get LinkedIn activities error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to get LinkedIn activities",
+        });
+    }
+});
+
+/**
+ * GET /api/linkedin/activities/grouped
+ * Get LinkedIn activities grouped by contact for inbox view
+ */
+router.get("/activities/grouped", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                error: "workspaceId is required",
+            });
+        }
+
+        // Aggregate activities by contact
+        const grouped = await LinkedInActivity.aggregate([
+            {
+                $match: {
+                    workspaceId: new mongoose.Types.ObjectId(workspaceId as string),
+                },
+            },
+            {
+                $sort: { activityDate: -1 },
+            },
+            {
+                $group: {
+                    _id: "$contactId",
+                    activities: { $push: "$$ROOT" },
+                    activityCount: { $sum: 1 },
+                    unreadCount: {
+                        $sum: { $cond: [{ $eq: ["$isRead", false] }, 1, 0] },
+                    },
+                    latestActivity: { $first: "$$ROOT" },
+                },
+            },
+            {
+                $lookup: {
+                    from: "contacts",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "contact",
+                },
+            },
+            {
+                $unwind: "$contact",
+            },
+            {
+                $project: {
+                    contactId: "$_id",
+                    contactName: {
+                        $concat: [
+                            { $ifNull: ["$contact.firstName", ""] },
+                            " ",
+                            { $ifNull: ["$contact.lastName", ""] },
+                        ],
+                    },
+                    contactEmail: "$contact.email",
+                    contactLinkedIn: "$contact.linkedin",
+                    contactCompany: "$contact.company",
+                    activityCount: 1,
+                    unreadCount: 1,
+                    latestActivity: 1,
+                    activities: { $slice: ["$activities", 5] }, // Only return last 5
+                },
+            },
+            {
+                $sort: { "latestActivity.activityDate": -1 },
+            },
+        ]);
+
+        res.json({
+            success: true,
+            data: { conversations: grouped },
+        });
+    } catch (error: any) {
+        console.error("Get grouped LinkedIn activities error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to get grouped activities",
+        });
+    }
+});
+
+/**
+ * GET /api/linkedin/activities/stats
+ * Get LinkedIn activity statistics
+ */
+router.get("/activities/stats", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.query;
+
+        if (!workspaceId) {
+            return res.status(400).json({
+                success: false,
+                error: "workspaceId is required",
+            });
+        }
+
+        const [total, unread, byType] = await Promise.all([
+            LinkedInActivity.countDocuments({
+                workspaceId: new mongoose.Types.ObjectId(workspaceId as string),
+            }),
+            LinkedInActivity.countDocuments({
+                workspaceId: new mongoose.Types.ObjectId(workspaceId as string),
+                isRead: false,
+            }),
+            LinkedInActivity.aggregate([
+                {
+                    $match: {
+                        workspaceId: new mongoose.Types.ObjectId(workspaceId as string),
+                    },
+                },
+                {
+                    $group: {
+                        _id: "$type",
+                        count: { $sum: 1 },
+                    },
+                },
+            ]),
+        ]);
+
+        const typeStats: Record<string, number> = {};
+        byType.forEach((item: any) => {
+            typeStats[item._id] = item.count;
+        });
+
+        res.json({
+            success: true,
+            data: {
+                total,
+                unread,
+                byType: typeStats,
+            },
+        });
+    } catch (error: any) {
+        console.error("Get LinkedIn activity stats error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to get activity stats",
+        });
+    }
+});
+
+/**
+ * PUT /api/linkedin/activities/:id/read
+ * Mark a LinkedIn activity as read
+ */
+router.put("/activities/:id/read", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const activity = await LinkedInActivity.findByIdAndUpdate(
+            id,
+            { isRead: true },
+            { new: true }
+        );
+
+        if (!activity) {
+            return res.status(404).json({
+                success: false,
+                error: "Activity not found",
+            });
+        }
+
+        res.json({
+            success: true,
+            data: { activity },
+        });
+    } catch (error: any) {
+        console.error("Mark activity read error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to mark activity as read",
+        });
+    }
+});
+
+/**
+ * DELETE /api/linkedin/activities/:id
+ * Delete a LinkedIn activity
+ */
+router.delete("/activities/:id", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const activity = await LinkedInActivity.findByIdAndDelete(id);
+
+        if (!activity) {
+            return res.status(404).json({
+                success: false,
+                error: "Activity not found",
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Activity deleted",
+        });
+    } catch (error: any) {
+        console.error("Delete activity error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message || "Failed to delete activity",
+        });
+    }
+});
+
 export default router;
+
