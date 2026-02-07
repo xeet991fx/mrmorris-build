@@ -55,6 +55,7 @@ import agentRoutes from "./routes/agent";
 // import agentBuilderRoutes from "./routes/agentBuilder";
 import insightsRoutes from "./routes/insights";
 import calendarIntegrationRoutes from "./routes/calendarIntegration";
+import linkedinIntegrationRoutes from "./routes/linkedinIntegration";
 import dashboardRoutes from "./routes/dashboard";
 import setupWithAgentsRoutes from "./routes/setupWithAgents";
 import proposalRoutes from "./routes/proposal";
@@ -97,6 +98,7 @@ import { startAgentResumeExecutionJob } from "./jobs/agentResumeExecutionJob";
 import { initializeProactiveAIJobs } from "./jobs/proactiveAI";
 import { startGoogleSheetFormSyncJob } from "./jobs/googleSheetFormSyncJob";
 import { startSequenceEmailJob } from "./jobs/sequenceEmailJob";
+import { startRecordingSyncJob } from "./jobs/recordingSyncJob";
 import aiNotificationsRoutes from "./routes/aiNotifications";
 import businessProfileRoutes from "./routes/businessProfile";
 import { logger, httpLoggerMiddleware } from "./utils/logger";
@@ -428,6 +430,7 @@ app.use("/api/workspaces", agentRoutes);
 app.use("/api/workspaces", insightsRoutes);
 app.use("/api/workspaces", dashboardRoutes);
 app.use("/api/calendar", calendarIntegrationRoutes);
+app.use("/api/linkedin", linkedinIntegrationRoutes);
 app.use("/api/workspaces", setupWithAgentsRoutes);
 app.use("/api/workspaces", proposalRoutes);
 app.use("/api/workspaces", analyticsRoutes);
@@ -566,6 +569,11 @@ const startServer = async () => {
       // Start Google Sheet form sync job
       startGoogleSheetFormSyncJob().catch((error) => {
         logger.error('Failed to start Google Sheet form sync job', { error });
+      });
+
+      // Start recording sync job (syncs Meet recordings from Google Drive)
+      startRecordingSyncJob().catch((error) => {
+        logger.error('Failed to start recording sync job', { error });
       });
 
       // ============================================

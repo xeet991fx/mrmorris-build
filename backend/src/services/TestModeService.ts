@@ -845,7 +845,7 @@ async function simulateEmailAction(
 
   // Track resolved variables
   const variablesResolved: Record<string, string> = {};
-  const varMatches = (to + subject + body).match(/@(\w+(?:\.\w+)?)/g) || [];
+  const varMatches: string[] = (to + subject + body).match(/@(\w+(?:\.\w+)?)/g) || [];
   varMatches.forEach(v => {
     const varName = v.replace('@', '');
     variablesResolved[varName] = resolveVariables(v, context);

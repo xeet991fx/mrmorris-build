@@ -32,6 +32,12 @@ import toast from "react-hot-toast";
 import Link from "next/link";
 import { MeetingIntelligencePanel } from "@/components/meetings/MeetingIntelligencePanel";
 import { cn } from "@/lib/utils";
+import {
+    RecordingControls,
+    RecordingIndicator,
+    RecordingDisclaimer,
+} from "@/components/meet";
+import { useRecording } from "@/hooks/useRecording";
 
 export default function MeetingsPage() {
     const params = useParams();
@@ -46,6 +52,7 @@ export default function MeetingsPage() {
     const [saving, setSaving] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<CalendarEvent | null>(null);
     const [addingMeetToEventId, setAddingMeetToEventId] = useState<string | null>(null);
+    const [recordingStates, setRecordingStates] = useState<Record<string, "not_started" | "recording" | "completed" | "failed">>({});
 
     const [newMeeting, setNewMeeting] = useState({
         title: "",
@@ -295,6 +302,13 @@ export default function MeetingsPage() {
                                                     </div>
                                                 </div>
 
+                                                {/* Recording Indicator */}
+                                                {recordingStates[event._id] === "recording" && (
+                                                    <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                        <RecordingIndicator isRecording={true} size="sm" variant="badge" />
+                                                    </div>
+                                                )}
+
                                                 {/* Actions */}
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }} className="p-2 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all">
@@ -311,18 +325,35 @@ export default function MeetingsPage() {
                             ))}
                         </div>
 
-                        {/* AI Intelligence Panel */}
+                        {/* AI Intelligence Panel + Recording Controls */}
                         <div className="lg:col-span-1">
-                            <div className="sticky top-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4">
-                                <MeetingIntelligencePanel
-                                    workspaceId={workspaceId}
-                                    meeting={selectedMeeting ? {
-                                        ...selectedMeeting,
-                                        date: selectedMeeting.startTime,
-                                        contactId: (selectedMeeting.contactId as any)?._id || selectedMeeting.contactId
-                                    } : undefined}
-                                    onActionTaken={(action) => { toast.success(`Action created: ${action}`); loadData(); }}
-                                />
+                            <div className="sticky top-8 space-y-4">
+                                {/* Recording Controls - Show when meeting has Google Meet */}
+                                {selectedMeeting && selectedMeeting.meetingLink && (
+                                    <MeetingRecordingSection
+                                        workspaceId={workspaceId}
+                                        meetingId={selectedMeeting._id}
+                                        recordingStatus={recordingStates[selectedMeeting._id] || "not_started"}
+                                        onStatusChange={(status) => {
+                                            setRecordingStates(prev => ({
+                                                ...prev,
+                                                [selectedMeeting._id]: status
+                                            }));
+                                        }}
+                                    />
+                                )}
+
+                                <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl p-4">
+                                    <MeetingIntelligencePanel
+                                        workspaceId={workspaceId}
+                                        meeting={selectedMeeting ? {
+                                            ...selectedMeeting,
+                                            date: selectedMeeting.startTime,
+                                            contactId: (selectedMeeting.contactId as any)?._id || selectedMeeting.contactId
+                                        } : undefined}
+                                        onActionTaken={(action) => { toast.success(`Action created: ${action}`); loadData(); }}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -507,5 +538,70 @@ export default function MeetingsPage() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+// Separate component for recording section to use the hook properly
+function MeetingRecordingSection({
+    workspaceId,
+    meetingId,
+    recordingStatus,
+    onStatusChange,
+}: {
+    workspaceId: string;
+    meetingId: string;
+    recordingStatus: "not_started" | "recording" | "completed" | "failed";
+    onStatusChange: (status: "not_started" | "recording" | "completed" | "failed") => void;
+}) {
+    const {
+        status,
+        isProcessing,
+        showConsentModal,
+        startRecording,
+        stopRecording,
+        confirmConsent,
+        declineConsent,
+    } = useRecording({
+        workspaceId,
+        meetingId,
+        notifyParticipants: true,
+        onRecordingStarted: () => {
+            onStatusChange("recording");
+            toast.success("Recording started");
+        },
+        onRecordingStopped: () => {
+            onStatusChange("completed");
+            toast.success("Recording stopped and saved");
+        },
+        onError: (error) => {
+            toast.error(error);
+        },
+    });
+
+    // Sync status from hook to parent
+    useEffect(() => {
+        if (status !== recordingStatus) {
+            onStatusChange(status);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [status]);
+
+    return (
+        <>
+            <RecordingControls
+                isHost={true}
+                recordingStatus={status}
+                autoStartEnabled={false}
+                notifyParticipants={true}
+                onStartRecording={startRecording}
+                onStopRecording={stopRecording}
+            />
+            <RecordingDisclaimer
+                isVisible={showConsentModal}
+                onAccept={confirmConsent}
+                onDecline={declineConsent}
+                meetingTitle="Meeting"
+            />
+        </>
     );
 }
