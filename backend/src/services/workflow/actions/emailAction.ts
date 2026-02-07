@@ -247,6 +247,7 @@ export class EmailActionExecutor extends BaseActionExecutor {
                     sentAt: new Date(),
                     stepId: step.id,
                     isRead: false,
+                    trackingId,
                 });
                 console.log(`📧 Workflow email saved to inbox`);
             }

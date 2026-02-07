@@ -11,10 +11,13 @@ export interface EmailTrackingStats {
     totalClicked: number;
     totalReplied: number;
     totalBounced: number;
+    totalUnsubscribed: number;
     openRate: number;
     clickRate: number;
     replyRate: number;
     bounceRate: number;
+    totalOpenEvents: number;
+    totalClickEvents: number;
 }
 
 export interface CampaignPerformance {
@@ -64,43 +67,24 @@ export interface RecentEventsResponse {
 }
 
 /**
- * Get overall email tracking statistics
+ * Get overall email tracking statistics from the backend tracking API
  */
 export const getTrackingStats = async (
     workspaceId: string,
     dateRange?: { start: string; end: string }
 ): Promise<TrackingStatsResponse> => {
     try {
-        // Fetch from campaigns and calculate stats
-        const campaignsRes = await axiosInstance.get(`/campaigns`, {
-            params: { workspaceId },
-        });
-        const campaigns = campaignsRes.data.campaigns || campaignsRes.data.data?.campaigns || [];
+        const params: any = {};
+        if (dateRange?.start) params.start = dateRange.start;
+        if (dateRange?.end) params.end = dateRange.end;
 
-        let totalSent = 0, totalOpened = 0, totalClicked = 0, totalReplied = 0, totalBounced = 0;
-
-        campaigns.forEach((c: any) => {
-            const stats = c.stats || {};
-            totalSent += stats.sent || 0;
-            totalOpened += stats.opened || 0;
-            totalClicked += stats.clicked || 0;
-            totalReplied += stats.replied || 0;
-            totalBounced += stats.bounced || 0;
+        const response = await axiosInstance.get(`/email-tracking/stats/${workspaceId}`, {
+            params,
         });
 
         return {
-            success: true,
-            data: {
-                totalSent,
-                totalOpened,
-                totalClicked,
-                totalReplied,
-                totalBounced,
-                openRate: totalSent > 0 ? (totalOpened / totalSent) * 100 : 0,
-                clickRate: totalSent > 0 ? (totalClicked / totalSent) * 100 : 0,
-                replyRate: totalSent > 0 ? (totalReplied / totalSent) * 100 : 0,
-                bounceRate: totalSent > 0 ? (totalBounced / totalSent) * 100 : 0,
-            },
+            success: response.data.success,
+            data: response.data.data,
         };
     } catch (err: any) {
         // Return empty stats on error
@@ -112,47 +96,30 @@ export const getTrackingStats = async (
                 totalClicked: 0,
                 totalReplied: 0,
                 totalBounced: 0,
+                totalUnsubscribed: 0,
                 openRate: 0,
                 clickRate: 0,
                 replyRate: 0,
                 bounceRate: 0,
+                totalOpenEvents: 0,
+                totalClickEvents: 0,
             },
         };
     }
 };
 
 /**
- * Get campaign performance breakdown
+ * Get campaign performance breakdown from the backend tracking API
  */
 export const getCampaignPerformance = async (
     workspaceId: string
 ): Promise<CampaignPerformanceResponse> => {
     try {
-        const response = await axiosInstance.get(`/campaigns`, {
-            params: { workspaceId },
-        });
-
-        const campaigns = response.data.campaigns || response.data.data?.campaigns || [];
-
-        const performance: CampaignPerformance[] = campaigns.map((c: any) => {
-            const stats = c.stats || {};
-            const sent = stats.sent || 0;
-            return {
-                campaignId: c._id,
-                campaignName: c.name,
-                sent,
-                opened: stats.opened || 0,
-                clicked: stats.clicked || 0,
-                replied: stats.replied || 0,
-                bounced: stats.bounced || 0,
-                openRate: sent > 0 ? ((stats.opened || 0) / sent) * 100 : 0,
-                clickRate: sent > 0 ? ((stats.clicked || 0) / sent) * 100 : 0,
-            };
-        });
+        const response = await axiosInstance.get(`/email-tracking/campaigns/${workspaceId}`);
 
         return {
-            success: true,
-            campaigns: performance,
+            success: response.data.success,
+            campaigns: response.data.campaigns || [],
         };
     } catch (err: any) {
         // Return empty campaigns on error
@@ -201,4 +168,74 @@ export const getTrackingPixelUrl = (messageId: string): string => {
 export const getClickTrackingUrl = (messageId: string, originalUrl: string): string => {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
     return `${baseUrl}/email-tracking/click/${messageId}?url=${encodeURIComponent(originalUrl)}`;
+};
+
+// ============================================
+// ANALYTICS BREAKDOWN TYPES & FUNCTIONS
+// ============================================
+
+export interface DeviceBreakdown {
+    devices: Array<{ name: string; count: number; percentage: number }>;
+    browsers: Array<{ name: string; count: number; percentage: number }>;
+    os: Array<{ name: string; count: number; percentage: number }>;
+}
+
+export interface LocationBreakdown {
+    countries: Array<{ country: string; countryCode: string; count: number; percentage: number }>;
+    cities: Array<{ city: string; country: string; count: number }>;
+    timezones: Array<{ timezone: string; count: number }>;
+}
+
+export interface TimeBreakdown {
+    byHour: Array<{ hour: number; label: string; count: number }>;
+    byDayOfWeek: Array<{ day: number; dayName: string; count: number }>;
+    trend: Array<{ date: string; opens: number }>;
+}
+
+/**
+ * Get device/browser/OS breakdown for email opens
+ */
+export const getEmailDeviceBreakdown = async (
+    workspaceId: string
+): Promise<{ success: boolean; data?: DeviceBreakdown; error?: string }> => {
+    try {
+        const response = await axiosInstance.get(
+            `/workspaces/${workspaceId}/analytics/email/device-breakdown`
+        );
+        return { success: true, data: response.data.data };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+};
+
+/**
+ * Get geographic breakdown for email opens
+ */
+export const getEmailLocationBreakdown = async (
+    workspaceId: string
+): Promise<{ success: boolean; data?: LocationBreakdown; error?: string }> => {
+    try {
+        const response = await axiosInstance.get(
+            `/workspaces/${workspaceId}/analytics/email/location-breakdown`
+        );
+        return { success: true, data: response.data.data };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
+};
+
+/**
+ * Get time-based breakdown for email opens
+ */
+export const getEmailTimeBreakdown = async (
+    workspaceId: string
+): Promise<{ success: boolean; data?: TimeBreakdown; error?: string }> => {
+    try {
+        const response = await axiosInstance.get(
+            `/workspaces/${workspaceId}/analytics/email/time-breakdown`
+        );
+        return { success: true, data: response.data.data };
+    } catch (err: any) {
+        return { success: false, error: err.message };
+    }
 };

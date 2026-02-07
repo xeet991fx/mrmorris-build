@@ -945,4 +945,213 @@ router.get("/:workspaceId/command-center/activity", authenticate, async (req: Au
     }
 });
 
+// ============================================
+// EMAIL TRACKING ANALYTICS
+// ============================================
+
+/**
+ * GET /api/workspaces/:workspaceId/analytics/email/device-breakdown
+ * Device, browser, and OS breakdown for email opens
+ */
+router.get("/:workspaceId/analytics/email/device-breakdown", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const { dateFrom, dateTo } = req.query;
+
+        const match: any = { workspaceId };
+        if (dateFrom || dateTo) {
+            match.sentAt = {};
+            if (dateFrom) match.sentAt.$gte = new Date(dateFrom as string);
+            if (dateTo) match.sentAt.$lte = new Date(dateTo as string);
+        }
+
+        const result = await EmailMessage.aggregate([
+            { $match: match },
+            { $unwind: "$opens" },
+            { $match: { "opens.isBot": { $ne: true }, "opens.isApplePrivacy": { $ne: true } } },
+            {
+                $facet: {
+                    byDevice: [
+                        { $group: { _id: { $ifNull: ["$opens.device", "unknown"] }, count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                    ],
+                    byBrowser: [
+                        { $group: { _id: { $ifNull: ["$opens.browser", "unknown"] }, count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                    ],
+                    byOS: [
+                        { $group: { _id: { $ifNull: ["$opens.os", "unknown"] }, count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                    ],
+                },
+            },
+        ]);
+
+        const data = result[0] || { byDevice: [], byBrowser: [], byOS: [] };
+
+        // Calculate percentages
+        const totalDevice = data.byDevice.reduce((sum: number, i: any) => sum + i.count, 0);
+        const totalBrowser = data.byBrowser.reduce((sum: number, i: any) => sum + i.count, 0);
+        const totalOS = data.byOS.reduce((sum: number, i: any) => sum + i.count, 0);
+
+        res.json({
+            success: true,
+            data: {
+                devices: data.byDevice.map((i: any) => ({
+                    name: i._id, count: i.count,
+                    percentage: totalDevice > 0 ? Math.round((i.count / totalDevice) * 100) : 0,
+                })),
+                browsers: data.byBrowser.map((i: any) => ({
+                    name: i._id, count: i.count,
+                    percentage: totalBrowser > 0 ? Math.round((i.count / totalBrowser) * 100) : 0,
+                })),
+                os: data.byOS.map((i: any) => ({
+                    name: i._id, count: i.count,
+                    percentage: totalOS > 0 ? Math.round((i.count / totalOS) * 100) : 0,
+                })),
+            },
+        });
+    } catch (error: any) {
+        logger.error("Email device breakdown error", { error: error.message });
+        res.status(500).json({ success: false, error: "Failed to get email device breakdown" });
+    }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/analytics/email/location-breakdown
+ * Geographic breakdown for email opens
+ */
+router.get("/:workspaceId/analytics/email/location-breakdown", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const { dateFrom, dateTo } = req.query;
+
+        const match: any = { workspaceId };
+        if (dateFrom || dateTo) {
+            match.sentAt = {};
+            if (dateFrom) match.sentAt.$gte = new Date(dateFrom as string);
+            if (dateTo) match.sentAt.$lte = new Date(dateTo as string);
+        }
+
+        const result = await EmailMessage.aggregate([
+            { $match: match },
+            { $unwind: "$opens" },
+            { $match: { "opens.isBot": { $ne: true }, "opens.country": { $ne: null } } },
+            {
+                $facet: {
+                    byCountry: [
+                        { $group: { _id: "$opens.country", countryCode: { $first: "$opens.countryCode" }, count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                        { $limit: 15 },
+                    ],
+                    byCity: [
+                        { $group: { _id: { city: "$opens.city", country: "$opens.country" }, count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                        { $limit: 10 },
+                    ],
+                    byTimezone: [
+                        { $group: { _id: "$opens.timezone", count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                        { $limit: 10 },
+                    ],
+                },
+            },
+        ]);
+
+        const data = result[0] || { byCountry: [], byCity: [], byTimezone: [] };
+        const totalCountry = data.byCountry.reduce((sum: number, i: any) => sum + i.count, 0);
+
+        res.json({
+            success: true,
+            data: {
+                countries: data.byCountry.map((i: any) => ({
+                    country: i._id, countryCode: i.countryCode, count: i.count,
+                    percentage: totalCountry > 0 ? Math.round((i.count / totalCountry) * 100) : 0,
+                })),
+                cities: data.byCity.map((i: any) => ({
+                    city: i._id.city, country: i._id.country, count: i.count,
+                })),
+                timezones: data.byTimezone.map((i: any) => ({
+                    timezone: i._id, count: i.count,
+                })),
+            },
+        });
+    } catch (error: any) {
+        logger.error("Email location breakdown error", { error: error.message });
+        res.status(500).json({ success: false, error: "Failed to get email location breakdown" });
+    }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/analytics/email/time-breakdown
+ * Opens by hour of day and day of week
+ */
+router.get("/:workspaceId/analytics/email/time-breakdown", authenticate, async (req: AuthRequest, res: Response) => {
+    try {
+        const { workspaceId } = req.params;
+        const { dateFrom, dateTo } = req.query;
+
+        const match: any = { workspaceId };
+        if (dateFrom || dateTo) {
+            match.sentAt = {};
+            if (dateFrom) match.sentAt.$gte = new Date(dateFrom as string);
+            if (dateTo) match.sentAt.$lte = new Date(dateTo as string);
+        }
+
+        const result = await EmailMessage.aggregate([
+            { $match: match },
+            { $unwind: "$opens" },
+            { $match: { "opens.isBot": { $ne: true }, "opens.isApplePrivacy": { $ne: true } } },
+            {
+                $facet: {
+                    byHour: [
+                        { $group: { _id: { $hour: "$opens.openedAt" }, count: { $sum: 1 } } },
+                        { $sort: { _id: 1 } },
+                    ],
+                    byDayOfWeek: [
+                        { $group: { _id: { $dayOfWeek: "$opens.openedAt" }, count: { $sum: 1 } } },
+                        { $sort: { _id: 1 } },
+                    ],
+                    trend: [
+                        {
+                            $group: {
+                                _id: { $dateToString: { format: "%Y-%m-%d", date: "$opens.openedAt" } },
+                                opens: { $sum: 1 },
+                            },
+                        },
+                        { $sort: { _id: 1 } },
+                        { $limit: 30 },
+                    ],
+                },
+            },
+        ]);
+
+        const data = result[0] || { byHour: [], byDayOfWeek: [], trend: [] };
+        const dayNames = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+        res.json({
+            success: true,
+            data: {
+                byHour: Array.from({ length: 24 }, (_, h) => ({
+                    hour: h,
+                    label: `${h.toString().padStart(2, "0")}:00`,
+                    count: data.byHour.find((i: any) => i._id === h)?.count || 0,
+                })),
+                byDayOfWeek: data.byDayOfWeek.map((i: any) => ({
+                    day: i._id,
+                    dayName: dayNames[i._id] || "Unknown",
+                    count: i.count,
+                })),
+                trend: data.trend.map((i: any) => ({
+                    date: i._id,
+                    opens: i.opens,
+                })),
+            },
+        });
+    } catch (error: any) {
+        logger.error("Email time breakdown error", { error: error.message });
+        res.status(500).json({ success: false, error: "Failed to get email time breakdown" });
+    }
+});
+
 export default router;

@@ -11,13 +11,23 @@ import {
     CursorArrowRaysIcon,
     ChatBubbleLeftRightIcon,
     ExclamationTriangleIcon,
+    DevicePhoneMobileIcon,
+    ComputerDesktopIcon,
+    GlobeAltIcon,
+    ClockIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import {
     getTrackingStats,
     getCampaignPerformance,
+    getEmailDeviceBreakdown,
+    getEmailLocationBreakdown,
+    getEmailTimeBreakdown,
     EmailTrackingStats,
     CampaignPerformance,
+    DeviceBreakdown,
+    LocationBreakdown,
+    TimeBreakdown,
 } from "@/lib/api/emailTracking";
 
 export default function EmailAnalyticsPage() {
@@ -31,26 +41,34 @@ export default function EmailAnalyticsPage() {
         totalClicked: 0,
         totalReplied: 0,
         totalBounced: 0,
+        totalUnsubscribed: 0,
         openRate: 0,
         clickRate: 0,
         replyRate: 0,
         bounceRate: 0,
+        totalOpenEvents: 0,
+        totalClickEvents: 0,
     });
     const [campaigns, setCampaigns] = useState<CampaignPerformance[]>([]);
+    const [deviceData, setDeviceData] = useState<DeviceBreakdown | null>(null);
+    const [locationData, setLocationData] = useState<LocationBreakdown | null>(null);
+    const [timeData, setTimeData] = useState<TimeBreakdown | null>(null);
 
     const fetchData = useCallback(async () => {
         try {
-            const [statsRes, campaignsRes] = await Promise.all([
+            const [statsRes, campaignsRes, deviceRes, locationRes, timeRes] = await Promise.all([
                 getTrackingStats(workspaceId),
                 getCampaignPerformance(workspaceId),
+                getEmailDeviceBreakdown(workspaceId),
+                getEmailLocationBreakdown(workspaceId),
+                getEmailTimeBreakdown(workspaceId),
             ]);
 
-            if (statsRes.success && statsRes.data) {
-                setStats(statsRes.data);
-            }
-            if (campaignsRes.success && campaignsRes.campaigns) {
-                setCampaigns(campaignsRes.campaigns);
-            }
+            if (statsRes.success && statsRes.data) setStats(statsRes.data);
+            if (campaignsRes.success && campaignsRes.campaigns) setCampaigns(campaignsRes.campaigns);
+            if (deviceRes.success && deviceRes.data) setDeviceData(deviceRes.data);
+            if (locationRes.success && locationRes.data) setLocationData(locationRes.data);
+            if (timeRes.success && timeRes.data) setTimeData(timeRes.data);
         } catch (err) {
             console.error("Failed to fetch data:", err);
             toast.error("Failed to load analytics");
@@ -63,9 +81,7 @@ export default function EmailAnalyticsPage() {
         fetchData();
     }, [fetchData]);
 
-    const formatPercent = (value: number) => {
-        return `${value.toFixed(1)}%`;
-    };
+    const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 
     if (isLoading) {
         return (
@@ -74,6 +90,13 @@ export default function EmailAnalyticsPage() {
             </div>
         );
     }
+
+    const deviceColors: Record<string, string> = {
+        desktop: "bg-blue-500",
+        mobile: "bg-purple-500",
+        tablet: "bg-green-500",
+        unknown: "bg-gray-500",
+    };
 
     return (
         <div className="p-6 space-y-6">
@@ -85,7 +108,7 @@ export default function EmailAnalyticsPage() {
                         Email Analytics
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Track email performance across all campaigns
+                        Track email performance with device and location insights
                     </p>
                 </div>
                 <button
@@ -188,6 +211,159 @@ export default function EmailAnalyticsPage() {
                 </motion.div>
             </div>
 
+            {/* Analytics Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Device Breakdown */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="bg-card border border-border rounded-xl p-6"
+                >
+                    <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                        <DevicePhoneMobileIcon className="w-5 h-5 text-blue-400" />
+                        Device Breakdown
+                    </h3>
+                    {deviceData?.devices && deviceData.devices.length > 0 ? (
+                        <div className="space-y-3">
+                            {deviceData.devices.map((device) => (
+                                <div key={device.name} className="flex items-center gap-3">
+                                    <div className="flex-1">
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="text-foreground capitalize">{device.name}</span>
+                                            <span className="text-muted-foreground">{device.percentage}%</span>
+                                        </div>
+                                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full ${deviceColors[device.name] || "bg-blue-500"} rounded-full transition-all`}
+                                                style={{ width: `${device.percentage}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground w-12 text-right">
+                                        {device.count}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-center py-8">No device data yet</p>
+                    )}
+                </motion.div>
+
+                {/* Location Breakdown */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                    className="bg-card border border-border rounded-xl p-6"
+                >
+                    <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                        <GlobeAltIcon className="w-5 h-5 text-green-400" />
+                        Top Countries
+                    </h3>
+                    {locationData?.countries && locationData.countries.length > 0 ? (
+                        <div className="space-y-2">
+                            {locationData.countries.slice(0, 8).map((loc, i) => (
+                                <div key={loc.country} className="flex items-center justify-between py-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-xs w-4">{i + 1}</span>
+                                        <span className="text-foreground">{loc.country}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-green-500 rounded-full"
+                                                style={{ width: `${loc.percentage}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-sm text-muted-foreground w-8 text-right">
+                                            {loc.percentage}%
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-center py-8">No location data yet</p>
+                    )}
+                </motion.div>
+
+                {/* Browser Breakdown */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 }}
+                    className="bg-card border border-border rounded-xl p-6"
+                >
+                    <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                        <ComputerDesktopIcon className="w-5 h-5 text-purple-400" />
+                        Browser & OS
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-sm text-muted-foreground mb-2">Browsers</p>
+                            {deviceData?.browsers?.slice(0, 4).map((b) => (
+                                <div key={b.name} className="flex justify-between text-sm py-1">
+                                    <span className="text-foreground capitalize">{b.name}</span>
+                                    <span className="text-muted-foreground">{b.percentage}%</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground mb-2">OS</p>
+                            {deviceData?.os?.slice(0, 4).map((o) => (
+                                <div key={o.name} className="flex justify-between text-sm py-1">
+                                    <span className="text-foreground capitalize">{o.name}</span>
+                                    <span className="text-muted-foreground">{o.percentage}%</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Hour of Day */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className="bg-card border border-border rounded-xl p-6"
+                >
+                    <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                        <ClockIcon className="w-5 h-5 text-orange-400" />
+                        Best Time to Send
+                    </h3>
+                    {timeData?.byHour && timeData.byHour.length > 0 ? (
+                        <div className="flex items-end h-32 gap-1">
+                            {timeData.byHour.map((h) => {
+                                const maxCount = Math.max(...timeData.byHour.map(x => x.count));
+                                const height = maxCount > 0 ? (h.count / maxCount) * 100 : 0;
+                                return (
+                                    <div
+                                        key={h.hour}
+                                        className="flex-1 bg-orange-500/20 hover:bg-orange-500/40 rounded-t transition-colors relative group"
+                                        style={{ height: `${Math.max(height, 4)}%` }}
+                                    >
+                                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-card border border-border px-2 py-0.5 rounded text-xs opacity-0 group-hover:opacity-100 whitespace-nowrap">
+                                            {h.label}: {h.count}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-center py-8">No time data yet</p>
+                    )}
+                    <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                        <span>12am</span>
+                        <span>6am</span>
+                        <span>12pm</span>
+                        <span>6pm</span>
+                        <span>12am</span>
+                    </div>
+                </motion.div>
+            </div>
+
             {/* Campaign Performance Table */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 <div className="p-4 border-b border-border">
@@ -239,18 +415,6 @@ export default function EmailAnalyticsPage() {
                         )}
                     </tbody>
                 </table>
-            </div>
-
-            {/* Performance Chart Placeholder */}
-            <div className="bg-card border border-border rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-4">Engagement Over Time</h2>
-                <div className="h-64 flex items-center justify-center bg-muted/30 rounded-lg">
-                    <div className="text-center text-muted-foreground">
-                        <ChartBarIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                        <p>Chart visualization coming soon</p>
-                        <p className="text-xs mt-1">Track trends in opens, clicks, and replies over time</p>
-                    </div>
-                </div>
             </div>
         </div>
     );

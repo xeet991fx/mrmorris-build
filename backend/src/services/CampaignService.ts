@@ -439,14 +439,18 @@ class CampaignService {
 
             let htmlBody = body.includes('<p>') ? body : `<p>${body.replace(/\n/g, "<br>")}</p>`;
 
-            // Generate email tracking ID (will be saved to EmailMessage later)
-            const trackingId = Buffer.from(
-                `${campaign.workspaceId}:${contact._id}:campaign:${campaign._id}:${Date.now()}`
-            ).toString("base64");
+            // Generate HMAC-signed email tracking ID
+            const { generateTrackingId, getTrackingPixelUrl } = await import("../routes/emailTracking");
+            const trackingId = generateTrackingId(
+                campaign.workspaceId.toString(),
+                contact._id.toString(),
+                "campaign",
+                campaign._id.toString()
+            );
 
             // Add tracking pixel for open tracking
             const baseUrl = process.env.BACKEND_URL || "http://localhost:5000";
-            const trackingPixel = `<img src="${baseUrl}/api/email-tracking/open/${trackingId}" width="1" height="1" style="display:none" alt="" />`;
+            const trackingPixel = `<img src="${getTrackingPixelUrl(trackingId)}" width="1" height="1" style="display:none" alt="" />`;
             htmlBody += trackingPixel;
 
             // Wrap links with click tracking
@@ -523,6 +527,7 @@ class CampaignService {
 
             // Track email message
             await EmailMessage.create({
+                source: 'campaign',
                 campaignId: campaign._id,
                 enrollmentId: enrollment._id,
                 contactId: contact._id,
@@ -536,6 +541,7 @@ class CampaignService {
                 messageId: messageId,
                 sentAt: new Date(),
                 stepId: step.id,
+                trackingId,
             });
 
             // Note: sentToday is already incremented atomically in rotateSendingAccount

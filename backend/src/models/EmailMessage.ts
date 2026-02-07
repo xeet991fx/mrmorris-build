@@ -44,18 +44,55 @@ export interface IEmailMessage extends Document {
     // Tracking
     opened: boolean;
     openedAt?: Date;
+    openCount: number;         // Total number of times email was opened
+    lastOpenedAt?: Date;       // Most recent open timestamp
     clicked: boolean;
     clickedAt?: Date;
+    totalClickCount: number;   // Total click count across all links
+    lastClickedAt?: Date;      // Most recent click timestamp
     replied: boolean;
     repliedAt?: Date;
     bounced: boolean;
     bouncedAt?: Date;
+    unsubscribed: boolean;
+    unsubscribedAt?: Date;
+
+    // Tracking metadata
+    trackingId?: string;       // The tracking ID used for this email
+
+    // Granular open events
+    opens?: Array<{
+        openedAt: Date;
+        userAgent?: string;
+        ipAddress?: string;
+        isBot: boolean;
+        isApplePrivacy?: boolean; // Apple Mail Privacy Protection
+        device?: string;          // desktop, mobile, tablet
+        browser?: string;         // chrome, firefox, safari, etc.
+        os?: string;              // windows, macos, linux, ios, android
+        // Geolocation
+        country?: string;
+        countryCode?: string;
+        city?: string;
+        timezone?: string;
+    }>;
 
     // Detailed link tracking
     linkClicks?: Array<{
         url: string;           // Original destination URL
         clickedAt: Date;       // When this link was clicked
         clickCount: number;    // Number of times this specific link was clicked
+        userAgent?: string;
+        ipAddress?: string;
+        isBot?: boolean;       // Flag for bot clicks
+        device?: string;
+        browser?: string;
+        os?: string;
+        // Geolocation
+        country?: string;
+        countryCode?: string;
+        city?: string;
+        timezone?: string;
     }>;
 
     // Reply details
@@ -173,11 +210,21 @@ const emailMessageSchema = new Schema<IEmailMessage>(
             default: false,
         },
         openedAt: Date,
+        openCount: {
+            type: Number,
+            default: 0,
+        },
+        lastOpenedAt: Date,
         clicked: {
             type: Boolean,
             default: false,
         },
         clickedAt: Date,
+        totalClickCount: {
+            type: Number,
+            default: 0,
+        },
+        lastClickedAt: Date,
         replied: {
             type: Boolean,
             default: false,
@@ -189,6 +236,43 @@ const emailMessageSchema = new Schema<IEmailMessage>(
             default: false,
         },
         bouncedAt: Date,
+        unsubscribed: {
+            type: Boolean,
+            default: false,
+        },
+        unsubscribedAt: Date,
+
+        // Tracking metadata
+        trackingId: {
+            type: String,
+            index: true,
+        },
+
+        // Granular open events
+        opens: [{
+            openedAt: {
+                type: Date,
+                default: Date.now,
+            },
+            userAgent: String,
+            ipAddress: String,
+            isBot: {
+                type: Boolean,
+                default: false,
+            },
+            isApplePrivacy: {
+                type: Boolean,
+                default: false,
+            },
+            device: String,
+            browser: String,
+            os: String,
+            // Geolocation
+            country: String,
+            countryCode: String,
+            city: String,
+            timezone: String,
+        }],
 
         // Detailed link tracking
         linkClicks: [{
@@ -206,6 +290,20 @@ const emailMessageSchema = new Schema<IEmailMessage>(
                 required: true,
                 default: 1,
             },
+            userAgent: String,
+            ipAddress: String,
+            isBot: {
+                type: Boolean,
+                default: false,
+            },
+            device: String,
+            browser: String,
+            os: String,
+            // Geolocation
+            country: String,
+            countryCode: String,
+            city: String,
+            timezone: String,
         }],
 
         // Reply details
@@ -239,6 +337,7 @@ emailMessageSchema.index({ workspaceId: 1, replied: 1, sentAt: -1 });
 emailMessageSchema.index({ threadId: 1 });
 emailMessageSchema.index({ campaignId: 1, sentAt: -1 });
 emailMessageSchema.index({ workflowId: 1, sentAt: -1 });
+emailMessageSchema.index({ trackingId: 1 });
 
 // ============================================
 // EXPORT
