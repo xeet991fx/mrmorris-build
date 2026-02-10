@@ -67,7 +67,6 @@ const NAV_SECTIONS = {
       { label: "Pages", icon: GlobeAltIcon, path: "pages" },
       { label: "Visitors", icon: EyeIcon, path: "visitors" },
       { label: "Campaigns", icon: RocketLaunchIcon, path: "campaigns" },
-      { label: "Sequences", icon: EnvelopeOpenIcon, path: "sequences" },
       { label: "Templates", icon: DocumentDuplicateIcon, path: "email-templates" },
     ],
   },
@@ -86,6 +85,7 @@ const NAV_SECTIONS = {
     items: [
       // LEGACY AGENT BUILDER - ARCHIVED 2026-02-04 - Uncomment to restore
       // { label: "Agents", icon: CpuChipIcon, path: "agents" },
+      { label: "Sequences", icon: EnvelopeOpenIcon, path: "sequences" },
       { label: "Workflows", icon: BoltIcon, path: "workflows" },
       { label: "Tasks", icon: CheckCircleIcon, path: "tasks" },
       { label: "Tickets", icon: TicketIcon, path: "tickets" },

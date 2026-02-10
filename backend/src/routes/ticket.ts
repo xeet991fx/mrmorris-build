@@ -152,9 +152,14 @@ router.post(
                 email: result.data.requesterEmail,
             });
 
+            // Generate ticket number explicitly
+            const ticketCount = await Ticket.countDocuments({ workspaceId });
+            const ticketNumber = `TKT-${String(ticketCount + 1).padStart(4, "0")}`;
+
             const ticket = await Ticket.create({
                 ...result.data,
                 workspaceId,
+                ticketNumber,
                 createdBy: req.user?._id,
                 requesterId: contact?._id,
                 relatedContactId: contact?._id,
