@@ -476,6 +476,7 @@ router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
           name: user.name,
           username: user.username,
           profilePicture: user.profilePicture,
+          profession: user.profession,
           isVerified: user.isVerified,
           createdAt: user.createdAt,
         },
@@ -912,7 +913,7 @@ router.get(
 
 /**
  * @route   GET /api/auth/google/callback
- * @desc    Google OAuth callback
+ * @desc    Google OAuth callback — sets httpOnly cookie and redirects (no token in URL)
  * @access  Public
  */
 router.get(
@@ -934,10 +935,19 @@ router.get(
       // Generate JWT token
       const token = generateToken(user._id.toString());
 
-      // Redirect to frontend with token
-      res.redirect(
-        `${process.env.FRONTEND_URL}/auth/callback?token=${token}`
-      );
+      const isProduction = process.env.NODE_ENV === "production";
+
+      // Set token as httpOnly cookie (not accessible via JavaScript)
+      res.cookie("auth_handoff", token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        maxAge: 60 * 1000, // 60 seconds — short-lived handoff only
+        path: "/api/auth/session", // Only sent to the session exchange endpoint
+      });
+
+      // Redirect to frontend WITHOUT token in URL
+      res.redirect(`${process.env.FRONTEND_URL}/auth/callback`);
     } catch (error) {
       logger.error("Google callback error", { error });
       res.redirect(
@@ -947,8 +957,147 @@ router.get(
   }
 );
 
+/**
+ * @route   POST /api/auth/session
+ * @desc    Exchange httpOnly auth_handoff cookie for a token + user response
+ * @access  Public (cookie-authenticated)
+ */
+router.post("/session", async (req: Request, res: Response) => {
+  try {
+    const handoffToken = req.cookies?.auth_handoff;
+
+    if (!handoffToken) {
+      return res.status(401).json({
+        success: false,
+        error: "No authentication session found. Please try logging in again.",
+      });
+    }
+
+    // Clear the handoff cookie immediately (one-time use)
+    res.clearCookie("auth_handoff", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/auth/session",
+    });
+
+    // Verify the token
+    const decoded = jwt.verify(handoffToken, getJwtSecret()) as { id: string };
+
+    // Get user from database
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: "User not found. Please try logging in again.",
+      });
+    }
+
+    // Return the token and user data in the response body
+    res.status(200).json({
+      success: true,
+      message: "Session established successfully.",
+      data: {
+        token: handoffToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          username: user.username,
+          profilePicture: user.profilePicture,
+          profession: user.profession,
+          isVerified: user.isVerified,
+        },
+      },
+    });
+  } catch (error: any) {
+    // Clear cookie on any error
+    res.clearCookie("auth_handoff", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/auth/session",
+    });
+
+    if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        error: "Session expired. Please try logging in again.",
+      });
+    }
+
+    logger.error("Session exchange error", { error: error.message });
+    res.status(500).json({
+      success: false,
+      error: "Failed to establish session. Please try again.",
+    });
+  }
+});
+
 // Story 5.1: Mount OAuth routes
 // Routes: /api/auth/oauth/:provider/authorize, /api/auth/oauth/:provider/callback
 router.use("/oauth", oauthRoutes);
+
+/**
+ * @route   PUT /api/auth/profile
+ * @desc    Update user profile (name, profession)
+ * @access  Private
+ */
+router.put("/profile", authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, profession } = req.body;
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const updateData: any = {};
+    if (name && typeof name === "string" && name.trim()) {
+      updateData.name = name.trim();
+    }
+    if (profession) {
+      const validProfessions = [
+        'Engineering', 'Design', 'Product', 'Marketing',
+        'Sales', 'Operations', 'HR', 'Finance',
+        'Support', 'Leadership', 'Freelance', 'Other',
+      ];
+      if (!validProfessions.includes(profession)) {
+        return res.status(400).json({ success: false, error: "Invalid profession" });
+      }
+      updateData.profession = profession;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ success: false, error: "No valid fields to update" });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, updateData, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          username: user.username,
+          profilePicture: user.profilePicture,
+          profession: user.profession,
+          isVerified: user.isVerified,
+        },
+      },
+    });
+  } catch (error: any) {
+    logger.error("Profile update error", { error: error.message });
+    res.status(500).json({ success: false, error: "Failed to update profile" });
+  }
+});
 
 export default router;

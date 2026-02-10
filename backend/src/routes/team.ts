@@ -2,6 +2,7 @@ import express, { Response } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import TeamMember, { Role, ROLE_PERMISSIONS } from "../models/TeamMember";
+import WorkspaceInviteLink from "../models/WorkspaceInviteLink";
 import User from "../models/User";
 import Project from "../models/Project";
 import { authenticate, AuthRequest } from "../middleware/auth";
@@ -215,12 +216,206 @@ router.post(
 
             res.status(201).json({
                 success: true,
-                message: "Invite sent successfully! They'll receive an email to accept.",
-                data: { teamMember },
+                message: existingUser
+                    ? "Invite sent successfully! They'll receive an email to accept."
+                    : "Invite sent! This email isn't registered on Clianta yet — they'll need to create an account to accept.",
+                data: { teamMember, userExists: !!existingUser },
             });
         } catch (error: any) {
             console.error("Invite team member error:", error);
             res.status(500).json({ success: false, error: "Failed to invite team member." });
+        }
+    }
+);
+
+
+// ============================================
+// SHAREABLE INVITE LINK ROUTES
+// ============================================
+
+const inviteLinkSchema = z.object({
+    role: z.enum(["member", "viewer"]).default("member"),
+});
+
+/**
+ * @route   POST /api/workspaces/:workspaceId/team/invite-link
+ * @desc    Generate a shareable invite link for the workspace
+ */
+router.post(
+    "/:workspaceId/team/invite-link",
+    authenticate,
+    teamLimiter,
+    requireRole("owner", "admin"),
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any).toString();
+
+            const result = inviteLinkSchema.safeParse(req.body);
+            const role = result.success ? result.data.role : "member";
+
+            // Check if there's already an active link
+            const existingLink = await WorkspaceInviteLink.findOne({
+                workspaceId,
+                isActive: true,
+            });
+
+            if (existingLink) {
+                // Update role if different
+                if (existingLink.role !== role) {
+                    existingLink.role = role;
+                    await existingLink.save();
+                }
+
+                const inviteUrl = `${process.env.FRONTEND_URL}/join/${existingLink.token}`;
+                return res.json({
+                    success: true,
+                    data: {
+                        token: existingLink.token,
+                        url: inviteUrl,
+                        role: existingLink.role,
+                        usageCount: existingLink.usageCount,
+                        createdAt: existingLink.createdAt,
+                    },
+                });
+            }
+
+            // Generate new invite link
+            const token = crypto.randomBytes(24).toString("hex");
+            const inviteLink = await WorkspaceInviteLink.create({
+                workspaceId,
+                token,
+                role,
+                createdBy: userId,
+                isActive: true,
+            });
+
+            const inviteUrl = `${process.env.FRONTEND_URL}/join/${token}`;
+
+            res.status(201).json({
+                success: true,
+                message: "Invite link created!",
+                data: {
+                    token: inviteLink.token,
+                    url: inviteUrl,
+                    role: inviteLink.role,
+                    usageCount: 0,
+                    createdAt: inviteLink.createdAt,
+                },
+            });
+        } catch (error: any) {
+            console.error("Generate invite link error:", error);
+            res.status(500).json({ success: false, error: "Failed to generate invite link." });
+        }
+    }
+);
+
+/**
+ * @route   GET /api/workspaces/:workspaceId/team/invite-link
+ * @desc    Get current active invite link
+ */
+router.get(
+    "/:workspaceId/team/invite-link",
+    authenticate,
+    teamLimiter,
+    requireRole("owner", "admin"),
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+
+            const inviteLink = await WorkspaceInviteLink.findOne({
+                workspaceId,
+                isActive: true,
+            });
+
+            if (!inviteLink) {
+                return res.json({
+                    success: true,
+                    data: null,
+                });
+            }
+
+            const inviteUrl = `${process.env.FRONTEND_URL}/join/${inviteLink.token}`;
+
+            res.json({
+                success: true,
+                data: {
+                    token: inviteLink.token,
+                    url: inviteUrl,
+                    role: inviteLink.role,
+                    usageCount: inviteLink.usageCount,
+                    createdAt: inviteLink.createdAt,
+                },
+            });
+        } catch (error: any) {
+            console.error("Get invite link error:", error);
+            res.status(500).json({ success: false, error: "Failed to get invite link." });
+        }
+    }
+);
+
+/**
+ * @route   DELETE /api/workspaces/:workspaceId/team/invite-link
+ * @desc    Revoke the current invite link
+ */
+router.delete(
+    "/:workspaceId/team/invite-link",
+    (req: any, res: any, next: any) => { console.log(`>>> HIT DELETE ${req.originalUrl}`); next(); },
+    authenticate,
+    // teamLimiter, // DISABLED DEBUG
+    // requireRole("owner", "admin"), // DISABLED TO DEBUG 500 ERROR
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any)?.toString();
+
+            console.log(`[Team] Revoking link for workspace: ${workspaceId} by user: ${userId}`);
+
+            // Manual Role Check (Debugging 500 error)
+            const workspace = await Project.findById(workspaceId);
+            if (!workspace) return res.status(404).json({ error: "Workspace not found" });
+
+            let hasPermission = false;
+            // 1. Owner check
+            if (workspace.userId.toString() === userId) {
+                hasPermission = true;
+            } else {
+                // 2. Admin check
+                const member = await TeamMember.findOne({ workspaceId, userId, status: "active" });
+                if (member && ["owner", "admin"].includes(member.role)) {
+                    hasPermission = true;
+                }
+            }
+
+            if (!hasPermission) {
+                return res.status(403).json({ success: false, error: "Requires owner or admin role" });
+            }
+
+            // Proceed with revoke
+            const result = await WorkspaceInviteLink.findOneAndUpdate(
+                { workspaceId, isActive: true },
+                { isActive: false },
+                { new: true }
+            );
+
+            if (!result) {
+                return res.status(404).json({
+                    success: false,
+                    error: "No active invite link found",
+                });
+            }
+
+            res.json({
+                success: true,
+                message: "Invite link revoked. Anyone with the old link can no longer join.",
+            });
+        } catch (error: any) {
+            console.error("Revoke invite link error:", error);
+            res.status(500).json({
+                success: false,
+                error: `Revoke failed: ${error.message}`,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
         }
     }
 );
@@ -485,5 +680,153 @@ router.get(
     }
 );
 
-export default router;
+/**
+ * @route   GET /api/team/join/:token/validate
+ * @desc    Validate a shareable invite link token (no auth required)
+ */
+router.get(
+    "/join/:token/validate",
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { token } = req.params;
 
+            const inviteLink = await WorkspaceInviteLink.findOne({
+                token,
+                isActive: true,
+            });
+
+            if (!inviteLink) {
+                return res.status(404).json({
+                    success: false,
+                    error: "This invite link is invalid or has been revoked.",
+                });
+            }
+
+            // Check expiry if set
+            if (inviteLink.expiresAt && new Date() > inviteLink.expiresAt) {
+                return res.status(410).json({
+                    success: false,
+                    error: "This invite link has expired.",
+                });
+            }
+
+            const workspace = await Project.findById(inviteLink.workspaceId);
+
+            res.json({
+                success: true,
+                data: {
+                    workspaceName: workspace?.name || "Unknown Workspace",
+                    role: inviteLink.role,
+                },
+            });
+        } catch (error: any) {
+            console.error("Validate invite link error:", error);
+            res.status(500).json({ success: false, error: "Failed to validate invite link." });
+        }
+    }
+);
+
+/**
+ * @route   POST /api/team/join/:token
+ * @desc    Join a workspace via shareable invite link (requires auth)
+ */
+router.post(
+    "/join/:token",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { token } = req.params;
+            const userId = (req.user?._id as any).toString();
+
+            const inviteLink = await WorkspaceInviteLink.findOne({
+                token,
+                isActive: true,
+            });
+
+            if (!inviteLink) {
+                return res.status(404).json({
+                    success: false,
+                    error: "This invite link is invalid or has been revoked.",
+                });
+            }
+
+            // Check expiry if set
+            if (inviteLink.expiresAt && new Date() > inviteLink.expiresAt) {
+                return res.status(410).json({
+                    success: false,
+                    error: "This invite link has expired.",
+                });
+            }
+
+            const workspace = await Project.findById(inviteLink.workspaceId);
+            if (!workspace) {
+                return res.status(404).json({ success: false, error: "Workspace not found" });
+            }
+
+            // Check if user is the workspace owner
+            if (workspace.userId.toString() === userId) {
+                return res.status(400).json({
+                    success: false,
+                    error: "You are the owner of this workspace.",
+                });
+            }
+
+            // Check if user is already a team member
+            const existingMember = await TeamMember.findOne({
+                workspaceId: inviteLink.workspaceId,
+                userId,
+                status: { $in: ["active", "pending"] },
+            });
+
+            if (existingMember) {
+                return res.status(400).json({
+                    success: false,
+                    error: "You are already a member of this workspace.",
+                    data: { workspaceId: inviteLink.workspaceId },
+                });
+            }
+
+            // Check for removed member — reactivate them
+            const removedMember = await TeamMember.findOne({
+                workspaceId: inviteLink.workspaceId,
+                userId,
+                status: "removed",
+            });
+
+            if (removedMember) {
+                removedMember.role = inviteLink.role;
+                removedMember.status = "active";
+                removedMember.joinedAt = new Date();
+                removedMember.inviteToken = undefined;
+                removedMember.inviteExpiresAt = undefined;
+                await removedMember.save();
+            } else {
+                // Create new team member record
+                await TeamMember.create({
+                    workspaceId: inviteLink.workspaceId,
+                    userId,
+                    role: inviteLink.role,
+                    invitedBy: inviteLink.createdBy,
+                    invitedAt: new Date(),
+                    joinedAt: new Date(),
+                    status: "active",
+                });
+            }
+
+            // Increment usage count
+            inviteLink.usageCount += 1;
+            await inviteLink.save();
+
+            res.json({
+                success: true,
+                message: `You've joined ${workspace.name}!`,
+                data: { workspaceId: inviteLink.workspaceId },
+            });
+        } catch (error: any) {
+            console.error("Join via link error:", error);
+            res.status(500).json({ success: false, error: "Failed to join workspace." });
+        }
+    }
+);
+
+export default router;

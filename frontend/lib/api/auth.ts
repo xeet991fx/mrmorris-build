@@ -6,6 +6,7 @@ export interface User {
   name: string;
   username?: string;
   profilePicture?: string;
+  profession?: string;
   isVerified: boolean;
   createdAt?: string;
 }
@@ -186,4 +187,14 @@ export const completeRegistration = async (
  */
 export const getGoogleAuthUrl = (): string => {
   return `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
+};
+
+/**
+ * Update user profile (name, profession)
+ */
+export const updateProfile = async (
+  data: { name?: string; profession?: string }
+): Promise<AuthResponse> => {
+  const response = await axiosInstance.put("/auth/profile", data);
+  return response.data;
 };

@@ -116,3 +116,63 @@ export const acceptInvite = async (token: string): Promise<{ success: boolean; m
     const response = await axiosInstance.post(`/team/accept/${token}`);
     return response.data;
 };
+
+// ============================================
+// SHAREABLE INVITE LINK API
+// ============================================
+
+export interface InviteLink {
+    token: string;
+    url: string;
+    role: "member" | "viewer";
+    usageCount: number;
+    createdAt: string;
+}
+
+export interface InviteLinkResponse {
+    success: boolean;
+    message?: string;
+    data: InviteLink | null;
+    error?: string;
+}
+
+export const generateInviteLink = async (
+    workspaceId: string,
+    role: "member" | "viewer" = "member"
+): Promise<InviteLinkResponse> => {
+    const response = await axiosInstance.post(`/workspaces/${workspaceId}/team/invite-link`, { role });
+    return response.data;
+};
+
+export const getInviteLink = async (
+    workspaceId: string
+): Promise<InviteLinkResponse> => {
+    const response = await axiosInstance.get(`/workspaces/${workspaceId}/team/invite-link`);
+    return response.data;
+};
+
+export const revokeInviteLink = async (
+    workspaceId: string
+): Promise<{ success: boolean; message?: string; error?: string }> => {
+    const response = await axiosInstance.delete(`/workspaces/${workspaceId}/team/invite-link`);
+    return response.data;
+};
+
+export interface JoinLinkValidationResponse {
+    success: boolean;
+    data?: {
+        workspaceName: string;
+        role: "member" | "viewer";
+    };
+    error?: string;
+}
+
+export const validateJoinLink = async (token: string): Promise<JoinLinkValidationResponse> => {
+    const response = await axiosInstance.get(`/team/join/${token}/validate`);
+    return response.data;
+};
+
+export const joinViaLink = async (token: string): Promise<{ success: boolean; message?: string; data?: { workspaceId: string }; error?: string }> => {
+    const response = await axiosInstance.post(`/team/join/${token}`);
+    return response.data;
+};

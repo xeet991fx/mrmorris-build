@@ -11,6 +11,7 @@ export interface IUser extends Document {
   authProvider: "email" | "google";
   googleId?: string;
   profilePicture?: string;
+  profession?: string;
   timezone?: string; // User's preferred timezone (IANA timezone string)
   verificationToken?: string;
   verificationTokenExpires?: Date;
@@ -79,6 +80,15 @@ const userSchema = new Schema<IUser>(
     },
     profilePicture: {
       type: String,
+    },
+    profession: {
+      type: String,
+      trim: true,
+      enum: [
+        'Engineering', 'Design', 'Product', 'Marketing',
+        'Sales', 'Operations', 'HR', 'Finance',
+        'Support', 'Leadership', 'Freelance', 'Other',
+      ],
     },
     timezone: {
       type: String,

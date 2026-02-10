@@ -85,15 +85,14 @@ axiosInstance.interceptors.response.use(
     // Handle 401 Unauthorized - Clear token and redirect to login
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        Cookies.remove("token");
-
-        // Only redirect if not already on auth pages (including auth callback)
-        const authPages = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/auth"];
+        // Only clear tokens and redirect if not on auth-related pages
+        const authPages = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/auth", "/invite", "/join"];
         const currentPath = window.location.pathname;
 
         if (!authPages.some(page => currentPath.startsWith(page))) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          Cookies.remove("token");
           window.location.href = "/login";
         }
       }

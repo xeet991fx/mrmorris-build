@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/useAuthStore";
 import toast, { Toaster } from "react-hot-toast";
@@ -10,43 +10,65 @@ import toast, { Toaster } from "react-hot-toast";
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setToken, fetchUser } = useAuthStore();
+  const { setToken, setUser } = useAuthStore();
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
 
   useEffect(() => {
     const handleCallback = async () => {
-      const token = searchParams.get("token");
       const error = searchParams.get("error");
 
       if (error) {
+        setStatus("error");
         toast.error("Authentication failed. Please try again.");
         setTimeout(() => router.push("/login"), 2000);
         return;
       }
 
-      if (!token) {
-        toast.error("No authentication token received.");
-        setTimeout(() => router.push("/login"), 2000);
-        return;
-      }
-
       try {
-        // Set token
-        setToken(token);
+        // Exchange the httpOnly cookie for a token via the session endpoint
+        // The auth_handoff cookie is sent automatically (withCredentials)
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+        const response = await fetch(`${API_URL}/auth/session`, {
+          method: "POST",
+          credentials: "include", // Send httpOnly cookies
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
 
-        // Fetch user data
-        await fetchUser();
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Session exchange failed: ${response.status}`);
+        }
 
-        toast.success("Successfully logged in with Google!");
-        setTimeout(() => router.push("/projects"), 1500);
-      } catch (error) {
-        console.error("Callback error:", error);
-        toast.error("Failed to complete authentication.");
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          const { token, user } = data.data;
+
+          // Store token and user in auth store (persists to localStorage)
+          setToken(token);
+          setUser(user);
+
+          setStatus("success");
+          toast.success("Successfully logged in with Google!");
+
+          // Check for redirect URL (e.g., from invite flow)
+          const redirectTo = searchParams.get("redirect") || "/projects";
+          setTimeout(() => router.push(redirectTo), 1500);
+        } else {
+          throw new Error("Invalid session response");
+        }
+      } catch (err: any) {
+        console.error("Auth callback error:", err.message);
+        setStatus("error");
+        toast.error(err.message || "Failed to complete authentication.");
         setTimeout(() => router.push("/login"), 2000);
       }
     };
 
     handleCallback();
-  }, [searchParams, router, setToken, fetchUser]);
+  }, [searchParams, router, setToken, setUser]);
 
   return (
     <>
@@ -89,19 +111,62 @@ function AuthCallbackContent() {
           className="relative z-10"
         >
           <div className="bg-neutral-800/50 backdrop-blur-xl border border-neutral-900/50 rounded-2xl shadow-2xl p-12 text-center">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              className="inline-block mb-6"
-            >
-              <Loader2 className="w-16 h-16 text-primary" />
-            </motion.div>
-            <h2 className="text-2xl font-bold text-white mb-2">
-              Completing Authentication
-            </h2>
-            <p className="text-neutral-400">
-              Please wait while we securely log you in...
-            </p>
+            {status === "loading" && (
+              <>
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="inline-block mb-6"
+                >
+                  <Loader2 className="w-16 h-16 text-primary" />
+                </motion.div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  Completing Authentication
+                </h2>
+                <p className="text-neutral-400">
+                  Please wait while we securely log you in...
+                </p>
+              </>
+            )}
+            {status === "success" && (
+              <>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", duration: 0.5 }}
+                  className="inline-block mb-6"
+                >
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </motion.div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  Welcome Back!
+                </h2>
+                <p className="text-neutral-400">
+                  Redirecting you now...
+                </p>
+              </>
+            )}
+            {status === "error" && (
+              <>
+                <div className="inline-block mb-6">
+                  <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  Authentication Failed
+                </h2>
+                <p className="text-neutral-400">
+                  Redirecting to login...
+                </p>
+              </>
+            )}
           </div>
         </motion.div>
       </div>

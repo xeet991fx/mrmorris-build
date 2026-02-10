@@ -258,17 +258,28 @@ export const useAuthStore = create<AuthState>()(
             });
           }
         } catch (error: any) {
-          // If token is invalid, clear auth state
-          localStorage.removeItem("token");
-          Cookies.remove("token");
+          // Only clear auth state if not on auth-related pages
+          // (prevents race condition during Google OAuth callback flow)
+          const isAuthPage = typeof window !== "undefined" &&
+            ["/login", "/register", "/auth", "/invite", "/join"].some(
+              page => window.location.pathname.startsWith(page)
+            );
 
-          set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-          });
+          if (!isAuthPage) {
+            localStorage.removeItem("token");
+            Cookies.remove("token");
+
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: null,
+            });
+          } else {
+            // On auth pages, just stop loading without wiping state
+            set({ isLoading: false });
+          }
         }
       },
 
