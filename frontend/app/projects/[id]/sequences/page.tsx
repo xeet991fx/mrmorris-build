@@ -319,15 +319,7 @@ function EnrollModal({
     const [isLoading, setIsLoading] = useState(false);
     const [isEnrolling, setIsEnrolling] = useState(false);
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchContacts();
-            setSelectedIds(new Set());
-            setSearchQuery("");
-        }
-    }, [isOpen]);
-
-    const fetchContacts = async () => {
+    const fetchContacts = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await axiosInstance.get(`/workspaces/${workspaceId}/contacts`, { params: { limit: 100 } });
@@ -339,7 +331,15 @@ function EnrollModal({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [workspaceId]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchContacts();
+            setSelectedIds(new Set());
+            setSearchQuery("");
+        }
+    }, [isOpen, fetchContacts]);
 
     const handleToggle = (id: string) => {
         const newSet = new Set(selectedIds);
@@ -1267,11 +1267,7 @@ export default function SequencesPage() {
     const [editingSequence, setEditingSequence] = useState<Sequence | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Sequence | null>(null);
 
-    useEffect(() => {
-        if (workspaceId) fetchSequences();
-    }, [workspaceId]);
-
-    const fetchSequences = async () => {
+    const fetchSequences = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await getSequences(workspaceId);
@@ -1283,7 +1279,11 @@ export default function SequencesPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [workspaceId]);
+
+    useEffect(() => {
+        if (workspaceId) fetchSequences();
+    }, [workspaceId, fetchSequences]);
 
     const handleCreate = async () => {
         try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -61,7 +61,7 @@ export default function TicketDetailsPage() {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const commentsEndRef = useRef<HTMLDivElement>(null);
 
-    const fetchTicket = async () => {
+    const fetchTicket = useCallback(async () => {
         try {
             const res = await getTicket(workspaceId, ticketId);
             if (res.success) {
@@ -76,13 +76,13 @@ export default function TicketDetailsPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [workspaceId, ticketId, router]);
 
     useEffect(() => {
         if (workspaceId && ticketId) {
             fetchTicket();
         }
-    }, [workspaceId, ticketId]);
+    }, [workspaceId, ticketId, fetchTicket]);
 
     // Scroll to bottom of comments when they change
     useEffect(() => {
