@@ -15,6 +15,8 @@ import ReactFlow, {
     Panel,
     MarkerType,
     MiniMap,
+    ReactFlowProvider,
+    useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import {
@@ -34,6 +36,9 @@ import {
     GlobeAltIcon,
     DocumentTextIcon,
     XMarkIcon,
+    ChevronRightIcon,
+    ArrowPathIcon,
+    PlusIcon,
 } from "@heroicons/react/24/outline";
 import { useWorkflowStore } from "@/store/useWorkflowStore";
 import { WorkflowStep, TRIGGER_TYPE_LABELS, ACTION_TYPE_LABELS } from "@/lib/workflow/types";
@@ -46,13 +51,14 @@ import toast from "react-hot-toast";
 
 // Import custom components
 import NodePalette from "@/components/workflows/NodePalette";
+import AddNodePopup from "@/components/workflows/AddNodePopup";
 import WorkflowConfigPanel from "@/components/workflows/WorkflowConfigPanel";
 import ValidationErrorPanel from "@/components/workflows/ValidationErrorPanel";
 import BulkEnrollmentModal from "@/components/workflows/BulkEnrollmentModal";
 import TestWorkflowModal from "@/components/workflows/TestWorkflowModal";
 import FailedEnrollmentsPanel from "@/components/workflows/FailedEnrollmentsPanel";
 import WebhookPanel from "@/components/workflows/WebhookPanel";
-import GoalSettingsPanel from "@/components/workflows/GoalSettingsPanel";
+import WorkflowSettingsView from "@/components/workflows/WorkflowSettingsView";
 
 // Import node components
 import TriggerNode from "@/components/workflows/nodes/TriggerNode";
@@ -203,7 +209,15 @@ function stepsToEdges(steps: WorkflowStep[]): Edge[] {
 // MAIN COMPONENT
 // ============================================
 
-export default function WorkflowEditorPage() {
+export default function WorkflowEditorPageWrapper() {
+    return (
+        <ReactFlowProvider>
+            <WorkflowEditorPage />
+        </ReactFlowProvider>
+    );
+}
+
+function WorkflowEditorPage() {
     const params = useParams();
     const router = useRouter();
     const workspaceId = params.id as string;
@@ -239,7 +253,7 @@ export default function WorkflowEditorPage() {
     const [showTestModal, setShowTestModal] = useState(false);
     const [showFailedPanel, setShowFailedPanel] = useState(false);
     const [showWebhookPanel, setShowWebhookPanel] = useState(false);
-    const [showGoalSettings, setShowGoalSettings] = useState(false);
+    const [activeTab, setActiveTab] = useState<"editor" | "settings">("editor");
     const [failedCount, setFailedCount] = useState(0);
     const [isCloning, setIsCloning] = useState(false);
     const [showQuickTips, setShowQuickTips] = useState(() => {
@@ -250,6 +264,14 @@ export default function WorkflowEditorPage() {
         }
         return true;
     });
+
+    // Add-node popup state
+    const [addNodePopup, setAddNodePopup] = useState<{
+        screenPos: { x: number; y: number };
+        canvasPos: { x: number; y: number };
+    } | null>(null);
+
+    const reactFlowInstance = useReactFlow();
 
     // Edge context menu state
     const [edgeContextMenu, setEdgeContextMenu] = useState<{
@@ -377,6 +399,7 @@ export default function WorkflowEditorPage() {
                 setShowConfigPanel(false);
                 setShowValidationPanel(false);
                 setEdgeContextMenu(null);
+                setAddNodePopup(null);
             }
 
             // Cmd/Ctrl + B to open bulk enrollment (if active)
@@ -518,6 +541,7 @@ export default function WorkflowEditorPage() {
         selectStep(null);
         setShowConfigPanel(false);
         setEdgeContextMenu(null);
+        setAddNodePopup(null);
     }, [selectStep]);
 
     // Handle edge context menu (right-click)
@@ -538,33 +562,9 @@ export default function WorkflowEditorPage() {
         }
     }, [edgeContextMenu, disconnectSteps]);
 
-    // Handle drag from sidebar
-    const onDragOver = useCallback((event: React.DragEvent) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-    }, []);
-
-    const onDrop = useCallback(
-        (event: React.DragEvent) => {
-            event.preventDefault();
-
-            const type = event.dataTransfer.getData("application/reactflow-type");
-            if (!type) return;
-
-            // Calculate position relative to canvas
-            const reactFlowBounds = (
-                event.target as HTMLElement
-            ).closest(".react-flow")?.getBoundingClientRect();
-
-            if (!reactFlowBounds) return;
-
-            // Calculate position relative to canvas center
-            const position = {
-                x: event.clientX - reactFlowBounds.left - 75,
-                y: event.clientY - reactFlowBounds.top - 40,
-            };
-
-            // Create new step based on type
+    // Create a new workflow step from a node type and position
+    const createNodeFromType = useCallback(
+        (type: string, position: { x: number; y: number }) => {
             let newStep: WorkflowStep;
 
             if (type === "trigger") {
@@ -735,6 +735,78 @@ export default function WorkflowEditorPage() {
         [addStep, selectStep]
     );
 
+    // Handle drag from sidebar
+    const onDragOver = useCallback((event: React.DragEvent) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+    }, []);
+
+    const onDrop = useCallback(
+        (event: React.DragEvent) => {
+            event.preventDefault();
+
+            const type = event.dataTransfer.getData("application/reactflow-type");
+            if (!type) return;
+
+            const reactFlowBounds = (
+                event.target as HTMLElement
+            ).closest(".react-flow")?.getBoundingClientRect();
+
+            if (!reactFlowBounds) return;
+
+            const position = {
+                x: event.clientX - reactFlowBounds.left - 75,
+                y: event.clientY - reactFlowBounds.top - 40,
+            };
+
+            createNodeFromType(type, position);
+        },
+        [createNodeFromType]
+    );
+
+    // Handle double-click on canvas pane to show add-node popup
+    const onPaneDoubleClick = useCallback(
+        (event: React.MouseEvent) => {
+            // Only trigger on pane background, not on nodes
+            const target = event.target as HTMLElement;
+            if (!target.closest('.react-flow__pane')) return;
+
+            const canvasPos = reactFlowInstance.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
+            setAddNodePopup({
+                screenPos: { x: event.clientX, y: event.clientY },
+                canvasPos,
+            });
+        },
+        [reactFlowInstance]
+    );
+
+    // Handle adding node from popup
+    const handlePopupAddNode = useCallback(
+        (type: string, position: { x: number; y: number }) => {
+            createNodeFromType(type, position);
+            setAddNodePopup(null);
+        },
+        [createNodeFromType]
+    );
+
+    // Handle "+" button click to open popup at center of canvas
+    const handlePlusButtonClick = useCallback(
+        (event: React.MouseEvent) => {
+            event.stopPropagation();
+            const canvasPos = reactFlowInstance.screenToFlowPosition({
+                x: window.innerWidth / 2,
+                y: window.innerHeight / 2,
+            });
+            setAddNodePopup({
+                screenPos: { x: window.innerWidth / 2 - 180, y: window.innerHeight / 2 - 240 },
+                canvasPos,
+            });
+        },
+        [reactFlowInstance]
+    );
 
 
     // Activate workflow
@@ -818,314 +890,352 @@ export default function WorkflowEditorPage() {
 
     return (
         <div className="h-screen flex flex-col bg-background overflow-hidden">
-            {/* Header - simplified */}
-            <div className="h-12 border-b border-border bg-card flex items-center px-4 flex-shrink-0 gap-3">
-                {/* Left side - back button and name */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <button
-                        onClick={handleBack}
-                        className="p-1.5 rounded-lg hover:bg-muted transition-colors flex-shrink-0"
-                        title="Back to workflows"
-                    >
-                        <ArrowLeftIcon className="w-5 h-5 text-muted-foreground" />
-                    </button>
-
-                    <input
-                        type="text"
-                        value={workflowName}
-                        onChange={(e) => setWorkflowName(e.target.value)}
-                        className="text-base font-semibold bg-transparent border-none focus:outline-none focus:ring-0 text-foreground min-w-0 max-w-[300px]"
-                        placeholder="Workflow name..."
-                    />
-
-                    {hasUnsavedChanges && (
-                        <span className="text-xs text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0">
-                            Unsaved
+            {/* Top Navigation Bar — Sequences-style */}
+            <div className="sticky top-0 z-20 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 flex-shrink-0">
+                <div className="flex items-center justify-between px-6 h-14">
+                    {/* Left: Breadcrumb Navigation */}
+                    <div className="flex items-center gap-3 min-w-0">
+                        <button
+                            onClick={handleBack}
+                            className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                        >
+                            <ArrowLeftIcon className="w-4 h-4" />
+                        </button>
+                        <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-300 dark:text-zinc-600 flex-shrink-0" />
+                        <span className="text-sm text-zinc-500">Workflows</span>
+                        <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-300 dark:text-zinc-600 flex-shrink-0" />
+                        <input
+                            value={workflowName}
+                            onChange={(e) => setWorkflowName(e.target.value)}
+                            className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 min-w-[120px] max-w-[280px]"
+                            placeholder="Workflow name..."
+                        />
+                        {/* Status Badge */}
+                        <span
+                            className={cn(
+                                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium capitalize whitespace-nowrap",
+                                currentWorkflow.status === "active"
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
+                                    : currentWorkflow.status === "paused"
+                                        ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                            )}
+                        >
+                            <span
+                                className={cn(
+                                    "w-1.5 h-1.5 rounded-full",
+                                    currentWorkflow.status === "active" ? "bg-emerald-500"
+                                        : currentWorkflow.status === "paused" ? "bg-amber-500"
+                                            : "bg-zinc-400"
+                                )}
+                            />
+                            {currentWorkflow.status}
                         </span>
-                    )}
+                        {hasUnsavedChanges && (
+                            <span className="text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
+                                Unsaved
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Right: Action Buttons */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Test */}
+                        <button
+                            onClick={() => setShowTestModal(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        >
+                            <BeakerIcon className="w-4 h-4" />
+                            Test
+                        </button>
+
+                        {/* Webhook Info - only if webhook trigger */}
+                        {currentWorkflow.steps.some(
+                            (s) => s.type === "trigger" && s.config?.triggerType === "webhook_received"
+                        ) && (
+                                <button
+                                    onClick={() => setShowWebhookPanel(true)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                                >
+                                    <GlobeAltIcon className="w-4 h-4" />
+                                    Webhook
+                                </button>
+                            )}
+
+                        {/* Failed Badge */}
+                        {failedCount > 0 && (
+                            <button
+                                onClick={() => setShowFailedPanel(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors relative"
+                            >
+                                <ExclamationCircleIcon className="w-4 h-4" />
+                                Failed ({failedCount})
+                                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                            </button>
+                        )}
+
+                        {/* Divider */}
+                        <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-1" />
+
+                        {/* Enable/Pause Toggle */}
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <span className="text-sm text-zinc-500 font-medium whitespace-nowrap">
+                                {currentWorkflow.status === "active" ? "Active" : "Enable"}
+                            </span>
+                            <button
+                                onClick={currentWorkflow.status === "active" ? handlePause : handleActivate}
+                                className={cn(
+                                    "relative w-10 h-5 rounded-full transition-colors",
+                                    currentWorkflow.status === "active" ? "bg-emerald-500" : "bg-zinc-300 dark:bg-zinc-600"
+                                )}
+                            >
+                                <span className={cn(
+                                    "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform",
+                                    currentWorkflow.status === "active" ? "left-5.5 translate-x-0.5" : "left-0.5"
+                                )} />
+                            </button>
+                        </label>
+
+                        {/* Save */}
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving || !hasUnsavedChanges}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            {isSaving ? (
+                                <>
+                                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <CloudArrowUpIcon className="w-4 h-4" />
+                                    Save
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
-                {/* Right side - analytics, settings button and status badge with extra margin for AI toggle */}
-                <div className="flex items-center gap-2 flex-shrink-0 mr-24">
-                    <button
-                        onClick={() => setShowGoalSettings(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
-                        title="Workflow Settings & Goals"
-                    >
-                        <Cog6ToothIcon className="w-4 h-4" />
-                        Settings
-                    </button>
-                    <button
-                        onClick={() => router.push(`/projects/${workspaceId}/workflows/${workflowId}/analytics`)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
-                        title="View Analytics"
-                    >
-                        <ChartBarIcon className="w-4 h-4" />
-                        Analytics
-                    </button>
-                    <span
-                        className={cn(
-                            "px-3 py-1 rounded-full text-xs font-medium capitalize whitespace-nowrap",
-                            currentWorkflow.status === "active"
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                : currentWorkflow.status === "paused"
-                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                    : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                        )}
-                    >
-                        {currentWorkflow.status}
-                    </span>
+                {/* Tab Bar */}
+                <div className="flex items-center gap-0 px-6">
+                    {[
+                        { id: "editor", label: "Editor", count: currentWorkflow.steps.length, action: () => setActiveTab("editor"), active: activeTab === "editor" },
+                        { id: "logs", label: "Logs", count: undefined, action: () => router.push(`/projects/${workspaceId}/workflows/${workflowId}/logs`), active: false },
+                        { id: "analytics", label: "Analytics", count: undefined, action: () => router.push(`/projects/${workspaceId}/workflows/${workflowId}/analytics`), active: false },
+                        { id: "settings", label: "Settings", count: undefined, action: () => setActiveTab("settings"), active: activeTab === "settings" },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={tab.action}
+                            className={cn(
+                                "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                                tab.active
+                                    ? "border-orange-500 text-orange-600 dark:text-orange-400"
+                                    : "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                            )}
+                        >
+                            {tab.label}
+                            {tab.count !== undefined && (
+                                <span className={cn(
+                                    "px-1.5 py-0.5 rounded-full text-[10px] font-semibold",
+                                    tab.active
+                                        ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                                        : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                                )}>
+                                    {tab.count}
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
             </div>
 
             {/* Main content */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Left sidebar - Node Palette */}
-                <NodePalette />
+                {activeTab === "editor" && (
+                    <>
+                        {/* Left sidebar - Node Palette */}
+                        <NodePalette />
 
-                {/* Canvas */}
-                <div className="flex-1 relative">
-                    <ReactFlow
-                        nodes={nodes}
-                        edges={edges}
-                        onNodesChange={handleNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        onConnect={onConnect}
-                        onEdgesDelete={onEdgesDelete}
-                        onEdgeContextMenu={onEdgeContextMenu}
-                        onNodeClick={onNodeClick}
-                        onNodesDelete={onNodesDelete}
-                        onPaneClick={onPaneClick}
-                        onDragOver={onDragOver}
-                        onDrop={onDrop}
-                        nodeTypes={nodeTypes}
-                        edgeTypes={edgeTypes}
-                        fitView
-                        snapToGrid
-                        snapGrid={[15, 15]}
-                        deleteKeyCode="Delete"
-                        className="bg-muted/30"
-                    >
-                        <Controls className="!bg-card !border-border !shadow-lg" />
-                        <MiniMap
-                            nodeStrokeColor="#6366f1"
-                            nodeColor={(node) => {
-                                switch (node.type) {
-                                    case 'trigger': return '#22c55e';
-                                    case 'action': return '#3b82f6';
-                                    case 'delay': return '#f59e0b';
-                                    case 'condition': return '#8b5cf6';
-                                    default: return '#6b7280';
-                                }
-                            }}
-                            maskColor="rgba(0, 0, 0, 0.2)"
-                            className="!bg-card !border-border !rounded-lg"
-                        />
-                        <Background
-                            variant={BackgroundVariant.Dots}
-                            gap={20}
-                            size={1}
-                            color="var(--border)"
-                        />
+                        {/* Canvas */}
+                        <div className="flex-1 relative">
+                            <ReactFlow
+                                nodes={nodes}
+                                edges={edges}
+                                onNodesChange={handleNodesChange}
+                                onEdgesChange={onEdgesChange}
+                                onConnect={onConnect}
+                                onEdgesDelete={onEdgesDelete}
+                                onEdgeContextMenu={onEdgeContextMenu}
+                                onNodeClick={onNodeClick}
+                                onNodesDelete={onNodesDelete}
+                                onPaneClick={onPaneClick}
+                                onDoubleClick={onPaneDoubleClick}
+                                onDragOver={onDragOver}
+                                onDrop={onDrop}
+                                nodeTypes={nodeTypes}
+                                edgeTypes={edgeTypes}
+                                fitView
+                                snapToGrid
+                                snapGrid={[15, 15]}
+                                deleteKeyCode="Delete"
+                                className="bg-muted/30"
+                            >
+                                <Controls className="!bg-card !border-border !shadow-lg" />
+                                <MiniMap
+                                    nodeStrokeColor="#6366f1"
+                                    nodeColor={(node) => {
+                                        switch (node.type) {
+                                            case 'trigger': return '#22c55e';
+                                            case 'action': return '#3b82f6';
+                                            case 'delay': return '#f59e0b';
+                                            case 'condition': return '#8b5cf6';
+                                            default: return '#6b7280';
+                                        }
+                                    }}
+                                    maskColor="rgba(0, 0, 0, 0.2)"
+                                    className="!bg-card !border-border !rounded-lg"
+                                />
+                                <Background
+                                    variant={BackgroundVariant.Dots}
+                                    gap={20}
+                                    size={1}
+                                    color="var(--border)"
+                                />
 
-                        {/* Top-right toolbar with undo/redo/clone */}
-                        <Panel position="top-right" className="!m-4">
-                            <div className="bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2 py-1 flex items-center gap-1">
-                                <button
-                                    onClick={handleUndo}
-                                    disabled={historyIndex <= 0}
-                                    className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                    title="Undo (Ctrl+Z)"
-                                >
-                                    <ArrowUturnLeftIcon className="w-4 h-4 text-muted-foreground" />
-                                </button>
-                                <button
-                                    onClick={handleRedo}
-                                    disabled={historyIndex >= history.length - 1}
-                                    className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                    title="Redo (Ctrl+Y)"
-                                >
-                                    <ArrowUturnRightIcon className="w-4 h-4 text-muted-foreground" />
-                                </button>
-                                <div className="w-px h-4 bg-border mx-1" />
-                                <button
-                                    onClick={handleClone}
-                                    disabled={isCloning}
-                                    className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-50"
-                                    title="Duplicate workflow"
-                                >
-                                    {isCloning ? (
-                                        <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                                    ) : (
-                                        <DocumentDuplicateIcon className="w-4 h-4 text-muted-foreground" />
-                                    )}
-                                </button>
-                            </div>
-                        </Panel>
-
-                        {/* Help panel */}
-                        {showQuickTips && (
-                            <Panel position="bottom-left" className="!m-4 !mb-20">
-                                <div className="bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-1 relative">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className="font-medium text-foreground">Quick Tips</p>
+                                {/* Top-right toolbar with undo/redo/clone */}
+                                <Panel position="top-right" className="!m-4">
+                                    <div className="bg-card/90 backdrop-blur-sm border border-border rounded-lg px-2 py-1 flex items-center gap-1">
                                         <button
-                                            onClick={handleToggleQuickTips}
-                                            className="p-0.5 rounded hover:bg-muted transition-colors"
-                                            title="Hide quick tips"
+                                            onClick={handleUndo}
+                                            disabled={historyIndex <= 0}
+                                            className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                            title="Undo (Ctrl+Z)"
                                         >
-                                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                                            <ArrowUturnLeftIcon className="w-4 h-4 text-muted-foreground" />
+                                        </button>
+                                        <button
+                                            onClick={handleRedo}
+                                            disabled={historyIndex >= history.length - 1}
+                                            className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                            title="Redo (Ctrl+Y)"
+                                        >
+                                            <ArrowUturnRightIcon className="w-4 h-4 text-muted-foreground" />
+                                        </button>
+                                        <div className="w-px h-4 bg-border mx-1" />
+                                        <button
+                                            onClick={handleClone}
+                                            disabled={isCloning}
+                                            className="p-1.5 rounded hover:bg-muted transition-colors disabled:opacity-50"
+                                            title="Duplicate workflow"
+                                        >
+                                            {isCloning ? (
+                                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                                            ) : (
+                                                <DocumentDuplicateIcon className="w-4 h-4 text-muted-foreground" />
+                                            )}
                                         </button>
                                     </div>
-                                    <p>• Drag nodes from sidebar to canvas</p>
-                                    <p>• Click nodes to configure</p>
-                                    <p className="font-medium text-foreground mt-2 mb-1">Keyboard Shortcuts</p>
-                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + S</kbd> Save workflow</p>
-                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Z</kbd> Undo</p>
-                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Y</kbd> Redo</p>
-                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Delete</kbd> Remove selected node</p>
-                                    <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Esc</kbd> Deselect</p>
-                                    {currentWorkflow.status === "active" && (
-                                        <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + B</kbd> Bulk enroll</p>
-                                    )}
-                                </div>
-                            </Panel>
+                                </Panel>
+
+                                {/* Floating "+" button to add nodes */}
+                                <Panel position="bottom-right" className="!m-4 !mb-20">
+                                    <button
+                                        onClick={handlePlusButtonClick}
+                                        className="w-12 h-12 rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center hover:scale-105 active:scale-95"
+                                        title="Add node (or double-click canvas)"
+                                    >
+                                        <PlusIcon className="w-6 h-6" />
+                                    </button>
+                                </Panel>
+
+                                {/* Help panel */}
+                                {showQuickTips && (
+                                    <Panel position="bottom-left" className="!m-4 !mb-20">
+                                        <div className="bg-card/90 backdrop-blur-sm border border-border rounded-lg px-3 py-2 text-xs text-muted-foreground space-y-1 relative">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <p className="font-medium text-foreground">Quick Tips</p>
+                                                <button
+                                                    onClick={handleToggleQuickTips}
+                                                    className="p-0.5 rounded hover:bg-muted transition-colors"
+                                                    title="Hide quick tips"
+                                                >
+                                                    <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                                                </button>
+                                            </div>
+                                            <p>• Double-click canvas to add nodes</p>
+                                            <p>• Drag nodes from sidebar to canvas</p>
+                                            <p>• Click nodes to configure</p>
+                                            <p className="font-medium text-foreground mt-2 mb-1">Keyboard Shortcuts</p>
+                                            <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + S</kbd> Save workflow</p>
+                                            <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Z</kbd> Undo</p>
+                                            <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + Y</kbd> Redo</p>
+                                            <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Delete</kbd> Remove selected node</p>
+                                            <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Esc</kbd> Deselect</p>
+                                            {currentWorkflow.status === "active" && (
+                                                <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-foreground">Ctrl/Cmd + B</kbd> Bulk enroll</p>
+                                            )}
+                                        </div>
+                                    </Panel>
+                                )}
+                            </ReactFlow>
+
+                            {/* Add Node Popup */}
+                            {addNodePopup && (
+                                <AddNodePopup
+                                    position={addNodePopup.screenPos}
+                                    canvasPosition={addNodePopup.canvasPos}
+                                    onAddNode={handlePopupAddNode}
+                                    onClose={() => setAddNodePopup(null)}
+                                />
+                            )}
+
+                            {/* Validation Error Panel */}
+                            {showValidationPanel && (
+                                <ValidationErrorPanel
+                                    errors={validationErrors}
+                                    warnings={validationWarnings}
+                                    onClose={() => setShowValidationPanel(false)}
+                                    onNodeClick={(nodeId) => {
+                                        selectStep(nodeId);
+                                        setShowConfigPanel(true);
+                                        setShowValidationPanel(false);
+                                    }}
+                                />
+                            )}
+                        </div>
+
+                        {/* Right sidebar - Configuration */}
+                        {showConfigPanel && selectedStep && (
+                            <WorkflowConfigPanel
+                                step={selectedStep}
+                                onUpdate={(updates: Partial<WorkflowStep>) => updateStep(selectedStep.id, updates)}
+                                onDelete={() => {
+                                    removeStep(selectedStep.id);
+                                    setShowConfigPanel(false);
+                                }}
+                                onClose={() => {
+                                    selectStep(null);
+                                    setShowConfigPanel(false);
+                                }}
+                                workspaceId={workspaceId}
+                                workflowId={workflowId}
+                            />
                         )}
-                    </ReactFlow>
-
-                    {/* Validation Error Panel */}
-                    {showValidationPanel && (
-                        <ValidationErrorPanel
-                            errors={validationErrors}
-                            warnings={validationWarnings}
-                            onClose={() => setShowValidationPanel(false)}
-                            onNodeClick={(nodeId) => {
-                                selectStep(nodeId);
-                                setShowConfigPanel(true);
-                                setShowValidationPanel(false);
-                            }}
-                        />
-                    )}
-                </div>
-
-                {/* Right sidebar - Configuration */}
-                {showConfigPanel && selectedStep && (
-                    <WorkflowConfigPanel
-                        step={selectedStep}
-                        onUpdate={(updates: Partial<WorkflowStep>) => updateStep(selectedStep.id, updates)}
-                        onDelete={() => {
-                            removeStep(selectedStep.id);
-                            setShowConfigPanel(false);
-                        }}
-                        onClose={() => {
-                            selectStep(null);
-                            setShowConfigPanel(false);
-                        }}
-                        workspaceId={workspaceId}
-                        workflowId={workflowId}
-                    />
+                    </>
                 )}
-            </div>
 
-            {/* Bottom Action Bar */}
-            <div className="h-14 border-t border-border bg-card flex items-center justify-between px-4 gap-3 flex-shrink-0">
-                {/* Left side - Test, Failed, Bulk Enroll */}
-                <div className="flex items-center gap-2">
-                    {/* Test Workflow Button */}
-                    <button
-                        onClick={() => setShowTestModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
-                    >
-                        <BeakerIcon className="w-4 h-4" />
-                        Test Workflow
-                    </button>
-
-                    {/* Execution Logs Button */}
-                    <button
-                        onClick={() => router.push(`/projects/${workspaceId}/workflows/${workflowId}/logs`)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
-                    >
-                        <DocumentTextIcon className="w-4 h-4" />
-                        Execution Logs
-                    </button>
-
-                    {/* Webhook Info Button - only show if workflow has webhook trigger */}
-                    {currentWorkflow.steps.some(
-                        (s) => s.type === "trigger" && s.config?.triggerType === "webhook_received"
-                    ) && (
-                            <button
-                                onClick={() => setShowWebhookPanel(true)}
-                                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-500/20 bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 transition-colors"
-                            >
-                                <GlobeAltIcon className="w-4 h-4" />
-                                Webhook Info
-                            </button>
-                        )}
-
-                    {/* Failed Enrollments Badge */}
-                    {failedCount > 0 && (
-                        <button
-                            onClick={() => setShowFailedPanel(true)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 hover:bg-red-500/20 transition-colors relative"
-                        >
-                            <ExclamationCircleIcon className="w-4 h-4" />
-                            Failed ({failedCount})
-                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                        </button>
-                    )}
-
-                    {/* Bulk Enroll Button */}
-                    {currentWorkflow.status === "active" && (
-                        <button
-                            onClick={() => setShowBulkEnrollModal(true)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
-                        >
-                            <UserGroupIcon className="w-4 h-4" />
-                            Bulk Enroll
-                        </button>
-                    )}
-                </div>
-
-                {/* Right side - Save and Activate/Pause */}
-                <div className="flex items-center gap-3">
-                    {/* Save button */}
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving || !hasUnsavedChanges}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                        {isSaving ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            <>
-                                <CloudArrowUpIcon className="w-4 h-4" />
-                                Save Changes
-                            </>
-                        )}
-                    </button>
-
-                    {/* Activate/Pause button */}
-                    {currentWorkflow.status === "active" ? (
-                        <button
-                            onClick={handlePause}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500 text-white text-sm font-medium hover:bg-yellow-600 transition-colors"
-                        >
-                            <PauseIcon className="w-4 h-4" />
-                            Pause Workflow
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleActivate}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 transition-colors"
-                        >
-                            <PlayIcon className="w-4 h-4" />
-                            Activate Workflow
-                        </button>
-                    )}
-                </div>
+                {activeTab === "settings" && (
+                    <div className="flex-1 overflow-y-auto">
+                        <WorkflowSettingsView
+                            workflow={currentWorkflow}
+                            updateWorkflow={updateWorkflow}
+                            workspaceId={workspaceId}
+                            workflowId={workflowId}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Bulk Enrollment Modal */}
@@ -1156,135 +1266,61 @@ export default function WorkflowEditorPage() {
             />
 
             {/* Edge Context Menu */}
-            {edgeContextMenu && (
-                <>
-                    {/* Backdrop to close menu on click */}
-                    <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setEdgeContextMenu(null)}
-                    />
-                    {/* Context Menu */}
-                    <div
-                        className="fixed z-50 bg-card border border-border rounded-lg shadow-xl overflow-hidden min-w-[180px]"
-                        style={{
-                            left: edgeContextMenu.x,
-                            top: edgeContextMenu.y,
-                        }}
-                    >
-                        <button
-                            onClick={handleDeleteEdge}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+            {
+                edgeContextMenu && (
+                    <>
+                        {/* Backdrop to close menu on click */}
+                        <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setEdgeContextMenu(null)}
+                        />
+                        {/* Context Menu */}
+                        <div
+                            className="fixed z-50 bg-card border border-border rounded-lg shadow-xl overflow-hidden min-w-[180px]"
+                            style={{
+                                left: edgeContextMenu.x,
+                                top: edgeContextMenu.y,
+                            }}
                         >
-                            <TrashIcon className="w-4 h-4" />
-                            Delete Connection
-                        </button>
-                    </div>
-                </>
-            )}
+                            <button
+                                onClick={handleDeleteEdge}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors"
+                            >
+                                <TrashIcon className="w-4 h-4" />
+                                Delete Connection
+                            </button>
+                        </div>
+                    </>
+                )
+            }
 
             {/* Webhook Info Modal */}
-            {showWebhookPanel && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                    <div className="bg-background border border-border rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-foreground">Webhook Information</h2>
-                            <button
-                                onClick={() => setShowWebhookPanel(false)}
-                                className="p-2 rounded-lg hover:bg-muted transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div className="p-6">
-                            <WebhookPanel
-                                workspaceId={workspaceId}
-                                workflowId={workflowId}
-                                workflowName={currentWorkflow.name}
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Workflow Settings & Goals Modal */}
-            {showGoalSettings && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                    <div className="bg-background border border-border rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-foreground">Workflow Settings</h2>
-                            <button
-                                onClick={() => setShowGoalSettings(false)}
-                                className="p-2 rounded-lg hover:bg-muted transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            {/* Description */}
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-2 block">
-                                    Description
-                                </label>
-                                <textarea
-                                    value={currentWorkflow.description || ""}
-                                    onChange={(e) =>
-                                        updateWorkflow(workspaceId, workflowId, {
-                                            description: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Describe what this workflow does..."
-                                    rows={3}
-                                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none"
+            {
+                showWebhookPanel && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                        <div className="bg-background border border-border rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
+                                <h2 className="text-lg font-semibold text-foreground">Webhook Information</h2>
+                                <button
+                                    onClick={() => setShowWebhookPanel(false)}
+                                    className="p-2 rounded-lg hover:bg-muted transition-colors"
+                                >
+                                    <XMarkIcon className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="p-6">
+                                <WebhookPanel
+                                    workspaceId={workspaceId}
+                                    workflowId={workflowId}
+                                    workflowName={currentWorkflow.name}
                                 />
                             </div>
-
-                            {/* Allow Re-enrollment */}
-                            <div className="flex items-start gap-3">
-                                <input
-                                    type="checkbox"
-                                    id="allow-reenrollment"
-                                    checked={currentWorkflow.allowReenrollment || false}
-                                    onChange={(e) =>
-                                        updateWorkflow(workspaceId, workflowId, {
-                                            allowReenrollment: e.target.checked,
-                                        })
-                                    }
-                                    className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary"
-                                />
-                                <div className="flex-1">
-                                    <label
-                                        htmlFor="allow-reenrollment"
-                                        className="text-sm font-medium text-foreground cursor-pointer"
-                                    >
-                                        Allow Re-enrollment
-                                    </label>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        Allow contacts to be enrolled in this workflow multiple times
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Goals */}
-                            <GoalSettingsPanel
-                                goals={(currentWorkflow.goalCriteria as any) || []}
-                                onChange={(goals) =>
-                                    updateWorkflow(workspaceId, workflowId, {
-                                        goalCriteria: goals as any,
-                                    })
-                                }
-                                workflowSteps={currentWorkflow.steps.map((s) => ({
-                                    id: s.id,
-                                    name: s.name,
-                                }))}
-                            />
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+
         </div>
     );
 }

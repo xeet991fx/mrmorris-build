@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { WorkflowStep } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
-import { GlobeAltIcon } from "@heroicons/react/24/outline";
+import { GlobeAltIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 // ============================================
 // HTTP REQUEST NODE COMPONENT
@@ -94,8 +94,8 @@ function HTTPRequestNode({ data, selected }: NodeProps<HTTPRequestNodeData>) {
                         </p>
                     )}
                     {!url && (
-                        <p className="text-[9px] text-red-500 dark:text-red-400 mt-1">
-                            ⚠ Not configured
+                        <p className="text-[9px] text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+                            <ExclamationTriangleIcon className="w-3 h-3" /> Not configured
                         </p>
                     )}
                 </div>

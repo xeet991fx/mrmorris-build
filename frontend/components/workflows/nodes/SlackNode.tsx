@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { WorkflowStep } from "@/lib/workflow/types";
 import { getIntegrationMeta } from "@/lib/workflow/integrations";
 import { cn } from "@/lib/utils";
@@ -85,8 +86,8 @@ function SlackNode({ data, selected }: NodeProps<SlackNodeData>) {
                         {actionLabel}
                     </p>
                     {!hasCredentials && (
-                        <p className="text-[9px] text-red-500 dark:text-red-400 mt-1">
-                            ⚠ Not configured
+                        <p className="text-[9px] text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+                            <ExclamationTriangleIcon className="w-3 h-3" /> Not configured
                         </p>
                     )}
                 </div>

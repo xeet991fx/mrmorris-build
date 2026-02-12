@@ -40,7 +40,7 @@ function TemplateCard({
             <div className="flex items-start gap-3">
                 <div
                     className={cn(
-                        "w-12 h-12 rounded-lg flex items-center justify-center text-2xl bg-gradient-to-br flex-shrink-0",
+                        "w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br flex-shrink-0",
                         template.color
                     )}
                 >

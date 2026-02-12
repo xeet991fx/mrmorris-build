@@ -15,6 +15,16 @@ import { DragInput } from "../DragInput";
 import { DragTextarea } from "../DragTextarea";
 import { DataSourceFloatingCard } from "../DataSourceFloatingCard";
 import { useDataSources } from "@/hooks/useDataSources";
+import {
+    ClipboardDocumentIcon,
+    PencilIcon,
+    EnvelopeIcon,
+    LightBulbIcon,
+    UserIcon,
+    ArrowPathIcon,
+    BuildingOfficeIcon,
+    LinkIcon
+} from "@heroicons/react/24/outline";
 
 // ============================================
 // TYPES
@@ -147,12 +157,12 @@ function EmailActionFields({ step, onChange, dataSources }: ActionConfigProps & 
                             setUseTemplate(true);
                             fetchTemplates();
                         }}
-                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${useTemplate
+                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${useTemplate
                             ? "bg-primary text-primary-foreground border-primary"
                             : "bg-card text-muted-foreground border-border hover:border-primary/50"
                             }`}
                     >
-                        📋 Use Template
+                        <ClipboardDocumentIcon className="w-4 h-4" /> Use Template
                     </button>
                     <button
                         type="button"
@@ -160,12 +170,12 @@ function EmailActionFields({ step, onChange, dataSources }: ActionConfigProps & 
                             setUseTemplate(false);
                             onChange({ ...step.config, emailTemplateId: "" });
                         }}
-                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${!useTemplate
+                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${!useTemplate
                             ? "bg-primary text-primary-foreground border-primary"
                             : "bg-card text-muted-foreground border-border hover:border-primary/50"
                             }`}
                     >
-                        ✏️ Write Custom
+                        <PencilIcon className="w-4 h-4" /> Write Custom
                     </button>
                 </div>
             </div>
@@ -208,22 +218,22 @@ function EmailActionFields({ step, onChange, dataSources }: ActionConfigProps & 
                     <button
                         type="button"
                         onClick={() => onChange({ ...step.config, useCustomEmail: false, recipientEmail: "" })}
-                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${!useCustomEmail
+                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${!useCustomEmail
                             ? "bg-primary text-primary-foreground border-primary"
                             : "bg-card text-muted-foreground border-border hover:border-primary/50"
                             }`}
                     >
-                        📧 Enrolled Contact
+                        <EnvelopeIcon className="w-4 h-4" /> Enrolled Contact
                     </button>
                     <button
                         type="button"
                         onClick={() => onChange({ ...step.config, useCustomEmail: true })}
-                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${useCustomEmail
+                        className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-2 ${useCustomEmail
                             ? "bg-primary text-primary-foreground border-primary"
                             : "bg-card text-muted-foreground border-border hover:border-primary/50"
                             }`}
                     >
-                        ✉️ Custom Email
+                        <EnvelopeIcon className="w-4 h-4" /> Custom Email
                     </button>
                 </div>
 
@@ -241,7 +251,7 @@ function EmailActionFields({ step, onChange, dataSources }: ActionConfigProps & 
                 ) : (
                     <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                         <div className="flex items-center gap-2">
-                            <span className="text-blue-500">📧</span>
+                            <EnvelopeIcon className="w-5 h-5 text-blue-500" />
                             <div>
                                 <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
                                     {"{{email}}"} — Contact&apos;s email address
@@ -285,8 +295,8 @@ function EmailActionFields({ step, onChange, dataSources }: ActionConfigProps & 
                     className="w-full"
                 />
                 <div className="mt-2 p-2 bg-muted/30 rounded-md">
-                    <p className="text-xs text-muted-foreground mb-1">
-                        💡 Click to insert variables:
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                        <LightBulbIcon className="w-3 h-3" /> Click to insert variables:
                     </p>
                     <div className="flex flex-wrap gap-1">
                         {PLACEHOLDER_VARIABLES.map((v) => (
@@ -487,7 +497,7 @@ function AssignOwnerActionFields({ step, onChange }: ActionConfigProps) {
             </div>
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                 <div className="flex items-center gap-2">
-                    <span className="text-amber-500">👤</span>
+                    <UserIcon className="w-5 h-5 text-amber-500" />
                     <div>
                         <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                             Owner Assignment
@@ -569,7 +579,7 @@ function EnrollWorkflowActionFields({ step, onChange }: ActionConfigProps) {
             </div>
             <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                 <div className="flex items-center gap-2">
-                    <span className="text-purple-500">🔄</span>
+                    <ArrowPathIcon className="w-5 h-5 text-purple-500" />
                     <div>
                         <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
                             Workflow Chaining
@@ -693,7 +703,7 @@ function ApolloEnrichActionFields({ step, onChange }: ActionConfigProps) {
             {enrichType === "person" && (
                 <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                     <div className="flex items-center gap-2">
-                        <span className="text-purple-500">👤</span>
+                        <UserIcon className="w-5 h-5 text-purple-500" />
                         <div>
                             <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
                                 Person Enrichment
@@ -709,7 +719,7 @@ function ApolloEnrichActionFields({ step, onChange }: ActionConfigProps) {
             {enrichType === "company" && (
                 <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                     <div className="flex items-center gap-2">
-                        <span className="text-blue-500">🏢</span>
+                        <BuildingOfficeIcon className="w-5 h-5 text-blue-500" />
                         <div>
                             <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
                                 Company Enrichment
@@ -725,7 +735,7 @@ function ApolloEnrichActionFields({ step, onChange }: ActionConfigProps) {
             {enrichType === "linkedin_to_email" && (
                 <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-lg">
                     <div className="flex items-center gap-2">
-                        <span className="text-sky-500">🔗</span>
+                        <LinkIcon className="w-5 h-5 text-sky-500" />
                         <div>
                             <p className="text-sm font-medium text-sky-600 dark:text-sky-400">
                                 LinkedIn to Email
@@ -740,7 +750,7 @@ function ApolloEnrichActionFields({ step, onChange }: ActionConfigProps) {
 
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                 <div className="flex items-center gap-2">
-                    <span className="text-amber-500">💡</span>
+                    <LightBulbIcon className="w-5 h-5 text-amber-500" />
                     <div>
                         <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                             Apollo.io Credits

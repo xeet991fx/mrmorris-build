@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, ClipboardIcon, GlobeAltIcon, KeyIcon } from "@heroicons/react/24/outline";
+import { CheckIcon, ClipboardIcon, GlobeAltIcon, KeyIcon, LightBulbIcon } from "@heroicons/react/24/outline";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface WebhookPanelProps {
@@ -175,8 +175,8 @@ export default function WebhookPanel({ workspaceId, workflowId, workflowName }: 
 
             {/* Testing Section */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
-                    💡 Testing Your Webhook
+                <h4 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2 flex items-center gap-1.5">
+                    <LightBulbIcon className="w-4 h-4" /> Testing Your Webhook
                 </h4>
                 <ol className="text-xs text-blue-800 dark:text-blue-300 space-y-1 ml-4 list-decimal">
                     <li>Copy the webhook URL above</li>
@@ -190,7 +190,7 @@ export default function WebhookPanel({ workspaceId, workflowId, workflowName }: 
             <div>
                 <h4 className="text-sm font-medium text-foreground mb-2">Success Response</h4>
                 <pre className="bg-muted/50 border border-border rounded-lg p-4 overflow-x-auto text-xs font-mono text-foreground">
-{`{
+                    {`{
   "success": true,
   "message": "Entity enrolled in workflow via webhook",
   "data": {

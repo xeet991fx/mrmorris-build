@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TrashIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { TrashIcon, PlusIcon, LightBulbIcon } from "@heroicons/react/24/outline";
 
 interface GoalCriteria {
     type: "field_value" | "completion_time" | "step_reached" | "custom_event";
@@ -255,17 +255,14 @@ export default function GoalSettingsPanel({
                             <div className="pt-2 border-t border-border">
                                 <p className="text-xs text-muted-foreground">
                                     {goal.type === "field_value" &&
-                                        `Goal met when ${goal.field || "field"} ${
-                                            goal.operator || "equals"
+                                        `Goal met when ${goal.field || "field"} ${goal.operator || "equals"
                                         } "${goal.value || "value"}"`}
                                     {goal.type === "step_reached" &&
-                                        `Goal met when contact reaches ${
-                                            workflowSteps.find((s) => s.id === goal.stepId)?.name ||
-                                            "selected step"
+                                        `Goal met when contact reaches ${workflowSteps.find((s) => s.id === goal.stepId)?.name ||
+                                        "selected step"
                                         }`}
                                     {goal.type === "completion_time" &&
-                                        `Goal met when workflow completes within ${goal.timeValue || 1} ${
-                                            goal.timeUnit || "days"
+                                        `Goal met when workflow completes within ${goal.timeValue || 1} ${goal.timeUnit || "days"
                                         }`}
                                     {goal.type === "custom_event" &&
                                         `Goal met when "${goal.eventName || "event"}" is triggered`}
@@ -278,8 +275,8 @@ export default function GoalSettingsPanel({
 
             {/* Info Box */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                <p className="text-xs text-blue-800 dark:text-blue-300">
-                    <strong>💡 Tip:</strong> Goals help track success metrics and conversion rates. They're
+                <p className="text-xs text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                    <LightBulbIcon className="w-3.5 h-3.5" /> <strong>Tip:</strong> Goals help track success metrics and conversion rates. They're
                     used in analytics to measure workflow effectiveness.
                 </p>
             </div>

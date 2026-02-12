@@ -5,7 +5,10 @@ import {
     BoltIcon,
     ClockIcon,
     PencilSquareIcon,
+    LightBulbIcon,
+    FlagIcon,
 } from "@heroicons/react/24/outline";
+import { GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ============================================
@@ -58,10 +61,6 @@ function DraggableNode({ type, label, icon, color, description }: DraggableNodeP
         </div>
     );
 }
-
-// ============================================
-// MAIN SIDEBAR COMPONENT
-// ============================================
 
 export default function WorkflowSidebar() {
     return (
@@ -145,7 +144,7 @@ export default function WorkflowSidebar() {
                     <DraggableNode
                         type="condition"
                         label="Condition"
-                        icon={<span className="text-xl">🔀</span>}
+                        icon={<GitBranch className="w-5 h-5" />}
                         color="bg-gradient-to-br from-teal-500 via-cyan-500 to-cyan-600"
                         description="If/else branching logic"
                     />
@@ -163,7 +162,7 @@ export default function WorkflowSidebar() {
                     <div className="space-y-2.5 opacity-40">
                         <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 border-dashed border-border/50 bg-muted/20">
                             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500/20 to-teal-600/20 flex items-center justify-center">
-                                <span className="text-xl">🔀</span>
+                                <GitBranch className="w-5 h-5 text-muted-foreground" />
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-muted-foreground">Conditions</p>
@@ -172,7 +171,7 @@ export default function WorkflowSidebar() {
                         </div>
                         <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl border-2 border-dashed border-border/50 bg-muted/20">
                             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-500/20 to-pink-600/20 flex items-center justify-center">
-                                <span className="text-xl">🎯</span>
+                                <FlagIcon className="w-5 h-5 text-muted-foreground" />
                             </div>
                             <div>
                                 <p className="text-xs font-semibold text-muted-foreground">Goals</p>
@@ -186,7 +185,7 @@ export default function WorkflowSidebar() {
             {/* Footer */}
             <div className="p-4 border-t border-border/50 bg-muted/40">
                 <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-primary/5 border border-primary/20">
-                    <span className="text-lg">💡</span>
+                    <LightBulbIcon className="w-5 h-5 text-amber-500" />
                     <p className="text-[10px] text-muted-foreground flex-1">
                         Connect nodes by dragging handles
                     </p>

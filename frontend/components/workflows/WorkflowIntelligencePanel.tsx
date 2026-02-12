@@ -167,10 +167,10 @@ export const WorkflowIntelligencePanel: React.FC<WorkflowIntelligencePanelProps>
 
     const getComplexityIcon = (complexity: string) => {
         switch (complexity) {
-            case 'simple': return '🟢';
-            case 'moderate': return '🟡';
-            case 'advanced': return '🔴';
-            default: return '⚪';
+            case 'simple': return <div className="w-2.5 h-2.5 rounded-full bg-green-500" />;
+            case 'moderate': return <div className="w-2.5 h-2.5 rounded-full bg-yellow-500" />;
+            case 'advanced': return <div className="w-2.5 h-2.5 rounded-full bg-red-500" />;
+            default: return <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />;
         }
     };
 
@@ -314,8 +314,8 @@ export const WorkflowIntelligencePanel: React.FC<WorkflowIntelligencePanelProps>
                                                     <span className={cn(
                                                         "px-2 py-0.5 rounded text-xs font-medium uppercase",
                                                         opt.impact === 'high' ? 'bg-red-500/20 text-red-500' :
-                                                        opt.impact === 'medium' ? 'bg-orange-500/20 text-orange-500' :
-                                                        'bg-blue-500/20 text-blue-500'
+                                                            opt.impact === 'medium' ? 'bg-orange-500/20 text-orange-500' :
+                                                                'bg-blue-500/20 text-blue-500'
                                                     )}>
                                                         {opt.impact} impact
                                                     </span>
@@ -335,8 +335,8 @@ export const WorkflowIntelligencePanel: React.FC<WorkflowIntelligencePanelProps>
                                             <LightBulbIcon className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
                                             <p className="text-xs text-foreground">{opt.suggestion}</p>
                                         </div>
-                                        <p className="text-xs text-green-500 font-medium">
-                                            💡 Expected improvement: {opt.expectedImprovement}
+                                        <p className="text-xs text-green-500 font-medium flex items-center gap-1">
+                                            <LightBulbIcon className="w-3 h-3" /> Expected improvement: {opt.expectedImprovement}
                                         </p>
                                     </motion.div>
                                 ))}
@@ -391,8 +391,8 @@ export const WorkflowIntelligencePanel: React.FC<WorkflowIntelligencePanelProps>
                                             </div>
                                         </div>
                                         <div className="p-3 rounded bg-purple-500/10 border border-purple-500/20">
-                                            <p className="text-sm font-medium text-foreground mb-1">
-                                                💡 {pattern.suggestedWorkflow.name}
+                                            <p className="text-sm font-medium text-foreground mb-1 flex items-center gap-1.5">
+                                                <LightBulbIcon className="w-3.5 h-3.5" /> {pattern.suggestedWorkflow.name}
                                             </p>
                                             <p className="text-xs text-muted-foreground mb-2">
                                                 {pattern.suggestedWorkflow.description}

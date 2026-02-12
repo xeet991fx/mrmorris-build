@@ -3,6 +3,7 @@
 // Pre-built workflow configurations for quick setup
 // ============================================
 
+import { HandRaisedIcon, FireIcon, SparklesIcon, ArrowPathIcon, CalendarIcon } from "@heroicons/react/24/outline";
 import { WorkflowStep, StepType, TriggerType, ActionType } from './types';
 
 export interface WorkflowTemplate {
@@ -10,7 +11,7 @@ export interface WorkflowTemplate {
     name: string;
     description: string;
     category: 'lead-nurturing' | 'sales' | 'onboarding' | 'engagement';
-    icon: string;
+    icon: any;
     color: string;
     triggerEntityType: 'contact' | 'deal';
     steps: Omit<WorkflowStep, 'id'>[];
@@ -25,7 +26,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
         name: 'Welcome New Contacts',
         description: 'Send a welcome email to new contacts, wait 1 day, then follow up with more info.',
         category: 'onboarding',
-        icon: '👋',
+        icon: <HandRaisedIcon className="w-6 h-6" />,
         color: 'from-blue-500 to-cyan-500',
         triggerEntityType: 'contact',
         steps: [
@@ -72,7 +73,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
         name: 'Nurture Cold Leads',
         description: 'A 3-email sequence over 2 weeks to re-engage cold leads.',
         category: 'lead-nurturing',
-        icon: '🔥',
+        icon: <FireIcon className="w-6 h-6" />,
         color: 'from-orange-500 to-red-500',
         triggerEntityType: 'contact',
         steps: [
@@ -137,7 +138,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
         name: 'Deal Won Follow-up',
         description: 'Thank new customers and ask for referrals after a deal closes.',
         category: 'sales',
-        icon: '🎉',
+        icon: <SparklesIcon className="w-6 h-6" />,
         color: 'from-green-500 to-emerald-500',
         triggerEntityType: 'deal',
         steps: [
@@ -196,7 +197,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
         name: 'Re-engagement Campaign',
         description: 'Win back contacts who have been inactive for 30+ days.',
         category: 'engagement',
-        icon: '🔄',
+        icon: <ArrowPathIcon className="w-6 h-6" />,
         color: 'from-purple-500 to-violet-500',
         triggerEntityType: 'contact',
         steps: [
@@ -245,7 +246,7 @@ export const workflowTemplates: WorkflowTemplate[] = [
         name: 'Meeting No-Show Follow-up',
         description: 'Automatically follow up when a contact misses a meeting with branching based on response.',
         category: 'engagement',
-        icon: '📅',
+        icon: <CalendarIcon className="w-6 h-6" />,
         color: 'from-amber-500 to-orange-500',
         triggerEntityType: 'contact',
         steps: [

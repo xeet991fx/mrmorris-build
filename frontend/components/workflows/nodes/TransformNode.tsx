@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
-import { AdjustmentsHorizontalIcon } from "@heroicons/react/24/outline";
+import { AdjustmentsHorizontalIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { WorkflowStep } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
 
@@ -64,8 +64,8 @@ function TransformNode({ data, selected }: NodeProps<TransformNodeData>) {
                         {operationLabel}
                     </p>
                     {!hasOperations && (
-                        <p className="text-[9px] text-red-500 dark:text-red-400 mt-1">
-                            ⚠ Not configured
+                        <p className="text-[9px] text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+                            <ExclamationTriangleIcon className="w-3 h-3" /> Not configured
                         </p>
                     )}
                 </div>

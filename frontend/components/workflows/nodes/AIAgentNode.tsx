@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { GiArtificialIntelligence } from "react-icons/gi";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import { WorkflowStep } from "@/lib/workflow/types";
 import { cn } from "@/lib/utils";
 
@@ -68,8 +69,8 @@ function AIAgentNode({ data, selected }: NodeProps<AIAgentNodeData>) {
                         {agentTypeLabels[agentType] || agentType} • {timeout}
                     </p>
                     {!hasTaskPrompt && (
-                        <p className="text-[9px] text-red-500 dark:text-red-400 mt-1">
-                            ⚠ Not configured
+                        <p className="text-[9px] text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+                            <ExclamationTriangleIcon className="w-3 h-3" /> Not configured
                         </p>
                     )}
                 </div>

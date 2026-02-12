@@ -8,6 +8,7 @@
 
 import { WorkflowStep } from "@/lib/workflow/types";
 import { DEFAULT_FIELDS, DEFAULT_OPERATORS } from "./FilterBuilder";
+import { GitBranch } from "lucide-react";
 
 // ============================================
 // TYPES
@@ -41,7 +42,7 @@ export default function ConditionConfig({ step, onChange }: ConditionConfigProps
             {/* Info Box */}
             <div className="bg-gradient-to-r from-teal-500/10 to-cyan-500/10 rounded-lg p-4 border border-teal-500/20">
                 <div className="flex items-start gap-3">
-                    <span className="text-2xl">🔀</span>
+                    <GitBranch className="w-8 h-8 text-teal-600" />
                     <div>
                         <p className="text-sm text-foreground font-medium">
                             Branching Logic

@@ -1,6 +1,7 @@
 "use client";
 
 import { WorkflowStep } from "@/lib/workflow/types";
+import { LockClosedIcon, ExclamationTriangleIcon, LightBulbIcon } from "@heroicons/react/24/outline";
 
 interface SmsActionConfigProps {
     step: WorkflowStep;
@@ -30,8 +31,8 @@ export default function SmsActionConfig({ step, onChange }: SmsActionConfigProps
             {/* Twilio Configuration */}
             {config.provider === "twilio" && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-                    <p className="text-xs text-yellow-800 dark:text-yellow-300 mb-2">
-                        <strong>🔐 Security Note:</strong> Twilio credentials should be set as environment variables:
+                    <p className="text-xs text-yellow-800 dark:text-yellow-300 mb-2 flex items-center gap-1.5">
+                        <LockClosedIcon className="w-3.5 h-3.5" /> <strong>Security Note:</strong> Twilio credentials should be set as environment variables:
                     </p>
                     <ul className="text-xs text-yellow-700 dark:text-yellow-400 ml-4 list-disc space-y-1">
                         <li>
@@ -165,17 +166,18 @@ export default function SmsActionConfig({ step, onChange }: SmsActionConfigProps
             {/* Character Counter Warning */}
             {config.message && config.message.length > 160 && (
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
-                    <p className="text-xs text-orange-800 dark:text-orange-300">
-                        ⚠️ Message is longer than 160 characters and will be sent as multiple SMS segments.
-                        Segments: {Math.ceil((config.message || "").length / 160)}
+                    <p className="text-xs text-orange-800 dark:text-orange-300 flex items-start gap-1.5">
+                        <ExclamationTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span>Message is longer than 160 characters and will be sent as multiple SMS segments.
+                            Segments: {Math.ceil((config.message || "").length / 160)}</span>
                     </p>
                 </div>
             )}
 
             {/* Help Text */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                <p className="text-xs text-blue-800 dark:text-blue-300">
-                    <strong>💡 Getting Started with Twilio:</strong>
+                <p className="text-xs text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
+                    <LightBulbIcon className="w-3.5 h-3.5" /> <strong>Getting Started with Twilio:</strong>
                 </p>
                 <ol className="text-xs text-blue-700 dark:text-blue-400 ml-4 list-decimal mt-1 space-y-1">
                     <li>Sign up at twilio.com</li>

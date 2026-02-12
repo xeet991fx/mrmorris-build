@@ -9,6 +9,7 @@ import {
     BoltIcon,
     ClockIcon,
     PlusIcon,
+    LightBulbIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 import {
@@ -232,8 +233,8 @@ export const AutomationSuggestionsCard: React.FC<AutomationSuggestionsCardProps>
             {/* Info Footer */}
             {!isLoading && insights.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-border">
-                    <p className="text-[10px] text-muted-foreground text-center">
-                        💡 Tip: The more you use the app, the smarter our suggestions become
+                    <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1.5">
+                        <LightBulbIcon className="w-3 h-3" /> Tip: The more you use the app, the smarter our suggestions become
                     </p>
                 </div>
             )}
