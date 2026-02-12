@@ -16,13 +16,14 @@
  * - Custom Styling & Themes
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     PlusIcon,
     TrashIcon,
     ArrowPathIcon,
+    ArrowLeftIcon,
     EyeIcon,
     CodeBracketIcon,
     CheckIcon,
@@ -38,6 +39,8 @@ import {
     ClipboardDocumentCheckIcon,
     SparklesIcon,
     BeakerIcon,
+    ChevronRightIcon,
+    ClipboardDocumentListIcon,
     // Field type icons
     PencilIcon,
     EnvelopeIcon,
@@ -415,6 +418,38 @@ export default function EnhancedFormBuilder() {
 
     const frontendUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000");
 
+    const loadAnalytics = useCallback(async () => {
+        try {
+            setIsLoadingAnalytics(true);
+            const response = await getFormAnalytics(workspaceId, formId);
+            if (response.success) {
+                setAnalytics(response.data);
+            }
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+            toast.error('Failed to load analytics');
+        } finally {
+            setIsLoadingAnalytics(false);
+        }
+    }, [workspaceId, formId]);
+
+    const loadForm = useCallback(async () => {
+        try {
+            const response = await getForm(workspaceId, formId);
+            if (response.success) {
+                setForm(response.data);
+                if (response.data.formType === 'multi_step' && response.data.steps?.length) {
+                    setCurrentStep(response.data.steps[0].id);
+                }
+            }
+        } catch (error) {
+            console.error("Error loading form:", error);
+            toast.error("Failed to load form");
+        } finally {
+            setIsLoading(false);
+        }
+    }, [workspaceId, formId]);
+
     useEffect(() => {
         if (formId === 'new') {
             // Create new form with default values
@@ -453,14 +488,14 @@ export default function EnhancedFormBuilder() {
         } else {
             loadForm();
         }
-    }, [formId]);
+    }, [formId, loadForm]);
 
     // Load analytics when analytics tab is active
     useEffect(() => {
         if (activeTab === 'analytics' && formId !== 'new' && !analytics) {
             loadAnalytics();
         }
-    }, [activeTab, formId]);
+    }, [activeTab, formId, analytics, loadAnalytics]);
 
     // Set displayMode to 'canvas' when Canvas Designer tab is active
     // This ensures the form will render using canvas layout when published
@@ -521,37 +556,9 @@ export default function EnhancedFormBuilder() {
         return () => clearTimeout(autoSaveTimer);
     }, [form, workspaceId, formId, isLoading]);
 
-    const loadAnalytics = async () => {
-        try {
-            setIsLoadingAnalytics(true);
-            const response = await getFormAnalytics(workspaceId, formId);
-            if (response.success) {
-                setAnalytics(response.data);
-            }
-        } catch (error) {
-            console.error('Error loading analytics:', error);
-            toast.error('Failed to load analytics');
-        } finally {
-            setIsLoadingAnalytics(false);
-        }
-    };
 
-    const loadForm = async () => {
-        try {
-            const response = await getForm(workspaceId, formId);
-            if (response.success) {
-                setForm(response.data);
-                if (response.data.formType === 'multi_step' && response.data.steps?.length) {
-                    setCurrentStep(response.data.steps[0].id);
-                }
-            }
-        } catch (error) {
-            console.error("Error loading form:", error);
-            toast.error("Failed to load form");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+
+
 
     const handleSave = async () => {
         if (!form) return;
@@ -798,124 +805,151 @@ export default function EnhancedFormBuilder() {
 <script src="${frontendUrl}/forms/embed.js"></script>
 <div data-morrisb-form="${form._id}"></div>` : '';
 
+    const formTabs = [
+        { id: 'build', label: 'Build', count: form.fields.length },
+        { id: 'canvas', label: 'Canvas' },
+        { id: 'steps', label: 'Steps', count: form.steps?.length },
+        { id: 'settings', label: 'Settings' },
+        { id: 'routing', label: 'Lead Routing' },
+        { id: 'automations', label: 'Automations' },
+        { id: 'analytics', label: 'Analytics' },
+        { id: 'integrations', label: 'Integrations' },
+        { id: 'embed', label: 'Embed' },
+    ];
+
     return (
-        <div className="h-screen flex flex-col bg-background">
-            {/* Header */}
-            <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-                <div className="flex items-center gap-4">
-                    <input
-                        type="text"
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        className="text-xl font-bold bg-transparent border-none focus:outline-none text-foreground"
-                        placeholder="Form Name"
-                    />
-                    <span className={cn(
-                        "px-2 py-0.5 rounded text-xs font-medium",
-                        form.status === 'published' ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
-                    )}>
-                        {form.status}
-                    </span>
-                    {form.formType === 'multi_step' && (
-                        <span className="px-2 py-0.5 bg-purple-500/10 text-purple-500 text-xs rounded-full font-medium">
-                            Multi-Step
-                        </span>
-                    )}
-                    {form.progressiveProfilingEnabled && (
-                        <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 text-xs rounded-full font-medium flex items-center gap-1">
-                            <SparklesIcon className="w-3 h-3" />
-                            Progressive
-                        </span>
-                    )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                    {/* Auto-save status indicator */}
-                    {formId !== 'new' && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            {isSaving ? (
-                                <>
-                                    <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                    <span>Saving...</span>
-                                </>
-                            ) : hasUnsavedChanges ? (
-                                <>
-                                    <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-                                    <span>Unsaved changes</span>
-                                </>
-                            ) : lastSaved ? (
-                                <>
-                                    <CheckIcon className="w-4 h-4 text-green-500" />
-                                    <span>Saved {new Date().getTime() - lastSaved.getTime() < 60000 ? 'just now' : 'recently'}</span>
-                                </>
-                            ) : null}
-                        </div>
-                    )}
-                    <button
-                        onClick={() => {
-                            if (form._id) {
-                                window.open(`${frontendUrl}/forms/${form._id}`, '_blank');
-                            }
-                        }}
-                        className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/70 transition-colors flex items-center gap-2"
-                        disabled={!form._id}
-                    >
-                        <EyeIcon className="w-4 h-4" />
-                        Preview
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/70 transition-colors"
-                    >
-                        {isSaving ? "Saving..." : "Save Now"}
-                    </button>
-                    <button
-                        onClick={togglePublish}
-                        disabled={isSaving}
-                        className={cn(
-                            "px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-2",
+        <div className="min-h-screen bg-white dark:bg-zinc-950">
+            {/* Top Navigation Bar — Sequences style */}
+            <div className="sticky top-0 z-20 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center justify-between px-6 h-14">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => router.push(`/projects/${workspaceId}/forms`)}
+                            className="flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                        >
+                            <ArrowLeftIcon className="w-4 h-4" />
+                        </button>
+                        <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-300 dark:text-zinc-600" />
+                        <span className="text-sm text-zinc-500">Forms</span>
+                        <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-300 dark:text-zinc-600" />
+                        <input
+                            type="text"
+                            value={form.name}
+                            onChange={(e) => setForm({ ...form, name: e.target.value })}
+                            className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 min-w-[120px]"
+                            placeholder="Form name..."
+                        />
+                        <span className={cn(
+                            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium",
                             form.status === 'published'
-                                ? "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 disabled:opacity-50"
-                                : "bg-green-500/10 text-green-500 hover:bg-green-500/20 disabled:opacity-50"
+                                ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+                        )}>
+                            <span className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                form.status === 'published' ? "bg-emerald-500" : "bg-zinc-400"
+                            )} />
+                            {form.status === 'published' ? 'Published' : 'Draft'}
+                        </span>
+                        {form.formType === 'multi_step' && (
+                            <span className="px-2 py-0.5 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 text-[11px] rounded-full font-medium">
+                                Multi-Step
+                            </span>
                         )}
-                    >
-                        {isSaving && <ArrowPathIcon className="w-4 h-4 animate-spin" />}
-                        {form.status === 'published' ? 'Unpublish' : 'Publish'}
-                    </button>
-                </div>
-            </div>
+                        {form.progressiveProfilingEnabled && (
+                            <span className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[11px] rounded-full font-medium flex items-center gap-1">
+                                <SparklesIcon className="w-3 h-3" />
+                                Progressive
+                            </span>
+                        )}
+                    </div>
 
-            {/* Main Navigation Tabs */}
-            <div className="border-b border-border bg-card px-6 flex gap-1 overflow-x-auto">
-                {[
-                    { id: 'build', label: 'Build', icon: PaintBrushIcon },
-                    { id: 'canvas', label: 'Canvas Designer', icon: Squares2X2Icon },
-                    { id: 'steps', label: 'Steps', icon: ClipboardDocumentCheckIcon },
-                    { id: 'settings', label: 'Settings', icon: Cog6ToothIcon },
-                    { id: 'routing', label: 'Lead Routing', icon: UserGroupIcon },
-                    { id: 'automations', label: 'Automations', icon: BoltIcon },
-                    { id: 'analytics', label: 'Analytics', icon: ChartBarIcon },
-                    { id: 'integrations', label: 'Integrations', icon: PuzzlePieceIcon },
-                    { id: 'embed', label: 'Embed', icon: CodeBracketIcon },
-                ].map(tab => {
-                    const Icon = tab.icon;
-                    return (
+                    <div className="flex items-center gap-3">
+                        {/* Auto-save indicator */}
+                        {formId !== 'new' && (
+                            <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                                {isSaving ? (
+                                    <>
+                                        <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                                        <span>Saving...</span>
+                                    </>
+                                ) : hasUnsavedChanges ? (
+                                    <>
+                                        <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                                        <span>Unsaved</span>
+                                    </>
+                                ) : lastSaved ? (
+                                    <>
+                                        <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span>Saved</span>
+                                    </>
+                                ) : null}
+                            </div>
+                        )}
+
+                        {/* Publish Toggle */}
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <span className="text-sm text-zinc-500 font-medium">
+                                {form.status === 'published' ? 'Published' : 'Publish'}
+                            </span>
+                            <button
+                                onClick={togglePublish}
+                                disabled={isSaving}
+                                className={cn(
+                                    "relative w-10 h-5 rounded-full transition-colors disabled:opacity-50",
+                                    form.status === 'published' ? "bg-orange-500" : "bg-zinc-300 dark:bg-zinc-600"
+                                )}
+                            >
+                                <span className={cn(
+                                    "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform",
+                                    form.status === 'published' ? "left-5.5 translate-x-0.5" : "left-0.5"
+                                )} />
+                            </button>
+                        </label>
+
+                        {/* Preview */}
+                        <button
+                            onClick={() => {
+                                if (form._id) {
+                                    window.open(`${frontendUrl}/forms/${form._id}`, '_blank');
+                                }
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition-all shadow-sm"
+                            disabled={!form._id}
+                        >
+                            <EyeIcon className="w-4 h-4" />
+                            Preview
+                        </button>
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex items-center gap-0 px-6 overflow-x-auto">
+                    {formTabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
                             className={cn(
-                                "px-4 py-3 font-medium transition-colors border-b-2 capitalize flex items-center gap-2 whitespace-nowrap",
+                                "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
                                 activeTab === tab.id
-                                    ? "border-primary text-primary"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                    ? "border-orange-500 text-orange-600 dark:text-orange-400"
+                                    : "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                             )}
                         >
-                            <Icon className="w-4 h-4" />
                             {tab.label}
+                            {tab.count !== undefined && tab.count > 0 && (
+                                <span className={cn(
+                                    "px-1.5 py-0.5 rounded-full text-[10px] font-semibold",
+                                    activeTab === tab.id
+                                        ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                                        : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                                )}>
+                                    {tab.count}
+                                </span>
+                            )}
                         </button>
-                    );
-                })}
+                    ))}
+                </div>
             </div>
 
             <div className="flex-1 overflow-hidden flex">

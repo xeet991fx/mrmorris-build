@@ -1,131 +1,127 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    ChartBarIcon,
-    UserGroupIcon,
-    CurrencyDollarIcon,
-    CheckCircleIcon,
-    SparklesIcon,
-    ArrowPathIcon,
-    ChevronDownIcon,
-    ChevronUpIcon,
-    LinkIcon,
+    PlusIcon,
+    ChartBarSquareIcon,
+    MagnifyingGlassIcon,
+    TrashIcon,
+    ChevronRightIcon,
+    XMarkIcon,
+    StarIcon as StarOutline,
 } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import {
-    getReportsOverview,
-    getReportsPipeline,
-    getReportsActivity,
-    getReportsEmail,
-    getReportsEmailDetails,
-} from "@/lib/api/reports";
+    getReportDashboards,
+    createReportDashboard,
+    updateReportDashboard,
+    deleteReportDashboard,
+} from "@/lib/api/reportDashboards";
 import { cn } from "@/lib/utils";
-import { useInsightTracking } from "@/hooks/useInsightTracking";
-import { ReportInsightsPanel } from "@/components/reports/ReportInsightsPanel";
-
-// ============================================
-// PIPELINE CHART (Clean Horizontal Bars)
-// ============================================
-
-function PipelineChart({ data }: { data: { _id: string; count: number; totalValue: number }[] }) {
-    const maxCount = Math.max(...data.map(d => d.count), 1);
-
-    return (
-        <div className="space-y-3">
-            {data.map((item, i) => (
-                <div key={item._id || i} className="group">
-                    <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                            {item._id || "Unknown"}
-                        </span>
-                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                            {item.count}
-                        </span>
-                    </div>
-                    <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                        <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(item.count / maxCount) * 100}%` }}
-                            transition={{ duration: 0.6, delay: i * 0.1 }}
-                            className="h-full bg-emerald-500 rounded-full"
-                        />
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-}
-
-// ============================================
-// MAIN PAGE
-// ============================================
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function ReportsPage() {
     const params = useParams();
+    const router = useRouter();
     const workspaceId = params.id as string;
 
-    const [overview, setOverview] = useState<any>(null);
-    const [pipeline, setPipeline] = useState<any>(null);
-    const [email, setEmail] = useState<any>(null);
-    const [emailDetails, setEmailDetails] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [showInsights, setShowInsights] = useState(false);
-    const [showEmailDetails, setShowEmailDetails] = useState(false);
-    const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null);
+    const [dashboards, setDashboards] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filter, setFilter] = useState<"all" | "favorites">("all");
+    const [showNewForm, setShowNewForm] = useState(false);
+    const [newName, setNewName] = useState("");
+    const [newDescription, setNewDescription] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [dashboardToDelete, setDashboardToDelete] = useState<string | null>(null);
 
-    const { track } = useInsightTracking({
-        workspaceId,
-        page: 'reports',
-        enabled: !!workspaceId,
-    });
-
-    const fetchData = async () => {
-        setIsLoading(true);
+    const loadDashboards = useCallback(async () => {
         try {
-            const [overviewRes, pipelineRes, emailRes] = await Promise.all([
-                getReportsOverview(workspaceId),
-                getReportsPipeline(workspaceId),
-                getReportsEmail(workspaceId),
-            ]);
-
-            if (overviewRes.success) setOverview(overviewRes.data);
-            if (pipelineRes.success) setPipeline(pipelineRes.data);
-            if (emailRes.success) setEmail(emailRes.data);
-        } catch (error) {
-            console.error("Failed to fetch reports:", error);
+            setLoading(true);
+            const data = await getReportDashboards(workspaceId);
+            setDashboards(data.dashboards || []);
+        } catch (err) {
+            console.error("Error loading dashboards:", err);
+        } finally {
+            setLoading(false);
         }
-        setIsLoading(false);
-    };
-
-    const fetchEmailDetails = async () => {
-        try {
-            const detailsRes = await getReportsEmailDetails(workspaceId);
-            if (detailsRes.success) setEmailDetails(detailsRes.data);
-        } catch (error) {
-            console.error("Failed to fetch email details:", error);
-        }
-    };
-
-    useEffect(() => {
-        if (workspaceId) fetchData();
     }, [workspaceId]);
 
-    if (isLoading) {
-        return (
-            <div className="h-full overflow-y-auto">
-                <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-6">
-                    <div className="h-8 w-48 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse mb-8" />
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="h-24 bg-zinc-100 dark:bg-zinc-800 rounded-xl animate-pulse" />
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    useEffect(() => {
+        loadDashboards();
+    }, [loadDashboards]);
+
+    const handleCreate = async () => {
+        if (!newName.trim()) return;
+        setIsCreating(true);
+        try {
+            const data = await createReportDashboard(workspaceId, {
+                name: newName.trim(),
+                description: newDescription.trim(),
+            });
+            setNewName("");
+            setNewDescription("");
+            setShowNewForm(false);
+            if (data.dashboard?._id) {
+                router.push(`/projects/${workspaceId}/reports/${data.dashboard._id}`);
+            } else {
+                loadDashboards();
+            }
+        } catch (err) {
+            console.error("Error creating dashboard:", err);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const handleToggleFavorite = async (e: React.MouseEvent, dashboard: any) => {
+        e.stopPropagation();
+        try {
+            await updateReportDashboard(workspaceId, dashboard._id, {
+                isFavorite: !dashboard.isFavorite,
+            });
+            loadDashboards();
+        } catch (err) {
+            console.error("Error toggling favorite:", err);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!dashboardToDelete) return;
+        try {
+            await deleteReportDashboard(workspaceId, dashboardToDelete);
+            setDashboardToDelete(null);
+            loadDashboards();
+        } catch (err) {
+            console.error("Error deleting dashboard:", err);
+        }
+    };
+
+    const openDeleteConfirm = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        setDashboardToDelete(id);
+        setDeleteConfirmOpen(true);
+    };
+
+    // Computed
+    const favoriteCount = dashboards.filter((d) => d.isFavorite).length;
+    const totalReports = dashboards.reduce(
+        (sum, d) => sum + (d.reports?.length || 0),
+        0
+    );
+
+    const filtered = dashboards.filter((d) => {
+        const matchesSearch =
+            searchQuery === "" ||
+            d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            d.description?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesFilter =
+            filter === "all" || (filter === "favorites" && d.isFavorite);
+        return matchesSearch && matchesFilter;
+    });
 
     return (
         <div className="h-full overflow-y-auto">
@@ -141,338 +137,334 @@ export default function ReportsPage() {
                             Reports
                         </h1>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                            Business performance at a glance
+                            Create dashboards to visualize your CRM data
                         </p>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
                         <button
-                            onClick={() => setShowInsights(!showInsights)}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 text-sm rounded-full transition-colors",
-                                showInsights
-                                    ? "bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
-                                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                            onClick={() => setShowNewForm(true)}
+                            disabled={isCreating}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm disabled:opacity-50"
+                        >
+                            {isCreating ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span className="hidden sm:inline">Creating...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <PlusIcon className="w-4 h-4" />
+                                    <span className="hidden sm:inline">New Dashboard</span>
+                                </>
                             )}
-                        >
-                            <SparklesIcon className="w-4 h-4" />
-                            <span className="hidden sm:inline">AI Insights</span>
-                        </button>
-                        <button
-                            onClick={fetchData}
-                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm"
-                        >
-                            <ArrowPathIcon className="w-4 h-4" />
-                            <span className="hidden sm:inline">Refresh</span>
                         </button>
                     </div>
                 </motion.div>
 
                 {/* Stats Row */}
-                {overview && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="mt-6 sm:mt-8 grid grid-cols-2 sm:flex sm:items-center gap-4 sm:gap-8"
-                    >
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-blue-500" />
-                            <span className="text-2xl font-bold text-blue-500">{overview.contacts?.total || 0}</span>
-                            <span className="text-sm text-zinc-500">contacts</span>
-                        </div>
-                        <div className="hidden sm:block w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="text-2xl font-bold text-emerald-500">{overview.deals?.open || 0}</span>
-                            <span className="text-sm text-zinc-500">open deals</span>
-                        </div>
-                        <div className="hidden sm:block w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                ${((overview.deals?.wonValue || 0) / 1000).toFixed(0)}k
-                            </span>
-                            <span className="text-sm text-zinc-500">revenue</span>
-                        </div>
-                        <div className="hidden sm:block w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl font-bold text-amber-500">{overview.tasks?.completionRate || 0}%</span>
-                            <span className="text-sm text-zinc-500">tasks done</span>
-                        </div>
-                    </motion.div>
-                )}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="mt-6 sm:mt-8 grid grid-cols-2 sm:flex sm:items-center gap-4 sm:gap-8"
+                >
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                            {dashboards.length}
+                        </span>
+                        <span className="text-sm text-zinc-500">dashboards</span>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-emerald-500">
+                            {totalReports}
+                        </span>
+                        <span className="text-sm text-zinc-500">reports</span>
+                    </div>
+                    <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold text-amber-500">
+                            {favoriteCount}
+                        </span>
+                        <span className="text-sm text-zinc-500">favorites</span>
+                    </div>
+                </motion.div>
             </div>
 
             {/* Divider */}
             <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
 
-            {/* Main Content */}
-            <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
-                {/* AI Insights Panel */}
-                {showInsights && (
+            {/* Search & Filter */}
+            <div className="px-4 sm:px-6 lg:px-8 py-4">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4"
+                >
+                    {/* Search */}
+                    <div className="relative flex-1 max-w-sm">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                        <input
+                            type="text"
+                            placeholder="Search dashboards..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-0 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                        />
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-2">
+                        {(["all", "favorites"] as const).map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={cn(
+                                    "px-3 py-1.5 text-sm font-medium rounded-full transition-all",
+                                    filter === f
+                                        ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                                        : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                                )}
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* New Dashboard Form */}
+            <AnimatePresence>
+                {showNewForm && (
                     <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="overflow-hidden"
+                        className="overflow-hidden mx-4 sm:mx-6 lg:mx-8 mb-4"
                     >
-                        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
-                            <ReportInsightsPanel workspaceId={workspaceId} />
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Pipeline & Win Rate */}
-                {pipeline && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8"
-                    >
-                        {/* Pipeline by Stage */}
-                        <div>
-                            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
-                                Pipeline by Stage
-                            </h3>
-                            {pipeline.byStage?.length > 0 ? (
-                                <PipelineChart data={pipeline.byStage} />
-                            ) : (
-                                <p className="text-sm text-zinc-400">No deals yet</p>
-                            )}
-                        </div>
-
-                        {/* Win Rate */}
-                        <div>
-                            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
-                                Win Rate (90 days)
-                            </h3>
-                            <div className="flex items-center gap-6">
-                                <div className="relative w-28 h-28">
-                                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                                        <path
-                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="3"
-                                            className="text-zinc-100 dark:text-zinc-800"
-                                        />
-                                        <motion.path
-                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="3"
-                                            strokeDasharray={`${pipeline.winRate || 0}, 100`}
-                                            strokeLinecap="round"
-                                            className="text-emerald-500"
-                                            initial={{ strokeDasharray: "0, 100" }}
-                                            animate={{ strokeDasharray: `${pipeline.winRate || 0}, 100` }}
-                                            transition={{ duration: 1, delay: 0.3 }}
-                                        />
-                                    </svg>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                            {pipeline.winRate || 0}%
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                                        <span className="text-sm text-zinc-600 dark:text-zinc-400">{pipeline.wonCount || 0} won</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-red-500" />
-                                        <span className="text-sm text-zinc-600 dark:text-zinc-400">{pipeline.lostCount || 0} lost</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Email Performance */}
-                {email && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
-                                Email Performance
-                            </h3>
-                            <button
-                                onClick={() => {
-                                    setShowEmailDetails(!showEmailDetails);
-                                    if (!showEmailDetails && !emailDetails) {
-                                        fetchEmailDetails();
-                                    }
-                                }}
-                                className="flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                            >
-                                {showEmailDetails ? (
-                                    <>
-                                        <ChevronUpIcon className="w-4 h-4" />
-                                        Hide Details
-                                    </>
-                                ) : (
-                                    <>
-                                        <ChevronDownIcon className="w-4 h-4" />
-                                        Show Details
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-                            <div className="text-center py-4">
-                                <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{email.totalSent || 0}</p>
-                                <p className="text-sm text-zinc-500 mt-1">Sent</p>
-                            </div>
-                            <div className="text-center py-4">
-                                <p className="text-3xl font-bold text-blue-500">{email.openRate || 0}%</p>
-                                <p className="text-sm text-zinc-500 mt-1">Open Rate</p>
-                            </div>
-                            <div className="text-center py-4">
-                                <p className="text-3xl font-bold text-emerald-500">{email.clickRate || 0}%</p>
-                                <p className="text-sm text-zinc-500 mt-1">Click Rate</p>
-                            </div>
-                            <div className="text-center py-4">
-                                <p className="text-3xl font-bold text-violet-500">{email.replyRate || 0}%</p>
-                                <p className="text-sm text-zinc-500 mt-1">Reply Rate</p>
-                            </div>
-                        </div>
-
-                        {/* Email Details Table */}
-                        <AnimatePresence>
-                            {showEmailDetails && emailDetails && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="mt-6 overflow-hidden"
+                        <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-5">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                    Create Dashboard
+                                </h3>
+                                <button
+                                    onClick={() => {
+                                        setShowNewForm(false);
+                                        setNewName("");
+                                        setNewDescription("");
+                                    }}
+                                    className="p-1 text-zinc-400 hover:text-zinc-600 transition-colors"
                                 >
-                                    <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
-                                        <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-4">
-                                            Recent Emails ({emailDetails.totalCount})
-                                        </h4>
-                                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                                            {emailDetails.emails?.map((emailItem: any) => (
-                                                <div
-                                                    key={emailItem._id}
-                                                    className="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700"
-                                                >
-                                                    <div className="flex items-start justify-between">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <h5 className="font-medium text-zinc-900 dark:text-zinc-100">
-                                                                    {emailItem.subject}
-                                                                </h5>
-                                                                {emailItem.opened && (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                                                                        Opened
-                                                                    </span>
-                                                                )}
-                                                                {emailItem.clicked && (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-                                                                        Clicked
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                                                To: {emailItem.toEmail} • {new Date(emailItem.sentAt).toLocaleDateString()}
-                                                            </p>
-                                                        </div>
-                                                        {emailItem.linkClicks && emailItem.linkClicks.length > 0 && (
-                                                            <button
-                                                                onClick={() => setExpandedEmailId(expandedEmailId === emailItem._id ? null : emailItem._id)}
-                                                                className="ml-4 p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                                                            >
-                                                                {expandedEmailId === emailItem._id ? (
-                                                                    <ChevronUpIcon className="w-5 h-5" />
-                                                                ) : (
-                                                                    <ChevronDownIcon className="w-5 h-5" />
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                    <XMarkIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                <input
+                                    type="text"
+                                    value={newName}
+                                    onChange={(e) => setNewName(e.target.value)}
+                                    placeholder="Dashboard name"
+                                    autoFocus
+                                    className="w-full px-3 py-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                                />
+                                <input
+                                    type="text"
+                                    value={newDescription}
+                                    onChange={(e) => setNewDescription(e.target.value)}
+                                    placeholder="Description (optional)"
+                                    className="w-full px-3 py-2 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button
+                                    onClick={() => {
+                                        setShowNewForm(false);
+                                        setNewName("");
+                                        setNewDescription("");
+                                    }}
+                                    className="px-3 py-1.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleCreate}
+                                    disabled={!newName.trim() || isCreating}
+                                    className="inline-flex items-center gap-2 px-4 py-1.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50"
+                                >
+                                    Create
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-                                                    {/* Link Clicks Details */}
-                                                    <AnimatePresence>
-                                                        {expandedEmailId === emailItem._id && emailItem.linkClicks && (
-                                                            <motion.div
-                                                                initial={{ opacity: 0, height: 0 }}
-                                                                animate={{ opacity: 1, height: "auto" }}
-                                                                exit={{ opacity: 0, height: 0 }}
-                                                                className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700"
-                                                            >
-                                                                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
-                                                                    Link Clicks
-                                                                </p>
-                                                                <div className="space-y-2">
-                                                                    {emailItem.linkClicks.map((click: any, idx: number) => (
-                                                                        <div
-                                                                            key={idx}
-                                                                            className="flex items-start gap-2 text-sm"
-                                                                        >
-                                                                            <LinkIcon className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <p className="text-zinc-700 dark:text-zinc-300 truncate">
-                                                                                    {click.url}
-                                                                                </p>
-                                                                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                                                                    {click.clickCount} {click.clickCount === 1 ? 'click' : 'clicks'} • Last: {new Date(click.clickedAt).toLocaleString()}
-                                                                                </p>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {/* Link Performance Summary */}
-                                        {emailDetails.linkPerformance && emailDetails.linkPerformance.length > 0 && (
-                                            <div className="mt-6 pt-6 border-t border-zinc-200 dark:border-zinc-700">
-                                                <h4 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-4">
-                                                    Top Performing Links
-                                                </h4>
-                                                <div className="space-y-2">
-                                                    {emailDetails.linkPerformance.slice(0, 5).map((link: any, idx: number) => (
-                                                        <div
-                                                            key={idx}
-                                                            className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700"
-                                                        >
-                                                            <div className="flex-1 min-w-0 mr-4">
-                                                                <p className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
-                                                                    {link.url || link._id}
-                                                                </p>
-                                                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                                                    {link.uniqueEmailCount} {link.uniqueEmailCount === 1 ? 'email' : 'emails'}
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <p className="text-lg font-bold text-emerald-500">
-                                                                    {link.totalClicks}
-                                                                </p>
-                                                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                                                    clicks
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+            {/* Dashboard List */}
+            <div className="px-8 pb-8">
+                {loading ? (
+                    <div className="space-y-4 py-8">
+                        {[1, 2, 3].map((i) => (
+                            <div
+                                key={i}
+                                className="h-16 bg-zinc-100 dark:bg-zinc-800 rounded-lg animate-pulse"
+                            />
+                        ))}
+                    </div>
+                ) : dashboards.length === 0 ? (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-center py-16"
+                    >
+                        <ChartBarSquareIcon className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-4" />
+                        <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">
+                            No dashboards yet
+                        </h3>
+                        <p className="text-sm text-zinc-500 mb-6">
+                            Create your first dashboard to start tracking metrics
+                        </p>
+                        <button
+                            onClick={() => setShowNewForm(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                        >
+                            <PlusIcon className="w-4 h-4" />
+                            Create Dashboard
+                        </button>
+                    </motion.div>
+                ) : filtered.length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500">
+                        No dashboards match your search.
+                    </div>
+                ) : (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        {filtered.map((dashboard) => (
+                            <DashboardRow
+                                key={dashboard._id}
+                                dashboard={dashboard}
+                                onOpen={() =>
+                                    router.push(
+                                        `/projects/${workspaceId}/reports/${dashboard._id}`
+                                    )
+                                }
+                                onToggleFavorite={(e) => handleToggleFavorite(e, dashboard)}
+                                onDelete={(e) => openDeleteConfirm(e, dashboard._id)}
+                            />
+                        ))}
                     </motion.div>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={deleteConfirmOpen}
+                onClose={() => {
+                    setDeleteConfirmOpen(false);
+                    setDashboardToDelete(null);
+                }}
+                onConfirm={handleDelete}
+                title="Delete Dashboard"
+                message="Are you sure you want to delete this dashboard? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                variant="danger"
+            />
         </div>
+    );
+}
+
+// ============================================
+// DASHBOARD ROW
+// ============================================
+
+function DashboardRow({
+    dashboard,
+    onOpen,
+    onToggleFavorite,
+    onDelete,
+}: {
+    dashboard: any;
+    onOpen: () => void;
+    onToggleFavorite: (e: React.MouseEvent) => void;
+    onDelete: (e: React.MouseEvent) => void;
+}) {
+    const reportCount = dashboard.reports?.length || 0;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="group flex items-center gap-4 py-4 border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors -mx-4 px-4 cursor-pointer"
+            onClick={onOpen}
+        >
+            {/* Favorite indicator */}
+            <button
+                onClick={onToggleFavorite}
+                className="flex-shrink-0"
+            >
+                {dashboard.isFavorite ? (
+                    <StarSolid className="w-4 h-4 text-amber-400" />
+                ) : (
+                    <StarOutline className="w-4 h-4 text-zinc-300 dark:text-zinc-600 opacity-0 group-hover:opacity-100 hover:text-amber-400 transition-all" />
+                )}
+            </button>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                        {dashboard.name}
+                    </p>
+                    {dashboard.isDefault && (
+                        <span className="text-xs text-zinc-400 capitalize">default</span>
+                    )}
+                </div>
+                {dashboard.description && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
+                        {dashboard.description}
+                    </p>
+                )}
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center gap-6 text-xs text-zinc-500">
+                <div className="text-center">
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {reportCount}
+                    </p>
+                    <p>reports</p>
+                </div>
+                <div className="text-center hidden sm:block">
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                        {new Date(dashboard.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                        })}
+                    </p>
+                    <p>created</p>
+                </div>
+            </div>
+
+            {/* Actions */}
+            <div
+                className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <button
+                    onClick={onDelete}
+                    className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    title="Delete"
+                >
+                    <TrashIcon className="w-4 h-4" />
+                </button>
+            </div>
+
+            <ChevronRightIcon className="w-4 h-4 text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+        </motion.div>
     );
 }

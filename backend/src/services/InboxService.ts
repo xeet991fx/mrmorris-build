@@ -7,6 +7,7 @@
 
 import EmailMessage from "../models/EmailMessage";
 import Campaign from "../models/Campaign";
+import Sequence from "../models/Sequence";
 import Contact from "../models/Contact";
 import CampaignEnrollment from "../models/CampaignEnrollment";
 import { Types } from "mongoose";
@@ -25,13 +26,14 @@ class InboxService {
     async getInboxMessages(
         workspaceId: Types.ObjectId,
         filters?: {
-            source?: 'campaign' | 'workflow' | 'direct' | 'all';
+            source?: 'campaign' | 'workflow' | 'sequence' | 'direct' | 'all';
             campaign?: string;
             workflow?: string;
             sentiment?: string;
             assignedTo?: string;
             isRead?: boolean;
             search?: string;
+            replied?: boolean;
         },
         page: number = 1,
         limit: number = 50
@@ -51,15 +53,17 @@ class InboxService {
         }
 
         // For campaigns, we typically want replied messages
-        // For workflows and direct, show all sent emails
-        if (filters?.source === 'campaign' || !filters?.source) {
-            // Default behavior: only show replied campaign messages
-            if (!filters?.source) {
-                query.$or = [
-                    { source: 'campaign', replied: true },
-                    { source: { $in: ['workflow', 'direct'] } }
-                ];
-            }
+        // For workflows, sequences and direct, show all sent emails
+        // Default behavior: only show replied campaign messages IF replied filter is NOT set
+        if ((filters?.source === 'campaign' || !filters?.source) && filters?.replied === undefined) {
+            query.$or = [
+                { source: 'campaign', replied: true },
+                { source: { $in: ['workflow', 'sequence', 'direct'] } }
+            ];
+        }
+
+        if (filters?.replied !== undefined) {
+            query.replied = String(filters.replied) === 'true';
         }
 
         if (filters?.campaign) {
@@ -92,6 +96,7 @@ class InboxService {
         const messages = await EmailMessage.find(query)
             .populate("campaignId", "name")
             .populate("workflowId", "name")
+            .populate("sequenceId", "name")
             .populate("contactId", "firstName lastName email company")
             .sort({ sentAt: -1 })
             .skip((page - 1) * limit)
@@ -113,26 +118,28 @@ class InboxService {
         all: number;
         campaigns: number;
         workflows: number;
+        sequences: number;
         direct: number;
         unread: number;
     }> {
         const baseQuery = { workspaceId };
 
-        const [all, campaigns, workflows, direct, unread] = await Promise.all([
+        const [all, campaigns, workflows, sequences, direct, unread] = await Promise.all([
             EmailMessage.countDocuments({
                 ...baseQuery,
                 $or: [
                     { source: 'campaign', replied: true },
-                    { source: { $in: ['workflow', 'direct'] } }
+                    { source: { $in: ['workflow', 'sequence', 'direct'] } }
                 ]
             }),
             EmailMessage.countDocuments({ ...baseQuery, source: 'campaign', replied: true }),
             EmailMessage.countDocuments({ ...baseQuery, source: 'workflow' }),
+            EmailMessage.countDocuments({ ...baseQuery, source: 'sequence' }),
             EmailMessage.countDocuments({ ...baseQuery, source: 'direct' }),
             EmailMessage.countDocuments({ ...baseQuery, isRead: false }),
         ]);
 
-        return { all, campaigns, workflows, direct, unread };
+        return { all, campaigns, workflows, sequences, direct, unread };
     }
 
     /**
@@ -168,6 +175,20 @@ class InboxService {
                 messages: any[];
             }>;
         }>;
+        sequences: Array<{
+            id: string;
+            name: string;
+            count: number;
+            conversations: Array<{
+                contactId: string;
+                contactName: string;
+                contactEmail: string;
+                messageCount: number;
+                unreadCount: number;
+                latestMessage: any;
+                messages: any[];
+            }>;
+        }>;
         direct: Array<{
             contactId: string;
             contactName: string;
@@ -182,6 +203,7 @@ class InboxService {
         const allMessages = await EmailMessage.find({ workspaceId })
             .populate("campaignId", "name")
             .populate("workflowId", "name")
+            .populate("sequenceId", "name")
             .populate("contactId", "firstName lastName email company")
             .sort({ sentAt: -1 })
             .lean();
@@ -219,6 +241,13 @@ class InboxService {
 
         // Group by workflows -> then by contact
         const workflowGroups = new Map<string, {
+            id: string;
+            name: string;
+            contactConversations: Map<string, any[]>;
+        }>();
+
+        // Group by sequences -> then by contact
+        const sequenceGroups = new Map<string, {
             id: string;
             name: string;
             contactConversations: Map<string, any[]>;
@@ -266,7 +295,27 @@ class InboxService {
                 }
                 group.contactConversations.get(contactKey)!.push(msg);
 
-            } else if (msg.source === 'direct') {
+            } else if (msg.source === 'sequence' && msg.sequenceId) {
+                const seq = msg.sequenceId as any;
+                const seqId = seq._id ? seq._id.toString() : seq.toString();
+
+                if (!sequenceGroups.has(seqId)) {
+                    sequenceGroups.set(seqId, {
+                        id: seqId,
+                        name: seq.name || 'Unnamed Sequence',
+                        contactConversations: new Map()
+                    });
+                }
+
+                const group = sequenceGroups.get(seqId)!;
+                if (!group.contactConversations.has(contactKey)) {
+                    group.contactConversations.set(contactKey, []);
+                }
+                group.contactConversations.get(contactKey)!.push(msg);
+
+            } else {
+                // Determine if it's a fallback - e.g. campaign message but no campaignId
+                // Or explicit direct message
                 if (!directConversations.has(contactKey)) {
                     directConversations.set(contactKey, []);
                 }
@@ -304,10 +353,11 @@ class InboxService {
             count: Array.from(group.contactConversations.values()).reduce((sum, msgs) => sum + msgs.length, 0),
             conversations: Array.from(group.contactConversations.entries()).map(([key, msgs]) =>
                 buildConversation(key, msgs)
-            ).sort((a, b) =>
-                new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
-            ),
-        }));
+            )
+                .sort((a, b) =>
+                    new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
+                ),
+        })).filter(g => g.conversations.length > 0);
 
         const workflows = Array.from(workflowGroups.values()).map(group => ({
             id: group.id,
@@ -315,18 +365,32 @@ class InboxService {
             count: Array.from(group.contactConversations.values()).reduce((sum, msgs) => sum + msgs.length, 0),
             conversations: Array.from(group.contactConversations.entries()).map(([key, msgs]) =>
                 buildConversation(key, msgs)
-            ).sort((a, b) =>
-                new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
-            ),
-        }));
+            )
+                .sort((a, b) =>
+                    new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
+                ),
+        })).filter(g => g.conversations.length > 0);
+
+        const sequences = Array.from(sequenceGroups.values()).map(group => ({
+            id: group.id,
+            name: group.name,
+            count: Array.from(group.contactConversations.values()).reduce((sum, msgs) => sum + msgs.length, 0),
+            conversations: Array.from(group.contactConversations.entries()).map(([key, msgs]) =>
+                buildConversation(key, msgs)
+            )
+                .sort((a, b) =>
+                    new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
+                ),
+        })).filter(g => g.conversations.length > 0);
 
         const direct = Array.from(directConversations.entries()).map(([key, msgs]) =>
             buildConversation(key, msgs)
-        ).sort((a, b) =>
-            new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
-        );
+        )
+            .sort((a, b) =>
+                new Date(b.latestMessage.sentAt).getTime() - new Date(a.latestMessage.sentAt).getTime()
+            );
 
-        return { campaigns, workflows, direct };
+        return { campaigns, workflows, sequences, direct };
     }
 
     /**

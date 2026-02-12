@@ -62,6 +62,8 @@ import proposalRoutes from "./routes/proposal";
 import analyticsRoutes from "./routes/analytics";
 import webhookRoutes from "./routes/webhooks";
 import forecastRoutes from "./routes/forecast";
+import reportDashboardRoutes from "./routes/reportDashboards";
+import reportDataRoutes from "./routes/reportData";
 import callRecordingRoutes from "./routes/callRecording";
 import formRoutes from "./routes/form";
 import publicFormRoutes from "./routes/publicForm";
@@ -436,6 +438,8 @@ app.use("/api/workspaces", proposalRoutes);
 app.use("/api/workspaces", analyticsRoutes);
 app.use("/api/workspaces", webhookRoutes);
 app.use("/api/workspaces", forecastRoutes);
+app.use("/api/workspaces", reportDashboardRoutes);
+app.use("/api/workspaces", reportDataRoutes);
 app.use("/api/workspaces", meetingSchedulerRoutes);
 app.use("/api/workspaces", googleMeetRoutes); // Google Meet integration
 app.use("/api/auth", googleMeetRoutes); // Google OAuth callback routes

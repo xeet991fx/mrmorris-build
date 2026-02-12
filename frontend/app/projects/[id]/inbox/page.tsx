@@ -98,13 +98,14 @@ export default function InboxPage() {
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
-        source: "all" as 'all' | 'campaign' | 'workflow' | 'direct',
+        source: "all" as 'all' | 'campaign' | 'workflow' | 'sequence' | 'direct',
         campaign: "",
         workflow: "",
         sentiment: "",
         search: "",
+        replied: false,
     });
-    const [stats, setStats] = useState({ all: 0, campaigns: 0, workflows: 0, direct: 0, unread: 0 });
+    const [stats, setStats] = useState({ all: 0, campaigns: 0, workflows: 0, sequences: 0, direct: 0, unread: 0 });
     const [campaigns, setCampaigns] = useState<Array<{ _id: string; name: string }>>([]);
     const [workflows, setWorkflows] = useState<Array<{ _id: string; name: string }>>([]);
     const [aiDraft, setAiDraft] = useState<string>("");
@@ -124,6 +125,7 @@ export default function InboxPage() {
                 workflow: filters.source === 'workflow' && filters.workflow ? filters.workflow : undefined,
                 sentiment: filters.sentiment as any || undefined,
                 search: filters.search || undefined,
+                replied: filters.replied,
             });
             if (response.success) {
                 const msgs = (response as any).messages || response.data?.messages || [];
@@ -137,7 +139,7 @@ export default function InboxPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [workspaceId, filters.source, filters.campaign, filters.workflow, filters.sentiment, filters.search]);
+    }, [workspaceId, filters.source, filters.campaign, filters.workflow, filters.sentiment, filters.search, filters.replied]);
 
     const fetchStats = useCallback(async () => {
         try {
@@ -278,6 +280,21 @@ export default function InboxPage() {
         return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     };
 
+    const filteredGroupedData = viewMode === 'grouped' && groupedData ? {
+        campaigns: filters.replied
+            ? (groupedData.campaigns || []).filter((c: any) => c.messages.some((m: any) => m.replied))
+            : (groupedData.campaigns || []),
+        workflows: filters.replied
+            ? (groupedData.workflows || []).filter((c: any) => c.messages.some((m: any) => m.replied))
+            : (groupedData.workflows || []),
+        sequences: filters.replied
+            ? (groupedData.sequences || []).filter((c: any) => c.messages.some((m: any) => m.replied))
+            : (groupedData.sequences || []),
+        direct: filters.replied
+            ? (groupedData.direct || []).filter((c: any) => c.messages.some((m: any) => m.replied || m.source === 'direct'))
+            : (groupedData.direct || [])
+    } : null;
+
     const getContactName = (message: LocalInboxMessage): string => {
         if (!message.contactId) return message.toEmail || message.fromEmail || "Unknown";
         if (typeof message.contactId === "string") return message.toEmail || message.fromEmail || "Unknown";
@@ -293,6 +310,7 @@ export default function InboxPage() {
     const getSourceIcon = (message: LocalInboxMessage) => {
         if (message.campaignId) return <RocketLaunchIcon className="w-3.5 h-3.5 text-blue-500" />;
         if (message.workflowId) return <BoltIcon className="w-3.5 h-3.5 text-violet-500" />;
+        if (message.sequenceId) return <InboxIcon className="w-3.5 h-3.5 text-teal-500" />;
         return <EnvelopeIcon className="w-3.5 h-3.5 text-zinc-400" />;
     };
 
@@ -385,6 +403,7 @@ export default function InboxPage() {
                                             <option value="all">All Sources</option>
                                             <option value="campaign">Campaigns</option>
                                             <option value="workflow">Workflows</option>
+                                            <option value="sequence">Sequences</option>
                                             <option value="direct">Direct</option>
                                         </select>
                                         <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
@@ -503,6 +522,19 @@ export default function InboxPage() {
                                                 {s.charAt(0).toUpperCase() + s.slice(1)}
                                             </button>
                                         ))}
+                                        <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700 mx-2" />
+                                        <button
+                                            onClick={() => setFilters({ ...filters, replied: !filters.replied })}
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                                                filters.replied
+                                                    ? "bg-violet-500 text-white"
+                                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                            )}
+                                        >
+                                            <EnvelopeOpenIcon className="w-3.5 h-3.5" />
+                                            Replied Only
+                                        </button>
                                     </div>
                                 </motion.div>
                             )}
@@ -516,16 +548,19 @@ export default function InboxPage() {
                                         groupedData={{
                                             campaigns: filters.source === 'all' || filters.source === 'campaign'
                                                 ? filters.campaign
-                                                    ? (groupedData.campaigns || []).filter((c: any) => c.id === filters.campaign)
-                                                    : (groupedData.campaigns || [])
+                                                    ? (filteredGroupedData?.campaigns || []).filter((c: any) => c.id === filters.campaign)
+                                                    : (filteredGroupedData?.campaigns || [])
                                                 : [],
                                             workflows: filters.source === 'all' || filters.source === 'workflow'
                                                 ? filters.workflow
-                                                    ? (groupedData.workflows || []).filter((w: any) => w.id === filters.workflow)
-                                                    : (groupedData.workflows || [])
+                                                    ? (filteredGroupedData?.workflows || []).filter((w: any) => w.id === filters.workflow)
+                                                    : (filteredGroupedData?.workflows || [])
+                                                : [],
+                                            sequences: filters.source === 'all' || filters.source === 'sequence'
+                                                ? (filteredGroupedData?.sequences || [])
                                                 : [],
                                             direct: filters.source === 'all' || filters.source === 'direct'
-                                                ? (groupedData.direct || [])
+                                                ? (filteredGroupedData?.direct || [])
                                                 : []
                                         }}
                                         onConversationClick={(conversation) => {

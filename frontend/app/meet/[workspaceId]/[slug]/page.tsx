@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { CalendarIcon, ClockIcon, CheckCircleIcon, UserIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import axiosInstance from "@/lib/axios";
@@ -61,19 +62,7 @@ export default function PublicBookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookedMeeting, setBookedMeeting] = useState<any>(null);
 
-  // Fetch scheduler details
-  useEffect(() => {
-    fetchScheduler();
-  }, [workspaceId, slug]);
-
-  // Fetch available slots when date changes
-  useEffect(() => {
-    if (scheduler && selectedDate) {
-      fetchAvailableSlots();
-    }
-  }, [scheduler, selectedDate]);
-
-  const fetchScheduler = async () => {
+  const fetchScheduler = useCallback(async () => {
     try {
       const response = await axiosInstance.get(
         `/workspaces/public/${workspaceId}/schedulers/${slug}`
@@ -86,9 +75,9 @@ export default function PublicBookingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId, slug]);
 
-  const fetchAvailableSlots = async () => {
+  const fetchAvailableSlots = useCallback(async () => {
     setLoadingSlots(true);
     try {
       const startDate = new Date(selectedDate);
@@ -117,7 +106,21 @@ export default function PublicBookingPage() {
     } finally {
       setLoadingSlots(false);
     }
-  };
+  }, [workspaceId, slug, selectedDate]);
+
+  // Fetch scheduler details
+  useEffect(() => {
+    fetchScheduler();
+  }, [fetchScheduler]);
+
+  // Fetch available slots when date changes
+  useEffect(() => {
+    if (scheduler && selectedDate) {
+      fetchAvailableSlots();
+    }
+  }, [scheduler, selectedDate, fetchAvailableSlots]);
+
+
 
   const handleSlotSelect = (slot: TimeSlot) => {
     setSelectedSlot(slot);
@@ -211,7 +214,14 @@ export default function PublicBookingPage() {
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm p-8 mb-6">
           {scheduler.logoUrl && (
-            <img src={scheduler.logoUrl} alt="Logo" className="h-12 mb-4" />
+            <Image
+              src={scheduler.logoUrl}
+              alt="Logo"
+              width={48}
+              height={48}
+              className="h-12 w-auto mb-4"
+              unoptimized
+            />
           )}
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{scheduler.name}</h1>
           {scheduler.description && (

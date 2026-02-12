@@ -47,13 +47,14 @@ export interface InboxMessagesResponse {
 }
 
 export interface InboxFilters {
-    source?: 'campaign' | 'workflow' | 'direct' | 'all';
+    source?: 'campaign' | 'workflow' | 'sequence' | 'direct' | 'all';
     campaign?: string;
     workflow?: string;
     sentiment?: "positive" | "neutral" | "negative";
     assignedTo?: string;
     isRead?: boolean;
     search?: string;
+    replied?: boolean;
     page?: number;
     limit?: number;
 }
@@ -82,6 +83,7 @@ export const getInboxStats = async (
         all: number;
         campaigns: number;
         workflows: number;
+        sequences: number;
         direct: number;
         unread: number;
     };
@@ -207,6 +209,12 @@ export const getGroupedInbox = async (workspaceId: string): Promise<{
             emails: any[];
         }>;
         workflows: Array<{
+            id: string;
+            name: string;
+            count: number;
+            emails: any[];
+        }>;
+        sequences: Array<{
             id: string;
             name: string;
             count: number;

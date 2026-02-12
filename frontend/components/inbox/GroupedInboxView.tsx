@@ -10,6 +10,7 @@ import {
     EnvelopeIcon,
     EnvelopeOpenIcon,
     ChatBubbleLeftRightIcon,
+    QueueListIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
 
@@ -39,13 +40,20 @@ interface GroupedInboxViewProps {
             conversations?: Conversation[];
             emails?: any[];
         }>;
+        sequences: Array<{
+            id: string;
+            name: string;
+            count: number;
+            conversations?: Conversation[];
+            emails?: any[];
+        }>;
         direct: Conversation[] | any[];
     };
     onConversationClick: (conversation: Conversation) => void;
 }
 
 export function GroupedInboxView({ groupedData, onConversationClick }: GroupedInboxViewProps) {
-    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['campaigns', 'workflows', 'direct']));
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['campaigns', 'workflows', 'sequences', 'direct']));
     const [expandedSubdivisions, setExpandedSubdivisions] = useState<Set<string>>(new Set());
 
     const toggleSection = (section: string) => {
@@ -210,6 +218,8 @@ export function GroupedInboxView({ groupedData, onConversationClick }: GroupedIn
         sum + getConversations(c).length, 0);
     const totalWorkflowConversations = groupedData.workflows.reduce((sum, w) =>
         sum + getConversations(w).length, 0);
+    const totalSequenceConversations = (groupedData.sequences || []).reduce((sum, s) =>
+        sum + getConversations(s).length, 0);
     const totalDirectConversations = getDirectConversations().length;
 
     return (
@@ -358,6 +368,77 @@ export function GroupedInboxView({ groupedData, onConversationClick }: GroupedIn
                 </div>
             )}
 
+            {/* Sequences Section */}
+            {(groupedData.sequences || []).length > 0 && (
+                <div className="bg-white dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/50 overflow-hidden">
+                    <button
+                        onClick={() => toggleSection('sequences')}
+                        className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                        <motion.div
+                            animate={{ rotate: expandedSections.has('sequences') ? 90 : 0 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <ChevronRightIcon className="w-4 h-4 text-zinc-400" />
+                        </motion.div>
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center">
+                            <QueueListIcon className="w-4 h-4 text-white" />
+                        </div>
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">Sequences</span>
+                        <span className="ml-auto px-2 py-0.5 text-xs font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-700 rounded-full">
+                            {totalSequenceConversations} conversations
+                        </span>
+                    </button>
+
+                    <AnimatePresence>
+                        {expandedSections.has('sequences') && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden border-t border-zinc-100 dark:border-zinc-700/50"
+                            >
+                                {(groupedData.sequences || []).map((sequence) => {
+                                    const conversations = getConversations(sequence);
+                                    return (
+                                        <div key={sequence.id} className="border-b border-zinc-100 dark:border-zinc-700/50 last:border-0">
+                                            <button
+                                                onClick={() => toggleSubdivision(sequence.id)}
+                                                className="w-full px-6 py-2.5 flex items-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors text-left"
+                                            >
+                                                <motion.div
+                                                    animate={{ rotate: expandedSubdivisions.has(sequence.id) ? 90 : 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                >
+                                                    <ChevronRightIcon className="w-3.5 h-3.5 text-zinc-400" />
+                                                </motion.div>
+                                                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{sequence.name}</span>
+                                                <span className="ml-auto text-xs text-zinc-400">{conversations.length}</span>
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {expandedSubdivisions.has(sequence.id) && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        className="bg-zinc-50/50 dark:bg-zinc-900/50 px-2 py-2"
+                                                    >
+                                                        {conversations.map((conv, idx) => (
+                                                            <ConversationItem key={conv.contactId} conversation={conv} index={idx} />
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
+                                    );
+                                })}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            )}
             {/* Direct Section */}
             {getDirectConversations().length > 0 && (
                 <div className="bg-white dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700/50 overflow-hidden">

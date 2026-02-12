@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,8 +21,9 @@ import {
   EnvelopeIcon,
   CheckCircleIcon,
   XMarkIcon,
+  MagnifyingGlassIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-import { ClipboardList, Eye, FileText, Users } from "lucide-react";
 import { getForms, deleteForm, createForm, Form } from "@/lib/api/form";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -124,137 +125,95 @@ const FORM_TEMPLATES = [
   },
 ];
 
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+// Status indicator colors
+const STATUS_COLORS: Record<string, string> = {
+  published: "bg-emerald-500",
+  draft: "bg-zinc-400",
+  archived: "bg-zinc-300",
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
-};
-
-// Stat Card Component
-function StatCard({ icon: Icon, label, value, color }: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string | number;
-  color: string;
-}) {
-  return (
-    <motion.div
-      variants={itemVariants}
-      className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800"
-    >
-      <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", color)}>
-          <Icon className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{label}</p>
-          <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">{value}</p>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// Form Card Component
-function FormCard({ form, workspaceId, onDelete }: {
+// Form row component - matching campaign row style
+function FormRow({ form, workspaceId, onDelete }: {
   form: Form;
   workspaceId: string;
   onDelete: (id: string, e: React.MouseEvent) => void;
 }) {
   return (
     <motion.div
-      variants={itemVariants}
-      className="group rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 overflow-hidden hover:shadow-lg hover:border-zinc-200 dark:hover:border-zinc-700 transition-all"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="group flex items-center gap-4 py-4 border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors -mx-4 px-4 cursor-pointer"
     >
-      <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="block p-5">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1 min-w-0 pr-4">
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+      <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="flex items-center gap-4 flex-1 min-w-0">
+        {/* Status indicator */}
+        <div className={cn("w-2 h-2 rounded-full flex-shrink-0", STATUS_COLORS[form.status] || STATUS_COLORS.draft)} />
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3">
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
               {form.name}
-            </h3>
-            {form.description && (
-              <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{form.description}</p>
-            )}
+            </p>
+            <span className="text-xs text-zinc-400 capitalize">{form.status}</span>
           </div>
-          <span className={cn(
-            "px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0",
-            form.status === "published" && "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
-            form.status === "draft" && "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
-            form.status === "archived" && "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
-          )}>
-            {form.status === "published" && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
-            {form.status}
-          </span>
+          <div className="flex items-center gap-4 mt-1">
+            {form.description && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-md">
+                {form.description}
+              </p>
+            )}
+            <p className="text-xs text-zinc-400">
+              {form.fields.length} field{form.fields.length !== 1 ? 's' : ''} · {form.formType === "multi_step" ? "Multi-step" : "Single-step"}
+            </p>
+          </div>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="text-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
-            <EyeIcon className="w-4 h-4 text-blue-500 mx-auto mb-1" />
-            <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{form.stats.views.toLocaleString()}</p>
-            <p className="text-xs text-zinc-500">Views</p>
+        <div className="hidden sm:flex items-center gap-6 text-xs text-zinc-500">
+          <div className="text-center">
+            <p className="font-semibold text-zinc-900 dark:text-zinc-100">{form.stats.views.toLocaleString()}</p>
+            <p>views</p>
           </div>
-          <div className="text-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
-            <CheckCircleIcon className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
-            <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{form.stats.submissions.toLocaleString()}</p>
-            <p className="text-xs text-zinc-500">Submits</p>
+          <div className="text-center">
+            <p className="font-semibold text-zinc-900 dark:text-zinc-100">{form.stats.submissions.toLocaleString()}</p>
+            <p>submits</p>
           </div>
-          <div className="text-center p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
-            <ChartBarIcon className="w-4 h-4 text-amber-500 mx-auto mb-1" />
-            <p className="text-lg font-bold text-zinc-900 dark:text-zinc-100">{form.stats.conversionRate.toFixed(1)}%</p>
-            <p className="text-xs text-zinc-500">Rate</p>
+          <div className="text-center">
+            <p className="font-semibold text-emerald-500">{form.stats.conversionRate.toFixed(1)}%</p>
+            <p>rate</p>
           </div>
-        </div>
-
-        {/* Meta */}
-        <div className="flex items-center gap-2 mt-4">
-          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-            {form.fields.length} fields
-          </span>
-          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-            {form.formType === "multi_step" ? "Multi-step" : "Single-step"}
-          </span>
         </div>
       </Link>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 p-4 pt-0">
-        <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`} className="flex-1">
-          <button className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-full transition-colors">
+      {/* Actions - hover revealed */}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        <Link href={`/projects/${workspaceId}/forms/${form._id}/edit`}>
+          <button className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors" title="Edit">
             <PencilIcon className="w-4 h-4" />
-            Edit
           </button>
         </Link>
         <Link href={`/projects/${workspaceId}/forms/${form._id}/submissions`}>
-          <button className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors" title="Submissions">
+          <button className="p-1.5 text-zinc-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors" title="Submissions">
             <ClipboardDocumentListIcon className="w-4 h-4" />
           </button>
         </Link>
         {form.status === "published" && (
-          <Link
-            href={`/forms/${form._id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <button className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors" title="View">
+          <Link href={`/forms/${form._id}`} target="_blank" rel="noopener noreferrer">
+            <button className="p-1.5 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="View Live">
               <EyeIcon className="w-4 h-4" />
             </button>
           </Link>
         )}
         <button
           onClick={(e) => onDelete(form._id, e)}
-          className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-500 hover:text-red-600 transition-colors"
+          className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
           title="Delete"
         >
           <TrashIcon className="w-4 h-4" />
         </button>
       </div>
+
+      <ChevronRightIcon className="w-4 h-4 text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-400 transition-colors" />
     </motion.div>
   );
 }
@@ -266,18 +225,20 @@ export default function FormsPage() {
 
   const [forms, setForms] = useState<Form[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedStatus, setSelectedStatus] = useState<"all" | "draft" | "published" | "archived">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showTemplates, setShowTemplates] = useState(false);
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false);
   const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiReasoning, setAiReasoning] = useState<string | object | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const loadForms = async () => {
+  const loadForms = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await getForms(workspaceId, selectedStatus === "all" ? undefined : selectedStatus);
+      const response = await getForms(workspaceId);
       if (response.success) {
         setForms(response.data);
       }
@@ -287,27 +248,29 @@ export default function FormsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [workspaceId]);
 
   useEffect(() => {
     loadForms();
-  }, [workspaceId, selectedStatus]);
+  }, [loadForms]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setDeleteConfirmId(id);
+  };
 
-    if (!confirm("Are you sure you want to delete this form? This action cannot be undone.")) {
-      return;
-    }
-
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
     try {
-      await deleteForm(workspaceId, id);
+      await deleteForm(workspaceId, deleteConfirmId);
       toast.success("Form deleted successfully");
       loadForms();
     } catch (error) {
       console.error("Error deleting form:", error);
       toast.error("Failed to delete form");
+    } finally {
+      setDeleteConfirmId(null);
     }
   };
 
@@ -407,7 +370,7 @@ export default function FormsPage() {
 
         const createResponse = await createForm(workspaceId, newForm);
         if (createResponse.success) {
-          toast.success(`🎉 AI generated "${data.data.name}"!`);
+          toast.success(`AI generated "${data.data.name}"!`);
           setShowAIGenerator(false);
           setAiPrompt("");
           router.push(`/projects/${workspaceId}/forms/${createResponse.data._id}/edit`);
@@ -423,160 +386,192 @@ export default function FormsPage() {
     }
   };
 
-  const filteredForms = selectedStatus === "all" ? forms : forms.filter((f) => f.status === selectedStatus);
-  const totalViews = forms.reduce((sum, f) => sum + (f.stats?.views || 0), 0);
-  const totalSubmissions = forms.reduce((sum, f) => sum + (f.stats?.submissions || 0), 0);
-  const avgConversionRate = forms.length > 0
-    ? forms.reduce((sum, f) => sum + (f.stats?.conversionRate || 0), 0) / forms.length
-    : 0;
+  // Filter forms
+  const filteredForms = forms.filter((f) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      f.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || f.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Stats
+  const publishedCount = forms.filter(f => f.status === "published").length;
+  const draftCount = forms.filter(f => f.status === "draft").length;
+  const archivedCount = forms.filter(f => f.status === "archived").length;
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-4 sm:pb-6">
+          <div className="space-y-4 py-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-zinc-100 dark:bg-zinc-800 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-            <ClipboardList className="w-5 h-5 text-white" />
-          </div>
+    <div className="h-full overflow-y-auto">
+      {/* Hero Section */}
+      <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+        >
           <div>
-            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Forms</h1>
-            <p className="text-sm text-zinc-500">Create beautiful forms to capture leads</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadForms}
-            disabled={isLoading}
-            className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
-          >
-            <ArrowPathIcon className={cn("w-5 h-5", isLoading && "animate-spin")} />
-          </button>
-          <button
-            onClick={() => setShowAIGenerator(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-full transition-all"
-          >
-            <SparklesIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">Generate with AI</span>
-          </button>
-          <Link href={`/projects/${workspaceId}/forms/templates`}>
-            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-colors">
-              <DocumentDuplicateIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Templates</span>
-            </button>
-          </Link>
-          <Link href={`/projects/${workspaceId}/forms/new`}>
-            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-full transition-colors">
-              <PlusIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Create</span>
-            </button>
-          </Link>
-        </div>
-      </motion.div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-        {/* Stats */}
-        {forms.length > 0 && (
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-2 md:grid-cols-4 gap-4"
-          >
-            <StatCard icon={FileText} label="Total Forms" value={forms.length} color="bg-gradient-to-br from-blue-400 to-blue-600" />
-            <StatCard icon={Eye} label="Total Views" value={totalViews.toLocaleString()} color="bg-gradient-to-br from-cyan-400 to-cyan-600" />
-            <StatCard icon={Users} label="Submissions" value={totalSubmissions.toLocaleString()} color="bg-gradient-to-br from-emerald-400 to-emerald-600" />
-            <StatCard icon={ChartBarIcon} label="Avg. Rate" value={`${avgConversionRate.toFixed(1)}%`} color="bg-gradient-to-br from-amber-400 to-amber-600" />
-          </motion.div>
-        )}
-
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-zinc-500 mr-2">Filter:</span>
-          <div className="inline-flex p-1 rounded-full bg-zinc-100 dark:bg-zinc-800/50">
-            {(["all", "published", "draft", "archived"] as const).map((status) => {
-              const count = status === "all" ? forms.length : forms.filter((f) => f.status === status).length;
-              return (
-                <button
-                  key={status}
-                  onClick={() => setSelectedStatus(status)}
-                  className={cn(
-                    "px-4 py-1.5 text-sm font-medium rounded-full transition-all capitalize flex items-center gap-2",
-                    selectedStatus === status
-                      ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm"
-                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                  )}
-                >
-                  {status}
-                  <span className={cn(
-                    "px-1.5 py-0.5 text-xs rounded-full",
-                    selectedStatus === status
-                      ? "bg-zinc-100 dark:bg-zinc-600 text-zinc-600 dark:text-zinc-300"
-                      : "bg-zinc-200 dark:bg-zinc-700 text-zinc-500"
-                  )}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Forms Grid */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <div className="w-10 h-10 border-2 border-zinc-200 dark:border-zinc-700 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-sm text-zinc-500">Loading forms...</p>
-            </div>
-          </div>
-        ) : filteredForms.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-16 text-center"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
-              <DocumentTextIcon className="w-8 h-8 text-zinc-400" />
-            </div>
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
-              {selectedStatus === "all" ? "No forms yet" : `No ${selectedStatus} forms`}
-            </h3>
-            <p className="text-sm text-zinc-500 max-w-md mb-6">
-              {selectedStatus === "all"
-                ? "Get started by creating your first form from a template or build one from scratch"
-                : "Create a new form to see it here"}
+            <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+              Forms
+            </h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+              Create and manage forms to capture leads
             </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowTemplates(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full transition-colors"
-              >
-                <SparklesIcon className="w-4 h-4" />
-                Use a Template
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowAIGenerator(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all"
+            >
+              <SparklesIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">AI Generate</span>
+            </button>
+            <Link href={`/projects/${workspaceId}/forms/templates`}>
+              <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-all">
+                <DocumentDuplicateIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Templates</span>
               </button>
-              <Link href={`/projects/${workspaceId}/forms/new`}>
-                <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-full transition-colors">
-                  <PlusIcon className="w-4 h-4" />
-                  Create Blank Form
+            </Link>
+            <Link href={`/projects/${workspaceId}/forms/new`}>
+              <button className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm">
+                <PlusIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">New Form</span>
+              </button>
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* Stats Row */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mt-4 flex items-center gap-6"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{forms.length}</span>
+            <span className="text-sm text-zinc-500">total</span>
+          </div>
+          <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-2xl font-bold text-emerald-500">{publishedCount}</span>
+            <span className="text-sm text-zinc-500">published</span>
+          </div>
+          <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-zinc-400" />
+            <span className="text-2xl font-bold text-zinc-500">{draftCount}</span>
+            <span className="text-sm text-zinc-500">draft</span>
+          </div>
+          <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-700" />
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-zinc-300" />
+            <span className="text-2xl font-bold text-zinc-400">{archivedCount}</span>
+            <span className="text-sm text-zinc-500">archived</span>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Divider */}
+      <div className="mx-4 sm:mx-6 lg:mx-8 border-t border-zinc-200 dark:border-zinc-800" />
+
+      {/* Search & Filter */}
+      <div className="px-4 sm:px-6 lg:px-8 py-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4"
+        >
+          {/* Search */}
+          <div className="relative flex-1 max-w-sm">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search forms..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-zinc-50 dark:bg-zinc-800/50 border-0 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+            />
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2">
+            {(["all", "published", "draft", "archived"] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-full transition-all",
+                  statusFilter === status
+                    ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                )}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Forms List */}
+      <div className="px-8 pb-8">
+        {filteredForms.length === 0 ? (
+          forms.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-16"
+            >
+              <DocumentTextIcon className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-600 mb-4" />
+              <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">No forms yet</h3>
+              <p className="text-sm text-zinc-500 mb-6">Get started by creating your first form</p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => setShowTemplates(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                >
+                  <SparklesIcon className="w-4 h-4" />
+                  Use a Template
                 </button>
-              </Link>
+                <Link href={`/projects/${workspaceId}/forms/new`}>
+                  <button className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors">
+                    <PlusIcon className="w-4 h-4" />
+                    Create Form
+                  </button>
+                </Link>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="text-center py-12 text-zinc-500">
+              No forms match your search.
             </div>
-          </motion.div>
+          )
         ) : (
           <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
           >
             {filteredForms.map((form) => (
-              <FormCard key={form._id} form={form} workspaceId={workspaceId} onDelete={handleDelete} />
+              <FormRow key={form._id} form={form} workspaceId={workspaceId} onDelete={handleDelete} />
             ))}
           </motion.div>
         )}
@@ -589,31 +584,26 @@ export default function FormsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => !creatingFromTemplate && setShowTemplates(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-600 flex items-center justify-center">
-                    <SparklesIcon className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Choose a Template</h2>
-                    <p className="text-sm text-zinc-500">Start with a pre-built template</p>
-                  </div>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+                <div>
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Choose a Template</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">Start with a pre-built template</p>
                 </div>
                 <button
                   onClick={() => setShowTemplates(false)}
                   disabled={creatingFromTemplate}
-                  className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
+                  className="p-2 -m-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
                 >
                   <XMarkIcon className="w-5 h-5" />
                 </button>
@@ -629,17 +619,17 @@ export default function FormsPage() {
                         key={template.id}
                         whileHover={{ scale: 1.02 }}
                         className={cn(
-                          "p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 transition-all",
+                          "p-5 rounded-xl border border-zinc-100 dark:border-zinc-800 cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-600 transition-all",
                           creatingFromTemplate && "opacity-50 cursor-not-allowed"
                         )}
                         onClick={() => !creatingFromTemplate && createFromTemplate(template)}
                       >
-                        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br", template.color)}>
-                          <Icon className="w-6 h-6 text-white" />
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3 bg-gradient-to-br", template.color)}>
+                          <Icon className="w-5 h-5 text-white" />
                         </div>
                         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{template.name}</h3>
                         <p className="text-sm text-zinc-500 mb-3 line-clamp-2">{template.description}</p>
-                        <span className="px-2 py-1 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                        <span className="text-xs text-zinc-400">
                           {template.fields.length} fields
                         </span>
                       </motion.div>
@@ -659,27 +649,29 @@ export default function FormsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             onClick={() => !isGeneratingAI && setShowAIGenerator(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-xl w-full"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl max-w-xl w-full"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                    <SparklesIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Generate with AI</h2>
-                    <p className="text-sm text-zinc-500">Powered by Gemini 2.5 Pro ✨</p>
-                  </div>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+                <div>
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Generate with AI</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">Powered by Gemini 2.5 Pro</p>
                 </div>
+                <button
+                  onClick={() => setShowAIGenerator(false)}
+                  disabled={isGeneratingAI}
+                  className="p-2 -m-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
               </div>
 
               {/* Modal Content */}
@@ -692,7 +684,7 @@ export default function FormsPage() {
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     placeholder="Example: Lead capture form for a B2B SaaS company selling to enterprise HR teams..."
-                    className="w-full h-32 px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                    className="w-full h-32 px-4 py-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"
                     disabled={isGeneratingAI}
                   />
                 </div>
@@ -718,8 +710,8 @@ export default function FormsPage() {
 
                 {/* AI Reasoning */}
                 {aiReasoning && (
-                  <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                    <p className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-1">🧠 AI Reasoning</p>
+                  <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+                    <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">AI Reasoning</p>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
                       {typeof aiReasoning === 'string'
                         ? aiReasoning
@@ -733,18 +725,18 @@ export default function FormsPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3">
+              <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-3">
                 <button
                   onClick={() => setShowAIGenerator(false)}
                   disabled={isGeneratingAI}
-                  className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={generateWithAI}
                   disabled={isGeneratingAI || !aiPrompt.trim()}
-                  className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-full transition-all disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-zinc-900 dark:bg-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-100 rounded-lg transition-all disabled:opacity-50"
                 >
                   {isGeneratingAI ? (
                     <>
@@ -757,6 +749,43 @@ export default function FormsPage() {
                       Generate Form
                     </>
                   )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirmId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteConfirmId(null)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-2xl p-6 max-w-sm mx-4"
+            >
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-2">Delete Form</h3>
+              <p className="text-sm text-zinc-500 mb-6">Are you sure you want to delete this form? This action cannot be undone.</p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-all"
+                >
+                  Delete
                 </button>
               </div>
             </motion.div>

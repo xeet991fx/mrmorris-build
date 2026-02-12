@@ -61,13 +61,13 @@ export default function EmailIntegrationSection({
 
       if (expiredIntegrations.length > 0) {
         toast.error(
-          `⚠️ ${expiredIntegrations.length} integration${expiredIntegrations.length > 1 ? 's' : ''} expired. Agents may be paused.`,
+          `${expiredIntegrations.length} integration${expiredIntegrations.length > 1 ? 's' : ''} expired. Agents may be paused.`,
           { duration: 6000 }
         );
       } else if (expiringIntegrations.length > 0) {
         toast(
-          `🔔 ${expiringIntegrations.length} integration${expiringIntegrations.length > 1 ? 's' : ''} expiring soon.`,
-          { duration: 5000, icon: '⏰' }
+          `${expiringIntegrations.length} integration${expiringIntegrations.length > 1 ? 's' : ''} expiring soon.`,
+          { duration: 5000 }
         );
       }
     }
@@ -470,7 +470,10 @@ export default function EmailIntegrationSection({
                                 {/* Story 5.2 Task 9.4: Tooltip showing affected agents info */}
                                 <div className="absolute z-50 bottom-full left-0 mb-2 hidden group-hover:block">
                                   <div className="bg-popover border border-border rounded-lg shadow-lg p-3 min-w-[200px]">
-                                    <p className="text-xs text-red-400 font-medium mb-1">⚠️ Integration Expired</p>
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <ExclamationCircleIcon className="w-3.5 h-3.5 text-red-400" />
+                                      <p className="text-xs text-red-400 font-medium">Integration Expired</p>
+                                    </div>
                                     <p className="text-xs text-muted-foreground mb-2">
                                       Agents using this integration have been automatically paused. Check your notifications for details.
                                     </p>

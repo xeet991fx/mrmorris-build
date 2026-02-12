@@ -75,7 +75,7 @@ const NAV_SECTIONS = {
     items: [
       { label: "Email Account", icon: AtSymbolIcon, path: "email-accounts" },
       { label: "Inbox", icon: InboxStackIcon, path: "inbox" },
-      { label: "Calls", icon: PhoneArrowDownLeftIcon, path: "calls" },
+      // { label: "Calls", icon: PhoneArrowDownLeftIcon, path: "calls" },
       { label: "Meetings", icon: CalendarDaysIcon, path: "meetings" },
       { label: "Recordings", icon: VideoCameraIcon, path: "recordings" },
     ],
@@ -87,6 +87,11 @@ const NAV_SECTIONS = {
       // { label: "Agents", icon: CpuChipIcon, path: "agents" },
       { label: "Sequences", icon: EnvelopeOpenIcon, path: "sequences" },
       { label: "Workflows", icon: BoltIcon, path: "workflows" },
+    ],
+  },
+  management: {
+    label: "Management",
+    items: [
       { label: "Tasks", icon: CheckCircleIcon, path: "tasks" },
       { label: "Tickets", icon: TicketIcon, path: "tickets" },
     ],
@@ -95,8 +100,6 @@ const NAV_SECTIONS = {
     label: "Analytics",
     items: [
       { label: "Reports", icon: ChartBarSquareIcon, path: "reports" },
-      { label: "Analytics", icon: PresentationChartLineIcon, path: "analytics" },
-      { label: "Forecasting", icon: CurrencyDollarIcon, path: "forecasting" },
     ],
   },
 };
@@ -156,7 +159,7 @@ function WorkspacesLayoutContent({ children }: { children: React.ReactNode }) {
       }
     };
     loadWorkspaces();
-  }, []);
+  }, [fetchWorkspaces]);
 
   useEffect(() => {
     if (sidebarNavRef.current) {

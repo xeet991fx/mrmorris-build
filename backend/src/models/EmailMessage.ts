@@ -5,7 +5,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 // ============================================
 
 export type MessageSentiment = 'positive' | 'neutral' | 'negative' | 'out_of_office' | 'unsubscribe';
-export type EmailSource = 'campaign' | 'workflow' | 'direct';
+export type EmailSource = 'campaign' | 'workflow' | 'sequence' | 'direct';
 
 export interface IEmailMessage extends Document {
     // Source identification
@@ -18,6 +18,9 @@ export interface IEmailMessage extends Document {
     // Workflow fields (optional - only for workflow emails)
     workflowId?: Types.ObjectId;
     workflowEnrollmentId?: Types.ObjectId;
+
+    // Sequence fields (optional - only for sequence emails)
+    sequenceId?: Types.ObjectId;
 
     // Common required fields
     contactId: Types.ObjectId;
@@ -116,7 +119,7 @@ const emailMessageSchema = new Schema<IEmailMessage>(
         // Source identification
         source: {
             type: String,
-            enum: ['campaign', 'workflow', 'direct'],
+            enum: ['campaign', 'workflow', 'sequence', 'direct'],
             default: 'campaign',
             index: true,
         },
@@ -142,6 +145,13 @@ const emailMessageSchema = new Schema<IEmailMessage>(
         workflowEnrollmentId: {
             type: Schema.Types.ObjectId,
             ref: "WorkflowEnrollment",
+            index: true,
+        },
+
+        // Sequence fields (optional)
+        sequenceId: {
+            type: Schema.Types.ObjectId,
+            ref: "Sequence",
             index: true,
         },
 
@@ -337,6 +347,7 @@ emailMessageSchema.index({ workspaceId: 1, replied: 1, sentAt: -1 });
 emailMessageSchema.index({ threadId: 1 });
 emailMessageSchema.index({ campaignId: 1, sentAt: -1 });
 emailMessageSchema.index({ workflowId: 1, sentAt: -1 });
+emailMessageSchema.index({ sequenceId: 1, sentAt: -1 });
 emailMessageSchema.index({ trackingId: 1 });
 
 // ============================================
