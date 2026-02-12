@@ -935,19 +935,10 @@ router.get(
       // Generate JWT token
       const token = generateToken(user._id.toString());
 
-      const isProduction = process.env.NODE_ENV === "production";
-
-      // Set token as httpOnly cookie (not accessible via JavaScript)
-      res.cookie("auth_handoff", token, {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: "lax",
-        maxAge: 60 * 1000, // 60 seconds — short-lived handoff only
-        path: "/api/auth/session", // Only sent to the session exchange endpoint
-      });
-
-      // Redirect to frontend WITHOUT token in URL
-      res.redirect(`${process.env.FRONTEND_URL}/auth/callback`);
+      // Pass short-lived token via URL query parameter
+      // This avoids cross-origin cookie issues when frontend and backend
+      // are on different domains (e.g., Railway deployments)
+      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`);
     } catch (error) {
       logger.error("Google callback error", { error });
       res.redirect(
@@ -964,7 +955,8 @@ router.get(
  */
 router.post("/session", async (req: Request, res: Response) => {
   try {
-    const handoffToken = req.cookies?.auth_handoff;
+    // Accept token from request body (production) or cookie (legacy/local)
+    const handoffToken = req.body?.token || req.cookies?.auth_handoff;
 
     if (!handoffToken) {
       return res.status(401).json({

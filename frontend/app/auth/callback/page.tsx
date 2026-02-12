@@ -25,15 +25,22 @@ function AuthCallbackContent() {
       }
 
       try {
-        // Exchange the httpOnly cookie for a token via the session endpoint
-        // The auth_handoff cookie is sent automatically (withCredentials)
+        // Get token from URL query parameter (set by backend OAuth callback)
+        const token = searchParams.get("token");
+
+        if (!token) {
+          throw new Error("No authentication token received. Please try again.");
+        }
+
+        // Exchange the token via the session endpoint
         const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
         const response = await fetch(`${API_URL}/auth/session`, {
           method: "POST",
-          credentials: "include", // Send httpOnly cookies
+          credentials: "include", // Keep for backward compatibility
           headers: {
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({ token }),
         });
 
         if (!response.ok) {

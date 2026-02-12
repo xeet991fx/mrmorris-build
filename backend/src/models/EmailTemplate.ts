@@ -87,7 +87,7 @@ const emailTemplateSchema = new Schema<IEmailTemplate>(
 
         category: {
             type: String,
-            enum: ["welcome", "follow-up", "nurture", "promotion", "announcement", "custom"],
+            enum: ["welcome", "follow-up", "nurture", "promotion", "announcement", "outreach", "custom"],
             default: "custom",
         },
         description: {
@@ -139,7 +139,7 @@ emailTemplateSchema.statics.extractVariables = function (content: string): strin
 };
 
 // Virtual getter for backward compatibility
-emailTemplateSchema.virtual('bodyContent').get(function() {
+emailTemplateSchema.virtual('bodyContent').get(function () {
     return this.htmlContent || this.body;
 });
 

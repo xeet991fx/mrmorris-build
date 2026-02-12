@@ -159,8 +159,9 @@ router.get("/:workspaceId/email-templates/defaults", authenticate, async (req: A
         });
 
         if (existingDefaults.length === 0) {
-            // Create default templates
+            // Create default templates — includes core CRM + GTM outreach templates
             const defaultTemplates = [
+                // ── Core CRM Templates ──
                 {
                     name: "Welcome Email",
                     subject: "Welcome to {{company}}!",
@@ -193,6 +194,229 @@ router.get("/:workspaceId/email-templates/defaults", authenticate, async (req: A
                     category: "follow-up",
                     description: "A thank you email after a meeting or call",
                     thumbnailColor: "#8b5cf6",
+                },
+
+                // ── GTM Cold Outreach Templates ──
+                {
+                    name: "Cold Outreach — Spreadsheet Hell",
+                    subject: "Still tracking deals in Google Sheets?",
+                    body: `<p>Hey {{firstName}},</p>
+<p>Quick question: how are you tracking your sales pipeline right now?</p>
+<p>Most early-stage founders I talk to say some version of:</p>
+<ul>
+<li>"Google Sheets... it's a mess"</li>
+<li>"Notion, but nobody updates it"</li>
+<li>"Honestly, just my email inbox"</li>
+</ul>
+<p>Here's the problem: spreadsheets don't send follow-ups, they don't remind you to reach out, and they definitely don't update themselves after sales calls.</p>
+<p><strong>We built an AI-native CRM specifically for startup sales teams.</strong></p>
+<p>After every call, our AI:</p>
+<ul>
+<li>Auto-updates the deal (stage, next steps, notes)</li>
+<li>Creates follow-up tasks</li>
+<li>Drafts follow-up emails (you approve before sending)</li>
+<li>Schedules meetings</li>
+<li>Answers questions via chat: "Show me deals closing this month"</li>
+</ul>
+<p><strong>No more manual data entry. No more lost deals because someone forgot to follow up.</strong></p>
+<p>I'm looking for <strong>5 early-stage startups</strong> to pilot this for 30 days.</p>
+<p><strong>What you get:</strong></p>
+<ul>
+<li>Free setup (literally 48 hours to go live)</li>
+<li>AI that eliminates 80% of CRM busywork</li>
+<li>Weekly calls where you help shape the product</li>
+<li>Founder pricing if you convert: $99/month flat (not per user) for 6 months</li>
+</ul>
+<p><strong>What I need:</strong></p>
+<ul>
+<li>You're doing 20+ sales calls/month</li>
+<li>You use Gmail + Google Calendar (we integrate automatically)</li>
+<li>15 mins/week for feedback calls</li>
+</ul>
+<p>The deal: 30 days free. If it doesn't transform your sales process, we part ways. If it does, you lock in founder pricing forever.</p>
+<p>Interested? Reply "yes" and I'll send the pilot details.</p>
+<p>Best,<br>{{senderName}}</p>
+<p><em>P.S. — We're not trying to be Salesforce. We're built for founders who want a CRM that actually works for them, not against them.</em></p>`,
+                    category: "outreach",
+                    description: "Cold outreach targeting founders using spreadsheets for pipeline management",
+                    thumbnailColor: "#f59e0b",
+                },
+                {
+                    name: "Cold Outreach — Lost Deal Hook",
+                    subject: "That deal you just lost",
+                    body: `<p>{{firstName}},</p>
+<p>Real talk: have you ever lost a deal because someone on your team forgot to follow up?</p>
+<p>Or because you couldn't remember what was discussed on the call 2 weeks ago?</p>
+<p>Or because your pipeline was so disorganized you didn't realize the deal was slipping?</p>
+<p><strong>This happens to every early-stage startup using spreadsheets to manage sales.</strong></p>
+<p>We built an AI-native CRM that fixes this:</p>
+<ul>
+<li>✅ <strong>Auto-updates after every call</strong> — transcribes, extracts next steps, updates deal stage</li>
+<li>✅ <strong>Never miss follow-ups</strong> — AI creates tasks, drafts emails, schedules meetings</li>
+<li>✅ <strong>Chat-based interface</strong> — ask "show me stalled deals" → get instant answers</li>
+<li>✅ <strong>Built for speed</strong> — set up in 48 hours, not 1 month</li>
+</ul>
+<p>I'm running a <strong>30-day pilot with 5 startup teams</strong> to prove this works.</p>
+<p>You get:</p>
+<ul>
+<li>Free setup with Gmail, Calendar, Google Meet</li>
+<li>AI that eliminates spreadsheet chaos</li>
+<li>Weekly calls to shape the product</li>
+<li>Founder pricing: $99/month flat (first 6 months)</li>
+</ul>
+<p>I need:</p>
+<ul>
+<li>5-20 person team</li>
+<li>20+ sales calls/month</li>
+<li>Willingness to try something new</li>
+</ul>
+<p>If you're tired of losing deals to disorganization, reply "interested" and I'll send the pilot brief.</p>
+<p>{{senderName}}</p>`,
+                    category: "outreach",
+                    description: "Cold outreach using emotional hook about lost deals from poor follow-up",
+                    thumbnailColor: "#ef4444",
+                },
+                {
+                    name: "Cold Outreach — Follow-Up (No Response)",
+                    subject: "Re: Still tracking deals in Google Sheets?",
+                    body: `<p>Hey {{firstName}},</p>
+<p>Didn't hear back — totally get it, you're busy building {{company}}.</p>
+<p>One quick thing: if you're still managing deals in spreadsheets, I think you'd find our AI CRM genuinely useful. It auto-updates from calls and sends follow-ups — which is ironic, because that's exactly what I'm doing right now.</p>
+<p>If the timing's wrong, no worries. Reply "later" and I'll check back in 3 months.</p>
+<p>If the timing IS right, reply "yes" and I'll send you the pilot details (30 days free, 48-hour setup).</p>
+<p>{{senderName}}</p>`,
+                    category: "outreach",
+                    description: "Follow-up email for prospects who didn't respond to cold outreach",
+                    thumbnailColor: "#f97316",
+                },
+                {
+                    name: "Cold Outreach — Breakup Email",
+                    subject: "Should I close your file?",
+                    body: `<p>{{firstName}},</p>
+<p>I've reached out a couple times about our AI-native CRM for startups. Since I haven't heard back, I'm guessing the timing isn't right.</p>
+<p>No worries at all — I'll close your file for now.</p>
+<p>If things change and you want to explore this later, just reply to this email. The pilot offer still stands.</p>
+<p>Good luck with {{company}}. Rooting for you.</p>
+<p>{{senderName}}</p>`,
+                    category: "outreach",
+                    description: "Final follow-up — polite breakup email if no response after multiple touches",
+                    thumbnailColor: "#6b7280",
+                },
+                {
+                    name: "Cold Outreach — Pilot Offer",
+                    subject: "30-day free AI CRM pilot for {{company}}",
+                    body: `<p>Hey {{firstName}},</p>
+<p>Thanks for your interest in Clianta! Here's the pilot offer:</p>
+<p><strong>30-Day AI-Native CRM Pilot</strong></p>
+<p><strong>What you get:</strong></p>
+<ul>
+<li>Full CRM setup — contacts, deals, pipeline stages, custom fields</li>
+<li>AI that auto-updates deals from call transcripts</li>
+<li>Auto-created follow-up tasks and email drafts</li>
+<li>Chat interface — ask questions, get instant pipeline insights</li>
+<li>Gmail, Google Calendar, and Meet integration</li>
+<li>I personally set up your workspace (live in 48 hours)</li>
+<li>Weekly 15-minute feedback calls</li>
+</ul>
+<p><strong>What I need from you:</strong></p>
+<ul>
+<li>Your entire sales team uses Clianta during the pilot</li>
+<li>20+ sales calls/month as a team</li>
+<li>Brutally honest feedback</li>
+</ul>
+<p><strong>Success criteria by day 30:</strong></p>
+<ul>
+<li>80% less time on CRM admin</li>
+<li>Zero missed follow-ups</li>
+<li>Your team actually wants to keep using it</li>
+</ul>
+<p><strong>After day 30:</strong></p>
+<ul>
+<li>If you love it → Founder pricing: $99/month flat (not per user) for 6 months</li>
+<li>If it's close → We extend and iterate</li>
+<li>If it's not a fit → We part ways, no hard feelings</li>
+</ul>
+<p>Ready to get started? Reply and we'll schedule a 30-minute kickoff call.</p>
+<p>{{senderName}}</p>`,
+                    category: "outreach",
+                    description: "Detailed pilot offer to send after a prospect expresses interest",
+                    thumbnailColor: "#10b981",
+                },
+                {
+                    name: "Cold Outreach — LinkedIn Short DM",
+                    subject: "Quick question about {{company}}'s sales pipeline",
+                    body: `<p>Hey {{firstName}},</p>
+<p>Saw you're building {{company}}. Quick question: how does your team track your sales pipeline?</p>
+<p>Most founders at your stage say "Google Sheets" or "Notion" — which works until it doesn't.</p>
+<p>We built an AI-native CRM that auto-updates from calls, sends follow-ups, and runs your entire sales process on autopilot.</p>
+<p>Looking for 5 startups to pilot this for 30 days. Free setup, founder pricing ($99/month flat) if you love it.</p>
+<p>If you're doing 20+ sales calls/month and want to see what this looks like, happy to show you a quick demo.</p>
+<p>—{{senderName}}</p>`,
+                    category: "outreach",
+                    description: "Short LinkedIn-style DM for cold outreach to founders",
+                    thumbnailColor: "#0077b5",
+                },
+                {
+                    name: "Post-Call — Thank You + Next Steps",
+                    subject: "Great chatting, {{firstName}} — next steps",
+                    body: `<p>Hey {{firstName}},</p>
+<p>Thanks for taking the time to chat today — really enjoyed learning about what you're building at {{company}}.</p>
+<p>Quick recap of what we discussed:</p>
+<ul>
+<li>Your current pipeline setup and the challenges your team is facing</li>
+<li>How Clianta's AI auto-updates deals from calls, creates follow-ups, and eliminates CRM admin</li>
+<li>The 30-day pilot program (free setup, founder pricing)</li>
+</ul>
+<p><strong>Next steps:</strong></p>
+<ol>
+<li>I'll send you the pilot agreement (takes 2 minutes to review)</li>
+<li>We'll schedule a 30-minute kickoff call</li>
+<li>I'll have your workspace set up within 48 hours</li>
+</ol>
+<p>If you have any questions in the meantime, just reply to this email.</p>
+<p>Talk soon,<br>{{senderName}}</p>`,
+                    category: "outreach",
+                    description: "Post-qualification-call email with recap and next steps",
+                    thumbnailColor: "#8b5cf6",
+                },
+                {
+                    name: "Cold Outreach — Meeting Request",
+                    subject: "15 mins to fix {{company}}'s sales pipeline?",
+                    body: `<p>Hey {{firstName}},</p>
+<p>I know you're busy building {{company}}, so I'll keep this short.</p>
+<p>We built an AI-native CRM that:</p>
+<ul>
+<li>Auto-updates deals from call transcripts (no manual logging)</li>
+<li>Creates follow-up tasks and drafts emails automatically</li>
+<li>Lets you chat with your pipeline: "Show me stalled deals" → instant answer</li>
+</ul>
+<p>I'm looking for 5 early-stage startups to pilot this for 30 days (free).</p>
+<p>Do you have 15 minutes this week for a quick call? I'll show you the product and we can see if it's a fit for your team.</p>
+<p>No pitch, no pressure — if it's not useful, I'll tell you.</p>
+<p>{{senderName}}</p>`,
+                    category: "outreach",
+                    description: "Short cold email requesting a 15-minute qualification call",
+                    thumbnailColor: "#3b82f6",
+                },
+                {
+                    name: "Cold Outreach — Post-Funding Congratulations",
+                    subject: "Congrats on the raise, {{firstName}}! 🎉",
+                    body: `<p>Hey {{firstName}},</p>
+<p>Congrats on {{company}}'s recent funding round — that's awesome! 🎉</p>
+<p>I'm reaching out because this is usually the moment when the spreadsheet-as-CRM approach starts breaking. You're hiring, scaling outreach, and suddenly "the Google Sheet" can't keep up.</p>
+<p>We built an AI-native CRM for exactly this moment:</p>
+<ul>
+<li>AI auto-updates deals from every sales call</li>
+<li>Follow-ups never get forgotten (AI creates tasks + drafts emails)</li>
+<li>Chat-based: "Show me deals closing this month" → instant answer</li>
+<li>Set up in 48 hours, not 48 days</li>
+</ul>
+<p>I'm running a 30-day pilot with 5 startup teams. Free setup, I do everything. Founder pricing ($99/month flat) if you love it.</p>
+<p>Worth a 15-minute chat?</p>
+<p>{{senderName}}</p>`,
+                    category: "outreach",
+                    description: "Cold outreach triggered by a company's recent funding announcement",
+                    thumbnailColor: "#eab308",
                 },
             ];
 

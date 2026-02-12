@@ -36,6 +36,7 @@ interface EmailTemplate {
 const CATEGORY_COLORS: Record<string, string> = {
     welcome: "text-emerald-500",
     "follow-up": "text-blue-500",
+    outreach: "text-amber-500",
     nurture: "text-purple-500",
     promotion: "text-orange-500",
     announcement: "text-pink-500",
@@ -43,6 +44,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const CATEGORIES = [
+    { value: "outreach", label: "Outreach" },
     { value: "welcome", label: "Welcome" },
     { value: "follow-up", label: "Follow-up" },
     { value: "nurture", label: "Nurture" },
@@ -356,8 +358,8 @@ export default function EmailTemplatesPage() {
                 const templatesData = Array.isArray(data.data?.templates)
                     ? data.data.templates
                     : Array.isArray(data.data)
-                    ? data.data
-                    : [];
+                        ? data.data
+                        : [];
                 setTemplates(templatesData);
             }
         } catch (error) {
