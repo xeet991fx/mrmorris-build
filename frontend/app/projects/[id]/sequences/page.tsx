@@ -506,12 +506,18 @@ function SequenceEditor({
     const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
     const [enrollmentFilter, setEnrollmentFilter] = useState<string>("all");
 
-    // Settings
-    const [unenrollOnReply, setUnenrollOnReply] = useState(sequence.settings?.unenrollOnReply ?? true);
-    const [sendOnWeekends, setSendOnWeekends] = useState(sequence.settings?.sendOnWeekends ?? false);
-    const [sendWindowStart, setSendWindowStart] = useState(sequence.settings?.sendWindowStart || "09:00");
-    const [sendWindowEnd, setSendWindowEnd] = useState(sequence.settings?.sendWindowEnd || "17:00");
-    const [timezone, setTimezone] = useState(sequence.settings?.timezone || "UTC");
+    // Settings (backend stores these at root level, not nested under settings)
+    const [unenrollOnReply, setUnenrollOnReply] = useState((sequence as any).unenrollOnReply ?? sequence.settings?.unenrollOnReply ?? true);
+    const [sendOnWeekends, setSendOnWeekends] = useState((sequence as any).sendOnWeekends ?? sequence.settings?.sendOnWeekends ?? false);
+    const [sendWindowStart, setSendWindowStart] = useState((sequence as any).sendWindowStart || sequence.settings?.sendWindowStart || "09:00");
+    const [sendWindowEnd, setSendWindowEnd] = useState((sequence as any).sendWindowEnd || sequence.settings?.sendWindowEnd || "17:00");
+    const [timezone, setTimezone] = useState((sequence as any).timezone || sequence.settings?.timezone || "UTC");
+    const [threadEmails, setThreadEmails] = useState(true);
+    const [senderSignature, setSenderSignature] = useState(true);
+    const [exitCriteria, setExitCriteria] = useState<string[]>(
+        unenrollOnReply ? ["reply_received"] : []
+    );
+    const [exitCriteriaOpen, setExitCriteriaOpen] = useState(false);
 
     useEffect(() => {
         setHasChanges(true);
@@ -548,7 +554,7 @@ function SequenceEditor({
                 body: "",
                 delayDays: 1,
                 delayHours: 0,
-            },
+            } as any,
         ]);
     };
 
@@ -560,6 +566,27 @@ function SequenceEditor({
 
     const removeStep = (index: number) => setSteps(steps.filter((_, i) => i !== index));
 
+    // Convert frontend step format (delayDays/delayHours) to backend format (delay: {value, unit})
+    const convertStepsForBackend = (frontendSteps: SequenceStep[]) => {
+        return frontendSteps.map((step: any) => {
+            const delayDays = step.delayDays || 0;
+            const delayHours = step.delayHours || 0;
+            // If step already has delay object, use it; otherwise convert from delayDays/delayHours
+            const delay = step.delay && step.delay.value !== undefined
+                ? step.delay
+                : delayDays > 0
+                    ? { value: delayDays, unit: 'days' as const }
+                    : { value: delayHours || 1, unit: 'hours' as const };
+            return {
+                id: step.id,
+                type: step.type || 'email',
+                subject: step.subject || '',
+                body: step.body || '',
+                delay,
+            };
+        });
+    };
+
     const handleSave = async () => {
         if (!name.trim()) {
             toast.error("Sequence name is required");
@@ -567,12 +594,18 @@ function SequenceEditor({
         }
         setIsSaving(true);
         try {
-            await updateSequence(workspaceId, sequence._id, {
+            // Send settings at root level (backend model stores them at root, not nested)
+            const payload: any = {
                 name,
                 description,
-                steps,
-                settings: { unenrollOnReply, sendOnWeekends, sendWindowStart, sendWindowEnd, timezone },
-            });
+                steps: convertStepsForBackend(steps),
+                unenrollOnReply,
+                sendOnWeekends,
+                sendWindowStart,
+                sendWindowEnd,
+                timezone,
+            };
+            await updateSequence(workspaceId, sequence._id, payload);
             toast.success("Sequence saved");
             setHasChanges(false);
             onRefresh();
@@ -1095,14 +1128,32 @@ function SequenceEditor({
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-zinc-600 dark:text-zinc-400">Thread emails</span>
-                                    <button className="relative w-9 h-5 rounded-full bg-orange-500">
-                                        <span className="absolute top-0.5 left-[18px] w-4 h-4 rounded-full bg-white shadow-sm" />
+                                    <button
+                                        onClick={() => setThreadEmails(!threadEmails)}
+                                        className={cn(
+                                            "relative w-9 h-5 rounded-full transition-colors",
+                                            threadEmails ? "bg-orange-500" : "bg-zinc-300 dark:bg-zinc-600"
+                                        )}
+                                    >
+                                        <span className={cn(
+                                            "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform",
+                                            threadEmails ? "left-[18px]" : "left-0.5"
+                                        )} />
                                     </button>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs text-zinc-600 dark:text-zinc-400">Include sender signature</span>
-                                    <button className="relative w-9 h-5 rounded-full bg-orange-500">
-                                        <span className="absolute top-0.5 left-[18px] w-4 h-4 rounded-full bg-white shadow-sm" />
+                                    <button
+                                        onClick={() => setSenderSignature(!senderSignature)}
+                                        className={cn(
+                                            "relative w-9 h-5 rounded-full transition-colors",
+                                            senderSignature ? "bg-orange-500" : "bg-zinc-300 dark:bg-zinc-600"
+                                        )}
+                                    >
+                                        <span className={cn(
+                                            "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform",
+                                            senderSignature ? "left-[18px]" : "left-0.5"
+                                        )} />
                                     </button>
                                 </div>
                             </div>
@@ -1114,23 +1165,82 @@ function SequenceEditor({
                         <div>
                             <div className="flex items-center justify-between mb-3">
                                 <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Exit criteria</h4>
-                                <button className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
-                                    <PlusIcon className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setExitCriteriaOpen(!exitCriteriaOpen)}
+                                        className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                                    >
+                                        <PlusIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                    {exitCriteriaOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-[5]" onClick={() => setExitCriteriaOpen(false)} />
+                                            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg z-10 py-1">
+                                                {[
+                                                    { key: "meeting_booked", label: "Meeting booked" },
+                                                    { key: "link_clicked", label: "Link clicked" },
+                                                    { key: "email_opened", label: "Email opened" },
+                                                ].filter(c => !exitCriteria.includes(c.key)).map((criterion) => (
+                                                    <button
+                                                        key={criterion.key}
+                                                        onClick={() => {
+                                                            setExitCriteria([...exitCriteria, criterion.key]);
+                                                            setExitCriteriaOpen(false);
+                                                        }}
+                                                        className="w-full text-left px-3 py-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+                                                    >
+                                                        {criterion.label}
+                                                    </button>
+                                                ))}
+                                                {["meeting_booked", "link_clicked", "email_opened"].every(k => exitCriteria.includes(k)) && (
+                                                    <p className="px-3 py-1.5 text-xs text-zinc-400">All criteria added</p>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
-                            <div
-                                className={cn(
-                                    "flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors",
-                                    unenrollOnReply
-                                        ? "bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30"
-                                        : "bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"
-                                )}
-                                onClick={() => setUnenrollOnReply(!unenrollOnReply)}
-                            >
-                                <ArrowPathIcon className={cn("w-4 h-4", unenrollOnReply ? "text-orange-500" : "text-zinc-400")} />
-                                <span className={cn("text-xs font-medium", unenrollOnReply ? "text-orange-700 dark:text-orange-400" : "text-zinc-500")}>
-                                    Reply received
-                                </span>
+                            <div className="space-y-1.5">
+                                <div
+                                    className={cn(
+                                        "flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors",
+                                        unenrollOnReply
+                                            ? "bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30"
+                                            : "bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700"
+                                    )}
+                                    onClick={() => setUnenrollOnReply(!unenrollOnReply)}
+                                >
+                                    <ArrowPathIcon className={cn("w-4 h-4", unenrollOnReply ? "text-orange-500" : "text-zinc-400")} />
+                                    <span className={cn("text-xs font-medium", unenrollOnReply ? "text-orange-700 dark:text-orange-400" : "text-zinc-500")}>
+                                        Reply received
+                                    </span>
+                                </div>
+                                {exitCriteria.filter(c => c !== "reply_received").map((criterion) => {
+                                    const labels: Record<string, string> = {
+                                        meeting_booked: "Meeting booked",
+                                        link_clicked: "Link clicked",
+                                        email_opened: "Email opened",
+                                    };
+                                    return (
+                                        <div
+                                            key={criterion}
+                                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30 cursor-pointer transition-colors"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircleIcon className="w-4 h-4 text-orange-500" />
+                                                <span className="text-xs font-medium text-orange-700 dark:text-orange-400">
+                                                    {labels[criterion] || criterion}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={() => setExitCriteria(exitCriteria.filter(c => c !== criterion))}
+                                                className="text-orange-400 hover:text-red-500 transition-colors"
+                                            >
+                                                <XMarkIcon className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>

@@ -1,0 +1,301 @@
+﻿Architecting the Flexible CRM: A Paradigm Shift from Relational Constraints to NoSQL Event-Driven Architectures
+Executive Summary
+The enterprise software landscape is currently witnessing a fundamental divergence in data management philosophies, particularly within the domain of Customer Relationship Management (CRM). Historically, CRM systems were architected upon the rigid foundations of Relational Database Management Systems (RDBMS), where the schema was law. Tables were predefined, relationships were codified in foreign keys, and reporting was a direct byproduct of Structured Query Language (SQL) joins.1 However, the modern market demand for hyper-customization—where end-users expect to define their own data objects, attributes, and workflows on the fly—has rendered traditional Third Normal Form (3NF) architectures obsolete for high-growth platforms.
+The user's directive—"we are using nonqsl database so chnage the approch"—signals a critical architectural pivot. It acknowledges that while NoSQL databases (such as MongoDB, DynamoDB, or Cassandra) solve the "ingestion problem" of handling polymorphic, user-defined data structures, they introduce a severe "consumption problem" regarding complex analytics.1 Specifically, generating standard CRM reports like Time in Stage, Funnel Conversion, and Historical Trend Analysis becomes exponentially computationally expensive in document stores compared to their relational ancestors.4
+This report presents a comprehensive architectural blueprint for building a next-generation CRM on a NoSQL foundation. It argues that the solution is not merely a change in database technology, but a shift in architectural topology. We must move from a monolithic "Query-the-Source" model to a Split-Stack Event-Driven Architecture. By adopting a Graph-Relational "Particle" Data Model for the operational layer 6 and implementing a Change Data Capture (CDC) pipeline to feed a high-performance Columnar OLAP Engine (like ClickHouse) 8, organizations can achieve the best of both worlds: infinite flexibility for the user and sub-second analytical precision for the business. Furthermore, this architecture lays the necessary groundwork for "Universal Context"—the integration of AI and vector embeddings for semantic intelligence—by establishing rigorous patterns for data consistency and event sourcing.10
+________________
+1. The Core Data Model: Bridging Flexibility and Structure
+The primary allure of NoSQL in a CRM context is the ability to handle "artisanal data"—unique, irregular data structures defined by the end-user rather than the database administrator.11 In a relational world, adding a custom field to a "Contact" often requires an ALTER TABLE command, which can lock the database and force a schema migration—a non-starter for multi-tenant SaaS platforms serving thousands of distinct businesses.12 However, a naive implementation of NoSQL (e.g., simply dumping JSON blobs) leads to a "schema-less" chaos that makes indexing and reporting nearly impossible. To "change the approach" effectively, one must adopt a disciplined structural pattern that mimics the flexibility of an Entity-Attribute-Value (EAV) model without incurring its traditional performance penalties.14
+1.1 The "Particle" Concept and Graph-Relational Hybridity
+Next-generation CRMs like Attio utilize a "Particle" data model, which effectively treats every data point—whether a standard field like "Name" or a custom field like "Churn Risk"—as an independent, addressable entity.6 This model diverges significantly from the document-oriented approach of "nesting everything." Instead, it adopts a graph-relational hybrid philosophy. In this paradigm, "Objects" (like Companies or Deals) and "Records" (specific instances) act merely as containers or nodes in a graph, while "Attributes" are the edges or properties that can be dynamically attached to these nodes.6
+This decoupling is critical. In a standard relational database, the "columns" are physically tied to the "table" storage on disk. In the "Particle" model implemented on NoSQL, the definition of what constitutes a "Deal" is separated from the storage of the deal's data.
+1.1.1 The Meta-Schema Layer
+Before storing any actual customer data, the system must maintain a rigorous meta-layer that defines the ontology of the CRM. This is the "blueprint" that prevents the NoSQL store from becoming a "data swamp."
+
+
+Component
+	Function
+	Traditional SQL Approach
+	NoSQL "Particle" Implementation Pattern
+	Object Definition
+	Defines entities (e.g., "Company", "Deal").
+	CREATE TABLE deals (...)
+	A SystemObjects collection storing metadata: { _id: "obj_deal", name: "Deal", attributes: ["attr_1", "attr_2"] }.16
+	Attribute Definition
+	Defines the "columns" (e.g., "Amount", "Stage").
+	Columns in a table definition.
+	A SystemAttributes collection. Each document defines data type, validation rules, and UI rendering hints.16
+	Relationship Definition
+	Defines links (e.g., "Deal belongs to Company").
+	Foreign Key Constraints.
+	Stored as a graph edge definition or a directed relationship attribute in the meta-layer.17
+	This meta-layer allows the application to validate data at the application logic level before writing to the flexible storage layer. It ensures that while the storage is schema-less (JSON), the application enforces a strict, evolving schema.18 This approach aligns with the "Schema-on-Read" philosophy but accelerates it by enforcing "Schema-on-Write" via the application layer to ensure data quality.2
+1.2 The Attribute Pattern for Record Storage
+For the actual storage of records (the millions of contacts or deals), the "Attribute Pattern" is the industry standard for high-performance NoSQL systems, particularly in MongoDB and DynamoDB.19 The naive approach of using dynamic keys for custom fields is fundamentally flawed because it prevents efficient indexing.
+Naive Approach (Anti-Pattern):
+
+
+JSON
+
+
+
+
+{
+ "_id": "record_123",
+ "type": "contact",
+ "custom_field_sales_velocity": "High",
+ "custom_field_arr": 15000
+}
+
+Critique: In this model, the database engine cannot predict the field names. To query "ARR > 10,000," you must create a specific index on custom_field_arr. In a multi-tenant system with 10,000 tenants each having 50 custom fields, you would need 500,000 indexes—impossible for any database engine to sustain.21
+Recommended Approach (Attribute Pattern):
+
+
+JSON
+
+
+
+
+{
+ "_id": "record_123",
+ "type": "contact",
+ "attributes": [
+   { "k": "attr_status", "v": "Active", "type": "string" },
+   { "k": "attr_arr", "v": 15000, "type": "number" },
+   { "k": "attr_segment", "v": "Enterprise", "type": "select" }
+ ]
+}
+
+Advantage: By pivoting the data structure, you can create a single compound multikey index on attributes.k and attributes.v. This allows for highly efficient querying of any attribute—standard or custom—without changing the database schema or adding new indexes.19 This mirrors the "vertical" partitioning strategies used in high-scale EAV implementations but is optimized for the locality of reference provided by document stores.1
+1.3 Handling Relationships in NoSQL
+Traditional SQL relies on JOINs to connect tables. While MongoDB supports $lookup, it is performantly expensive for deep graphs (e.g., "Find all contacts who work for companies that have open deals > $100k").24 In a CRM, relationships are often recursive and non-hierarchical, resembling a network graph more than a strict hierarchy.25
+To solve this without a relational engine, the data model must embrace a Graph-Relational hybrid approach:
+1. Direct Linking (Denormalization): Store direct relationships (Parent/Child) on the document itself for O(1) access. For example, a "Deal" document should contain a company_id and a company_name snapshot to avoid a lookup for basic display.25
+2. Adjacency Lists: For many-to-many relationships (e.g., "Attendees in a Meeting"), maintain an array of reference IDs (related_ids:) within the document. This allows for efficient retrieval using the $in operator.25
+3. Graph Traversals: For complex queries, use $graphLookup in MongoDB to perform recursive searches. However, for true scale, the "changed approach" involves replicating relationship data to a dedicated graph store (like Neo4j) or using the graph capabilities of a multi-model database for the specific "relationship explorer" features of the CRM.26
+________________
+2. The Analytical Gap: Why NoSQL Struggles with CRM Reporting
+The user's query highlights a specific pain point: "we are using nonqsl database so chnage the approch." This almost certainly stems from the difficulty of generating Time in Stage and Funnel reports. These are standard features in any Salesforce or HubSpot dashboard but are notoriously difficult to implement on a raw NoSQL backend.4
+2.1 The Mutability Problem and "Time in Stage"
+Standard NoSQL document stores are excellent at storing the current state of an object. If a Deal moves from "Negotiation" to "Closed Won," the stage field is updated. The previous state is overwritten.
+* The Consequence: You cannot calculate "Time in Stage" because the entry time for the previous stage is lost. You only know where the deal is, not where it was or how long it stayed there.4
+* The Relational Solution (Contrast): In a data warehouse, you might use Slowly Changing Dimensions (SCD Type 2) to track these changes.
+* The NoSQL Failure Mode: Developers often try to embed a "history" array inside the main document:
+JSON
+{
+ "stage": "Won",
+ "history":
+}
+
+While this preserves data, it leads to the "unbounded array" antipattern. As history grows, the document size explodes, slowing down every read operation and eventually hitting the 16MB document limit in MongoDB.27 Furthermore, querying across these embedded arrays to calculate averages across millions of documents requires unwinding the arrays, which is a memory-intensive blocking operation.24
+2.2 The Aggregation Limit and Funnel Analysis
+Calculating a Sales Funnel requires analyzing sequences of events. You must find all users who did Step A, then Step B, then Step C, in that specific order, often within a specific time window.
+   * Computational Complexity: In MongoDB, this requires a complex aggregation pipeline involving $match, $sort (to order events by time), $group (to reconstruct user sessions), and complex logical filtering.29
+   * Memory Constraints: MongoDB's aggregation framework processes data in RAM. Sorting millions of events to find sequences usually exceeds the 100MB memory limit, forcing the operation to spill to disk, which degrades performance by orders of magnitude.24
+   * Operational Risk: Running such heavy analytical queries on the same database node serving live user traffic (OLTP) creates "noisy neighbor" problems. A single report generation can spike CPU usage, causing latency for sales reps trying to load their deal boards.24
+Therefore, the "changed approach" must inevitably lead to the conclusion that the NoSQL database cannot be the engine for these reports. It must remain the "System of Record" while offloading the "System of Analysis" to a specialized engine.8
+________________
+3. Architectural Solution: The Modern Data Stack (MDS) for CRM
+To deliver "Attio-level" reporting on a NoSQL base, the architecture must separate the System of Record (Operational/Transactional) from the System of Analysis (Reporting). This is an implementation of the Command Query Responsibility Segregation (CQRS) pattern, adapted for data infrastructure.
+3.1 The "State Change" Audit Log
+The first requirement is to never discard history. In a NoSQL CRM, every update to a record must generate a "shadow" record or an entry in an audit log. This is the foundation of Event Sourcing.31
+Implementation Pattern:
+When a user updates a Deal Stage via the API:
+   1. Update the main Deal document (for fast UI retrieval).
+   2. Insert a document into a StageHistory collection (or AuditLog).
+Structure of a History Document:
+
+
+JSON
+
+
+
+
+{
+ "_id": "evt_999",
+ "entity_id": "deal_123",
+ "attribute_changed": "stage",
+ "old_value": "Negotiation",
+ "new_value": "Closed Won",
+ "timestamp": "2023-10-27T10:00:00Z",
+ "user_id": "user_456",
+ "tenant_id": "tenant_abc"
+}
+
+This collection becomes the immutable source of truth for all "Time in Stage" reporting. Unlike embedded arrays, this collection scales horizontally via sharding without impacting the size of the main Deal object.31
+3.2 The OLTP to OLAP Pipeline (CDC)
+Querying the StageHistory collection directly in MongoDB is still inefficient for complex aggregations over millions of rows. The "changed approach" mandates streaming this data to a Columnar Store (e.g., ClickHouse, Snowflake, or BigQuery) which is mathematically optimized for the "scan-and-aggregate" operations required by reporting.8
+The Architecture:
+
+
+Layer
+	Technology
+	Role
+	Source
+	MongoDB / DynamoDB
+	OLTP: Handles CRUD operations and serves the user interface. Optimized for row-based reads.33
+	Connector
+	Debezium / Mongo Change Streams
+	CDC: Listens to the database's internal operation log (Oplog). Every insert/update is captured as an event.8
+	Transport
+	Apache Kafka / Redpanda
+	Buffer: Decouples the database from the warehouse. Ensures events are ordered and durable even if the warehouse is down.24
+	Sink
+	ClickHouse / Tinybird
+	OLAP: Ingests events into columnar tables. Optimized for aggregations (SUM, AVG) over billions of rows.35
+	3.3 Why ClickHouse?
+The choice of the analytical engine is critical. Reports like "Funnels" and "Cohorts" require scanning entire columns of data (e.g., "scan all timestamps for stage changes"). Row-oriented NoSQL databases must scan every entire document to get these fields, resulting in massive I/O overhead. Column-oriented databases scan only the relevant columns, often compressing similar data together for massive speed gains.
+   * Performance: ClickHouse can be 4-6x cheaper and significantly faster than competitors for this specific workload.35
+   * Native JSON Support: Recent updates allow ClickHouse to ingest MongoDB's nested JSON data directly, flattening dynamic attributes into queryable maps or distinct columns automatically.37 This is crucial for the "Attribute Pattern" described in Section 1.2, as it allows analysts to query attributes['arr'] using SQL without complex ETL logic.
+________________
+4. Algorithmic Implementation of Key CRM Metrics
+With the split architecture (NoSQL for App, Columnar for Stats) established, we can define the precise logic for the requested reports. These algorithms leverage the specific strengths of the OLAP layer.
+4.1 Report 1: Time in Stage
+Objective: Calculate the average, median, and maximum time deals spend in each pipeline stage.
+Data Source: The StageHistory table in the OLAP store.
+Algorithmic Approach:
+   1. Sort history events by entity_id and timestamp.
+   2. Lead/Lag Calculation: For each event, calculate the difference between its timestamp and the timestamp of the next event for the same entity.
+   * TimeInStage = NextEvent.Timestamp - CurrentEvent.Timestamp
+   3. Handle "Current" Stage: If a record has no "next" event (it is currently in that stage), use NOW() as the end timestamp for the calculation.4
+   4. Aggregation: Group by StageName and perform AVG(TimeInStage).
+Handling Edge Cases:
+   * Re-entry: A deal might go A -> B -> A. The logic must treat these as separate instances or sum them depending on business logic. The event sourcing model naturally captures this as distinct rows, whereas a "current state" model would lose the first visit to A.
+   * Business Hours: A naive subtraction includes weekends. Advanced reporting requires a calendar-aware function to subtract non-business hours, usually implemented via User Defined Functions (UDFs) in the OLAP layer.
+SQL Implementation Concept (ClickHouse syntax):
+
+
+SQL
+
+
+
+
+SELECT
+   stage_name,
+   AVG(duration_seconds) as avg_time_in_stage
+FROM (
+   SELECT
+       new_value as stage_name,
+       timestamp,
+       LEAD(timestamp, 1, NOW()) OVER (PARTITION BY entity_id ORDER BY timestamp) as exit_time,
+       dateDiff('second', timestamp, exit_time) as duration_seconds
+   FROM stage_history_events
+)
+GROUP BY stage_name
+
+Note: This approach is infinitely more performant in a columnar store than trying to reconstruct history from a mutable NoSQL document or running $setWindowFields on a busy MongoDB cluster.38
+4.2 Report 2: Funnel Analysis
+Objective: Visualization of conversion rates between defined steps (e.g., Lead -> MQL -> SQL -> Won).
+The Challenge: Funnels in CRMs are not always linear. A user might skip a stage. A simple "Group By Stage" count is insufficient because it doesn't track the flow.
+Algorithmic Approach (Window Functions):
+   1. Define the Goal: A sequence of steps   .
+   2. Sessionization: Group events by entity_id.
+   3. Scan for Sequence:
+      * Find the timestamp of the first occurrence of   .
+      * Look for    where    within a predefined window (e.g., 30 days).
+      * Look for    where   .
+         4. Attribution:
+         * Conversion Rate = (Count of Entities reaching   ) / (Count of Entities starting at   ).5
+         * Drop-off Point: Identify the step with the highest loss.
+NoSQL vs. OLAP Implementation:
+            * In MongoDB: Requires complex $lookup self-joins or $graphLookup which are slow and difficult to maintain.29
+            * In ClickHouse: Uses efficient windowFunnel() functions specifically designed to look for timestamped sequences in arrays of events. This single function call replaces hundreds of lines of application code and executes in milliseconds over massive datasets.38
+Table 3: Comparison of Funnel Calculation Architectures
+Feature
+	MongoDB Aggregation
+	OLAP (ClickHouse)
+	Logic Location
+	Application / Query Pipeline
+	Database Engine Function (windowFunnel)
+	Complexity
+	High (Self-joins, unwinding arrays)
+	Low (Single function call)
+	Performance
+	O(N*M) - Scans docs multiple times
+	O(N) - Single pass over columnar data
+	Scalability
+	Struggles >1M events
+	Scales to billions of events
+	________________
+5. Future-Proofing: AI, Vector Search, and "Universal Context"
+The user's reference to Attio implies an interest in modern features like AI-driven data enrichment, which Attio calls "Universal Context".10 To replicate this in a custom NoSQL environment, the architecture must support Vector Embeddings and Semantic Indexing.
+5.1 Implementing Semantic Search
+Semantic search allows users to query concepts (e.g., "Find companies focused on sustainability") rather than just keywords. This requires transforming unstructured text (notes, emails, descriptions) into mathematical vectors.
+            1. Embedding Generation: Use an LLM (e.g., OpenAI, Cohere) to convert text data into vector embeddings (arrays of floating-point numbers).
+            2. Unified Storage: Store these vectors alongside the document in the NoSQL database. MongoDB Atlas, for instance, supports native Vector Search. This "Unified Architecture" is superior to a "Split Architecture" (where vectors live in Pinecone and data lives in Mongo) because it simplifies consistency and reduces latency.42
+            3. Hybrid Querying: By storing vectors in the same document as the metadata (e.g., attributes), you can perform hybrid queries: "Find companies similar to 'OpenAI' (Vector Search) AND located in 'San Francisco' (Metadata Filter)" in a single database operation.43
+5.2 The "Transactional Outbox" for Consistency
+A critical risk in AI-enhanced CRMs is Data Drift—where the search index (vector) implies one thing, but the record (text) says another. This happens if the embedding update fails after the text update succeeds. In distributed systems, this is known as a failure of External Consistency.45
+To achieve consistency in a NoSQL environment:
+            1. Atomic Transactions: When a user updates a record, the application must write the new text AND the instruction to update the vector in the same atomic transaction.42
+            2. Outbox Pattern:
+            * Inside the transaction, insert a task into an Outbox collection: { task: "update_embedding", record_id: "123", new_text: "..." }.
+            * A separate background worker monitors this Outbox. It calls the AI API, generates the vector, and updates the record.
+            * If the process fails, it retries. The transaction guarantees the task is never lost, ensuring that the AI layer is eventually consistent with the transactional layer.34
+This pattern prevents "ghost documents" where the search results point to non-existent or outdated data, a common failure mode in split-stack AI implementations.42
+________________
+6. Multi-Tenancy and Scale
+For a SaaS CRM, data isolation and scalability are paramount. The choice of NoSQL database heavily influences the multi-tenancy strategy.
+6.1 Isolation Models
+            1. Pool Model (Shared Collection): All tenants share a collection, distinguished by a tenant_id field. This is the most cost-effective and easiest to manage but carries the risk of data leakage if the application layer fails to filter correctly.47
+            2. Silo Model (Database-per-Tenant): One database per tenant. This offers the highest security and isolation but is operationally complex to manage (migrations, backups) and resource-intensive.22
+            3. Hybrid (Recommended): Use sharding (in MongoDB) where the Shard Key includes the tenant_id. This physically groups a tenant's data on specific chunks or servers while maintaining a single logical collection for ease of management. This "Zone Sharding" allows you to isolate large enterprise tenants on dedicated hardware without fragmenting the database logical schema.47
+6.2 Managing Indexing at Scale
+In the Pool Model, indexing becomes a challenge. A generic index on attributes.v works well for sparse data. However, for high-frequency attributes (e.g., "Status"), creating a compound index { tenant_id: 1, attributes.k: 1, attributes.v: 1 } is essential. This ensures that a query for Tenant A does not scan Tenant B's data, preserving performance as the platform scales.19
+________________
+Conclusion: The Roadmap to Transformation
+Transitioning a NoSQL-based CRM to a high-performance, report-rich platform requires a fundamental shift in perspective. The "database" can no longer be viewed as a single monolithic container for all data needs. Instead, the architecture must evolve into a Data Platform where:
+            1. NoSQL (MongoDB/DynamoDB) serves as the flexible, user-facing transactional layer, using the Attribute Pattern to handle dynamic schemas without chaos.
+            2. Columnar Storage (ClickHouse) serves as the rigid, high-speed analytical layer, fed by Change Data Capture streams to enable "Time in Stage" and "Funnel" reports that are impossible to run efficiently on document stores.
+            3. Event Sourcing principles ensure that no historical data is ever lost, enabling "time-travel" debugging and deep historical trend analysis.
+            4. Vector Search is integrated via atomic transactions and outbox patterns to provide the semantic intelligence expected of modern tools.
+By adopting this split-stack, event-driven approach, the system can achieve the infinite flexibility of a "Particle" data model while delivering the rigorous analytical insights of a traditional SQL warehouse. This is the "change in approach" required to satisfy the user's requirements in a post-relational world.
+Works cited
+            1. NoSQL design for DynamoDB - AWS Documentation, accessed on February 13, 2026, https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-general-nosql-design.html
+            2. What is a Flexible Data Model? | MongoDB, accessed on February 13, 2026, https://www.mongodb.com/resources/basics/flexible-data-model
+            3. How To Design Schema For NoSQL Data Models - MongoDB, accessed on February 13, 2026, https://www.mongodb.com/resources/basics/databases/nosql-explained/data-modeling
+            4. Stage Duration - Zoho Cares, accessed on February 13, 2026, https://help.zoho.com/portal/en/community/topic/stage-duration
+            5. Understanding your sales funnel conversion rates - HiBob, accessed on February 13, 2026, https://www.hibob.com/blog/sales-funnel-conversion-rate/
+            6. Objects and lists - Attio Docs, accessed on February 13, 2026, https://docs.attio.com/docs/objects-and-lists
+            7. I'm the co-founder of Attio CRM. We just raised a $50 million Series B to build out the future of CRM. AMA. - Reddit, accessed on February 13, 2026, https://www.reddit.com/r/CRM/comments/1pd8fde/im_the_cofounder_of_attio_crm_we_just_raised_a_50/
+            8. MongoDB to ClickHouse Data Pipeline | by Youssefshebl | Medium, accessed on February 13, 2026, https://medium.com/@youssefshibl000/mongodb-to-clickhouse-data-pipeline-30652d83ef80
+            9. How to Stream MongoDB to ClickHouse in Real Time (No Code, No Kafka) - - BIX Tech, accessed on February 13, 2026, https://bix-tech.com/how-to-stream-mongodb-to-clickhouse-in-real-time-no-code-no-kafka/
+            10. Introducing Universal Context - Attio, accessed on February 13, 2026, https://attio.com/engineering/blog/introducing-universal-context
+            11. NoSQL Database Doesn't Mean No Schema | by Steven F. Lott | Capital One Tech | Medium, accessed on February 13, 2026, https://medium.com/capital-one-tech/nosql-database-doesnt-mean-no-schema-a824d591034e
+            12. Database Schema Migration: Understand, Optimize, Automate - Liquibase, accessed on February 13, 2026, https://www.liquibase.com/resources/guides/database-schema-migration
+            13. Schema Migration Scripts in NoSQL Databases - Stack Overflow, accessed on February 13, 2026, https://stackoverflow.com/questions/49330096/schema-migration-scripts-in-nosql-databases
+            14. Understanding the EAV data model and when to use it - Inviqa, accessed on February 13, 2026, https://inviqa.com/blog/understanding-eav-data-model-and-when-use-it
+            15. Should I Use Entity-Attribute-Value (EAV) Model for Dynamic Tables? : r/SQL - Reddit, accessed on February 13, 2026, https://www.reddit.com/r/SQL/comments/1lqz48r/should_i_use_entityattributevalue_eav_model_for/
+            16. Define your data model: objects, lists, and views | Attio Help Center, accessed on February 13, 2026, https://attio.com/help/reference/attio-101/attios-data-model/define-your-data-model-objects-lists-and-views
+            17. Graph Based Data Model in NoSQL - GeeksforGeeks, accessed on February 13, 2026, https://www.geeksforgeeks.org/dbms/graph-based-data-model-in-nosql/
+            18. Understanding objects | Attio Help Center, accessed on February 13, 2026, https://attio.com/help/reference/attio-101/attios-data-model/understanding-objects
+            19. Group Data with the Attribute Pattern - Database Manual - MongoDB Docs, accessed on February 13, 2026, https://www.mongodb.com/docs/manual/data-modeling/design-patterns/group-data/attribute-pattern/
+            20. How to Create MongoDB Attribute Patterns, accessed on February 13, 2026, https://oneuptime.com/blog/post/2026-01-30-mongodb-attribute-patterns/view
+            21. Amazon DynamoDB data modeling for Multi-Tenancy – Part 2 | AWS Database Blog, accessed on February 13, 2026, https://aws.amazon.com/blogs/database/amazon-dynamodb-data-modeling-for-multi-tenancy-part-2/
+            22. Multitenant SaaS database tenancy patterns - Azure - Microsoft Learn, accessed on February 13, 2026, https://learn.microsoft.com/en-us/azure/azure-sql/database/saas-tenancy-app-design-patterns?view=azuresql
+            23. Decoding Entity-Attribute-Value Model in Agile Enterprise Databases - Medium, accessed on February 13, 2026, https://medium.com/@dilsharahasanka/decoding-entity-attribute-value-model-in-agile-enterprise-databases-85bd1c191447
+            24. MongoDB Performance Optimization: Aggregation Pipelines | by ..., accessed on February 13, 2026, https://medium.com/platform-engineer/mongodb-performance-optimization-aggregation-pipelines-58c288be3b60
+            25. Using MongoDB As Graph Database: Use Cases, accessed on February 13, 2026, https://www.mongodb.com/resources/basics/databases/mongodb-graph-database
+            26. Graph NoSQL Database - BI / DW Insider, accessed on February 13, 2026, https://bi-insider.com/posts/graph-nosql-database/
+            27. Optimizing MongoDB Array Updates: Strategies, Benchmarks & Best Practices, accessed on February 13, 2026, https://procedure.tech/blogs/optimizing-mongodb-array-updates-strategies-benchmarks-best-practices
+            28. Implementing Knowledge Graphs with MongoDB - Pureinsights, accessed on February 13, 2026, https://pureinsights.com/blog/2023/implementing-knowledge-graphs-with-mongodb/
+            29. How to do funnel analysis | Metabase Learn, accessed on February 13, 2026, https://www.metabase.com/learn/grow-your-data-skills/business-analysis-methods/how-to-do-funnel-analysis
+            30. Mastering MongoDB Aggregation Framework for Complex Queries | by Bhuwan Mishra, accessed on February 13, 2026, https://medium.com/@bhuwanmishra_59371/mastering-mongodb-aggregation-framework-for-complex-queries-cb027a243381
+            31. A WiFi-Based Sensor Network for Flood Irrigation Control in Agriculture - MDPI, accessed on February 13, 2026, https://www.mdpi.com/2079-9292/10/20/2454
+            32. Pipeline visualization: How to visualize your pipeline data and processes using charts: graphs: and dashboards - FasterCapital, accessed on February 13, 2026, https://fastercapital.com/content/Pipeline-visualization--How-to-visualize-your-pipeline-data-and-processes-using-charts--graphs--and-dashboards.html
+            33. MongoDB vs. DynamoDB: A Comprehensive Comparative Analysis - Sprinkle Data, accessed on February 13, 2026, https://www.sprinkledata.com/blogs/mongodb-vs-dynamodb-11-major-differences
+            34. The Current Experience - Confluent Current, accessed on February 13, 2026, https://current.confluent.io/new-orleans/the-current-experience
+            35. ClickHouse vs Snowflake, accessed on February 13, 2026, https://clickhouse.com/comparison/snowflake
+            36. Fastest database for analytics in 2026 compared with benchmarks - Tinybird, accessed on February 13, 2026, https://www.tinybird.co/blog/fastest-database-for-analytics
+            37. MongoDB CDC to ClickHouse with Native JSON Support, now in ..., accessed on February 13, 2026, https://clickhouse.com/blog/mongodb-cdc-clickhouse-preview
+            38. How to speed up funnel analysis of e commerce system · SPLWare/esProc Wiki - GitHub, accessed on February 13, 2026, https://github.com/SPLWare/esProc/wiki/How-to-speed-up-funnel-analysis-of-e-commerce-system
+            39. mongodb - How do I aggregate and avg the time between two dates? - Stack Overflow, accessed on February 13, 2026, https://stackoverflow.com/questions/45990184/how-do-i-aggregate-and-avg-the-time-between-two-dates
+            40. $setWindowFields (aggregation stage) - Database Manual - MongoDB Docs, accessed on February 13, 2026, https://www.mongodb.com/docs/manual/reference/operator/aggregation/setwindowfields/
+            41. Understanding Funnel Conversion Rate: What It Is & How to Measure It | Klipfolio, accessed on February 13, 2026, https://www.klipfolio.com/resources/kpi-examples/digital-marketing/funnel-conversion-rate
+            42. Strategic Database Architecture For AI - Unified Vs. Split - MongoDB, accessed on February 13, 2026, https://www.mongodb.com/company/blog/technical/strategic-database-architecture-for-ai-unified-vs-split
+            43. Evaluating MongoDB Atlas Vector Search - SiliconANGLE, accessed on February 13, 2026, https://siliconangle.com/2023/12/04/evaluating-mongodb-atlas-vector-search/
+            44. Intro to Data Modeling for RAG with MongoDB Atlas Vector Search - YouTube, accessed on February 13, 2026, https://www.youtube.com/watch?v=MqNiHUMrE9Y
+            45. Latitude. Thinking in Spanner (Part I) | by Thomas F McGeehan V | Medium, accessed on February 13, 2026, https://medium.com/@tfmv/latitude-558dc30a500c
+            46. From Atomic DB Writes to Eventual Consistency: The Outbox Pattern | by Nate Lapinski, accessed on February 13, 2026, https://medium.com/@natelapinski/atomic-transactions-with-the-outbox-pattern-db0b71059f3b
+            47. Build a Multi-Tenant Architecture for MongoDB Vector Search - Atlas, accessed on February 13, 2026, https://www.mongodb.com/docs/atlas/atlas-vector-search/multi-tenant-architecture/
+            48. Multi-tenancy and MongoDB. Many organizations develop multi-tenant… | by Mike LaSpina - Medium, accessed on February 13, 2026, https://medium.com/mongodb/multi-tenancy-and-mongodb-5658512ed398
