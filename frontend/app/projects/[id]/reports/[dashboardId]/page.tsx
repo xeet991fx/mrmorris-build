@@ -11,14 +11,18 @@ import {
     ChartBarSquareIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
+import toast from "react-hot-toast";
 import {
     getReportDashboard,
     updateReportDashboard,
     addReportWidget,
+    updateReportWidget,
     removeReportWidget,
+    duplicateReportWidget,
 } from "@/lib/api/reportDashboards";
-import ReportWidget from "@/components/reports/ReportWidget";
+import ReportWidget, { renderReportChart } from "@/components/reports/ReportWidget";
 import AddReportModal from "@/components/reports/AddReportModal";
+import ReportFullscreenModal from "@/components/reports/ReportFullscreenModal";
 
 export default function DashboardViewPage() {
     const params = useParams();
@@ -31,6 +35,12 @@ export default function DashboardViewPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editName, setEditName] = useState("");
+    const [editMode, setEditMode] = useState(false);
+    const [reportToEdit, setReportToEdit] = useState<any>(null);
+
+    // Fullscreen state
+    const [fullscreenReport, setFullscreenReport] = useState<any>(null);
+    const [showFullscreen, setShowFullscreen] = useState(false);
 
     const loadDashboard = useCallback(async () => {
         try {
@@ -52,19 +62,46 @@ export default function DashboardViewPage() {
     const handleAddReport = async (reportData: any) => {
         try {
             await addReportWidget(workspaceId, dashboardId, reportData);
-            loadDashboard();
-        } catch (err) {
+            await loadDashboard();
+            toast.success("Report added successfully");
+        } catch (err: any) {
             console.error("Error adding report:", err);
+            toast.error(err?.response?.data?.error || "Failed to add report");
         }
     };
 
     const handleRemoveReport = async (reportId: string) => {
         try {
             await removeReportWidget(workspaceId, dashboardId, reportId);
-            loadDashboard();
-        } catch (err) {
+            await loadDashboard();
+            toast.success("Report removed successfully");
+        } catch (err: any) {
             console.error("Error removing report:", err);
+            toast.error(err?.response?.data?.error || "Failed to remove report");
         }
+    };
+
+    const handleEditReport = (report: any) => {
+        setReportToEdit(report);
+        setEditMode(true);
+        setShowAddModal(true);
+    };
+
+    const handleUpdateReport = async (reportId: string, reportData: any) => {
+        try {
+            await updateReportWidget(workspaceId, dashboardId, reportId, reportData);
+            await loadDashboard();
+            toast.success("Report updated successfully");
+        } catch (err: any) {
+            console.error("Error updating report:", err);
+            toast.error(err?.response?.data?.error || "Failed to update report");
+        }
+    };
+
+    const handleCloseModal = () => {
+        setShowAddModal(false);
+        setEditMode(false);
+        setReportToEdit(null);
     };
 
     const handleToggleFavorite = async () => {
@@ -72,9 +109,11 @@ export default function DashboardViewPage() {
             await updateReportDashboard(workspaceId, dashboardId, {
                 isFavorite: !dashboard.isFavorite,
             });
-            loadDashboard();
-        } catch (err) {
+            await loadDashboard();
+            toast.success(dashboard.isFavorite ? "Removed from favorites" : "Added to favorites");
+        } catch (err: any) {
             console.error("Error toggling favorite:", err);
+            toast.error(err?.response?.data?.error || "Failed to update dashboard");
         }
     };
 
@@ -88,11 +127,38 @@ export default function DashboardViewPage() {
                 name: editName.trim(),
             });
             setEditing(false);
-            loadDashboard();
-        } catch (err) {
+            await loadDashboard();
+            toast.success("Dashboard renamed successfully");
+        } catch (err: any) {
             console.error("Error renaming:", err);
+            toast.error(err?.response?.data?.error || "Failed to rename dashboard");
         }
     };
+
+    // ─── P2 Handlers ───────────────────────────────────────────
+
+    const handleDuplicateReport = async (reportId: string) => {
+        try {
+            await duplicateReportWidget(workspaceId, dashboardId, reportId);
+            await loadDashboard();
+            toast.success("Report duplicated");
+        } catch (err: any) {
+            console.error("Error duplicating report:", err);
+            toast.error(err?.response?.data?.error || "Failed to duplicate report");
+        }
+    };
+
+    const handleFullscreen = (report: any) => {
+        setFullscreenReport(report);
+        setShowFullscreen(true);
+    };
+
+    const handleCloseFullscreen = () => {
+        setShowFullscreen(false);
+        setFullscreenReport(null);
+    };
+
+    // ─── Render ────────────────────────────────────────────────
 
     if (loading) {
         return (
@@ -263,18 +329,35 @@ export default function DashboardViewPage() {
                                 key={report._id || i}
                                 report={report}
                                 workspaceId={workspaceId}
+                                onEdit={handleEditReport}
                                 onRemove={handleRemoveReport}
+                                onDuplicate={handleDuplicateReport}
+                                onFullscreen={handleFullscreen}
                             />
                         ))}
                     </motion.div>
                 )}
             </div>
 
-            {/* Add Report Modal */}
+            {/* Add/Edit Report Modal */}
             <AddReportModal
                 isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
+                onClose={handleCloseModal}
                 onAdd={handleAddReport}
+                onUpdate={handleUpdateReport}
+                workspaceId={workspaceId}
+                editMode={editMode}
+                existingReport={reportToEdit}
+            />
+
+            {/* Fullscreen Report Modal */}
+            <ReportFullscreenModal
+                isOpen={showFullscreen}
+                onClose={handleCloseFullscreen}
+                report={fullscreenReport}
+                reports={dashboard?.reports || []}
+                workspaceId={workspaceId}
+                renderChart={renderReportChart}
             />
         </div>
     );

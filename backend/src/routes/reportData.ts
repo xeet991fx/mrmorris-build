@@ -21,6 +21,7 @@ import ContactLifecycleHistory from "../models/ContactLifecycleHistory";
 import CallRecording from "../models/CallRecording";
 import FormSubmission from "../models/FormSubmission";
 import { Types } from "mongoose";
+import { ReportQueryEngine } from "../services/ReportQueryEngine";
 
 const router = Router();
 
@@ -1696,8 +1697,16 @@ router.post(
     async (req: AuthRequest, res: Response) => {
         try {
             const { workspaceId } = req.params;
-            const { type, config = {} } = req.body;
+            const { type, config = {}, definition } = req.body;
 
+            // New: Dynamic Report Query Engine
+            if (definition) {
+                const engine = new ReportQueryEngine();
+                const data = await engine.execute(definition, workspaceId);
+                return res.json({ type: definition.type, data, custom: true });
+            }
+
+            // Legacy: Backward compatible with existing report types
             if (!type) {
                 return res.status(400).json({ error: "Report type is required" });
             }
@@ -1738,6 +1747,34 @@ router.post(
         } catch (error) {
             console.error("Error fetching report data:", error);
             res.status(500).json({ error: "Failed to fetch report data" });
+        }
+    }
+);
+
+// ─── DRILL-DOWN ENDPOINT ────────────────────────────────
+router.post(
+    "/:workspaceId/report-data/drill-down",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            if (!workspaceId) {
+                return res.status(400).json({ error: "Workspace ID required" });
+            }
+
+            const { definition, context } = req.body;
+
+            if (!definition) {
+                return res.status(400).json({ error: "Report definition is required" });
+            }
+
+            const engine = new ReportQueryEngine();
+            const result = await engine.executeDrillDown(definition, new Types.ObjectId(workspaceId), context || {});
+
+            res.json(result);
+        } catch (error) {
+            console.error("Error executing drill-down:", error);
+            res.status(500).json({ error: "Failed to fetch drill-down data" });
         }
     }
 );

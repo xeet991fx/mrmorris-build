@@ -122,7 +122,8 @@
       "Bash(fi)",
       "Bash(if [ -f \"LEGACY_AGENT_BUILDER.md\" ])",
       "Bash(then mv LEGACY_AGENT_BUILDER.md docs/legacy/)",
-      "Bash(xargs basename:*)"
+      "Bash(xargs basename:*)",
+      "Bash(git -C \"C:\\\\app\\\\morrisB\" log --oneline --graph --decorate -10)"
     ],
     "deny": [],
     "ask": []

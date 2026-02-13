@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+/**
+ * AddReportModal - Data-First Report Builder
+ *
+ * Attio-inspired workflow:
+ * 1. Report Type → 2. Data Source → 3. Metric → 4. Dimensions → 5. Filters → 6. Visualization (Auto-suggested)
+ */
+
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     XMarkIcon,
@@ -9,287 +16,347 @@ import {
     FunnelIcon,
     ClockIcon,
     ArrowsRightLeftIcon,
-    EnvelopeIcon,
-    TrophyIcon,
-    MapPinIcon,
-    CurrencyDollarIcon,
-    ExclamationTriangleIcon,
-    BoltIcon,
-    Squares2X2Icon,
-    MegaphoneIcon,
-    UserGroupIcon,
-    PhoneIcon,
-    CalendarDaysIcon,
-    ClipboardDocumentCheckIcon,
+    ChevronRightIcon,
+    ChevronLeftIcon,
+    PlusIcon,
+    TrashIcon,
 } from "@heroicons/react/24/outline";
+import { getReportSources, getReportData } from "@/lib/api/reportDashboards";
+import { adaptReportData } from "@/lib/reportDataAdapters";
+import FilterBuilder, { FilterCondition, SourceAttribute, Relationship } from "./FilterBuilder";
+import ReportWidget from "./ReportWidget";
 
-// Icon component wrapper for consistent sizing and color
-function ReportIcon({ icon: Icon, color }: { icon: React.ElementType; color: string }) {
-    return (
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
-            <Icon className="w-4 h-4" />
-        </div>
-    );
+interface ReportSource {
+    entity: string;
+    label: string;
+    attributes: SourceAttribute[];
+    customFields: SourceAttribute[];
+    pipelines?: Pipeline[];
+    relationships?: (Relationship & { foreignField?: string })[];
+    supportsEvents: boolean;
 }
 
-// Available report types with their metadata
-const REPORT_TYPES = [
-    // ── Pipeline & Deals ─────────────────────────
-    {
-        type: "insight",
-        label: "Insight",
-        description: "Real-time KPI metric",
-        category: "Pipeline & Deals",
-        defaultChart: "number",
-        icon: ChartBarSquareIcon,
-        color: "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400",
-        metrics: [
-            { value: "pipeline_value", label: "Pipeline Value" },
-            { value: "win_rate", label: "Win Rate" },
-            { value: "open_deals", label: "Open Deals" },
-            { value: "revenue_won", label: "Revenue Won" },
-            { value: "total_contacts", label: "Total Contacts" },
-            { value: "total_companies", label: "Total Companies" },
-            { value: "emails_sent", label: "Emails Sent" },
-            { value: "open_rate", label: "Open Rate" },
-            { value: "click_rate", label: "Click Rate" },
-            { value: "reply_rate", label: "Reply Rate" },
-            { value: "open_tasks", label: "Open Tasks" },
-            { value: "open_tickets", label: "Open Tickets" },
-        ],
-    },
-    {
-        type: "historical",
-        label: "Historical",
-        description: "Metric trend over time with moving averages",
-        category: "Pipeline & Deals",
-        defaultChart: "line",
-        icon: ArrowTrendingUpIcon,
-        color: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
-        metrics: [
-            { value: "revenue", label: "Revenue" },
-            { value: "deals_created", label: "Deals Created" },
-            { value: "contacts_created", label: "Contacts Created" },
-        ],
-    },
-    {
-        type: "funnel",
-        label: "Funnel",
-        description: "Pipeline conversion rates with dropoff analysis",
-        category: "Pipeline & Deals",
-        defaultChart: "funnel",
-        icon: FunnelIcon,
-        color: "bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400",
-        metrics: [],
-    },
-    {
-        type: "time_in_stage",
-        label: "Time in Stage",
-        description: "Median & P90 durations with bottleneck detection",
-        category: "Pipeline & Deals",
-        defaultChart: "bar",
-        icon: ClockIcon,
-        color: "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400",
-        metrics: [
-            { value: "avg", label: "Average" },
-            { value: "min", label: "Minimum" },
-            { value: "max", label: "Maximum" },
-        ],
-    },
-    {
-        type: "stage_changed",
-        label: "Stage Changed",
-        description: "Deal transitions per period with velocity",
-        category: "Pipeline & Deals",
-        defaultChart: "bar",
-        icon: ArrowsRightLeftIcon,
-        color: "bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400",
-        metrics: [],
-    },
-    {
-        type: "forecast",
-        label: "Forecast",
-        description: "Revenue projections with pipeline coverage & gap analysis",
-        category: "Pipeline & Deals",
-        defaultChart: "bar",
-        icon: CurrencyDollarIcon,
-        color: "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
-        metrics: [],
-    },
-    {
-        type: "at_risk",
-        label: "At-Risk Deals",
-        description: "Multi-factor risk scoring (inactivity, overdue, aging)",
-        category: "Pipeline & Deals",
-        defaultChart: "table",
-        icon: ExclamationTriangleIcon,
-        color: "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400",
-        metrics: [],
-    },
-    {
-        type: "deal_velocity",
-        label: "Deal Velocity",
-        description: "Pipeline velocity formula, sales cycle by stage & source",
-        category: "Pipeline & Deals",
-        defaultChart: "number",
-        icon: BoltIcon,
-        color: "bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400",
-        metrics: [],
-    },
-    {
-        type: "deal_cohort",
-        label: "Deal Cohort",
-        description: "Monthly cohort analysis — win rate & revenue trends",
-        category: "Pipeline & Deals",
-        defaultChart: "bar",
-        icon: CalendarDaysIcon,
-        color: "bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400",
-        metrics: [
-            { value: "6", label: "Last 6 Months" },
-            { value: "12", label: "Last 12 Months" },
-        ],
-    },
+interface Pipeline {
+    id: string;
+    name: string;
+    stages: { id: string; name: string; order: number }[];
+}
 
-    // ── People & Activity ────────────────────────
-    {
-        type: "top_performers",
-        label: "Top Performers",
-        description: "Leaderboard with win rates & rankings",
-        category: "People & Activity",
-        defaultChart: "table",
-        icon: TrophyIcon,
-        color: "bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400",
-        metrics: [
-            { value: "deals", label: "By Deals" },
-            { value: "revenue", label: "By Revenue" },
-            { value: "emails", label: "By Emails" },
-        ],
-    },
-    {
-        type: "lead_sources",
-        label: "Lead Sources",
-        description: "Source breakdown with conversion tracking",
-        category: "People & Activity",
-        defaultChart: "pie",
-        icon: MapPinIcon,
-        color: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400",
-        metrics: [],
-    },
-    {
-        type: "lifecycle_funnel",
-        label: "Lifecycle Funnel",
-        description: "Subscriber → MQL → SQL → Customer with SLA tracking",
-        category: "People & Activity",
-        defaultChart: "funnel",
-        icon: UserGroupIcon,
-        color: "bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400",
-        metrics: [],
-    },
-    {
-        type: "activity_breakdown",
-        label: "Activity Breakdown",
-        description: "Activity volume by type, user & day×hour heatmap",
-        category: "People & Activity",
-        defaultChart: "bar",
-        icon: Squares2X2Icon,
-        color: "bg-lime-50 dark:bg-lime-900/20 text-lime-600 dark:text-lime-400",
-        metrics: [],
-    },
 
-    // ── Outreach & Communication ─────────────────
-    {
-        type: "email",
-        label: "Email Activity",
-        description: "Engagement rates per period with trend analysis",
-        category: "Outreach & Communication",
-        defaultChart: "bar",
-        icon: EnvelopeIcon,
-        color: "bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400",
-        metrics: [],
-    },
-    {
-        type: "campaign_performance",
-        label: "Campaign Performance",
-        description: "Sequence analytics — open/click/reply/bounce rates & sentiment",
-        category: "Outreach & Communication",
-        defaultChart: "table",
-        icon: MegaphoneIcon,
-        color: "bg-fuchsia-50 dark:bg-fuchsia-900/20 text-fuchsia-600 dark:text-fuchsia-400",
-        metrics: [],
-    },
-    {
-        type: "call_insights",
-        label: "Call Insights",
-        description: "BANT coverage, sentiment, objections vs commitments",
-        category: "Outreach & Communication",
-        defaultChart: "bar",
-        icon: PhoneIcon,
-        color: "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400",
-        metrics: [],
-    },
 
-    // ── Productivity ─────────────────────────────
-    {
-        type: "task_productivity",
-        label: "Task Productivity",
-        description: "Completion rates, overdue analysis, by priority & assignee",
-        category: "Productivity",
-        defaultChart: "bar",
-        icon: ClipboardDocumentCheckIcon,
-        color: "bg-stone-50 dark:bg-stone-900/20 text-stone-600 dark:text-stone-400",
-        metrics: [],
-    },
-];
-
-const CHART_TYPES = [
-    { value: "number", label: "Number Card", icon: "#" },
-    { value: "bar", label: "Bar Chart", icon: "▌" },
-    { value: "line", label: "Line Chart", icon: "╱" },
-    { value: "pie", label: "Pie Chart", icon: "◕" },
-    { value: "funnel", label: "Funnel", icon: "▽" },
-    { value: "table", label: "Table", icon: "☰" },
-];
+interface ReportDefinition {
+    type: "insight" | "funnel" | "time_in_stage" | "historical" | "stage_changed";
+    source: string;
+    metric: {
+        field: string;
+        aggregation: string;
+    };
+    groupBy?: string;
+    segmentBy?: string;
+    period?: "day" | "week" | "month" | "quarter" | "year";
+    periodComparison?: boolean;
+    filters?: FilterCondition[];
+    dateRange?: {
+        field: string;
+        start?: Date;
+        end?: Date;
+    };
+    pipelineId?: string;
+    includedStages?: string[];
+}
 
 interface AddReportModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (report: { type: string; title: string; chartType: string; config: any; position: any }) => void;
+    onAdd: (report: any) => void;
+    onUpdate?: (reportId: string, report: any) => void;
+    workspaceId: string;
+    editMode?: boolean;
+    existingReport?: any;
 }
 
-export default function AddReportModal({ isOpen, onClose, onAdd }: AddReportModalProps) {
-    const [selectedType, setSelectedType] = useState<typeof REPORT_TYPES[0] | null>(null);
-    const [chartType, setChartType] = useState("number");
-    const [metric, setMetric] = useState("");
+const REPORT_TYPES = [
+    {
+        type: "insight",
+        label: "Insight",
+        description: "Real-time snapshot of current state",
+        icon: ChartBarSquareIcon,
+        color: "bg-blue-50 text-blue-600",
+    },
+    {
+        type: "funnel",
+        label: "Funnel",
+        description: "Conversion rates through stages",
+        icon: FunnelIcon,
+        color: "bg-violet-50 text-violet-600",
+    },
+    {
+        type: "time_in_stage",
+        label: "Time in Stage",
+        description: "Velocity/efficiency analysis",
+        icon: ClockIcon,
+        color: "bg-amber-50 text-amber-600",
+    },
+    {
+        type: "historical",
+        label: "Historical",
+        description: "Time-series of metric changes",
+        icon: ArrowTrendingUpIcon,
+        color: "bg-emerald-50 text-emerald-600",
+    },
+    {
+        type: "stage_changed",
+        label: "Stage Changed",
+        description: "Flow/throughput analysis",
+        icon: ArrowsRightLeftIcon,
+        color: "bg-cyan-50 text-cyan-600",
+    },
+];
+
+export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, workspaceId, editMode = false, existingReport }: AddReportModalProps) {
+    // UI State - keeping step for now during transition
+    const [step, setStep] = useState(1);
+
+    const [reportType, setReportType] = useState<string | null>(null);
+    const [sources, setSources] = useState<ReportSource[]>([]);
+    const [selectedSource, setSelectedSource] = useState<ReportSource | null>(null);
+    const [selectedMetric, setSelectedMetric] = useState<{ field: string; aggregation: string } | null>(null);
+    const [groupBy, setGroupBy] = useState<string>("");
+    const [segmentBy, setSegmentBy] = useState<string>("");
+    const [period, setPeriod] = useState<"day" | "week" | "month" | "quarter" | "year">("month");
+    const [periodComparison, setPeriodComparison] = useState<boolean>(false);
+    const [filters, setFilters] = useState<FilterCondition[]>([]);
+    const [selectedPipeline, setSelectedPipeline] = useState<string>("");
+    const [includedStages, setIncludedStages] = useState<string[]>([]);
     const [title, setTitle] = useState("");
 
-    const handleSelectType = (rt: typeof REPORT_TYPES[0]) => {
-        setSelectedType(rt);
-        setChartType(rt.defaultChart);
-        setMetric(rt.metrics[0]?.value || "");
-        setTitle(rt.metrics[0]?.label || rt.label);
+    // Chart options
+    const [targetLine, setTargetLine] = useState<number | "">("");
+    const [stackedBars, setStackedBars] = useState<boolean>(true);
+    const [showAxisLabels, setShowAxisLabels] = useState<boolean>(true);
+    const [sortOrder, setSortOrder] = useState<"value_desc" | "value_asc" | "dimension_asc">("value_desc");
+
+    // Live preview
+    const [previewData, setPreviewData] = useState<any>(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
+
+    // Fetch report sources on mount
+    useEffect(() => {
+        if (isOpen && workspaceId) {
+            fetchReportSources();
+        }
+    }, [isOpen, workspaceId]);
+
+    // Update live preview when configuration changes
+    useEffect(() => {
+        const updatePreview = async () => {
+            // Only show preview if minimum requirements are met
+            if (!isOpen || !reportType || !selectedSource || !selectedMetric) {
+                setPreviewData(null);
+                return;
+            }
+
+            // Build definition for preview
+            const validFilters = filters.filter(f => {
+                if (!f.field) return false;
+                if (f.operator === "exists") return true;
+                return f.value !== undefined && f.value !== null && f.value !== "";
+            });
+
+            const definition: ReportDefinition = {
+                type: reportType as any,
+                source: selectedSource.entity,
+                metric: selectedMetric,
+                groupBy: groupBy || undefined,
+                segmentBy: segmentBy || undefined,
+                period: reportType === "historical" ? period : undefined,
+                periodComparison: reportType === "historical" && periodComparison ? true : undefined,
+                filters: validFilters.length > 0 ? validFilters : undefined,
+                pipelineId: selectedPipeline || undefined,
+                includedStages: includedStages.length > 0 ? includedStages : undefined,
+            };
+
+            const chartType = getSuggestedChartType();
+
+            try {
+                setPreviewLoading(true);
+                const result = await getReportData(workspaceId, reportType, {}, definition);
+                const adaptedData = adaptReportData(result.data, chartType, reportType, definition as any);
+                setPreviewData(adaptedData);
+            } catch (err) {
+                console.error("Preview error:", err);
+                setPreviewData(null);
+            } finally {
+                setPreviewLoading(false);
+            }
+        };
+
+        // Debounce preview updates
+        const timer = setTimeout(updatePreview, 500);
+        return () => clearTimeout(timer);
+    }, [isOpen, reportType, selectedSource, selectedMetric, groupBy, segmentBy, period, periodComparison, filters, selectedPipeline, includedStages, workspaceId]);
+
+    // Pre-populate state when in edit mode
+    useEffect(() => {
+        if (isOpen && editMode && existingReport && existingReport.definition) {
+            const def = existingReport.definition;
+            setReportType(def.type);
+            setSelectedMetric({
+                field: def.metric.field || "count",
+                aggregation: def.metric.aggregation,
+            });
+            setGroupBy(def.groupBy || "");
+            setSegmentBy(def.segmentBy || "");
+            setPeriod(def.period || "month");
+            setPeriodComparison(def.periodComparison || false);
+            setFilters(def.filters || []);
+            setSelectedPipeline(def.pipelineId || "");
+            setIncludedStages(def.includedStages || []);
+            setTitle(existingReport.title);
+
+            // Populate chart options from config
+            if (existingReport.config) {
+                setTargetLine(existingReport.config.targetLine || "");
+                setStackedBars(existingReport.config.stackedBars !== false);
+                setShowAxisLabels(existingReport.config.showAxisLabels !== false);
+                setSortOrder(existingReport.config.sortOrder || "value_desc");
+            }
+
+            // Set source after sources are loaded
+            if (sources.length > 0) {
+                const source = sources.find(s => s.entity === def.source);
+                if (source) {
+                    setSelectedSource(source);
+                }
+            }
+        }
+    }, [isOpen, editMode, existingReport, sources]);
+
+    const fetchReportSources = async () => {
+        try {
+            const data = await getReportSources(workspaceId);
+            if (data.success) {
+                setSources(data.data.sources);
+            }
+        } catch (error) {
+            console.error("Failed to fetch report sources:", error);
+        }
     };
 
-    const handleAdd = () => {
-        if (!selectedType) return;
+    const getSuggestedChartType = (): string => {
+        if (!selectedMetric || !selectedSource) return "number";
 
-        const config: any = {};
-        if (metric) config.metric = metric;
+        // Logic for chart type suggestion
+        if (reportType === "funnel") return "funnel";
+        if (reportType === "historical") return "line";
+        if (reportType === "time_in_stage") return "bar";
 
-        onAdd({
-            type: selectedType.type,
-            title: title || selectedType.label,
-            chartType,
-            config,
-            position: { x: 0, y: 0, w: chartType === "number" ? 1 : 2, h: chartType === "number" ? 1 : 2 },
+        if (groupBy && segmentBy) return "bar"; // Stacked bar for multi-dimension
+        if (groupBy) return "bar"; // Bar for grouped data
+        if (selectedMetric.aggregation === "count") return "number";
+        if (selectedMetric.field && selectedMetric.aggregation !== "count") return "number";
+
+        return "bar";
+    };
+
+    const handleCreate = () => {
+        // Validation
+        if (!reportType || !selectedSource || !selectedMetric) {
+            console.error("Missing required fields for report creation");
+            return;
+        }
+
+        // Validate metric field is present when aggregation is not "count"
+        if (selectedMetric.aggregation !== "count" && !selectedMetric.field) {
+            console.error("Metric field is required for aggregations other than count");
+            return;
+        }
+
+        // Filter out invalid filters (missing field or value for operators that need it)
+        const validFilters = filters.filter(f => {
+            if (!f.field) return false;
+            // "exists" operator doesn't need a value
+            if (f.operator === "exists") return true;
+            // All other operators need a value
+            return f.value !== undefined && f.value !== null && f.value !== "";
         });
 
-        // Reset
-        setSelectedType(null);
-        setChartType("number");
-        setMetric("");
-        setTitle("");
+        const definition: ReportDefinition = {
+            type: reportType as any,
+            source: selectedSource.entity,
+            metric: selectedMetric,
+            groupBy: groupBy || undefined,
+            segmentBy: segmentBy || undefined,
+            period: reportType === "historical" ? period : undefined,
+            periodComparison: reportType === "historical" && periodComparison ? true : undefined,
+            filters: validFilters.length > 0 ? validFilters : undefined,
+            pipelineId: selectedPipeline || undefined,
+            includedStages: includedStages.length > 0 ? includedStages : undefined,
+        };
+
+        const chartType = getSuggestedChartType();
+
+        // Build chart configuration
+        const config: any = {
+            showAxisLabels,
+            sortOrder,
+        };
+
+        if (targetLine !== "") {
+            config.targetLine = Number(targetLine);
+        }
+
+        // Only add stackedBars for bar charts with segments
+        if (chartType === "bar" && segmentBy) {
+            config.stackedBars = stackedBars;
+        }
+
+        const reportData = {
+            type: reportType,
+            title: title || `${selectedSource.label} - ${selectedMetric.aggregation}(${selectedMetric.field})`,
+            chartType,
+            config,
+            definition,
+            position: existingReport?.position || { x: 0, y: 0, w: chartType === "number" ? 1 : 2, h: chartType === "number" ? 1 : 2 },
+        };
+
+        if (editMode && existingReport && onUpdate) {
+            onUpdate(existingReport._id, reportData);
+        } else {
+            onAdd(reportData);
+        }
+
+        resetModal();
         onClose();
     };
+
+    const resetModal = () => {
+        setReportType(null);
+        setSelectedSource(null);
+        setSelectedMetric(null);
+        setGroupBy("");
+        setSegmentBy("");
+        setPeriod("month");
+        setPeriodComparison(false);
+        setFilters([]);
+        setSelectedPipeline("");
+        setIncludedStages([]);
+        setTitle("");
+        setTargetLine("");
+        setStackedBars(true);
+        setShowAxisLabels(true);
+        setSortOrder("value_desc");
+        setPreviewData(null);
+    };
+
+    const allAttributes = selectedSource
+        ? [...selectedSource.attributes, ...selectedSource.customFields]
+        : [];
+
+    const groupableAttributes = allAttributes.filter(attr => attr.groupable);
+    const metricAttributes = allAttributes.filter(attr =>
+        attr.aggregations && attr.aggregations.length > 0
+    );
 
     return (
         <AnimatePresence>
@@ -302,136 +369,411 @@ export default function AddReportModal({ isOpen, onClose, onAdd }: AddReportModa
                         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
                         onClick={onClose}
                     />
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="fixed inset-4 sm:inset-auto sm:top-[10%] sm:left-1/2 sm:-translate-x-1/2 sm:w-[560px] sm:max-h-[80vh] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
-                    >
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200 dark:border-zinc-800">
-                            <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Add Report</h2>
-                            <button onClick={onClose} className="p-1 text-zinc-400 hover:text-zinc-600 transition-colors">
-                                <XMarkIcon className="w-5 h-5" />
-                            </button>
-                        </div>
 
-                        <div className="flex-1 overflow-y-auto">
-                            {!selectedType ? (
-                                /* Step 1: Select report type (grouped by category) */
-                                <div className="p-4 space-y-4">
-                                    {Array.from(new Set(REPORT_TYPES.map(rt => (rt as any).category || "Other"))).map((category) => (
-                                        <div key={category}>
-                                            <h3 className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 dark:text-zinc-500 mb-2">{category}</h3>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {REPORT_TYPES.filter(rt => ((rt as any).category || "Other") === category).map((rt) => (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        className="fixed inset-4 z-50"
+                    >
+                        <div
+                            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full h-full flex flex-col overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                                <div className="flex items-center gap-4">
+                                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                                        {editMode ? "Edit Report" : "Create Report"}
+                                    </h2>
+                                    {reportType && (
+                                        <span className="px-2 py-1 text-xs font-medium rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                            {REPORT_TYPES.find(t => t.type === reportType)?.label}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={onClose}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleCreate}
+                                        disabled={!reportType || !selectedSource || !selectedMetric}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                                    >
+                                        {editMode ? "Update Report" : "Create Report"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 2-Column Layout: Configuration + Preview */}
+                            <div className="flex-1 flex overflow-hidden">
+                                {/* Left Panel: Configuration */}
+                                <div className="w-1/2 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+                                    <div className="p-6 space-y-6">
+                                        {/* Report Title */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Report Title
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={title}
+                                                onChange={(e) => setTitle(e.target.value)}
+                                                placeholder={selectedSource && selectedMetric ? `${selectedSource.label} - ${selectedMetric.aggregation}(${selectedMetric.field})` : "My Report"}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                                            />
+                                        </div>
+
+                                        {/* Report Type */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Report Type
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {REPORT_TYPES.map((type) => (
                                                     <button
-                                                        key={rt.type}
-                                                        onClick={() => handleSelectType(rt)}
-                                                        className="flex items-start gap-3 p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-all text-left group"
+                                                        key={type.type}
+                                                        onClick={() => setReportType(type.type)}
+                                                        className={`p-3 rounded-lg border-2 text-left transition-all ${reportType === type.type
+                                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                                                            }`}
                                                     >
-                                                        <ReportIcon icon={rt.icon} color={rt.color} />
-                                                        <div>
-                                                            <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{rt.label}</p>
-                                                            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">{rt.description}</p>
+                                                        <div className="flex items-start gap-2">
+                                                            <type.icon className={`w-5 h-5 flex-shrink-0 ${reportType === type.type ? "text-blue-600 dark:text-blue-400" : "text-gray-400"}`} />
+                                                            <div className="flex-1 min-w-0">
+                                                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                                                    {type.label}
+                                                                </h3>
+                                                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
+                                                                    {type.description}
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                     </button>
                                                 ))}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                /* Step 2: Configure report */
-                                <div className="p-4 space-y-4">
-                                    <button
-                                        onClick={() => setSelectedType(null)}
-                                        className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
-                                    >
-                                        ← Back to report types
-                                    </button>
 
-                                    <div className="flex items-center gap-2 p-2 bg-zinc-50 dark:bg-zinc-800 rounded-lg">
-                                        <ReportIcon icon={selectedType.icon} color={selectedType.color} />
-                                        <div>
-                                            <p className="text-xs font-semibold text-zinc-900 dark:text-white">{selectedType.label}</p>
-                                            <p className="text-[10px] text-zinc-500">{selectedType.description}</p>
-                                        </div>
-                                    </div>
+                                        {/* Data Source */}
+                                        {reportType && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    Data Source
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {sources.map((source) => (
+                                                        <button
+                                                            key={source.entity}
+                                                            onClick={() => setSelectedSource(source)}
+                                                            className={`w-full p-3 rounded-lg border-2 text-left transition-all ${selectedSource?.entity === source.entity
+                                                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                                                                }`}
+                                                        >
+                                                            <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
+                                                                {source.label}
+                                                            </h3>
+                                                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                                {source.attributes.length} attributes, {source.customFields.length} custom fields
+                                                            </p>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
-                                    {/* Title */}
-                                    <div>
-                                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Title</label>
-                                        <input
-                                            type="text"
-                                            value={title}
-                                            onChange={(e) => setTitle(e.target.value)}
-                                            className="w-full px-3 py-2 text-sm bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                                            placeholder="Report title"
-                                        />
-                                    </div>
-
-                                    {/* Metric selector (if applicable) */}
-                                    {selectedType.metrics.length > 0 && (
-                                        <div>
-                                            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Metric</label>
-                                            <div className="grid grid-cols-2 gap-1.5">
-                                                {selectedType.metrics.map((m) => (
+                                        {/* Metric */}
+                                        {selectedSource && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    Metric
+                                                </label>
+                                                <div className="space-y-2">
                                                     <button
-                                                        key={m.value}
-                                                        onClick={() => { setMetric(m.value); if (!title || selectedType.metrics.some(mm => mm.label === title)) setTitle(m.label); }}
-                                                        className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${metric === m.value
-                                                            ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-medium"
-                                                            : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400"
+                                                        onClick={() => setSelectedMetric({ field: "count", aggregation: "count" })}
+                                                        className={`w-full p-3 rounded-lg border-2 text-left ${selectedMetric?.aggregation === "count"
+                                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                                                             }`}
                                                     >
-                                                        {m.label}
+                                                        <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Count</h3>
+                                                        <p className="text-xs text-gray-600 dark:text-gray-400">Number of records</p>
                                                     </button>
-                                                ))}
+                                                    {metricAttributes.map((attr) =>
+                                                        attr.aggregations?.map((agg: string) => (
+                                                            <button
+                                                                key={`${attr.field}-${agg}`}
+                                                                onClick={() => setSelectedMetric({ field: attr.field, aggregation: agg })}
+                                                                className={`w-full p-3 rounded-lg border-2 text-left ${selectedMetric?.field === attr.field && selectedMetric?.aggregation === agg
+                                                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                                                                    }`}
+                                                            >
+                                                                <h3 className="font-semibold text-gray-900 dark:text-white text-sm capitalize">
+                                                                    {agg}({attr.label})
+                                                                </h3>
+                                                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                                                    {agg === "sum" ? "Total" : agg === "avg" ? "Average" : agg === "min" ? "Minimum" : "Maximum"} {attr.label.toLowerCase()}
+                                                                </p>
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
 
-                                    {/* Chart type */}
-                                    <div>
-                                        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Visualization</label>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {CHART_TYPES.map((ct) => (
-                                                <button
-                                                    key={ct.value}
-                                                    onClick={() => setChartType(ct.value)}
-                                                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-all ${chartType === ct.value
-                                                        ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 font-medium"
-                                                        : "border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-zinc-400"
-                                                        }`}
+                                        {/* Dimensions */}
+                                        {selectedMetric && reportType === "insight" && groupableAttributes.length > 0 && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    Group By (Optional)
+                                                </label>
+                                                <select
+                                                    value={groupBy}
+                                                    onChange={(e) => setGroupBy(e.target.value)}
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
                                                 >
-                                                    <span className="text-sm">{ct.icon}</span>
-                                                    {ct.label}
-                                                </button>
-                                            ))}
-                                        </div>
+                                                    <option value="">None</option>
+                                                    {groupableAttributes.map((attr) => (
+                                                        <option key={attr.field} value={attr.field}>
+                                                            {attr.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {selectedMetric && groupBy && groupableAttributes.length > 0 && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    Segment By (Optional)
+                                                </label>
+                                                <select
+                                                    value={segmentBy}
+                                                    onChange={(e) => setSegmentBy(e.target.value)}
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                                                >
+                                                    <option value="">None</option>
+                                                    {groupableAttributes.filter(a => a.field !== groupBy).map((attr) => (
+                                                        <option key={attr.field} value={attr.field}>
+                                                            {attr.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {/* Time Period */}
+                                        {reportType === "historical" && selectedMetric && (
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                        Time Period
+                                                    </label>
+                                                    <select
+                                                        value={period}
+                                                        onChange={(e) => setPeriod(e.target.value as any)}
+                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                                                    >
+                                                        <option value="day">Daily</option>
+                                                        <option value="week">Weekly</option>
+                                                        <option value="month">Monthly</option>
+                                                        <option value="quarter">Quarterly</option>
+                                                        <option value="year">Yearly</option>
+                                                    </select>
+                                                </div>
+                                                <label className="flex items-center gap-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={periodComparison}
+                                                        onChange={(e) => setPeriodComparison(e.target.checked)}
+                                                        className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700 dark:text-gray-300">Compare with previous period</span>
+                                                </label>
+                                            </div>
+                                        )}
+
+                                        {/* Filters */}
+                                        {selectedSource && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    Filters (Optional)
+                                                </label>
+                                                <FilterBuilder
+                                                    filters={filters}
+                                                    onChange={setFilters}
+                                                    attributes={allAttributes}
+                                                    relationships={selectedSource.relationships}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Pipeline & Stages */}
+                                        {selectedSource && (reportType === "funnel" || reportType === "time_in_stage" || reportType === "stage_changed") && selectedSource.pipelines && selectedSource.pipelines.length > 0 && (
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                        Pipeline
+                                                    </label>
+                                                    <select
+                                                        value={selectedPipeline}
+                                                        onChange={(e) => {
+                                                            setSelectedPipeline(e.target.value);
+                                                            setIncludedStages([]);
+                                                        }}
+                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                                                    >
+                                                        <option value="">All Pipelines</option>
+                                                        {selectedSource.pipelines.map((pipeline) => (
+                                                            <option key={pipeline.id} value={pipeline.id}>
+                                                                {pipeline.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {selectedPipeline && selectedSource.pipelines.find(p => p.id === selectedPipeline) && (
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                            Included Stages (Optional)
+                                                        </label>
+                                                        <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                                                            {selectedSource.pipelines
+                                                                .find(p => p.id === selectedPipeline)
+                                                                ?.stages.sort((a, b) => a.order - b.order)
+                                                                .map((stage) => (
+                                                                    <label key={stage.id} className="flex items-center gap-2 cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={includedStages.includes(stage.id)}
+                                                                            onChange={(e) => {
+                                                                                if (e.target.checked) {
+                                                                                    setIncludedStages([...includedStages, stage.id]);
+                                                                                } else {
+                                                                                    setIncludedStages(includedStages.filter(id => id !== stage.id));
+                                                                                }
+                                                                            }}
+                                                                            className="w-4 h-4"
+                                                                        />
+                                                                        <span className="text-sm">{stage.name}</span>
+                                                                    </label>
+                                                                ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Chart Options */}
+                                        {selectedMetric && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                    Chart Options
+                                                </label>
+                                                <div className="space-y-3">
+                                                    {(getSuggestedChartType() === "bar" || getSuggestedChartType() === "line") && (
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                                                Target Line (Optional)
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                value={targetLine}
+                                                                onChange={(e) => setTargetLine(e.target.value === "" ? "" : Number(e.target.value))}
+                                                                placeholder="e.g., 1000"
+                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {getSuggestedChartType() === "bar" && segmentBy && (
+                                                        <label className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={stackedBars}
+                                                                onChange={(e) => setStackedBars(e.target.checked)}
+                                                                className="w-4 h-4"
+                                                            />
+                                                            <span className="text-sm">Stack bars by segment</span>
+                                                        </label>
+                                                    )}
+                                                    <label className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={showAxisLabels}
+                                                            onChange={(e) => setShowAxisLabels(e.target.checked)}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        <span className="text-sm">Show axis labels</span>
+                                                    </label>
+                                                    {(getSuggestedChartType() === "bar" || getSuggestedChartType() === "pie") && groupBy && (
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                                                Sort Order
+                                                            </label>
+                                                            <select
+                                                                value={sortOrder}
+                                                                onChange={(e) => setSortOrder(e.target.value as any)}
+                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                            >
+                                                                <option value="value_desc">Value (High to Low)</option>
+                                                                <option value="value_asc">Value (Low to High)</option>
+                                                                <option value="dimension_asc">Dimension (A-Z)</option>
+                                                            </select>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            )}
-                        </div>
 
-                        {/* Footer */}
-                        {selectedType && (
-                            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-zinc-100 dark:border-zinc-800">
-                                <button
-                                    onClick={onClose}
-                                    className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleAdd}
-                                    className="px-4 py-1.5 text-sm font-medium bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
-                                >
-                                    Add Report
-                                </button>
+                                {/* Right Panel: Live Preview */}
+                                <div className="w-1/2 bg-gray-50 dark:bg-gray-900 flex flex-col">
+                                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Preview</h3>
+                                    </div>
+                                    <div className="flex-1 flex items-center justify-center p-6">
+                                        {previewLoading ? (
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                                <p className="text-sm text-gray-500">Loading preview...</p>
+                                            </div>
+                                        ) : !reportType || !selectedSource || !selectedMetric ? (
+                                            <div className="text-center">
+                                                <ChartBarSquareIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                    Configure your report to see a preview
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                                <ReportWidget
+                                                    report={{
+                                                        title: title || "Preview",
+                                                        type: reportType,
+                                                        chartType: getSuggestedChartType(),
+                                                        config: {
+                                                            showAxisLabels,
+                                                            sortOrder,
+                                                            targetLine: targetLine !== "" ? Number(targetLine) : undefined,
+                                                            stackedBars: getSuggestedChartType() === "bar" && segmentBy ? stackedBars : undefined,
+                                                        },
+                                                        position: { x: 0, y: 0, w: 2, h: 2 },
+                                                    }}
+                                                    workspaceId={workspaceId}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        )}
+                        </div>
                     </motion.div>
                 </>
             )}

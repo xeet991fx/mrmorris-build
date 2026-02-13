@@ -4,6 +4,7 @@ import Opportunity from "../models/Opportunity";
 import Pipeline from "../models/Pipeline";
 import Project from "../models/Project";
 import Activity from "../models/Activity";
+import StageChangeEvent from "../models/StageChangeEvent";
 import { authenticate, AuthRequest } from "../middleware/auth";
 import {
   createOpportunitySchema,
@@ -114,6 +115,24 @@ router.post(
         userId: req.user?._id,
         stageHistory,
       });
+
+      // Dual-write: Emit StageChangeEvent for initial stage (non-blocking)
+      StageChangeEvent.create({
+        entityId: opportunityDoc._id,
+        entityType: "opportunity",
+        workspaceId,
+        pipelineId: cleanedData.pipelineId,
+        newStageId: stage._id,
+        newStageName: stage.name,
+        timestamp: new Date(),
+        userId: req.user?._id,
+        metadata: {
+          value: cleanedData.value,
+          probability: cleanedData.probability,
+          status: cleanedData.status || "open",
+          assignedTo: cleanedData.assignedTo,
+        },
+      }).catch(err => console.error('StageChangeEvent creation error:', err));
 
       // Populate references
       const opportunity: any = await Opportunity.findById(opportunityDoc._id)
@@ -594,7 +613,11 @@ router.patch(
             // Close out the current stage
             const stageHistory = [...currentOpportunity.stageHistory];
             const currentStageIndex = stageHistory.length - 1;
+            let oldStageId = undefined;
+            let oldStageName = undefined;
             if (currentStageIndex >= 0 && !stageHistory[currentStageIndex].exitedAt) {
+              oldStageId = stageHistory[currentStageIndex].stageId;
+              oldStageName = stageHistory[currentStageIndex].stageName;
               stageHistory[currentStageIndex].exitedAt = new Date();
               stageHistory[currentStageIndex].duration =
                 new Date().getTime() - new Date(stageHistory[currentStageIndex].enteredAt).getTime();
@@ -608,6 +631,26 @@ router.patch(
             });
 
             cleanedData.stageHistory = stageHistory;
+
+            // Dual-write: Emit StageChangeEvent (non-blocking)
+            StageChangeEvent.create({
+              entityId: id,
+              entityType: "opportunity",
+              workspaceId,
+              pipelineId: pipelineId,
+              oldStageId,
+              oldStageName,
+              newStageId: stage._id,
+              newStageName: stage.name,
+              timestamp: new Date(),
+              userId: req.user?._id,
+              metadata: {
+                value: cleanedData.value,
+                probability: cleanedData.probability,
+                status: cleanedData.status,
+                assignedTo: cleanedData.assignedTo,
+              },
+            }).catch(err => console.error('StageChangeEvent creation error:', err));
           }
         }
       }
@@ -756,6 +799,27 @@ router.patch(
       opportunity.lastActivityAt = new Date();
 
       await opportunity.save();
+
+      // Dual-write: Emit StageChangeEvent (non-blocking)
+      const oldStageId = opportunity.stageHistory[currentStageIndex]?.stageId;
+      StageChangeEvent.create({
+        entityId: opportunity._id,
+        entityType: "opportunity",
+        workspaceId,
+        pipelineId: targetPipelineId,
+        oldStageId,
+        oldStageName: previousStageName,
+        newStageId: stage._id,
+        newStageName: stage.name,
+        timestamp: new Date(),
+        userId: req.user?._id,
+        metadata: {
+          value: opportunity.value,
+          probability: opportunity.probability,
+          status: opportunity.status,
+          assignedTo: opportunity.assignedTo,
+        },
+      }).catch(err => console.error('StageChangeEvent creation error:', err));
 
       // Auto-log stage change activity
       try {
@@ -1226,6 +1290,28 @@ router.patch(
           opportunity.stageId = stage._id;
           opportunity.lastActivityAt = new Date();
           await opportunity.save();
+
+          // Dual-write: Emit StageChangeEvent (non-blocking)
+          const oldStageId = opportunity.stageHistory[currentStageIndex]?.stageId;
+          StageChangeEvent.create({
+            entityId: opportunity._id,
+            entityType: "opportunity",
+            workspaceId,
+            pipelineId: targetPipelineId,
+            oldStageId,
+            oldStageName: previousStageName,
+            newStageId: stage._id,
+            newStageName: stage.name,
+            timestamp: new Date(),
+            userId: req.user?._id,
+            metadata: {
+              value: opportunity.value,
+              probability: opportunity.probability,
+              status: opportunity.status,
+              assignedTo: opportunity.assignedTo,
+              bulkOperation: true,
+            },
+          }).catch(err => console.error('StageChangeEvent creation error:', err));
 
           // Prepare activity for logging
           activities.push({

@@ -243,9 +243,32 @@ router.post(
             const userId = req.user?._id?.toString();
             if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
 
-            const { type, title, chartType, config, position } = req.body;
+            const { type, title, chartType, config, position, definition } = req.body;
             if (!type || !title || !chartType) {
                 return res.status(400).json({ error: "type, title, and chartType are required" });
+            }
+
+            // Validate definition structure if provided
+            if (definition) {
+                if (!definition.source || !definition.type || !definition.metric) {
+                    return res.status(400).json({
+                        error: "definition must include source, type, and metric"
+                    });
+                }
+
+                // Validate metric structure
+                if (!definition.metric.aggregation) {
+                    return res.status(400).json({
+                        error: "definition.metric must include aggregation"
+                    });
+                }
+
+                // Validate metric field is present for non-count aggregations
+                if (definition.metric.aggregation !== "count" && !definition.metric.field) {
+                    return res.status(400).json({
+                        error: "definition.metric.field is required for aggregations other than count"
+                    });
+                }
             }
 
             const report: IReportWidget = {
@@ -253,6 +276,7 @@ router.post(
                 title: title.trim(),
                 chartType,
                 config: config || {},
+                definition,  // Include definition if provided
                 position: position || { x: 0, y: 0, w: 2, h: 1 },
             };
 
@@ -270,6 +294,128 @@ router.post(
         } catch (error) {
             console.error("Error adding report:", error);
             res.status(500).json({ error: "Failed to add report" });
+        }
+    }
+);
+
+/**
+ * PUT /api/workspaces/:workspaceId/report-dashboards/:id/reports/:reportId
+ * Update a report widget in a dashboard.
+ */
+router.put(
+    "/:workspaceId/report-dashboards/:id/reports/:reportId",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id, reportId } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const { type, title, chartType, config, definition, position } = req.body;
+
+            // Validation
+            if (!title || !chartType) {
+                return res.status(400).json({ error: "title and chartType are required" });
+            }
+
+            // Validate definition if provided
+            if (definition) {
+                if (!definition.source || !definition.type || !definition.metric) {
+                    return res.status(400).json({ error: "definition must include source, type, and metric" });
+                }
+                if (!definition.metric.aggregation) {
+                    return res.status(400).json({ error: "definition.metric must include aggregation" });
+                }
+                if (definition.metric.aggregation !== "count" && !definition.metric.field) {
+                    return res.status(400).json({ error: "definition.metric.field is required for aggregations other than count" });
+                }
+            }
+
+            const dashboard = await ReportDashboard.findOneAndUpdate(
+                { _id: id, workspaceId, "reports._id": reportId },
+                {
+                    $set: {
+                        "reports.$.type": type,
+                        "reports.$.title": title.trim(),
+                        "reports.$.chartType": chartType,
+                        "reports.$.config": config || {},
+                        "reports.$.definition": definition,
+                        "reports.$.position": position || { x: 0, y: 0, w: 2, h: 1 },
+                    },
+                },
+                { new: true }
+            ).lean();
+
+            if (!dashboard) {
+                return res.status(404).json({ error: "Dashboard or report not found" });
+            }
+
+            res.json({ dashboard });
+        } catch (error) {
+            console.error("Error updating report:", error);
+            res.status(500).json({ error: "Failed to update report" });
+        }
+    }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/report-dashboards/:id/reports/:reportId/duplicate
+ * Duplicate a report widget (to same or different dashboard).
+ */
+router.post(
+    "/:workspaceId/report-dashboards/:id/reports/:reportId/duplicate",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id, reportId } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const { targetDashboardId } = req.body;
+            const targetId = targetDashboardId || id;
+
+            // Find the source dashboard and report
+            const sourceDashboard = await ReportDashboard.findOne({ _id: id, workspaceId }).lean();
+            if (!sourceDashboard) {
+                return res.status(404).json({ error: "Source dashboard not found" });
+            }
+
+            const sourceReport = sourceDashboard.reports?.find(
+                (r: any) => r._id?.toString() === reportId
+            );
+            if (!sourceReport) {
+                return res.status(404).json({ error: "Report not found" });
+            }
+
+            // Create a copy (new _id will be auto-generated by MongoDB)
+            const duplicatedReport: IReportWidget = {
+                type: sourceReport.type,
+                title: `${sourceReport.title} (Copy)`,
+                chartType: sourceReport.chartType,
+                config: JSON.parse(JSON.stringify(sourceReport.config || {})),
+                definition: sourceReport.definition ? JSON.parse(JSON.stringify(sourceReport.definition)) : undefined,
+                position: {
+                    x: (sourceReport.position?.x || 0),
+                    y: (sourceReport.position?.y || 0) + (sourceReport.position?.h || 1),
+                    w: sourceReport.position?.w || 2,
+                    h: sourceReport.position?.h || 1,
+                },
+            };
+
+            const dashboard = await ReportDashboard.findOneAndUpdate(
+                { _id: targetId, workspaceId },
+                { $push: { reports: duplicatedReport } },
+                { new: true }
+            ).lean();
+
+            if (!dashboard) {
+                return res.status(404).json({ error: "Target dashboard not found" });
+            }
+
+            res.status(201).json({ dashboard });
+        } catch (error) {
+            console.error("Error duplicating report:", error);
+            res.status(500).json({ error: "Failed to duplicate report" });
         }
     }
 );

@@ -1,16 +1,260 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef, useId } from "react";
 import { getReportData } from "@/lib/api/reportDashboards";
+import { adaptReportData } from "@/lib/reportDataAdapters";
 import {
     BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart
+    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ReferenceLine
 } from "recharts";
 import { motion } from "framer-motion";
 import {
     ArrowTrendingUpIcon, ArrowTrendingDownIcon,
-    TrashIcon, MinusIcon,
+    TrashIcon, MinusIcon, PencilIcon,
+    EllipsisVerticalIcon,
+    DocumentDuplicateIcon,
+    ArrowsPointingOutIcon,
+    CameraIcon,
 } from "@heroicons/react/24/outline";
+import DrillDownPanel from "./DrillDownPanel";
+import CalculatedValuesTable from "./CalculatedValuesTable";
+
+// ... (existing imports)
+
+
+interface ReportWidgetProps {
+    report: {
+        _id?: string;
+        type: string;
+        title: string;
+        chartType: string;
+        config: any;
+        definition?: any;
+        position: { x: number; y: number; w: number; h: number };
+    };
+    workspaceId: string;
+    onEdit?: (report: any) => void;
+    onRemove?: (reportId: string) => void;
+    onDuplicate?: (reportId: string) => void;
+    onFullscreen?: (report: any) => void;
+}
+
+export default function ReportWidget({ report, workspaceId, onEdit, onRemove, onDuplicate, onFullscreen }: ReportWidgetProps) {
+    const [data, setData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+    const [drillDownContext, setDrillDownContext] = useState<any>(null);
+    const widgetRef = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const widgetId = useId();
+
+    const configKey = useMemo(() => JSON.stringify(report.config), [report.config]);
+    const definitionKey = useMemo(() => JSON.stringify(report.definition), [report.definition]);
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                setLoading(true);
+                setError(false);
+                const result = await getReportData(workspaceId, report.type, report.config, report.definition);
+                const adaptedData = adaptReportData(
+                    result.data,
+                    report.chartType,
+                    report.type,
+                    report.definition
+                );
+                setData(adaptedData);
+            } catch (err) {
+                console.error("Error loading report:", err);
+                setError(true);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, [workspaceId, report.type, configKey, definitionKey]);
+
+    useEffect(() => {
+        if (!showMenu) return;
+        const handleClick = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setShowMenu(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, [showMenu]);
+
+    const handleDownloadAsImage = async () => {
+        setShowMenu(false);
+        if (!widgetRef.current) return;
+        try {
+            const html2canvas = (await import("html2canvas")).default;
+            const canvas = await html2canvas(widgetRef.current, {
+                backgroundColor: null,
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                onclone: (clonedDoc) => {
+                    const clonedNode = clonedDoc.getElementById(widgetId);
+                    if (clonedNode) {
+                        // Reset framer-motion transforms
+                        clonedNode.style.transform = "none";
+                        // Expand height to fit content
+                        clonedNode.style.height = "auto";
+                        clonedNode.style.maxHeight = "none";
+                        clonedNode.style.overflow = "visible";
+
+                        // Expand scrollable areas inside
+                        const scrollables = clonedNode.querySelectorAll(".overflow-auto");
+                        scrollables.forEach((el) => {
+                            (el as HTMLElement).style.overflow = "visible";
+                            (el as HTMLElement).style.height = "auto";
+                        });
+                    }
+                }
+            });
+            const link = document.createElement("a");
+            link.download = `${report.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        } catch (err) {
+            console.error("Failed to capture report image:", err);
+        }
+    };
+
+    const handleDrillDown = (context: any) => {
+        if (report.definition) {
+            setDrillDownContext({ ...context, metricLabel: report.title });
+        }
+    };
+
+    const renderChart = () => {
+        if (loading) return <div className="flex items-center justify-center h-full"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>;
+        if (error) return <div className="flex items-center justify-center h-full text-xs text-red-400">Failed to load</div>;
+        return renderReportChart(data, report, handleDrillDown);
+    };
+
+    const colSpan = report.position?.w || 2;
+    const rowSpan = report.position?.h || 1;
+
+    return (
+        <motion.div
+            id={widgetId}
+            ref={widgetRef}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`bg-zinc-50 dark:bg-zinc-800/50 rounded-xl overflow-hidden group relative`}
+            style={{
+                gridColumn: `span ${colSpan}`,
+                gridRow: `span ${rowSpan}`,
+                minHeight: rowSpan === 1 ? "120px" : rowSpan === 2 ? "280px" : "400px",
+            }}
+        >
+            <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200/50 dark:border-zinc-700/50">
+                <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 truncate cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors" onClick={() => onFullscreen?.(report)}>
+                    {report.title}
+                </h3>
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onEdit && report.definition && (
+                        <button onClick={() => onEdit(report)} className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-zinc-400 hover:text-blue-500 transition-colors">
+                            <PencilIcon className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                    {onFullscreen && (
+                        <button onClick={() => onFullscreen(report)} className="p-1 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-700/40 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                            <ArrowsPointingOutIcon className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                    <div className="relative" ref={menuRef}>
+                        <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-700/40 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
+                            <EllipsisVerticalIcon className="w-3.5 h-3.5" />
+                        </button>
+                        {showMenu && (
+                            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-zinc-800 rounded-lg shadow-xl border border-zinc-200 dark:border-zinc-700 py-1 z-20">
+                                {onDuplicate && report._id && (
+                                    <button onClick={() => { setShowMenu(false); onDuplicate(report._id!); }} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors">
+                                        <DocumentDuplicateIcon className="w-3.5 h-3.5" /> Duplicate
+                                    </button>
+                                )}
+                                <button onClick={handleDownloadAsImage} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors">
+                                    <CameraIcon className="w-3.5 h-3.5" /> Download as image
+                                </button>
+                                {onRemove && report._id && (
+                                    <>
+                                        <div className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
+                                        <button onClick={() => { setShowMenu(false); onRemove(report._id!); }} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                            <TrashIcon className="w-3.5 h-3.5" /> Delete report
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="px-2 py-1" style={{ height: rowSpan === 1 ? "80px" : rowSpan === 2 ? "230px" : "350px" }}>
+                {renderChart()}
+            </div>
+
+            {!loading && !error && data && (
+                <CalculatedValuesTable data={data} reportType={report.type} title={report.title} />
+            )}
+
+            {drillDownContext && (
+                <DrillDownPanel
+                    isOpen={!!drillDownContext}
+                    onClose={() => setDrillDownContext(null)}
+                    workspaceId={workspaceId}
+                    definition={report.definition}
+                    context={drillDownContext}
+                />
+            )}
+        </motion.div>
+    );
+}
+
+/**
+ * Exported chart renderer for use in fullscreen modal.
+ * Renders the appropriate chart for a given report.
+ */
+export function renderReportChart(data: any, report: any, onDrillDown?: (context: any) => void): React.ReactNode {
+    if (!data) return <EmptyState />;
+
+    // Helper to wrap onDrillDown
+    const handleDrillDown = (data: any, index?: number) => {
+        if (!onDrillDown) return;
+        let context: any = {};
+
+        // Handle Recharts payload structure
+        const payload = data?.payload || data;
+
+        // Priority 1: Custom Report Dimension/Segment
+        if (payload.dimension) context.groupByValue = payload.dimension;
+        if (payload.segment) context.segmentByValue = payload.segment;
+
+        // Priority 2: Standard fields (fallback)
+        if (!context.groupByValue) {
+            if (payload.name) context.groupByValue = payload.name;
+            if (payload.period) context.groupByValue = payload.period;
+            if (payload.stage) context.groupByValue = payload.stage;
+        }
+
+        onDrillDown(context);
+    };
+
+    switch (report.chartType) {
+        case "number": return <NumberCard data={data} />;
+        case "bar": return <BarChartWidget data={data} type={report.type} config={report.config} onDrillDown={onDrillDown ? handleDrillDown : undefined} />;
+        case "line": return <LineChartWidget data={data} type={report.type} config={report.config} onDrillDown={onDrillDown ? handleDrillDown : undefined} />;
+        case "pie": return <PieChartWidget data={data} type={report.type} config={report.config} onDrillDown={onDrillDown ? handleDrillDown : undefined} />;
+        case "funnel": return <FunnelWidget data={data} onDrillDown={onDrillDown ? handleDrillDown : undefined} />;
+        case "table": return <TableWidget data={data} type={report.type} />;
+        default: return <EmptyState />;
+    }
+}
 
 // ─── Chart Colors ──────────────────────────────────────────────
 
@@ -109,14 +353,19 @@ function NumberCard({ data }: { data: any }) {
 
 // ─── Bar Chart Widget ──────────────────────────────────────────
 
-function BarChartWidget({ data, type }: { data: any; type: string }) {
+function BarChartWidget({ data, type, config = {}, onDrillDown }: { data: any; type: string; config?: any; onDrillDown?: (data: any) => void }) {
     if (!data) return null;
 
     let chartData: any[] = [];
     let xKey = "name";
     let yKey = "value";
 
-    if (type === "funnel" && data.stages) {
+    // Handle adapted custom report data
+    if (data.data && Array.isArray(data.data)) {
+        chartData = data.data;
+        xKey = "name";
+        yKey = "value";
+    } else if (type === "funnel" && data.stages) {
         chartData = data.stages;
         xKey = "stage";
         yKey = "count";
@@ -153,6 +402,25 @@ function BarChartWidget({ data, type }: { data: any; type: string }) {
 
     if (chartData.length === 0) return <EmptyState />;
 
+    // Apply sort order from config
+    if (config.sortOrder && chartData.length > 0) {
+        const sortedData = [...chartData];
+        if (config.sortOrder === "value_desc") {
+            sortedData.sort((a, b) => (b[yKey] || 0) - (a[yKey] || 0));
+        } else if (config.sortOrder === "value_asc") {
+            sortedData.sort((a, b) => (a[yKey] || 0) - (b[yKey] || 0));
+        } else if (config.sortOrder === "dimension_asc") {
+            sortedData.sort((a, b) => String(a[xKey] || "").localeCompare(String(b[xKey] || "")));
+        }
+        chartData = sortedData;
+    }
+
+    // Detect segmented data (multiple series)
+    const segmentKeys = chartData.length > 0
+        ? Object.keys(chartData[0]).filter(k => k !== xKey && k !== "name" && !k.endsWith("_count"))
+        : [];
+    const isSegmented = segmentKeys.length > 1 || (segmentKeys.length === 1 && segmentKeys[0] !== yKey);
+
     return (
         <div className="h-full flex flex-col">
             {/* Summary bar above chart */}
@@ -184,12 +452,16 @@ function BarChartWidget({ data, type }: { data: any; type: string }) {
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #27272a)" opacity={0.3} />
                         <XAxis
                             dataKey={xKey}
-                            tick={{ fontSize: 10, fill: "#a1a1aa" }}
+                            tick={config.showAxisLabels !== false ? { fontSize: 10, fill: "#a1a1aa" } : false}
                             tickLine={false}
                             axisLine={false}
                             tickFormatter={(v: string) => v?.length > 8 ? v.slice(0, 8) + "…" : v}
                         />
-                        <YAxis tick={{ fontSize: 10, fill: "#a1a1aa" }} tickLine={false} axisLine={false} />
+                        <YAxis
+                            tick={config.showAxisLabels !== false ? { fontSize: 10, fill: "#a1a1aa" } : false}
+                            tickLine={false}
+                            axisLine={false}
+                        />
                         <Tooltip
                             contentStyle={{
                                 backgroundColor: "#18181b",
@@ -199,11 +471,37 @@ function BarChartWidget({ data, type }: { data: any; type: string }) {
                                 color: "#fafafa",
                             }}
                         />
-                        <Bar dataKey={yKey} radius={[4, 4, 0, 0]}>
-                            {chartData.map((_, i) => (
-                                <Cell key={i} fill={STAGE_COLORS[chartData[i]?.[xKey]] || COLORS[i % COLORS.length]} />
-                            ))}
-                        </Bar>
+                        <Legend wrapperStyle={{ fontSize: "10px" }} />
+                        {config.targetLine !== undefined && (
+                            <ReferenceLine
+                                y={config.targetLine}
+                                stroke="#ef4444"
+                                strokeDasharray="3 3"
+                                strokeWidth={1.5}
+                                label={{ value: `Target: ${config.targetLine}`, position: "insideTopRight", fill: "#ef4444", fontSize: 10 }}
+                            />
+                        )}
+                        {isSegmented ? (
+                            // Render stacked or grouped bars for segmented data
+                            segmentKeys.map((segmentKey, idx) => (
+                                <Bar
+                                    key={segmentKey}
+                                    dataKey={segmentKey}
+                                    stackId={config.stackedBars !== false ? "a" : undefined}
+                                    fill={COLORS[idx % COLORS.length]}
+                                    radius={idx === segmentKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                                    onClick={onDrillDown}
+                                    cursor={onDrillDown ? "pointer" : "default"}
+                                />
+                            ))
+                        ) : (
+                            // Render single bar for non-segmented data
+                            <Bar dataKey={yKey} radius={[4, 4, 0, 0]} onClick={onDrillDown} cursor={onDrillDown ? "pointer" : "default"}>
+                                {chartData.map((_, i) => (
+                                    <Cell key={i} fill={STAGE_COLORS[chartData[i]?.[xKey]] || COLORS[i % COLORS.length]} />
+                                ))}
+                            </Bar>
+                        )}
                     </BarChart>
                 </ResponsiveContainer>
             </div>
@@ -213,30 +511,74 @@ function BarChartWidget({ data, type }: { data: any; type: string }) {
 
 // ─── Line Chart Widget — Now with moving average ───────────────
 
-function LineChartWidget({ data, type }: { data: any; type: string }) {
+function LineChartWidget({ data, type, config = {}, onDrillDown }: { data: any; type: string; config?: any; onDrillDown?: (data: any) => void }) {
     if (!data) return null;
 
     let chartData: any[] = [];
+    const hasPeriodComparison = data.previousPeriods && Array.isArray(data.previousPeriods);
 
     if (data.periods) {
         chartData = data.periods;
+    }
+
+    // If period comparison is enabled, merge current and previous data
+    if (hasPeriodComparison) {
+        // Create a map of periods to combine current and previous data
+        const periodMap = new Map();
+
+        // Add current period data
+        chartData.forEach(item => {
+            periodMap.set(item.period, {
+                period: item.period,
+                current: item.value || 0,
+                currentCount: item.count || 0
+            });
+        });
+
+        // Add previous period data
+        data.previousPeriods.forEach((item: any) => {
+            const existing = periodMap.get(item.period);
+            if (existing) {
+                existing.previous = item.value || 0;
+                existing.previousCount = item.count || 0;
+            } else {
+                periodMap.set(item.period, {
+                    period: item.period,
+                    previous: item.value || 0,
+                    previousCount: item.count || 0
+                });
+            }
+        });
+
+        chartData = Array.from(periodMap.values()).sort((a, b) => a.period.localeCompare(b.period));
     }
 
     if (chartData.length === 0) return <EmptyState />;
 
     const hasMovingAvg = chartData.some((d) => d.movingAvg !== undefined);
 
+    // Detect segmented data (multiple series)
+    const segmentKeys = chartData.length > 0
+        ? Object.keys(chartData[0]).filter(k => k !== "period" && k !== "value" && k !== "count" && k !== "movingAvg" && k !== "current" && k !== "previous" && k !== "currentCount" && k !== "previousCount" && !k.endsWith("_count"))
+        : [];
+    const isSegmented = segmentKeys.length > 0 && !hasPeriodComparison;
+
     return (
         <div className="h-full flex flex-col">
-            {data.summary && (
+            {(data.summary || data.percentChange !== undefined) && (
                 <div className="flex items-center gap-3 px-1 pb-1.5 text-[10px] text-zinc-500">
-                    {data.summary.total !== undefined && (
+                    {data.summary?.total !== undefined && (
                         <span>Total: <strong className="text-zinc-700 dark:text-zinc-300">
                             {data.summary.total >= 1000 ? `${(data.summary.total / 1000).toFixed(1)}K` : data.summary.total}
                         </strong></span>
                     )}
-                    {data.summary.change !== undefined && <ChangeIndicator change={data.summary.change} />}
-                    {data.summary.avgPerPeriod !== undefined && (
+                    {data.summary?.change !== undefined && <ChangeIndicator change={data.summary.change} />}
+                    {data.percentChange !== undefined && (
+                        <span className="flex items-center gap-1">
+                            vs. Previous: <ChangeIndicator change={data.percentChange} />
+                        </span>
+                    )}
+                    {data.summary?.avgPerPeriod !== undefined && (
                         <span>Avg: <strong className="text-zinc-700 dark:text-zinc-300">
                             {data.summary.avgPerPeriod >= 1000 ? `${(data.summary.avgPerPeriod / 1000).toFixed(1)}K` : data.summary.avgPerPeriod}
                         </strong>/mo</span>
@@ -245,30 +587,151 @@ function LineChartWidget({ data, type }: { data: any; type: string }) {
             )}
             <div className="flex-1 min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" opacity={0.3} />
-                        <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#a1a1aa" }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 10, fill: "#a1a1aa" }} tickLine={false} axisLine={false} />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: "#18181b",
-                                border: "1px solid #3f3f46",
-                                borderRadius: "8px",
-                                fontSize: "12px",
-                                color: "#fafafa",
-                            }}
-                        />
-                        <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fill="url(#colorValue)" />
-                        {hasMovingAvg && (
-                            <Line type="monotone" dataKey="movingAvg" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
-                        )}
-                    </AreaChart>
+                    {isSegmented ? (
+                        <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" opacity={0.3} />
+                            <XAxis
+                                dataKey="period"
+                                tick={config.showAxisLabels !== false ? { fontSize: 10, fill: "#a1a1aa" } : false}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <YAxis
+                                tick={config.showAxisLabels !== false ? { fontSize: 10, fill: "#a1a1aa" } : false}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: "#18181b",
+                                    border: "1px solid #3f3f46",
+                                    borderRadius: "8px",
+                                    fontSize: "12px",
+                                    color: "#fafafa",
+                                }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: "10px" }} />
+                            {config.targetLine !== undefined && (
+                                <ReferenceLine
+                                    y={config.targetLine}
+                                    stroke="#ef4444"
+                                    strokeDasharray="3 3"
+                                    strokeWidth={1.5}
+                                    label={{ value: `Target: ${config.targetLine}`, position: "insideTopRight", fill: "#ef4444", fontSize: 10 }}
+                                />
+                            )}
+                            {segmentKeys.map((segmentKey, idx) => (
+                                <Line
+                                    key={segmentKey}
+                                    type="monotone"
+                                    dataKey={segmentKey}
+                                    stroke={COLORS[idx % COLORS.length]}
+                                    strokeWidth={2}
+                                    dot={false}
+                                    activeDot={{ onClick: (e: any, payload: any) => onDrillDown?.(payload.payload), r: 6, cursor: "pointer" }}
+                                />
+                            ))}
+                        </LineChart>
+                    ) : hasPeriodComparison ? (
+                        <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" opacity={0.3} />
+                            <XAxis
+                                dataKey="period"
+                                tick={config.showAxisLabels !== false ? { fontSize: 10, fill: "#a1a1aa" } : false}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <YAxis
+                                tick={config.showAxisLabels !== false ? { fontSize: 10, fill: "#a1a1aa" } : false}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: "#18181b",
+                                    border: "1px solid #3f3f46",
+                                    borderRadius: "8px",
+                                    fontSize: "12px",
+                                    color: "#fafafa",
+                                }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: "10px" }} />
+                            {config.targetLine !== undefined && (
+                                <ReferenceLine
+                                    y={config.targetLine}
+                                    stroke="#ef4444"
+                                    strokeDasharray="3 3"
+                                    strokeWidth={1.5}
+                                    label={{ value: `Target: ${config.targetLine}`, position: "insideTopRight", fill: "#ef4444", fontSize: 10 }}
+                                />
+                            )}
+                            <Line
+                                type="monotone"
+                                dataKey="current"
+                                name="Current Period"
+                                stroke="#10b981"
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={{ onClick: (e: any, payload: any) => onDrillDown?.(payload.payload), r: 6, cursor: "pointer" }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="previous"
+                                name="Previous Period"
+                                stroke="#a1a1aa"
+                                strokeWidth={2}
+                                strokeDasharray="4 4"
+                                dot={false}
+                                activeDot={{ onClick: (e: any, payload: any) => onDrillDown?.(payload.payload), r: 6, cursor: "pointer" }}
+                            />
+                        </LineChart>
+                    ) : (
+                        <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" opacity={0.3} />
+                            <XAxis
+                                dataKey="period"
+                                tick={config.showAxisLabels !== false ? { fontSize: 10, fill: "#a1a1aa" } : false}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <YAxis
+                                tick={config.showAxisLabels !== false ? { fontSize: 10, fill: "#a1a1aa" } : false}
+                                tickLine={false}
+                                axisLine={false}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: "#18181b",
+                                    border: "1px solid #3f3f46",
+                                    borderRadius: "8px",
+                                    fontSize: "12px",
+                                    color: "#fafafa",
+                                }}
+                            />
+                            {config.targetLine !== undefined && (
+                                <ReferenceLine
+                                    y={config.targetLine}
+                                    stroke="#ef4444"
+                                    strokeDasharray="3 3"
+                                    strokeWidth={1.5}
+                                    label={{ value: `Target: ${config.targetLine}`, position: "insideTopRight", fill: "#ef4444", fontSize: 10 }}
+                                />
+                            )}
+                            <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} fill="url(#colorValue)"
+                                onClick={onDrillDown}
+                                cursor={onDrillDown ? "pointer" : "default"}
+                            />
+                            {hasMovingAvg && (
+                                <Line type="monotone" dataKey="movingAvg" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+                            )}
+                        </AreaChart>
+                    )}
                 </ResponsiveContainer>
             </div>
         </div>
@@ -277,18 +740,37 @@ function LineChartWidget({ data, type }: { data: any; type: string }) {
 
 // ─── Pie Chart Widget — With percentages ───────────────────────
 
-function PieChartWidget({ data, type }: { data: any; type: string }) {
+function PieChartWidget({ data, type, config = {}, onDrillDown }: { data: any; type: string; config?: any; onDrillDown?: (data: any) => void }) {
     if (!data) return null;
 
     let chartData: any[] = [];
 
-    if (data.sources) {
+    // Handle adapted custom report data
+    if (data.data && Array.isArray(data.data)) {
+        chartData = data.data;
+    } else if (data.sources) {
         chartData = data.sources;
     } else if (data.stages) {
         chartData = data.stages;
     }
 
     if (chartData.length === 0) return <EmptyState />;
+
+    // Apply sort order from config
+    if (config.sortOrder && chartData.length > 0) {
+        const sortedData = [...chartData];
+        const valueKey = chartData[0].count !== undefined ? "count" : "value";
+        const nameKey = chartData[0].name !== undefined ? "name" : "stage";
+
+        if (config.sortOrder === "value_desc") {
+            sortedData.sort((a, b) => (b[valueKey] || 0) - (a[valueKey] || 0));
+        } else if (config.sortOrder === "value_asc") {
+            sortedData.sort((a, b) => (a[valueKey] || 0) - (b[valueKey] || 0));
+        } else if (config.sortOrder === "dimension_asc") {
+            sortedData.sort((a, b) => String(a[nameKey] || "").localeCompare(String(b[nameKey] || "")));
+        }
+        chartData = sortedData;
+    }
 
     return (
         <div className="h-full flex flex-col">
@@ -315,7 +797,7 @@ function PieChartWidget({ data, type }: { data: any; type: string }) {
                             }
                         >
                             {chartData.map((_: any, i: number) => (
-                                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                                <Cell key={i} fill={COLORS[i % COLORS.length]} onClick={onDrillDown ? (e) => onDrillDown(chartData[i]) : undefined} style={{ cursor: onDrillDown ? "pointer" : "default" }} />
                             ))}
                         </Pie>
                         <Tooltip
@@ -342,7 +824,7 @@ function PieChartWidget({ data, type }: { data: any; type: string }) {
 
 // ─── Funnel Chart Widget — With conversion rates ───────────────
 
-function FunnelWidget({ data }: { data: any }) {
+function FunnelWidget({ data, onDrillDown }: { data: any; onDrillDown?: (data: any) => void }) {
     if (!data?.stages || data.stages.length === 0) return <EmptyState />;
 
     const maxCount = Math.max(...data.stages.map((s: any) => s.count));
@@ -360,7 +842,7 @@ function FunnelWidget({ data }: { data: any }) {
                 {data.stages.map((stage: any, i: number) => {
                     const width = maxCount > 0 ? (stage.count / maxCount) * 100 : 0;
                     return (
-                        <div key={stage.stage} className="flex items-center gap-2">
+                        <div key={stage.stage} className={`flex items-center gap-2 ${onDrillDown ? "cursor-pointer group" : ""}`} onClick={() => onDrillDown?.(stage)}>
                             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 w-20 truncate text-right capitalize">
                                 {stage.stage.replace(/_/g, " ")}
                             </span>
@@ -483,8 +965,8 @@ function TableWidget({ data, type }: { data: any; type: string }) {
                                     </td>
                                     <td className="py-1.5 px-2 text-right">
                                         <span className={`capitalize text-[10px] px-1.5 py-0.5 rounded-full font-medium ${d.riskLevel === "high" ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400" :
-                                                d.riskLevel === "medium" ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" :
-                                                    "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                                            d.riskLevel === "medium" ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" :
+                                                "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
                                             }`}>
                                             {d.riskLevel}
                                         </span>
@@ -519,107 +1001,4 @@ function EmptyState() {
 
 // ─── Report Widget Container ───────────────────────────────────
 
-interface ReportWidgetProps {
-    report: {
-        _id?: string;
-        type: string;
-        title: string;
-        chartType: string;
-        config: any;
-        position: { x: number; y: number; w: number; h: number };
-    };
-    workspaceId: string;
-    onRemove?: (reportId: string) => void;
-}
 
-export default function ReportWidget({ report, workspaceId, onRemove }: ReportWidgetProps) {
-    const [data, setData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-
-    const configKey = useMemo(() => JSON.stringify(report.config), [report.config]);
-
-    useEffect(() => {
-        const load = async () => {
-            try {
-                setLoading(true);
-                setError(false);
-                const result = await getReportData(workspaceId, report.type, report.config);
-                setData(result.data);
-            } catch (err) {
-                console.error("Error loading report:", err);
-                setError(true);
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
-    }, [workspaceId, report.type, configKey]);
-
-    const renderChart = () => {
-        if (loading) {
-            return (
-                <div className="flex items-center justify-center h-full">
-                    <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                </div>
-            );
-        }
-
-        if (error) {
-            return (
-                <div className="flex items-center justify-center h-full text-xs text-red-400">
-                    Failed to load
-                </div>
-            );
-        }
-
-        switch (report.chartType) {
-            case "number": return <NumberCard data={data} />;
-            case "bar": return <BarChartWidget data={data} type={report.type} />;
-            case "line": return <LineChartWidget data={data} type={report.type} />;
-            case "pie": return <PieChartWidget data={data} type={report.type} />;
-            case "funnel": return <FunnelWidget data={data} />;
-            case "table": return <TableWidget data={data} type={report.type} />;
-            default: return <EmptyState />;
-        }
-    };
-
-    // Grid span based on widget size
-    const colSpan = report.position?.w || 2;
-    const rowSpan = report.position?.h || 1;
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`bg-zinc-50 dark:bg-zinc-800/50 rounded-xl overflow-hidden group`}
-            style={{
-                gridColumn: `span ${colSpan}`,
-                gridRow: `span ${rowSpan}`,
-                minHeight: rowSpan === 1 ? "120px" : rowSpan === 2 ? "280px" : "400px",
-            }}
-        >
-            {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200/50 dark:border-zinc-700/50">
-                <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 truncate">
-                    {report.title}
-                </h3>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {onRemove && report._id && (
-                        <button
-                            onClick={() => onRemove(report._id!)}
-                            className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 transition-colors"
-                        >
-                            <TrashIcon className="w-3.5 h-3.5" />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Chart area */}
-            <div className="px-2 py-1" style={{ height: rowSpan === 1 ? "80px" : rowSpan === 2 ? "230px" : "350px" }}>
-                {renderChart()}
-            </div>
-        </motion.div>
-    );
-}
