@@ -241,9 +241,9 @@ export default function RecordingsPage() {
                         <h3 className="text-xl font-semibold text-gray-900 mb-2">
                             {recordings.length === 0 ? "No recordings yet" : "No matching recordings"}
                         </h3>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 max-w-md mx-auto">
                             {recordings.length === 0
-                                ? "Recordings will appear here when meetings are recorded"
+                                ? "To record a meeting, start recording inside Google Meet during the call. Recordings are saved to Google Drive and sync here automatically."
                                 : "Try adjusting your search or filter criteria"}
                         </p>
                     </div>

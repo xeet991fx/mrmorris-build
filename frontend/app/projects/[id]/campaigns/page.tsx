@@ -28,6 +28,7 @@ import toast from "react-hot-toast";
 import { getEmailIntegrations } from "@/lib/api/emailIntegration";
 import {
     getCampaigns,
+    getCampaign,
     createCampaign,
     startCampaign,
     pauseCampaign,
@@ -37,6 +38,7 @@ import {
     CampaignStep,
     CreateCampaignData,
 } from "@/lib/api/campaign";
+import CampaignEditor from "@/components/campaigns/CampaignEditor";
 import { getEmailAccounts } from "@/lib/api/emailAccount";
 import { axiosInstance } from "@/lib/axios";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -206,6 +208,7 @@ export default function CampaignsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
     const [emailAccounts, setEmailAccounts] = useState<Array<{ _id: string; email: string }>>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -319,55 +322,42 @@ export default function CampaignsPage() {
         fetchEmailAccountsData();
     }, [fetchCampaignsData, fetchEmailAccountsData]);
 
-    const handleCreateCampaign = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (createForm.fromAccounts.length === 0) {
-            toast.error("Please select at least one email account");
-            return;
-        }
-        if (!createForm.steps[0].subject || !createForm.steps[0].body) {
-            toast.error("Please fill in the email content");
-            return;
-        }
-
+    const handleCreateCampaign = async () => {
         setIsSubmitting(true);
         try {
             const data: CreateCampaignData = {
-                name: createForm.name,
-                description: createForm.description,
-                fromAccounts: createForm.fromAccounts,
-                dailyLimit: createForm.dailyLimit,
-                steps: createForm.steps,
+                name: "New Campaign",
+                fromAccounts: emailAccounts.length > 0 ? [emailAccounts[0]._id] : [],
+                dailyLimit: 50,
+                steps: [],
             };
             const response = await createCampaign(workspaceId, data);
             if (response.success) {
-                toast.success("Campaign created successfully");
-                setShowCreateModal(false);
-                setCreateForm({
-                    name: "",
-                    description: "",
-                    fromAccounts: [],
-                    dailyLimit: 50,
-                    steps: [
-                        {
-                            id: "step-1",
-                            type: "email",
-                            subject: "",
-                            body: "",
-                            delayDays: 0,
-                            delayHours: 0,
-                        },
-                    ],
-                });
-                fetchCampaignsData();
+                const created = response.campaign || response.data?.campaign;
+                if (created) {
+                    toast.success("Campaign created");
+                    setEditingCampaign(created);
+                    fetchCampaignsData();
+                }
             } else {
                 toast.error(response.error || "Failed to create campaign");
             }
         } catch (err: any) {
-            console.error("Failed to create campaign:", err);
             toast.error(err.message || "Failed to create campaign");
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleEditCampaign = async (campaign: Campaign) => {
+        try {
+            const res = await getCampaign(campaign._id);
+            if (res.success) {
+                const loaded = res.campaign || res.data?.campaign;
+                if (loaded) setEditingCampaign(loaded);
+            }
+        } catch {
+            toast.error("Failed to load campaign");
         }
     };
 
@@ -544,6 +534,21 @@ export default function CampaignsPage() {
     const draftCount = campaigns.filter(c => c.status === "draft").length;
     const pausedCount = campaigns.filter(c => c.status === "paused").length;
 
+    // If editing a campaign, show the full-page editor
+    if (editingCampaign) {
+        return (
+            <CampaignEditor
+                campaign={editingCampaign}
+                workspaceId={workspaceId}
+                onBack={() => {
+                    setEditingCampaign(null);
+                    fetchCampaignsData();
+                }}
+                onRefresh={fetchCampaignsData}
+            />
+        );
+    }
+
     // Loading state
     if (isLoading) {
         return (
@@ -605,7 +610,7 @@ export default function CampaignsPage() {
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
                         <button
-                            onClick={() => setShowCreateModal(true)}
+                            onClick={handleCreateCampaign}
                             disabled={isSubmitting}
                             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-sm disabled:opacity-50"
                         >
@@ -712,7 +717,7 @@ export default function CampaignsPage() {
                             <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-1">No campaigns yet</h3>
                             <p className="text-sm text-zinc-500 mb-6">Create your first campaign to start reaching prospects</p>
                             <button
-                                onClick={() => setShowCreateModal(true)}
+                                onClick={handleCreateCampaign}
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
                             >
                                 <PlusIcon className="w-4 h-4" />
@@ -734,7 +739,7 @@ export default function CampaignsPage() {
                             <CampaignRow
                                 key={campaign._id}
                                 campaign={campaign}
-                                onEdit={() => router.push(`/projects/${workspaceId}/campaigns/${campaign._id}`)}
+                                onEdit={() => handleEditCampaign(campaign)}
                                 onStart={() => handleStartCampaign(campaign._id)}
                                 onPause={() => handlePauseCampaign(campaign._id)}
                                 onEnroll={() => handleOpenEnrollModal(campaign._id)}

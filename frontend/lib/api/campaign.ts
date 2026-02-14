@@ -77,6 +77,7 @@ export interface UpdateCampaignData {
 export interface CampaignResponse {
     success: boolean;
     message?: string;
+    campaign?: Campaign;
     data?: {
         campaign: Campaign;
     };

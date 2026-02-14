@@ -150,15 +150,15 @@ router.post("/", async (req: any, res) => {
             });
         }
 
-        if (!name || !fromAccounts || !steps || steps.length === 0) {
+        if (!name) {
             return res.status(400).json({
                 success: false,
-                message: "Missing required fields",
+                message: "Campaign name is required",
             });
         }
 
         // Ensure each step has required fields (order, id)
-        const processedSteps = steps.map((step: any, index: number) => ({
+        const processedSteps = (steps || []).map((step: any, index: number) => ({
             ...step,
             id: step.id || `step-${Date.now()}-${index}`,
             order: typeof step.order === 'number' ? step.order : index,
