@@ -407,6 +407,75 @@ router.get("/:id/enrollments", async (req: any, res) => {
 });
 
 /**
+ * GET /api/campaigns/:id/verify-stats
+ * Verify campaign stats accuracy by cross-checking against EmailMessage records
+ */
+router.get("/:id/verify-stats", async (req: any, res) => {
+    try {
+        const { id } = req.params;
+
+        const campaign = await Campaign.findById(id);
+        if (!campaign) {
+            return res.status(404).json({
+                success: false,
+                message: "Campaign not found",
+            });
+        }
+
+        const EmailMessage = (await import("../models/EmailMessage")).default;
+
+        // Aggregate actual stats from EmailMessage records
+        const actual = await EmailMessage.aggregate([
+            { $match: { campaignId: campaign._id } },
+            {
+                $group: {
+                    _id: null,
+                    sent: { $sum: 1 },
+                    opened: { $sum: { $cond: ["$opened", 1, 0] } },
+                    clicked: { $sum: { $cond: ["$clicked", 1, 0] } },
+                    replied: { $sum: { $cond: ["$replied", 1, 0] } },
+                    bounced: { $sum: { $cond: ["$bounced", 1, 0] } },
+                }
+            }
+        ]);
+
+        const actualStats = actual[0] || { sent: 0, opened: 0, clicked: 0, replied: 0, bounced: 0 };
+        const storedStats = campaign.stats || { sent: 0, opened: 0, clicked: 0, replied: 0, bounced: 0 };
+
+        // Calculate drift
+        const drift: any = {};
+        const fields = ['sent', 'opened', 'clicked', 'replied', 'bounced'];
+        for (const field of fields) {
+            const storedVal = storedStats[field] || 0;
+            const actualVal = actualStats[field] || 0;
+            if (storedVal !== actualVal) {
+                drift[field] = {
+                    stored: storedVal,
+                    actual: actualVal,
+                    difference: actualVal - storedVal,
+                };
+            }
+        }
+
+        const hasDrift = Object.keys(drift).length > 0;
+
+        res.json({
+            success: true,
+            stored: storedStats,
+            actual: actualStats,
+            hasDrift,
+            drift,
+        });
+    } catch (error: any) {
+        console.error("Verify stats error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+});
+
+/**
  * POST /api/campaigns/:id/test
  * Send a test email for a campaign
  */

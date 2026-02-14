@@ -247,6 +247,20 @@ contactLifecycleHistorySchema.statics.getContactsByStage = async function (
   return this.find(query).sort({ currentStageEnteredAt: 1 });
 };
 
+// Auto-sync Contact.lifecycleStage when lifecycle history changes (fixes A2)
+contactLifecycleHistorySchema.post("save", async function (doc) {
+  try {
+    const Contact = mongoose.model("Contact");
+    await Contact.findByIdAndUpdate(doc.contactId, {
+      lifecycleStage: doc.currentStage,
+      lifecycleStageUpdatedAt: doc.currentStageEnteredAt,
+      previousLifecycleStage: doc.previousStage,
+    });
+  } catch (error) {
+    console.error("Failed to sync Contact lifecycleStage:", error);
+  }
+});
+
 const ContactLifecycleHistory = mongoose.model<IContactLifecycleHistory>(
   "ContactLifecycleHistory",
   contactLifecycleHistorySchema

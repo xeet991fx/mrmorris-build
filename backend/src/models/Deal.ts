@@ -1,5 +1,21 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
+/**
+ * @deprecated This model is being phased out in favor of the Opportunity model.
+ *
+ * The Opportunity model provides:
+ * - Dynamic pipeline support (vs hardcoded stages)
+ * - Better stage tracking with duration calculations
+ * - Unified reporting across all deal data
+ *
+ * Migration path:
+ * - Existing Deal records are supported during transition
+ * - All new deals should be created as Opportunities
+ * - Reports query both models and merge results
+ * - Once all Deals are migrated, this model will be removed
+ *
+ * See: backend/src/models/Opportunity.ts
+ */
 export interface IDeal extends Document {
     workspaceId: Types.ObjectId;
     userId: Types.ObjectId;

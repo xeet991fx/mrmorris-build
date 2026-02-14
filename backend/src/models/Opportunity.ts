@@ -322,6 +322,20 @@ opportunitySchema.index({
 
 // Update lastActivityAt only when activity-related fields change
 opportunitySchema.pre("save", function (next) {
+  // Capture modified state for post-save hooks (P0 Fix: isModified() returns false after save)
+  this.$locals._wasModified = {
+    value: this.isModified("value"),
+    stageId: this.isModified("stageId"),
+    status: this.isModified("status"),
+  };
+
+  // Auto-set actualCloseDate when status changes to won/lost (fixes D4, C3)
+  if (this.isModified("status") && !this.actualCloseDate) {
+    if (this.status === "won" || this.status === "lost") {
+      this.actualCloseDate = new Date();
+    }
+  }
+
   if (!this.isNew) {
     // Only update lastActivityAt for activity-related changes
     const activityFields = [
@@ -336,6 +350,68 @@ opportunitySchema.pre("save", function (next) {
     }
   }
   next();
+});
+
+// Auto-create StageChangeEvent when stage changes (fixes A3)
+// Auto-update Attribution.conversionValue when deal value changes (fixes A5)
+opportunitySchema.post("save", async function (doc) {
+  const wasModified = (doc.$locals._wasModified || {}) as {
+    value?: boolean;
+    stageId?: boolean;
+    status?: boolean;
+  };
+
+  // Sync Attribution conversionValue when closed deal value changes
+  if (wasModified.value && (doc.status === "won" || doc.status === "lost")) {
+    try {
+      const Attribution = mongoose.model("Attribution");
+      await Attribution.updateMany(
+        { opportunityId: doc._id },
+        { $set: { conversionValue: doc.value } }
+      );
+    } catch (error) {
+      console.error("Failed to sync Attribution conversionValue:", error);
+    }
+  }
+
+  if (wasModified.stageId) {
+    try {
+      const StageChangeEvent = mongoose.model("StageChangeEvent");
+
+      // Get previous stage from stageHistory
+      const prevStage = doc.stageHistory && doc.stageHistory.length > 1
+        ? doc.stageHistory[doc.stageHistory.length - 2]
+        : undefined;
+
+      // Get current stage info from stageHistory
+      const currentStage = doc.stageHistory && doc.stageHistory.length > 0
+        ? doc.stageHistory[doc.stageHistory.length - 1]
+        : undefined;
+
+      if (currentStage) {
+        await StageChangeEvent.create({
+          entityId: doc._id,
+          entityType: "opportunity",
+          workspaceId: doc.workspaceId,
+          pipelineId: doc.pipelineId,
+          oldStageId: prevStage?.stageId,
+          oldStageName: prevStage?.stageName,
+          newStageId: currentStage.stageId,
+          newStageName: currentStage.stageName,
+          timestamp: currentStage.enteredAt || new Date(),
+          userId: doc.userId,
+          metadata: {
+            value: doc.value,
+            probability: doc.probability,
+            status: doc.status,
+            assignedTo: doc.assignedTo,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to create StageChangeEvent:", error);
+    }
+  }
 });
 
 const Opportunity = mongoose.model<IOpportunity>(

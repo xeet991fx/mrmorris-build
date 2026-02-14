@@ -165,11 +165,18 @@ export default function OpportunityTableRow({
         )}
       </td>
 
-      {/* Expected Close Date */}
+      {/* Close Date - Show actual for closed deals, expected otherwise */}
       <td className="px-4 py-3 text-sm text-foreground">
-        {opportunity.expectedCloseDate
-          ? format(new Date(opportunity.expectedCloseDate), "MMM d, yyyy")
-          : "—"}
+        {(opportunity.status === "won" || opportunity.status === "lost") && opportunity.actualCloseDate ? (
+          <div className="flex flex-col">
+            <span className="font-medium">{format(new Date(opportunity.actualCloseDate), "MMM d, yyyy")}</span>
+            <span className="text-xs text-muted-foreground">Closed</span>
+          </div>
+        ) : opportunity.expectedCloseDate ? (
+          format(new Date(opportunity.expectedCloseDate), "MMM d, yyyy")
+        ) : (
+          "—"
+        )}
       </td>
 
       {/* Status */}

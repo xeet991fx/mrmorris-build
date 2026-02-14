@@ -139,11 +139,19 @@ export default function OpportunityCard({
           </div>
         )}
 
-        {/* Expected Close Date */}
-        {opportunity.expectedCloseDate && (
-          <div className="flex items-center gap-1 ml-auto" title="Expected close date">
+        {/* Close Date - Show actual for closed deals, expected otherwise */}
+        {(opportunity.actualCloseDate || opportunity.expectedCloseDate) && (
+          <div className="flex items-center gap-1 ml-auto" title={
+            (opportunity.status === "won" || opportunity.status === "lost") && opportunity.actualCloseDate
+              ? "Closed on"
+              : "Expected close date"
+          }>
             <CalendarIcon className="w-4 h-4" />
-            <span>{formatDate(opportunity.expectedCloseDate)}</span>
+            <span>
+              {(opportunity.status === "won" || opportunity.status === "lost") && opportunity.actualCloseDate
+                ? `Closed ${formatDate(opportunity.actualCloseDate)}`
+                : formatDate(opportunity.expectedCloseDate)}
+            </span>
           </div>
         )}
       </div>

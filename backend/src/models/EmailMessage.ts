@@ -351,6 +351,49 @@ emailMessageSchema.index({ sequenceId: 1, sentAt: -1 });
 emailMessageSchema.index({ trackingId: 1 });
 
 // ============================================
+// HOOKS
+// ============================================
+
+// Capture modified state for post-save hooks (P0 Fix: isModified() returns false after save)
+emailMessageSchema.pre("save", function (next) {
+  this.$locals._wasModified = {
+    opened: this.isModified("opened"),
+    clicked: this.isModified("clicked"),
+    replied: this.isModified("replied"),
+    bounced: this.isModified("bounced"),
+  };
+  next();
+});
+
+// Auto-update Campaign.stats when email tracking changes (fixes A4)
+emailMessageSchema.post("save", async function (doc) {
+  const mod = (doc.$locals._wasModified || {}) as {
+    opened?: boolean;
+    clicked?: boolean;
+    replied?: boolean;
+    bounced?: boolean;
+  };
+
+  if (doc.campaignId && (mod.opened || mod.clicked || mod.replied || mod.bounced)) {
+    try {
+      const Campaign = mongoose.model("Campaign");
+      const increment: any = {};
+
+      if (mod.opened && doc.opened) increment["stats.opened"] = 1;
+      if (mod.clicked && doc.clicked) increment["stats.clicked"] = 1;
+      if (mod.replied && doc.replied) increment["stats.replied"] = 1;
+      if (mod.bounced && doc.bounced) increment["stats.bounced"] = 1;
+
+      if (Object.keys(increment).length > 0) {
+        await Campaign.findByIdAndUpdate(doc.campaignId, { $inc: increment });
+      }
+    } catch (error) {
+      console.error("Failed to update Campaign stats:", error);
+    }
+  }
+});
+
+// ============================================
 // EXPORT
 // ============================================
 

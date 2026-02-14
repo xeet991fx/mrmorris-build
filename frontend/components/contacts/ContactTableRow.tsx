@@ -101,6 +101,7 @@ export default function ContactTableRow({
       "notes",
       "status",
       "leadScore",
+      "lifecycleStage",
       "createdAt",
     ].includes(column);
   };
@@ -158,6 +159,29 @@ export default function ContactTableRow({
           ) : (
             <span className="text-xs text-zinc-400">No score</span>
           );
+        case "lifecycleStage": {
+          const stageColors: Record<string, string> = {
+            subscriber: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+            lead: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+            mql: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+            sql: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+            sal: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+            opportunity: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+            customer: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+            evangelist: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+            churned: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+            disqualified: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+          };
+          const stage = contact.lifecycleStage || "lead";
+          return (
+            <span className={cn(
+              "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+              stageColors[stage] || "bg-gray-100 dark:bg-gray-800"
+            )}>
+              {stage.toUpperCase()}
+            </span>
+          );
+        }
         case "createdAt":
           return format(new Date(contact.createdAt), "MMM d, yyyy");
         default:

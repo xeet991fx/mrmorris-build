@@ -352,6 +352,9 @@ export default function CampaignEditor({ campaign, workspaceId, onBack, onRefres
     const [enrollmentsLoading, setEnrollmentsLoading] = useState(false);
     const [enrollmentFilter, setEnrollmentFilter] = useState<string>("all");
 
+    // Stats verification
+    const [statsVerification, setStatsVerification] = useState<{ hasDrift: boolean; loading: boolean } | null>(null);
+
     // Settings
     const [threadEmails, setThreadEmails] = useState(true);
     const [senderSignature, setSenderSignature] = useState(true);
@@ -393,7 +396,21 @@ export default function CampaignEditor({ campaign, workspaceId, onBack, onRefres
         finally { setEnrollmentsLoading(false); }
     }, [campaign._id, enrollmentFilter]);
 
+    // Verify campaign stats accuracy
+    const verifyStats = useCallback(async () => {
+        if (!campaign._id) return;
+        setStatsVerification({ hasDrift: false, loading: true });
+        try {
+            const res = await axiosInstance.get(`/api/campaigns/${campaign._id}/verify-stats`);
+            setStatsVerification({ hasDrift: res.data.hasDrift, loading: false });
+        } catch (error) {
+            console.error("Failed to verify stats:", error);
+            setStatsVerification({ hasDrift: false, loading: false });
+        }
+    }, [campaign._id]);
+
     useEffect(() => { if (activeTab === "recipients") fetchEnrollments(); }, [activeTab, fetchEnrollments]);
+    useEffect(() => { if (activeTab === "recipients") verifyStats(); }, [activeTab, verifyStats]);
 
     const addStep = () => {
         setSteps([...steps, { id: `step-${Date.now()}`, type: "email", subject: "", body: "", delayDays: steps.length > 0 ? 1 : 0, delayHours: 0 }]);
@@ -623,6 +640,27 @@ export default function CampaignEditor({ campaign, workspaceId, onBack, onRefres
                                     </div>
                                 ))}
                             </div>
+                            {statsVerification && !statsVerification.loading && (
+                                <div className={cn(
+                                    "flex items-center gap-2 px-3 py-2 rounded-lg text-xs",
+                                    statsVerification.hasDrift
+                                        ? "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                                        : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                                )}>
+                                    {statsVerification.hasDrift ? (
+                                        <>
+                                            <ExclamationCircleIcon className="w-4 h-4" />
+                                            <span>Stats may be stale</span>
+                                            <button onClick={verifyStats} className="ml-auto underline hover:no-underline">Refresh</button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircleSolid className="w-4 h-4" />
+                                            <span>Stats verified</span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
                             <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg w-fit">
                                 {["all", "active", "completed", "replied", "bounced", "paused"].map((f) => (
                                     <button key={f} onClick={() => setEnrollmentFilter(f)}

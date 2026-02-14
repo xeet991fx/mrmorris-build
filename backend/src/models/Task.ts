@@ -129,6 +129,23 @@ taskSchema.index({ workspaceId: 1, relatedCompanyId: 1 }); // Company tasks
 taskSchema.index({ workspaceId: 1, status: 1, priority: 1, dueDate: 1 }); // Combined sorting
 
 // ============================================
+// HOOKS
+// ============================================
+
+// Auto-set completedAt when status changes to completed (fixes B2)
+taskSchema.pre("save", function (next) {
+    if (this.isModified("status")) {
+        if (this.status === "completed" && !this.completedAt) {
+            this.completedAt = new Date();
+        } else if (this.status !== "completed" && this.completedAt) {
+            // Clear completedAt if status changed away from completed
+            this.completedAt = undefined;
+        }
+    }
+    next();
+});
+
+// ============================================
 // MODEL
 // ============================================
 

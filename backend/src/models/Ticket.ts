@@ -226,11 +226,23 @@ ticketSchema.index({ workspaceId: 1, assignedTo: 1, status: 1 });
 ticketSchema.index({ workspaceId: 1, priority: 1, status: 1 });
 ticketSchema.index({ workspaceId: 1, requesterEmail: 1 });
 
-// Auto-generate ticket number
+// Auto-generate ticket number (fixes B3: uses atomic counter)
 ticketSchema.pre("save", async function (next) {
     if (this.isNew && !this.ticketNumber) {
-        const count = await mongoose.model("Ticket").countDocuments({ workspaceId: this.workspaceId });
-        this.ticketNumber = `TKT-${String(count + 1).padStart(4, "0")}`;
+        try {
+            // Use a counter collection for atomic incrementing
+            const Counter = mongoose.model("Counter");
+            const counter = await Counter.findOneAndUpdate(
+                { _id: `ticket_${this.workspaceId}` },
+                { $inc: { seq: 1 } },
+                { new: true, upsert: true }
+            );
+            this.ticketNumber = `TKT-${String(counter.seq).padStart(4, "0")}`;
+        } catch (error) {
+            console.error("Failed to generate ticket number:", error);
+            // Fallback to timestamp-based unique number
+            this.ticketNumber = `TKT-${Date.now().toString().slice(-8)}`;
+        }
     }
     next();
 });

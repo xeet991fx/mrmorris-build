@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   UserGroupIcon,
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 
 export default function ContactsPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspaceId = params.id as string;
 
   const { contacts, isLoading, fetchContacts, deleteContact, bulkDeleteContacts, fetchCustomColumns, selectedContacts, clearSelectedContacts, pagination } = useContactStore();
@@ -37,14 +38,16 @@ export default function ContactsPage() {
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
-  // Fetch contacts and custom columns on mount
+  // Fetch contacts and custom columns on mount or when lifecycle stage filter changes
   useEffect(() => {
     if (workspaceId) {
-      fetchContacts(workspaceId);
+      const lifecycleStage = searchParams.get("lifecycleStage");
+      const queryParams = lifecycleStage ? { lifecycleStage } : {};
+      fetchContacts(workspaceId, queryParams);
       fetchCustomColumns(workspaceId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceId]);
+  }, [workspaceId, searchParams]);
 
   const handleEdit = (contact: Contact) => {
     setSelectedContact(contact);

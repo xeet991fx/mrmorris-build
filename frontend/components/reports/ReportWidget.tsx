@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef, useId } from "react";
 import { getReportData } from "@/lib/api/reportDashboards";
 import { adaptReportData } from "@/lib/reportDataAdapters";
+import { formatDistanceToNow } from "date-fns";
 import {
     BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart, ReferenceLine
@@ -45,6 +46,7 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
     const [error, setError] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [drillDownContext, setDrillDownContext] = useState<any>(null);
+    const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
     const widgetRef = useRef<HTMLDivElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const widgetId = useId();
@@ -65,6 +67,7 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
                     report.definition
                 );
                 setData(adaptedData);
+                setLastFetchedAt(new Date());
             } catch (err) {
                 console.error("Error loading report:", err);
                 setError(true);
@@ -153,9 +156,16 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
             }}
         >
             <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200/50 dark:border-zinc-700/50">
-                <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 truncate cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors" onClick={() => onFullscreen?.(report)}>
-                    {report.title}
-                </h3>
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                    <h3 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 truncate cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors" onClick={() => onFullscreen?.(report)}>
+                        {report.title}
+                    </h3>
+                    {lastFetchedAt && (
+                        <span className="text-[10px] text-zinc-400">
+                            Updated {formatDistanceToNow(lastFetchedAt)} ago
+                        </span>
+                    )}
+                </div>
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     {onEdit && report.definition && (
                         <button onClick={() => onEdit(report)} className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-zinc-400 hover:text-blue-500 transition-colors">

@@ -19,7 +19,9 @@
     "status:pm2": "pm2 status",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "migrate:deals": "ts-node src/scripts/migrateDealToOpportunity.ts",
+    "migrate:deals:live": "DRY_RUN=false ts-node src/scripts/migrateDealToOpportunity.ts"
   },
   "dependencies": {
     "@bull-board/api": "^6.16.1",

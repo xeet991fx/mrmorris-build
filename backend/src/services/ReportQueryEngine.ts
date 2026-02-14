@@ -16,10 +16,16 @@ import Task from "../models/Task";
 import Ticket from "../models/Ticket";
 import EmailMessage from "../models/EmailMessage";
 import StageChangeEvent from "../models/StageChangeEvent";
+import Deal from "../models/Deal";
+import Activity from "../models/Activity";
+import Campaign from "../models/Campaign";
+import ContactLifecycleHistory from "../models/ContactLifecycleHistory";
+import CallRecording from "../models/CallRecording";
+import FormSubmission from "../models/FormSubmission";
 
 export interface ReportDefinition {
   type: "insight" | "funnel" | "time_in_stage" | "historical" | "stage_changed";
-  source: "opportunity" | "contact" | "company" | "task" | "ticket" | "email";
+  source: "opportunity" | "contact" | "company" | "task" | "ticket" | "email" | "deal" | "activity" | "campaign" | "lifecycle" | "call" | "form";
   metric: {
     field: string; // e.g., "value", "probability", "count"
     aggregation: "sum" | "avg" | "count" | "min" | "max";
@@ -381,6 +387,12 @@ export class ReportQueryEngine {
       task: Task,
       ticket: Ticket,
       email: EmailMessage,
+      deal: Deal, // Fixes D2
+      activity: Activity,
+      campaign: Campaign,
+      lifecycle: ContactLifecycleHistory,
+      call: CallRecording,
+      form: FormSubmission,
     };
 
     const model = models[entity];

@@ -28,6 +28,7 @@ export interface Contact {
   assignedTo?: string;
   lastContactedAt?: string;
   notes?: string;
+  lifecycleStage?: "subscriber" | "lead" | "mql" | "sql" | "sal" | "opportunity" | "customer" | "evangelist" | "churned" | "disqualified";
   customFields?: Record<string, any>;
   aiInsights?: {
     sentiment?: "positive" | "neutral" | "negative";
@@ -95,6 +96,7 @@ export interface ContactQueryParams {
   status?: "lead" | "prospect" | "customer" | "inactive";
   assignedTo?: string;
   tags?: string;
+  lifecycleStage?: string;
 }
 
 /**

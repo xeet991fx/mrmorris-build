@@ -279,11 +279,12 @@ router.get(
             const mongoose = require("mongoose");
             const wsId = mongoose.Types.ObjectId.createFromHexString(workspaceId);
 
+            // Fixes C2: Filter by direction: "outbound" to exclude inbound emails
             const [totalSent, opened, clicked, replied] = await Promise.all([
-                EmailMessage.countDocuments({ workspaceId }),
-                EmailMessage.countDocuments({ workspaceId, opened: true }),
-                EmailMessage.countDocuments({ workspaceId, clicked: true }),
-                EmailMessage.countDocuments({ workspaceId, replied: true }),
+                EmailMessage.countDocuments({ workspaceId, direction: "outbound" }),
+                EmailMessage.countDocuments({ workspaceId, direction: "outbound", opened: true }),
+                EmailMessage.countDocuments({ workspaceId, direction: "outbound", clicked: true }),
+                EmailMessage.countDocuments({ workspaceId, direction: "outbound", replied: true }),
             ]);
 
             res.json({

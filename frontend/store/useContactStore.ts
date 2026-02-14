@@ -20,6 +20,7 @@ export type BuiltInColumn =
   | "notes"
   | "status"
   | "leadScore"
+  | "lifecycleStage"
   | "createdAt";
 
 export type ContactColumn = BuiltInColumn | string; // string for custom field keys
@@ -34,6 +35,7 @@ export const DEFAULT_COLUMN_WIDTHS: Record<BuiltInColumn, number> = {
   source: 120,
   status: 120,
   leadScore: 120,
+  lifecycleStage: 140,
   notes: 120,
   createdAt: 120,
 };
@@ -48,6 +50,7 @@ export const DEFAULT_COLUMN_ORDER: BuiltInColumn[] = [
   "source",
   "status",
   "leadScore",
+  "lifecycleStage",
   "createdAt",
   "notes",
 ];

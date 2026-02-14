@@ -22,8 +22,57 @@ import CallRecording from "../models/CallRecording";
 import FormSubmission from "../models/FormSubmission";
 import { Types } from "mongoose";
 import { ReportQueryEngine } from "../services/ReportQueryEngine";
+import Project from "../models/Project";
 
 const router = Router();
+
+// ─── Access Control ───────────────────────────────────────────────────
+
+async function validateAccess(workspaceId: string, userId: string, res: Response): Promise<boolean> {
+    const workspace = await Project.findById(workspaceId);
+    if (!workspace) {
+        res.status(404).json({ success: false, error: "Workspace not found." });
+        return false;
+    }
+    if (workspace.userId.toString() !== userId) {
+        res.status(403).json({ success: false, error: "Access denied." });
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Validate report definition structure and sanitize inputs
+ * Returns error string or null if valid
+ */
+function validateReportDefinition(definition: any): string | null {
+    const validTypes = ["insight", "funnel", "time_in_stage", "historical", "stage_changed"];
+    const validSources = ["opportunity", "contact", "company", "task", "ticket", "email", "deal", "activity", "campaign", "lifecycle", "call", "form"];
+    const validAggregations = ["sum", "avg", "count", "min", "max"];
+    const validOperators = ["eq", "ne", "gt", "lt", "gte", "lte", "in", "nin", "contains", "exists"];
+
+    if (!validTypes.includes(definition.type)) {
+        return `Invalid report type: ${definition.type}`;
+    }
+    if (!validSources.includes(definition.source)) {
+        return `Invalid source: ${definition.source}`;
+    }
+    if (!definition.metric || !validAggregations.includes(definition.metric.aggregation)) {
+        return "Invalid metric aggregation";
+    }
+    if (definition.filters) {
+        for (const filter of definition.filters) {
+            if (!validOperators.includes(filter.operator)) {
+                return `Invalid filter operator: ${filter.operator}`;
+            }
+            // Sanitize regex patterns
+            if (filter.operator === "contains" && typeof filter.value === "string") {
+                filter.value = filter.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+        }
+    }
+    return null;
+}
 
 // ─── Helpers ───────────────────────────────────────────────────
 
@@ -45,10 +94,13 @@ function getDateRange(period: string = "30days"): { start: Date; end: Date } {
     return { start, end };
 }
 
-/** Returns the previous period of same length for comparison */
+/**
+ * Returns the previous period of same length for comparison
+ * Fixes C5: Use exact boundaries, rely on query operators ($lt vs $lte) for precision
+ */
 function getPreviousPeriod(start: Date, end: Date): { prevStart: Date; prevEnd: Date } {
     const durationMs = end.getTime() - start.getTime();
-    const prevEnd = new Date(start.getTime() - 1); // 1ms before current start
+    const prevEnd = new Date(start.getTime()); // Exact boundary (use $lt in queries)
     const prevStart = new Date(prevEnd.getTime() - durationMs);
     return { prevStart, prevEnd };
 }
@@ -341,22 +393,49 @@ async function getHistoricalData(workspaceId: string, config: any) {
 }
 
 // ─── FUNNEL — Conversion rates + velocity ──────────────────────
+// Fixed C1: Now uses dynamic pipeline stages instead of hardcoded strings
 
 async function getFunnelData(workspaceId: string, _config: any) {
     const wId = new Types.ObjectId(workspaceId);
-    const stages = ["lead", "qualified", "proposal", "negotiation", "closed_won"];
 
+    // Get actual pipeline data with stage lookups (fixes C1)
     const pipeline = await Opportunity.aggregate([
         { $match: { workspaceId: wId } },
         {
+            $lookup: {
+                from: "pipelines",
+                localField: "pipelineId",
+                foreignField: "_id",
+                as: "pipeline",
+            },
+        },
+        { $unwind: { path: "$pipeline", preserveNullAndEmptyArrays: true } },
+        {
+            $addFields: {
+                currentStage: {
+                    $arrayElemAt: [
+                        {
+                            $filter: {
+                                input: "$pipeline.stages",
+                                cond: { $eq: ["$$this._id", "$stageId"] },
+                            },
+                        },
+                        0,
+                    ],
+                },
+            },
+        },
+        {
             $group: {
-                _id: "$stage",
+                _id: "$currentStage.name",
                 count: { $sum: 1 },
                 value: { $sum: "$value" },
                 avgValue: { $avg: "$value" },
                 avgProbability: { $avg: "$probability" },
+                order: { $first: "$currentStage.order" },
             },
         },
+        { $sort: { order: 1 } },
     ]);
 
     const stageMap = new Map(pipeline.map((s) => [s._id, s]));
@@ -364,6 +443,9 @@ async function getFunnelData(workspaceId: string, _config: any) {
     // Also count lost deals separately
     const lostCount = await Opportunity.countDocuments({ workspaceId: wId, status: "lost" });
     const totalDeals = pipeline.reduce((s, p) => s + p.count, 0) + lostCount;
+
+    // Use actual stage names from pipeline (not hardcoded)
+    const stages = pipeline.map((p) => p._id).filter(Boolean);
 
     const funnel = stages.map((stage, i) => {
         const data = stageMap.get(stage);
@@ -382,10 +464,10 @@ async function getFunnelData(workspaceId: string, _config: any) {
         };
     });
 
-    // Overall conversion (lead → closed_won)
-    const leadCount = stageMap.get("lead")?.count || 0;
-    const wonCount = stageMap.get("closed_won")?.count || 0;
-    const overallConversion = leadCount > 0 ? Math.round((wonCount / leadCount) * 100) : 0;
+    // Overall conversion (first stage → won status)
+    const firstStageCount = stages.length > 0 ? (stageMap.get(stages[0])?.count || 0) : 0;
+    const wonCount = await Opportunity.countDocuments({ workspaceId: wId, status: "won" });
+    const overallConversion = firstStageCount > 0 ? Math.round((wonCount / firstStageCount) * 100) : 0;
 
     return {
         stages: funnel,
@@ -399,20 +481,45 @@ async function getFunnelData(workspaceId: string, _config: any) {
 }
 
 // ─── TIME IN STAGE — With percentiles + bottleneck detection ───
+// Updated to use Opportunity model (unified approach, fixes A1)
 
 async function getTimeInStageData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
     const aggregation = config.metric || "avg";
 
-    const deals = await Deal.find({
-        workspaceId: wId,
-        stageHistory: { $exists: true, $not: { $size: 0 } },
-    }).select("stageHistory stage value").lean();
+    // Query both Opportunity (primary) and Deal (legacy fallback) during transition
+    const [opportunities, legacyDeals] = await Promise.all([
+        Opportunity.find({
+            workspaceId: wId,
+            stageHistory: { $exists: true, $not: { $size: 0 } },
+        }).select("stageHistory value").lean(),
+        Deal.find({
+            workspaceId: wId,
+            stageHistory: { $exists: true, $not: { $size: 0 } },
+        }).select("stageHistory value").lean(),
+    ]);
 
     const stageTimings: Record<string, number[]> = {};
     const stageValues: Record<string, number[]> = {};
 
-    for (const deal of deals) {
+    // Process Opportunity records (preferred - has duration pre-calculated)
+    for (const opp of opportunities) {
+        if (!opp.stageHistory || opp.stageHistory.length === 0) continue;
+        for (const stage of opp.stageHistory) {
+            if (!stage.duration || !stage.exitedAt) continue; // Skip incomplete/current stage
+            const durationHours = stage.duration / (1000 * 60 * 60); // Convert ms to hours
+            const stageName = stage.stageName || "Unknown";
+            if (!stageTimings[stageName]) {
+                stageTimings[stageName] = [];
+                stageValues[stageName] = [];
+            }
+            stageTimings[stageName].push(durationHours);
+            stageValues[stageName].push(opp.value || 0);
+        }
+    }
+
+    // Process legacy Deal records (fallback)
+    for (const deal of legacyDeals) {
         if (!deal.stageHistory || deal.stageHistory.length < 2) continue;
         for (let i = 0; i < deal.stageHistory.length - 1; i++) {
             const current = deal.stageHistory[i];
@@ -464,13 +571,23 @@ async function getTimeInStageData(workspaceId: string, config: any) {
 }
 
 // ─── STAGE CHANGED — Transitions with velocity ────────────────
+// Updated to use Opportunity model (unified approach, fixes A1)
 
 async function getStageChangedData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
     const { start, end } = getDateRange(config.period || "30days");
     const { prevStart, prevEnd } = getPreviousPeriod(start, end);
 
-    const [currentDeals, previousDeals] = await Promise.all([
+    // Query both Opportunity (primary) and Deal (legacy fallback) during transition
+    const [currentOpps, previousOpps, currentDeals, previousDeals] = await Promise.all([
+        Opportunity.find({
+            workspaceId: wId,
+            "stageHistory.enteredAt": { $gte: start, $lte: end },
+        }).select("stageHistory value").lean(),
+        Opportunity.find({
+            workspaceId: wId,
+            "stageHistory.enteredAt": { $gte: prevStart, $lte: prevEnd },
+        }).select("stageHistory value").lean(),
         Deal.find({
             workspaceId: wId,
             "stageHistory.changedAt": { $gte: start, $lte: end },
@@ -481,24 +598,44 @@ async function getStageChangedData(workspaceId: string, config: any) {
         }).select("stageHistory value").lean(),
     ]);
 
-    function countTransitions(deals: any[], rangeStart: Date, rangeEnd: Date) {
+    function countTransitions(records: any[], rangeStart: Date, rangeEnd: Date, isOpportunity = false) {
         const transitions: Record<string, { count: number; value: number }> = {};
-        for (const deal of deals) {
-            if (!deal.stageHistory) continue;
-            for (const entry of deal.stageHistory) {
-                const dt = new Date(entry.changedAt);
+        for (const record of records) {
+            if (!record.stageHistory) continue;
+            for (const entry of record.stageHistory) {
+                // Handle Opportunity format (enteredAt, stageName) vs Deal format (changedAt, stage)
+                const dt = isOpportunity ? new Date(entry.enteredAt) : new Date(entry.changedAt);
+                const stageName = isOpportunity ? (entry.stageName || "Unknown") : entry.stage;
+
                 if (dt >= rangeStart && dt <= rangeEnd) {
-                    if (!transitions[entry.stage]) transitions[entry.stage] = { count: 0, value: 0 };
-                    transitions[entry.stage].count++;
-                    transitions[entry.stage].value += deal.value || 0;
+                    if (!transitions[stageName]) transitions[stageName] = { count: 0, value: 0 };
+                    transitions[stageName].count++;
+                    transitions[stageName].value += record.value || 0;
                 }
             }
         }
         return transitions;
     }
 
-    const current = countTransitions(currentDeals, start, end);
-    const previous = countTransitions(previousDeals, prevStart, prevEnd);
+    // Combine data from both sources
+    const currentOppTransitions = countTransitions(currentOpps, start, end, true);
+    const previousOppTransitions = countTransitions(previousOpps, prevStart, prevEnd, true);
+    const currentDealTransitions = countTransitions(currentDeals, start, end, false);
+    const previousDealTransitions = countTransitions(previousDeals, prevStart, prevEnd, false);
+
+    // Merge transitions from both sources
+    const mergeTransitions = (opp: any, deal: any) => {
+        const merged: Record<string, { count: number; value: number }> = { ...opp };
+        for (const [stage, data] of Object.entries(deal)) {
+            if (!merged[stage]) merged[stage] = { count: 0, value: 0 };
+            merged[stage].count += (data as any).count;
+            merged[stage].value += (data as any).value;
+        }
+        return merged;
+    };
+
+    const current = mergeTransitions(currentOppTransitions, currentDealTransitions);
+    const previous = mergeTransitions(previousOppTransitions, previousDealTransitions);
 
     const allStages = new Set([...Object.keys(current), ...Object.keys(previous)]);
     const transitions = Array.from(allStages).map((stage) => ({
@@ -700,10 +837,17 @@ async function getTopPerformersData(workspaceId: string, config: any) {
 async function getLeadSourcesData(workspaceId: string, _config: any) {
     const wId = new Types.ObjectId(workspaceId);
 
-    // Get contacts by source
+    // Get contacts by source (fixes B4: normalize source to lowercase/trim)
     const sources = await Contact.aggregate([
         { $match: { workspaceId: wId, source: { $exists: true, $nin: [null, ""] } } },
-        { $group: { _id: "$source", count: { $sum: 1 } } },
+        {
+            $addFields: {
+                normalizedSource: {
+                    $trim: { input: { $toLower: "$source" } }
+                }
+            }
+        },
+        { $group: { _id: "$normalizedSource", count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         { $limit: 10 },
     ]);
@@ -714,8 +858,15 @@ async function getLeadSourcesData(workspaceId: string, _config: any) {
         { $lookup: { from: "contacts", localField: "contactId", foreignField: "_id", as: "contact" } },
         { $unwind: { path: "$contact", preserveNullAndEmptyArrays: true } },
         {
+            $addFields: {
+                normalizedSource: {
+                    $trim: { input: { $toLower: "$contact.source" } }
+                }
+            }
+        },
+        {
             $group: {
-                _id: "$contact.source",
+                _id: "$normalizedSource",
                 deals: { $sum: 1 },
                 revenue: { $sum: "$value" },
                 wonDeals: { $sum: { $cond: [{ $eq: ["$status", "won"] }, 1, 0] } },
@@ -938,18 +1089,18 @@ async function getDealVelocityData(workspaceId: string, config: any) {
     const prevStart = new Date(periodStart.getTime() - periodDays * 86400000);
     const wsId = new Types.ObjectId(workspaceId);
 
-    // Closed deals in current period
+    // Closed deals in current period (fixes C3: use actualCloseDate)
     const closedDeals = await Opportunity.find({
         workspaceId: wsId,
         status: { $in: ["won", "lost"] },
-        updatedAt: { $gte: periodStart },
+        actualCloseDate: { $gte: periodStart },
     }).lean();
 
     // Previous period
     const prevClosedDeals = await Opportunity.find({
         workspaceId: wsId,
         status: { $in: ["won", "lost"] },
-        updatedAt: { $gte: prevStart, $lt: periodStart },
+        actualCloseDate: { $gte: prevStart, $lt: periodStart },
     }).lean();
 
     // Active pipeline
@@ -962,14 +1113,15 @@ async function getDealVelocityData(workspaceId: string, config: any) {
     const lostDeals = closedDeals.filter((d: any) => d.status === "lost");
     const prevWon = prevClosedDeals.filter((d: any) => d.status === "won");
 
-    // Calculate sales cycle (days from created to closed)
+    // Calculate sales cycle (days from created to closed) - fixes C3
     const cycleDays = (deals: any[]) => {
         if (deals.length === 0) return [];
         const durations = deals.map(d => {
             const created = new Date(d.createdAt).getTime();
-            const closed = new Date(d.updatedAt).getTime();
+            // Use actualCloseDate if available, fallback to updatedAt (legacy data)
+            const closed = new Date(d.actualCloseDate || d.updatedAt).getTime();
             return (closed - created) / 86400000;
-        });
+        }).filter(days => days >= 0); // Filter out negative durations
         return durations;
     };
 
@@ -1288,32 +1440,37 @@ async function getLifecycleFunnelData(workspaceId: string, config: any) {
         transitionedAt: { $gte: periodStart },
     }).lean();
 
-    // Current stage distribution (latest record per contact)
-    const latestByContact: Record<string, any> = {};
-    const allRecords = await ContactLifecycleHistory.find({ workspaceId: wsId })
-        .sort({ transitionedAt: -1 })
-        .lean();
-    for (const r of allRecords as any[]) {
-        const cid = r.contactId?.toString();
-        if (cid && !latestByContact[cid]) {
-            latestByContact[cid] = r;
+    // Current stage distribution (fixes C4: use aggregation instead of loading all)
+    const stageDistribution = await ContactLifecycleHistory.aggregate([
+        { $match: { workspaceId: wsId } },
+        { $sort: { contactId: 1, transitionedAt: -1 } },
+        {
+            $group: {
+                _id: "$contactId",
+                currentStage: { $first: "$currentStage" },
+                transitionedTo: { $first: "$transitionedTo" },
+            }
+        },
+        {
+            $group: {
+                _id: { $ifNull: ["$currentStage", "$transitionedTo"] },
+                count: { $sum: 1 }
+            }
         }
-    }
+    ]);
 
-    // Stage distribution
-    const stageDistribution: Record<string, number> = {};
-    Object.values(latestByContact).forEach((r: any) => {
-        const stage = r.currentStage || r.transitionedTo;
-        stageDistribution[stage] = (stageDistribution[stage] || 0) + 1;
+    const stageDistributionMap: Record<string, number> = {};
+    stageDistribution.forEach((s: any) => {
+        stageDistributionMap[s._id] = s.count;
     });
 
-    const totalContacts = Object.values(stageDistribution).reduce((a, b) => a + b, 0);
+    const totalContacts = Object.values(stageDistributionMap).reduce((a, b) => a + b, 0);
 
     // Build funnel stages
     const funnelStages = STAGES.map((stage, i) => {
-        const count = stageDistribution[stage] || 0;
+        const count = stageDistributionMap[stage] || 0;
         const prevStage = i > 0 ? STAGES[i - 1] : null;
-        const prevCount = prevStage ? (stageDistribution[prevStage] || 0) : totalContacts;
+        const prevCount = prevStage ? (stageDistributionMap[prevStage] || 0) : totalContacts;
         const conversionRate = prevCount > 0 ? Math.round((count / prevCount) * 100) : 0;
         const percentage = totalContacts > 0 ? Math.round((count / totalContacts) * 100) : 0;
 
@@ -1697,10 +1854,21 @@ router.post(
     async (req: AuthRequest, res: Response) => {
         try {
             const { workspaceId } = req.params;
+            const userId = (req.user?._id as any).toString();
+
+            // Validate workspace access
+            if (!(await validateAccess(workspaceId, userId, res))) return;
+
             const { type, config = {}, definition } = req.body;
 
             // New: Dynamic Report Query Engine
             if (definition) {
+                // Validate definition
+                const validationError = validateReportDefinition(definition);
+                if (validationError) {
+                    return res.status(400).json({ error: validationError });
+                }
+
                 const engine = new ReportQueryEngine();
                 const data = await engine.execute(definition, workspaceId);
                 return res.json({ type: definition.type, data, custom: true });
@@ -1758,14 +1926,21 @@ router.post(
     async (req: AuthRequest, res: Response) => {
         try {
             const { workspaceId } = req.params;
-            if (!workspaceId) {
-                return res.status(400).json({ error: "Workspace ID required" });
-            }
+            const userId = (req.user?._id as any).toString();
+
+            // Validate workspace access
+            if (!(await validateAccess(workspaceId, userId, res))) return;
 
             const { definition, context } = req.body;
 
             if (!definition) {
                 return res.status(400).json({ error: "Report definition is required" });
+            }
+
+            // Validate definition
+            const validationError = validateReportDefinition(definition);
+            if (validationError) {
+                return res.status(400).json({ error: validationError });
             }
 
             const engine = new ReportQueryEngine();

@@ -30,6 +30,13 @@ export interface ICompany extends Document {
   };
 
   // CRM Specific
+  /**
+   * Company-level status (organization relationship stage)
+   * Note: Different from Contact.lifecycleStage which tracks individual contacts
+   * - Company.status: Organization-level (lead/prospect/customer/churned)
+   * - Contact.lifecycleStage: Individual contact progression (subscriber/lead/mql/sql/sal/opportunity/customer)
+   * Both can coexist - e.g., Company is "customer" while new Contact is "lead"
+   */
   status: "lead" | "prospect" | "customer" | "churned";
   tags?: string[];
   source?: string;

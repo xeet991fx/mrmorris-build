@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
+import { ReportDefinition, FilterCondition } from "../services/ReportQueryEngine";
 
 // ─── Report Widget Configuration ───────────────────────────────
 
@@ -30,31 +31,8 @@ export type ChartType =
     | "funnel"   // Funnel visualization
     | "table";   // Data table
 
-// ─── Report Definition Types ───────────────────────────────────
-
-export interface FilterCondition {
-    field: string;
-    operator: "eq" | "ne" | "gt" | "lt" | "gte" | "lte" | "in" | "nin" | "contains" | "exists";
-    value?: any;
-    relatedEntity?: string;  // For relational filters (e.g., "company", "contact")
-}
-
-export interface ReportDefinition {
-    source: string;              // Entity name (e.g., "opportunity", "contact")
-    type: "insight" | "historical" | "funnel" | "time_in_stage" | "stage_changed";
-    metric: {
-        type: "count" | "sum" | "avg" | "min" | "max";
-        field?: string;          // Required for sum/avg/min/max
-    };
-    groupBy?: string;            // Field to group by (for bar/pie charts)
-    segmentBy?: string;          // Secondary dimension for multi-series charts
-    dateField?: string;          // Field for time-based grouping
-    period?: "day" | "week" | "month" | "quarter" | "year";
-    periodComparison?: boolean;  // Compare current vs previous period
-    filters?: FilterCondition[]; // Filter conditions
-    pipelineId?: string;         // Pipeline to filter by (for opportunity reports)
-    includedStages?: string[];   // Stages to include (for pipeline reports)
-}
+// ─── Report Widget Interface ───────────────────────────────────
+// Note: ReportDefinition and FilterCondition are imported from ReportQueryEngine
 
 export interface IReportWidget {
     _id?: Types.ObjectId;

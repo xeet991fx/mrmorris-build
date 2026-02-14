@@ -195,11 +195,17 @@ export default function OpportunityCardEnhanced({
           {daysInStage > 0 ? `${daysInStage}d in stage` : "New"}
         </span>
 
-        {/* Expected Close Date */}
-        {opportunity.expectedCloseDate && (
+        {/* Close Date - Show actual for closed deals, expected otherwise */}
+        {(opportunity.actualCloseDate || opportunity.expectedCloseDate) && (
           <span className="flex items-center gap-1">
             <ClockIcon className="w-3 h-3" />
-            {new Date(opportunity.expectedCloseDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            {(opportunity.status === "won" || opportunity.status === "lost") && opportunity.actualCloseDate ? (
+              <>
+                Closed {new Date(opportunity.actualCloseDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </>
+            ) : (
+              opportunity.expectedCloseDate && new Date(opportunity.expectedCloseDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+            )}
           </span>
         )}
 

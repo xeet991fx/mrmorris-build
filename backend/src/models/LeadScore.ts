@@ -225,6 +225,11 @@ leadScoreSchema.statics.applyDecay = async function (
             timestamp: new Date(),
         });
 
+        // Trim history to 100 entries (fixes B5)
+        if (lead.scoreHistory.length > 100) {
+            lead.scoreHistory = lead.scoreHistory.slice(-100);
+        }
+
         await lead.save();
         decayedCount++;
     }
