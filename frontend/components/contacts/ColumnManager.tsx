@@ -24,6 +24,7 @@ const BUILT_IN_COLUMN_LABELS: Record<BuiltInColumn, string> = {
   notes: "Notes",
   status: "Status",
   leadScore: "Lead Score",
+  lifecycleStage: "Lifecycle Stage",
   createdAt: "Created Date",
 };
 
