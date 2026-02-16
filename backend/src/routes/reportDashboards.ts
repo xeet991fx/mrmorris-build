@@ -63,6 +63,23 @@ const DEFAULT_DASHBOARDS = [
             { type: "at_risk" as ReportType, title: "At-Risk Deals", chartType: "table" as ChartType, config: { inactiveDays: 14 }, position: { x: 2, y: 2, w: 2, h: 2 } },
         ],
     },
+    {
+        name: "Advanced Email Intelligence",
+        description: "Cross-entity email insights: revenue attribution, lifecycle impact, and engagement health",
+        reports: [
+            // Row 1: Revenue & Lifecycle
+            { type: "email_revenue_attribution" as ReportType, title: "Email → Revenue Attribution", chartType: "bar" as ChartType, config: { period: "30days" }, position: { x: 0, y: 0, w: 4, h: 3 } },
+            { type: "email_lifecycle_acceleration" as ReportType, title: "Email → Lifecycle Acceleration", chartType: "bar" as ChartType, config: { period: "90days" }, position: { x: 4, y: 0, w: 4, h: 3 } },
+
+            // Row 2: Campaign & Sequence Analysis
+            { type: "campaign_comparison" as ReportType, title: "Campaign A/B Comparison", chartType: "bar" as ChartType, config: {}, position: { x: 0, y: 3, w: 6, h: 3 } },
+            { type: "sequence_step_funnel" as ReportType, title: "Sequence Drop-Off Funnel", chartType: "bar" as ChartType, config: {}, position: { x: 6, y: 3, w: 6, h: 3 } },
+
+            // Row 3: Health & Decay
+            { type: "deliverability_health" as ReportType, title: "Deliverability Health Score", chartType: "bar" as ChartType, config: { period: "30days" }, position: { x: 0, y: 6, w: 4, h: 3 } },
+            { type: "engagement_decay" as ReportType, title: "At-Risk Contacts (Declining Engagement)", chartType: "table" as ChartType, config: { period: "60days" }, position: { x: 4, y: 6, w: 8, h: 4 } },
+        ],
+    },
 ];
 
 // ─── CRUD Routes ───────────────────────────────────────────────
@@ -103,6 +120,71 @@ router.get(
         } catch (error) {
             console.error("Error listing report dashboards:", error);
             res.status(500).json({ error: "Failed to list dashboards" });
+        }
+    }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/report-dashboards/migrate-advanced
+ * Migration endpoint: Adds "Advanced Email Intelligence" dashboard if it doesn't exist
+ */
+router.post(
+    "/:workspaceId/report-dashboards/migrate-advanced",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            // Check if "Advanced Email Intelligence" dashboard already exists
+            const existingDashboard = await ReportDashboard.findOne({
+                workspaceId,
+                name: "Advanced Email Intelligence",
+            });
+
+            if (existingDashboard) {
+                return res.json({
+                    message: "Advanced Email Intelligence dashboard already exists",
+                    dashboard: existingDashboard
+                });
+            }
+
+            // Create the new dashboard
+            const advancedDashboard = {
+                name: "Advanced Email Intelligence",
+                description: "Cross-entity email insights: revenue attribution, lifecycle impact, and engagement health",
+                reports: [
+                    // Row 1: Revenue & Lifecycle
+                    { type: "email_revenue_attribution" as ReportType, title: "Email → Revenue Attribution", chartType: "bar" as ChartType, config: { period: "30days" }, position: { x: 0, y: 0, w: 4, h: 3 } },
+                    { type: "email_lifecycle_acceleration" as ReportType, title: "Email → Lifecycle Acceleration", chartType: "bar" as ChartType, config: { period: "90days" }, position: { x: 4, y: 0, w: 4, h: 3 } },
+
+                    // Row 2: Campaign & Sequence Analysis
+                    { type: "campaign_comparison" as ReportType, title: "Campaign A/B Comparison", chartType: "bar" as ChartType, config: {}, position: { x: 0, y: 3, w: 6, h: 3 } },
+                    { type: "sequence_step_funnel" as ReportType, title: "Sequence Drop-Off Funnel", chartType: "bar" as ChartType, config: {}, position: { x: 6, y: 3, w: 6, h: 3 } },
+
+                    // Row 3: Health & Decay
+                    { type: "deliverability_health" as ReportType, title: "Deliverability Health Score", chartType: "bar" as ChartType, config: { period: "30days" }, position: { x: 0, y: 6, w: 4, h: 3 } },
+                    { type: "engagement_decay" as ReportType, title: "At-Risk Contacts (Declining Engagement)", chartType: "table" as ChartType, config: { period: "60days" }, position: { x: 4, y: 6, w: 8, h: 4 } },
+                ],
+            };
+
+            const dashboard = await ReportDashboard.create({
+                workspaceId,
+                name: advancedDashboard.name,
+                description: advancedDashboard.description,
+                reports: advancedDashboard.reports,
+                isDefault: true,
+                createdBy: userId,
+            });
+
+            res.status(201).json({
+                message: "Advanced Email Intelligence dashboard created successfully",
+                dashboard
+            });
+        } catch (error) {
+            console.error("Error migrating advanced dashboard:", error);
+            res.status(500).json({ error: "Failed to migrate dashboard" });
         }
     }
 );
@@ -311,14 +393,19 @@ router.put(
             const userId = req.user?._id?.toString();
             if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
 
-            const { type, title, chartType, config, definition, position } = req.body;
+            const { type, title, chartType, config, definition, position, note } = req.body;
 
-            // Validation
-            if (!title || !chartType) {
-                return res.status(400).json({ error: "title and chartType are required" });
-            }
+            // Build partial $set — only update fields that are provided
+            const setFields: Record<string, any> = {};
+            if (type !== undefined) setFields["reports.$.type"] = type;
+            if (title !== undefined) setFields["reports.$.title"] = title.trim();
+            if (chartType !== undefined) setFields["reports.$.chartType"] = chartType;
+            if (config !== undefined) setFields["reports.$.config"] = config;
+            if (definition !== undefined) setFields["reports.$.definition"] = definition;
+            if (position !== undefined) setFields["reports.$.position"] = position;
+            if (note !== undefined) setFields["reports.$.note"] = note;
 
-            // Validate definition if provided
+            // Validate required fields only if they are being updated
             if (definition) {
                 if (!definition.source || !definition.type || !definition.metric) {
                     return res.status(400).json({ error: "definition must include source, type, and metric" });
@@ -331,17 +418,14 @@ router.put(
                 }
             }
 
+            if (Object.keys(setFields).length === 0) {
+                return res.status(400).json({ error: "No fields to update" });
+            }
+
             const dashboard = await ReportDashboard.findOneAndUpdate(
                 { _id: id, workspaceId, "reports._id": reportId },
                 {
-                    $set: {
-                        "reports.$.type": type,
-                        "reports.$.title": title.trim(),
-                        "reports.$.chartType": chartType,
-                        "reports.$.config": config || {},
-                        "reports.$.definition": definition,
-                        "reports.$.position": position || { x: 0, y: 0, w: 2, h: 1 },
-                    },
+                    $set: setFields,
                 },
                 { new: true }
             ).lean();
@@ -447,6 +531,50 @@ router.delete(
         } catch (error) {
             console.error("Error removing report:", error);
             res.status(500).json({ error: "Failed to remove report" });
+        }
+    }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/report-dashboards/:id/clone
+ * Clone an entire dashboard with all its widgets.
+ */
+router.post(
+    "/:workspaceId/report-dashboards/:id/clone",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const source = await ReportDashboard.findOne({ _id: id, workspaceId }).lean();
+            if (!source) {
+                return res.status(404).json({ error: "Dashboard not found" });
+            }
+
+            // Deep-copy reports, stripping _id so new IDs are generated
+            const clonedReports = (source.reports || []).map((r: any) => {
+                const { _id, ...rest } = r;
+                return {
+                    ...rest,
+                    config: JSON.parse(JSON.stringify(rest.config || {})),
+                    definition: rest.definition ? JSON.parse(JSON.stringify(rest.definition)) : undefined,
+                };
+            });
+
+            const dashboard = await ReportDashboard.create({
+                workspaceId,
+                name: `${source.name} (Copy)`,
+                description: source.description || "",
+                reports: clonedReports,
+                createdBy: userId,
+            });
+
+            res.status(201).json({ dashboard });
+        } catch (error) {
+            console.error("Error cloning dashboard:", error);
+            res.status(500).json({ error: "Failed to clone dashboard" });
         }
     }
 );

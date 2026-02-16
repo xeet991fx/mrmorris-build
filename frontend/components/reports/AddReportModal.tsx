@@ -439,8 +439,8 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                         key={type.type}
                                                         onClick={() => setReportType(type.type)}
                                                         className={`p-3 rounded-lg border-2 text-left transition-all ${reportType === type.type
-                                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                                                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                                                             }`}
                                                     >
                                                         <div className="flex items-start gap-2">
@@ -459,6 +459,49 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                             </div>
                                         </div>
 
+                                        {/* Quick Email Reports */}
+                                        {!editMode && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    Advanced Email Intelligence
+                                                </label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {[
+                                                        { type: "email_engagement_deep_dive", title: "Email Engagement Deep Dive", description: "Geo, device, response times & open frequency", chartType: "bar", color: "text-pink-600", bgColor: "bg-pink-50 dark:bg-pink-900/20", w: 4, h: 3 },
+                                                        { type: "email_reply_analysis", title: "Reply Analysis", description: "Reply geo-location, timing patterns & sentiment", chartType: "bar", color: "text-blue-600", bgColor: "bg-blue-50 dark:bg-blue-900/20", w: 4, h: 3 },
+                                                        { type: "email_open_heatmap", title: "Open Heatmap", description: "7×24 heatmap, best send times & open velocity", chartType: "bar", color: "text-emerald-600", bgColor: "bg-emerald-50 dark:bg-emerald-900/20", w: 4, h: 3 },
+                                                        { type: "email_contact_engagement", title: "Contact Engagement", description: "Per-contact engagement scores with geo data", chartType: "table", color: "text-violet-600", bgColor: "bg-violet-50 dark:bg-violet-900/20", w: 4, h: 3 },
+
+                                                        // Cross-entity reports
+                                                        { type: "email_revenue_attribution", title: "Email → Revenue Attribution", description: "Which emails actually generate pipeline & revenue", chartType: "bar", color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-900/20", w: 4, h: 3 },
+                                                        { type: "email_lifecycle_acceleration", title: "Email → Lifecycle Acceleration", description: "Do emails move people through the funnel faster?", chartType: "bar", color: "text-indigo-600", bgColor: "bg-indigo-50 dark:bg-indigo-900/20", w: 4, h: 3 },
+                                                        { type: "campaign_comparison", title: "Campaign A/B Comparison", description: "Side-by-side campaign performance analysis", chartType: "bar", color: "text-purple-600", bgColor: "bg-purple-50 dark:bg-purple-900/20", w: 6, h: 3 },
+                                                        { type: "sequence_step_funnel", title: "Sequence Step Funnel", description: "Where exactly do contacts drop off in sequences?", chartType: "bar", color: "text-orange-600", bgColor: "bg-orange-50 dark:bg-orange-900/20", w: 6, h: 3 },
+                                                        { type: "deliverability_health", title: "Deliverability Health Score", description: "Bounce trends, bot opens, domain reputation", chartType: "bar", color: "text-teal-600", bgColor: "bg-teal-50 dark:bg-teal-900/20", w: 4, h: 3 },
+                                                        { type: "engagement_decay", title: "Engagement Decay Analysis", description: "Declining engagement, at-risk pipeline contacts", chartType: "table", color: "text-red-600", bgColor: "bg-red-50 dark:bg-red-900/20", w: 6, h: 4 },
+                                                    ].map((preset) => (
+                                                        <button
+                                                            key={preset.type}
+                                                            onClick={() => {
+                                                                onAdd({
+                                                                    type: preset.type,
+                                                                    title: preset.title,
+                                                                    chartType: preset.chartType,
+                                                                    config: {},
+                                                                    position: { x: 0, y: 0, w: preset.w, h: preset.h },
+                                                                });
+                                                                onClose();
+                                                            }}
+                                                            className={`p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-left transition-all hover:shadow-sm ${preset.bgColor}`}
+                                                        >
+                                                            <h3 className={`text-xs font-semibold ${preset.color}`}>{preset.title}</h3>
+                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{preset.description}</p>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Data Source */}
                                         {reportType && (
                                             <div>
@@ -471,8 +514,8 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                             key={source.entity}
                                                             onClick={() => setSelectedSource(source)}
                                                             className={`w-full p-3 rounded-lg border-2 text-left transition-all ${selectedSource?.entity === source.entity
-                                                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                                                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                                                                 }`}
                                                         >
                                                             <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
@@ -497,8 +540,8 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                     <button
                                                         onClick={() => setSelectedMetric({ field: "count", aggregation: "count" })}
                                                         className={`w-full p-3 rounded-lg border-2 text-left ${selectedMetric?.aggregation === "count"
-                                                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                                                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                                                             }`}
                                                     >
                                                         <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Count</h3>
@@ -510,8 +553,8 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                                 key={`${attr.field}-${agg}`}
                                                                 onClick={() => setSelectedMetric({ field: attr.field, aggregation: agg })}
                                                                 className={`w-full p-3 rounded-lg border-2 text-left ${selectedMetric?.field === attr.field && selectedMetric?.aggregation === agg
-                                                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                                                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                                                                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                                                                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                                                                     }`}
                                                             >
                                                                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm capitalize">

@@ -11,6 +11,7 @@ import {
     ChevronRightIcon,
     XMarkIcon,
     StarIcon as StarOutline,
+    DocumentDuplicateIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import {
@@ -18,9 +19,11 @@ import {
     createReportDashboard,
     updateReportDashboard,
     deleteReportDashboard,
+    cloneReportDashboard,
 } from "@/lib/api/reportDashboards";
 import { cn } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import toast from "react-hot-toast";
 
 export default function ReportsPage() {
     const params = useParams();
@@ -104,6 +107,18 @@ export default function ReportsPage() {
         e.stopPropagation();
         setDashboardToDelete(id);
         setDeleteConfirmOpen(true);
+    };
+
+    const handleClone = async (e: React.MouseEvent, dashboardId: string) => {
+        e.stopPropagation();
+        try {
+            await cloneReportDashboard(workspaceId, dashboardId);
+            toast.success("Dashboard cloned");
+            loadDashboards();
+        } catch (err) {
+            console.error("Error cloning dashboard:", err);
+            toast.error("Failed to clone dashboard");
+        }
     };
 
     // Computed
@@ -354,6 +369,7 @@ export default function ReportsPage() {
                                 }
                                 onToggleFavorite={(e) => handleToggleFavorite(e, dashboard)}
                                 onDelete={(e) => openDeleteConfirm(e, dashboard._id)}
+                                onClone={(e) => handleClone(e, dashboard._id)}
                             />
                         ))}
                     </motion.div>
@@ -387,11 +403,13 @@ function DashboardRow({
     onOpen,
     onToggleFavorite,
     onDelete,
+    onClone,
 }: {
     dashboard: any;
     onOpen: () => void;
     onToggleFavorite: (e: React.MouseEvent) => void;
     onDelete: (e: React.MouseEvent) => void;
+    onClone: (e: React.MouseEvent) => void;
 }) {
     const reportCount = dashboard.reports?.length || 0;
 
@@ -455,6 +473,13 @@ function DashboardRow({
                 className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={(e) => e.stopPropagation()}
             >
+                <button
+                    onClick={onClone}
+                    className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    title="Clone"
+                >
+                    <DocumentDuplicateIcon className="w-4 h-4" />
+                </button>
                 <button
                     onClick={onDelete}
                     className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

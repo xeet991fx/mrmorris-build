@@ -51,7 +51,7 @@ export const updateReportWidget = async (
     workspaceId: string,
     dashboardId: string,
     reportId: string,
-    data: { type: string; title: string; chartType: string; config?: any; position?: any; definition?: any }
+    data: Partial<{ type: string; title: string; chartType: string; config: any; position: any; definition: any; note: string }>
 ) => {
     const response = await axiosInstance.put(
         `/workspaces/${workspaceId}/report-dashboards/${dashboardId}/reports/${reportId}`,
@@ -103,5 +103,14 @@ export const getDrillDownData = async (
 
 export const getReportSources = async (workspaceId: string) => {
     const response = await axiosInstance.get(`/workspaces/${workspaceId}/report-sources`);
+    return response.data;
+};
+
+// ─── Dashboard Cloning ─────────────────────────────────────────
+
+export const cloneReportDashboard = async (workspaceId: string, dashboardId: string) => {
+    const response = await axiosInstance.post(
+        `/workspaces/${workspaceId}/report-dashboards/${dashboardId}/clone`
+    );
     return response.data;
 };

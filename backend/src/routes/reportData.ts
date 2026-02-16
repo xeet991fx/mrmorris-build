@@ -17,6 +17,9 @@ import Task from "../models/Task";
 import Ticket from "../models/Ticket";
 import Activity from "../models/Activity";
 import Campaign from "../models/Campaign";
+import CampaignEnrollment from "../models/CampaignEnrollment";
+import Sequence from "../models/Sequence";
+import Attribution from "../models/Attribution";
 import ContactLifecycleHistory from "../models/ContactLifecycleHistory";
 import CallRecording from "../models/CallRecording";
 import FormSubmission from "../models/FormSubmission";
@@ -740,6 +743,1339 @@ async function getEmailData(workspaceId: string, config: any) {
                 return curR - prevR;
             })(),
             trend: sentTrend,
+        },
+    };
+}
+
+// ─── EMAIL ENGAGEMENT DEEP DIVE — Geo, device, response time, open frequency ──
+// Covers: reply geo-location, open count distribution, device breakdown, response time
+
+async function getEmailEngagementDeepDive(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const { start, end } = getDateRange(config.period || "30days");
+
+    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } };
+
+    const [geoData, deviceData, openFrequency, responseTimeData, replySummary] = await Promise.all([
+        // 1. Geo heatmap — where opens come from (country + city)
+        EmailMessage.aggregate([
+            { $match: baseMatch },
+            { $unwind: "$opens" },
+            { $match: { "opens.isBot": { $ne: true }, "opens.country": { $ne: null } } },
+            {
+                $group: {
+                    _id: { country: "$opens.country", countryCode: "$opens.countryCode", city: "$opens.city" },
+                    opens: { $sum: 1 },
+                    uniqueEmails: { $addToSet: "$_id" },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    country: "$_id.country",
+                    countryCode: "$_id.countryCode",
+                    city: "$_id.city",
+                    opens: 1,
+                    uniqueEmails: { $size: "$uniqueEmails" },
+                }
+            },
+            { $sort: { opens: -1 } },
+            { $limit: 20 },
+        ]),
+
+        // 2. Device / browser / OS breakdown
+        EmailMessage.aggregate([
+            { $match: baseMatch },
+            { $unwind: "$opens" },
+            { $match: { "opens.isBot": { $ne: true } } },
+            {
+                $facet: {
+                    byDevice: [
+                        { $group: { _id: { $ifNull: ["$opens.device", "unknown"] }, count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                    ],
+                    byBrowser: [
+                        { $group: { _id: { $ifNull: ["$opens.browser", "unknown"] }, count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                    ],
+                    byOS: [
+                        { $group: { _id: { $ifNull: ["$opens.os", "unknown"] }, count: { $sum: 1 } } },
+                        { $sort: { count: -1 } },
+                    ],
+                },
+            },
+        ]),
+
+        // 3. Open frequency distribution (how many times each email was opened)
+        EmailMessage.aggregate([
+            { $match: { ...baseMatch, opened: true } },
+            {
+                $bucket: {
+                    groupBy: "$openCount",
+                    boundaries: [1, 2, 4, 7, 11, 10000],
+                    default: "other",
+                    output: {
+                        count: { $sum: 1 },
+                        avgOpenCount: { $avg: "$openCount" },
+                    },
+                },
+            },
+        ]),
+
+        // 4. Response time — time from sentAt to first open & repliedAt
+        EmailMessage.aggregate([
+            { $match: { ...baseMatch, opened: true, openedAt: { $ne: null } } },
+            {
+                $project: {
+                    _id: 0,
+                    timeToOpenMs: { $subtract: ["$openedAt", "$sentAt"] },
+                    timeToReplyMs: {
+                        $cond: [
+                            { $and: [{ $eq: ["$replied", true] }, { $ne: ["$repliedAt", null] }] },
+                            { $subtract: ["$repliedAt", "$sentAt"] },
+                            null,
+                        ],
+                    },
+                },
+            },
+            // Filter out negative or zero time-to-open (data integrity guard)
+            { $match: { timeToOpenMs: { $gt: 0 } } },
+            {
+                $group: {
+                    _id: null,
+                    avgTimeToOpenMs: { $avg: "$timeToOpenMs" },
+                    avgTimeToReplyMs: { $avg: "$timeToReplyMs" },
+                    totalWithOpen: { $sum: 1 },
+                    totalWithReply: { $sum: { $cond: [{ $ne: ["$timeToReplyMs", null] }, 1, 0] } },
+                    openWithin1h: { $sum: { $cond: [{ $lte: ["$timeToOpenMs", 3600000] }, 1, 0] } },
+                    openWithin24h: { $sum: { $cond: [{ $lte: ["$timeToOpenMs", 86400000] }, 1, 0] } },
+                    replyWithin1h: { $sum: { $cond: [{ $and: [{ $ne: ["$timeToReplyMs", null] }, { $lte: ["$timeToReplyMs", 3600000] }] }, 1, 0] } },
+                    replyWithin24h: { $sum: { $cond: [{ $and: [{ $ne: ["$timeToReplyMs", null] }, { $lte: ["$timeToReplyMs", 86400000] }] }, 1, 0] } },
+                },
+            },
+        ]),
+
+        // 5. Overall reply summary
+        EmailMessage.aggregate([
+            { $match: baseMatch },
+            {
+                $group: {
+                    _id: null,
+                    totalSent: { $sum: 1 },
+                    totalOpened: { $sum: { $cond: ["$opened", 1, 0] } },
+                    totalReplied: { $sum: { $cond: ["$replied", 1, 0] } },
+                    totalClicked: { $sum: { $cond: ["$clicked", 1, 0] } },
+                    avgOpenCount: { $avg: { $cond: ["$opened", "$openCount", 0] } },
+                },
+            },
+        ]),
+    ]);
+
+    // Format device data with percentages
+    const devices = deviceData[0] || { byDevice: [], byBrowser: [], byOS: [] };
+    const addPercentages = (items: any[]) => {
+        const total = items.reduce((s: number, i: any) => s + i.count, 0);
+        return items.map((i: any) => ({
+            name: i._id,
+            count: i.count,
+            percentage: total > 0 ? Math.round((i.count / total) * 100) : 0,
+        }));
+    };
+
+    // Format open frequency buckets
+    const bucketLabels: Record<string, string> = { "1": "Opened once", "2": "2-3 times", "4": "4-6 times", "7": "7-10 times", "11": "11+ times", "other": "Uncategorized" };
+    const openDist = openFrequency
+        .filter((b: any) => b._id !== "other")
+        .map((b: any) => ({
+            bucket: bucketLabels[String(b._id)] || `${b._id}+`,
+            count: b.count,
+            avgOpenCount: Math.round((b.avgOpenCount || 0) * 10) / 10,
+        }));
+
+    // Format response time
+    const rt = responseTimeData[0] || {};
+    const msToHours = (ms: number) => Math.round((ms / 3600000) * 10) / 10;
+    const summary = replySummary[0] || { totalSent: 0, totalOpened: 0, totalReplied: 0, totalClicked: 0, avgOpenCount: 0 };
+
+    return {
+        geoBreakdown: geoData,
+        deviceBreakdown: {
+            devices: addPercentages(devices.byDevice),
+            browsers: addPercentages(devices.byBrowser),
+            os: addPercentages(devices.byOS),
+        },
+        openFrequency: openDist,
+        responseTime: {
+            avgTimeToOpenHrs: msToHours(rt.avgTimeToOpenMs || 0),
+            avgTimeToReplyHrs: msToHours(rt.avgTimeToReplyMs || 0),
+            openWithin1hPct: rt.totalWithOpen > 0 ? Math.round((rt.openWithin1h / rt.totalWithOpen) * 100) : 0,
+            openWithin24hPct: rt.totalWithOpen > 0 ? Math.round((rt.openWithin24h / rt.totalWithOpen) * 100) : 0,
+            replyWithin1hPct: rt.totalWithReply > 0 ? Math.round((rt.replyWithin1h / rt.totalWithReply) * 100) : 0,
+            replyWithin24hPct: rt.totalWithReply > 0 ? Math.round((rt.replyWithin24h / rt.totalWithReply) * 100) : 0,
+        },
+        summary: {
+            totalSent: summary.totalSent,
+            totalOpened: summary.totalOpened,
+            totalReplied: summary.totalReplied,
+            totalClicked: summary.totalClicked,
+            avgOpenCount: Math.round((summary.avgOpenCount || 0) * 10) / 10,
+            openRate: summary.totalSent > 0 ? Math.round((summary.totalOpened / summary.totalSent) * 100) : 0,
+            replyRate: summary.totalSent > 0 ? Math.round((summary.totalReplied / summary.totalSent) * 100) : 0,
+        },
+    };
+}
+
+// ─── EMAIL REPLY ANALYSIS — Reply geo-location, timing, sentiment ──────
+// Covers: where replies come from, when replies happen, time-to-reply, sentiment
+
+async function getEmailReplyAnalysis(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const { start, end } = getDateRange(config.period || "30days");
+
+    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, replied: true };
+
+    const [replyGeo, replyTiming, timeToReply, replySentiment, recentReplies] = await Promise.all([
+        // 1. Reply geo-location — where replies originated from
+        // Uses the last open event of replied emails as a proxy for reply location
+        EmailMessage.aggregate([
+            { $match: baseMatch },
+            { $unwind: "$opens" },
+            { $match: { "opens.isBot": { $ne: true }, "opens.country": { $ne: null } } },
+            // Take the most recent open per email (closest to reply time)
+            { $sort: { "opens.openedAt": -1 } },
+            {
+                $group: {
+                    _id: "$_id",
+                    country: { $first: "$opens.country" },
+                    countryCode: { $first: "$opens.countryCode" },
+                    city: { $first: "$opens.city" },
+                    timezone: { $first: "$opens.timezone" },
+                    repliedAt: { $first: "$repliedAt" },
+                },
+            },
+            // Now group by location
+            {
+                $group: {
+                    _id: { country: "$country", countryCode: "$countryCode", city: "$city" },
+                    replies: { $sum: 1 },
+                    timezone: { $first: "$timezone" },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    country: "$_id.country",
+                    countryCode: "$_id.countryCode",
+                    city: "$_id.city",
+                    timezone: 1,
+                    replies: 1,
+                }
+            },
+            { $sort: { replies: -1 } },
+            { $limit: 15 },
+        ]),
+
+        // 2. Reply timing patterns — when people reply (hour of day, day of week)
+        EmailMessage.aggregate([
+            { $match: { ...baseMatch, repliedAt: { $ne: null } } },
+            {
+                $facet: {
+                    byHour: [
+                        { $group: { _id: { $hour: "$repliedAt" }, count: { $sum: 1 } } },
+                        { $sort: { _id: 1 } },
+                    ],
+                    byDayOfWeek: [
+                        { $group: { _id: { $dayOfWeek: "$repliedAt" }, count: { $sum: 1 } } },
+                        { $sort: { _id: 1 } },
+                    ],
+                    byDate: [
+                        { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$repliedAt" } }, count: { $sum: 1 } } },
+                        { $sort: { _id: 1 } },
+                        { $limit: 30 },
+                    ],
+                },
+            },
+        ]),
+
+        // 3. Time to reply distribution
+        EmailMessage.aggregate([
+            { $match: { ...baseMatch, repliedAt: { $ne: null } } },
+            {
+                $project: {
+                    timeToReplyMs: { $subtract: ["$repliedAt", "$sentAt"] },
+                    repliedAt: 1,
+                    sentAt: 1,
+                },
+            },
+            // Filter out negative times (data integrity guard)
+            { $match: { timeToReplyMs: { $gt: 0 } } },
+            {
+                $group: {
+                    _id: null,
+                    avgMs: { $avg: "$timeToReplyMs" },
+                    minMs: { $min: "$timeToReplyMs" },
+                    maxMs: { $max: "$timeToReplyMs" },
+                    total: { $sum: 1 },
+                    // Exclusive buckets for proper distribution
+                    within30min: { $sum: { $cond: [{ $lte: ["$timeToReplyMs", 1800000] }, 1, 0] } },
+                    from30mTo1h: { $sum: { $cond: [{ $and: [{ $gt: ["$timeToReplyMs", 1800000] }, { $lte: ["$timeToReplyMs", 3600000] }] }, 1, 0] } },
+                    from1hTo4h: { $sum: { $cond: [{ $and: [{ $gt: ["$timeToReplyMs", 3600000] }, { $lte: ["$timeToReplyMs", 14400000] }] }, 1, 0] } },
+                    from4hTo24h: { $sum: { $cond: [{ $and: [{ $gt: ["$timeToReplyMs", 14400000] }, { $lte: ["$timeToReplyMs", 86400000] }] }, 1, 0] } },
+                    from24hTo48h: { $sum: { $cond: [{ $and: [{ $gt: ["$timeToReplyMs", 86400000] }, { $lte: ["$timeToReplyMs", 172800000] }] }, 1, 0] } },
+                    after48h: { $sum: { $cond: [{ $gt: ["$timeToReplyMs", 172800000] }, 1, 0] } },
+                },
+            },
+        ]),
+
+        // 4. Reply sentiment breakdown
+        EmailMessage.aggregate([
+            { $match: { ...baseMatch, replySentiment: { $ne: null } } },
+            {
+                $group: {
+                    _id: "$replySentiment",
+                    count: { $sum: 1 },
+                },
+            },
+            { $sort: { count: -1 } },
+        ]),
+
+        // 5. Recent replies with detail
+        EmailMessage.find(baseMatch)
+            .sort({ repliedAt: -1 })
+            .limit(20)
+            .select("toEmail subject repliedAt replySentiment openCount sentAt opens")
+            .lean(),
+    ]);
+
+    // Format timing data
+    const dayNames = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const timingData = replyTiming[0] || { byHour: [], byDayOfWeek: [], byDate: [] };
+
+    const byHour = Array.from({ length: 24 }, (_, h) => ({
+        hour: h,
+        label: `${h.toString().padStart(2, "0")}:00`,
+        count: timingData.byHour.find((i: any) => i._id === h)?.count || 0,
+    }));
+
+    const byDayOfWeek = timingData.byDayOfWeek.map((i: any) => ({
+        day: i._id,
+        dayName: dayNames[i._id] || "Unknown",
+        count: i.count,
+    }));
+
+    // Peak reply times
+    const peakHour = byHour.reduce((max, h) => h.count > max.count ? h : max, byHour[0]);
+    const peakDay = byDayOfWeek.reduce((max: any, d: any) => d.count > max.count ? d : max, byDayOfWeek[0] || { dayName: "N/A", count: 0 });
+
+    // Time-to-reply distribution
+    const ttr = timeToReply[0] || { total: 0 };
+    const msToReadable = (ms: number) => {
+        if (!ms) return "N/A";
+        const hours = Math.floor(ms / 3600000);
+        const minutes = Math.floor((ms % 3600000) / 60000);
+        if (hours > 24) return `${Math.round(hours / 24)}d ${hours % 24}h`;
+        return `${hours}h ${minutes}m`;
+    };
+
+    // Recent replies with geo info from opens array
+    const recentRepliesFormatted = (recentReplies as any[]).map((r: any) => {
+        const lastOpen = r.opens?.filter((o: any) => !o.isBot && o.country)?.sort((a: any, b: any) =>
+            new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime()
+        )[0];
+        return {
+            email: r.toEmail,
+            subject: r.subject,
+            repliedAt: r.repliedAt,
+            sentAt: r.sentAt,
+            timeToReply: r.repliedAt && r.sentAt ? msToReadable(new Date(r.repliedAt).getTime() - new Date(r.sentAt).getTime()) : "N/A",
+            sentiment: r.replySentiment || "unknown",
+            openCount: r.openCount || 0,
+            location: lastOpen ? { country: lastOpen.country, city: lastOpen.city, countryCode: lastOpen.countryCode } : null,
+        };
+    });
+
+    // Sentiment with percentages
+    const totalSentiment = replySentiment.reduce((s: number, i: any) => s + i.count, 0);
+
+    return {
+        replyGeoLocation: replyGeo,
+        replyTiming: {
+            byHour,
+            byDayOfWeek,
+            trend: timingData.byDate.map((i: any) => ({ date: i._id, replies: i.count })),
+            peakHour: peakHour?.label || "N/A",
+            peakDay: peakDay?.dayName || "N/A",
+        },
+        timeToReply: {
+            avgTime: msToReadable(ttr.avgMs),
+            fastestTime: msToReadable(ttr.minMs),
+            slowestTime: msToReadable(ttr.maxMs),
+            totalReplies: ttr.total || 0,
+            distribution: [
+                { label: "< 30 min", count: ttr.within30min || 0, pct: ttr.total > 0 ? Math.round(((ttr.within30min || 0) / ttr.total) * 100) : 0 },
+                { label: "30m – 1h", count: ttr.from30mTo1h || 0, pct: ttr.total > 0 ? Math.round(((ttr.from30mTo1h || 0) / ttr.total) * 100) : 0 },
+                { label: "1h – 4h", count: ttr.from1hTo4h || 0, pct: ttr.total > 0 ? Math.round(((ttr.from1hTo4h || 0) / ttr.total) * 100) : 0 },
+                { label: "4h – 24h", count: ttr.from4hTo24h || 0, pct: ttr.total > 0 ? Math.round(((ttr.from4hTo24h || 0) / ttr.total) * 100) : 0 },
+                { label: "24h – 48h", count: ttr.from24hTo48h || 0, pct: ttr.total > 0 ? Math.round(((ttr.from24hTo48h || 0) / ttr.total) * 100) : 0 },
+                { label: "> 48h", count: ttr.after48h || 0, pct: ttr.total > 0 ? Math.round(((ttr.after48h || 0) / ttr.total) * 100) : 0 },
+            ],
+        },
+        sentiment: {
+            data: replySentiment.map((i: any) => ({
+                sentiment: i._id,
+                count: i.count,
+                percentage: totalSentiment > 0 ? Math.round((i.count / totalSentiment) * 100) : 0,
+            })),
+            total: totalSentiment,
+        },
+        recentReplies: recentRepliesFormatted,
+    };
+}
+
+// ─── EMAIL OPEN HEATMAP — Hour×Day grid, open velocity, re-openers ─────
+// Covers: when emails are opened (heatmap), how many times (open count), best send time
+
+async function getEmailOpenHeatmap(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const { start, end } = getDateRange(config.period || "30days");
+
+    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } };
+
+    const [heatmapData, openVelocity, reOpeners, totalStats] = await Promise.all([
+        // 1. Hour × Day of Week heatmap
+        EmailMessage.aggregate([
+            { $match: baseMatch },
+            { $unwind: "$opens" },
+            { $match: { "opens.isBot": { $ne: true }, "opens.isApplePrivacy": { $ne: true } } },
+            {
+                $group: {
+                    _id: {
+                        hour: { $hour: "$opens.openedAt" },
+                        dayOfWeek: { $dayOfWeek: "$opens.openedAt" },
+                    },
+                    count: { $sum: 1 },
+                },
+            },
+            { $sort: { "_id.dayOfWeek": 1, "_id.hour": 1 } },
+        ]),
+
+        // 2. Open velocity — time between sentAt and open
+        EmailMessage.aggregate([
+            { $match: { ...baseMatch, opened: true } },
+            {
+                $project: {
+                    timeToOpenMs: { $subtract: ["$openedAt", "$sentAt"] },
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    within5min: { $sum: { $cond: [{ $lte: ["$timeToOpenMs", 300000] }, 1, 0] } },
+                    within15min: { $sum: { $cond: [{ $lte: ["$timeToOpenMs", 900000] }, 1, 0] } },
+                    within1h: { $sum: { $cond: [{ $lte: ["$timeToOpenMs", 3600000] }, 1, 0] } },
+                    within4h: { $sum: { $cond: [{ $lte: ["$timeToOpenMs", 14400000] }, 1, 0] } },
+                    within24h: { $sum: { $cond: [{ $lte: ["$timeToOpenMs", 86400000] }, 1, 0] } },
+                    after24h: { $sum: { $cond: [{ $gt: ["$timeToOpenMs", 86400000] }, 1, 0] } },
+                },
+            },
+        ]),
+
+        // 3. Re-openers — contacts who opened emails multiple times
+        EmailMessage.aggregate([
+            { $match: { ...baseMatch, opened: true, openCount: { $gte: 2 } } },
+            {
+                $lookup: {
+                    from: "contacts",
+                    localField: "contactId",
+                    foreignField: "_id",
+                    as: "contact",
+                },
+            },
+            { $unwind: { path: "$contact", preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 0,
+                    email: "$toEmail",
+                    contactName: {
+                        $concat: [
+                            { $ifNull: ["$contact.firstName", ""] },
+                            " ",
+                            { $ifNull: ["$contact.lastName", ""] },
+                        ],
+                    },
+                    subject: 1,
+                    openCount: 1,
+                    firstOpenedAt: "$openedAt",
+                    lastOpenedAt: 1,
+                    replied: 1,
+                },
+            },
+            { $sort: { openCount: -1 } },
+            { $limit: 15 },
+        ]),
+
+        // 4. Total stats for context
+        EmailMessage.aggregate([
+            { $match: baseMatch },
+            {
+                $group: {
+                    _id: null,
+                    totalSent: { $sum: 1 },
+                    totalOpened: { $sum: { $cond: ["$opened", 1, 0] } },
+                    avgOpenCount: { $avg: { $cond: ["$opened", "$openCount", null] } },
+                    maxOpenCount: { $max: "$openCount" },
+                    multiOpeners: { $sum: { $cond: [{ $gte: ["$openCount", 2] }, 1, 0] } },
+                },
+            },
+        ]),
+    ]);
+
+    // Build 7×24 heatmap matrix
+    const dayNames = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const heatmap: Array<{ dayOfWeek: number; dayName: string; hour: number; hourLabel: string; count: number }> = [];
+    let maxCount = 0;
+
+    for (let day = 1; day <= 7; day++) {
+        for (let hour = 0; hour < 24; hour++) {
+            const match = heatmapData.find((d: any) => d._id.dayOfWeek === day && d._id.hour === hour);
+            const count = match?.count || 0;
+            if (count > maxCount) maxCount = count;
+            heatmap.push({
+                dayOfWeek: day,
+                dayName: dayNames[day],
+                hour,
+                hourLabel: `${hour.toString().padStart(2, "0")}:00`,
+                count,
+            });
+        }
+    }
+
+    // Best send-time recommendation
+    const sorted = [...heatmap].sort((a, b) => b.count - a.count);
+    const bestTimes = sorted.slice(0, 3).map(t => ({
+        dayName: t.dayName,
+        hourLabel: t.hourLabel,
+        count: t.count,
+    }));
+
+    // Open velocity formatting
+    const ov = openVelocity[0] || { total: 0 };
+    const pct = (n: number) => ov.total > 0 ? Math.round((n / ov.total) * 100) : 0;
+
+    const stats = totalStats[0] || {};
+
+    return {
+        heatmap,
+        maxHeatmapCount: maxCount,
+        bestSendTimes: bestTimes,
+        openVelocity: {
+            total: ov.total || 0,
+            distribution: [
+                { label: "Within 5 min", count: ov.within5min || 0, pct: pct(ov.within5min || 0) },
+                { label: "Within 15 min", count: ov.within15min || 0, pct: pct(ov.within15min || 0) },
+                { label: "Within 1 hour", count: ov.within1h || 0, pct: pct(ov.within1h || 0) },
+                { label: "Within 4 hours", count: ov.within4h || 0, pct: pct(ov.within4h || 0) },
+                { label: "Within 24 hours", count: ov.within24h || 0, pct: pct(ov.within24h || 0) },
+                { label: "After 24 hours", count: ov.after24h || 0, pct: pct(ov.after24h || 0) },
+            ],
+        },
+        reOpeners: reOpeners.map((r: any) => ({
+            ...r,
+            contactName: r.contactName?.trim() || r.email,
+        })),
+        summary: {
+            totalSent: stats.totalSent || 0,
+            totalOpened: stats.totalOpened || 0,
+            avgOpenCount: Math.round((stats.avgOpenCount || 0) * 10) / 10,
+            maxOpenCount: stats.maxOpenCount || 0,
+            multiOpeners: stats.multiOpeners || 0,
+            multiOpenerPct: stats.totalOpened > 0 ? Math.round((stats.multiOpeners / stats.totalOpened) * 100) : 0,
+        },
+    };
+}
+
+// ─── EMAIL CONTACT ENGAGEMENT — Per-contact engagement detail ──────────
+// Covers: per-contact open count, geo info, reply timing, engagement ranking
+
+async function getEmailContactEngagement(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const { start, end } = getDateRange(config.period || "30days");
+    const page = config.page || 1;
+    const limit = Math.min(config.limit || 25, 100);
+    const skip = (page - 1) * limit;
+    const sortField = config.sortBy || "engagementScore";
+
+    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } };
+
+    // Main per-contact aggregation
+    const [contacts, totalCount] = await Promise.all([
+        EmailMessage.aggregate([
+            { $match: baseMatch },
+            {
+                $group: {
+                    _id: "$contactId",
+                    email: { $first: "$toEmail" },
+                    totalSent: { $sum: 1 },
+                    totalOpened: { $sum: { $cond: ["$opened", 1, 0] } },
+                    totalClicked: { $sum: { $cond: ["$clicked", 1, 0] } },
+                    totalReplied: { $sum: { $cond: ["$replied", 1, 0] } },
+                    totalOpenCount: { $sum: { $ifNull: ["$openCount", 0] } },
+                    lastOpenedAt: { $max: "$lastOpenedAt" },
+                    lastRepliedAt: { $max: "$repliedAt" },
+                    firstSentAt: { $min: "$sentAt" },
+                    lastSentAt: { $max: "$sentAt" },
+                    // Engagement score: open=1, click=3, reply=5
+                    engagementScore: {
+                        $sum: {
+                            $add: [
+                                { $cond: ["$opened", 1, 0] },
+                                { $multiply: [{ $cond: ["$clicked", 1, 0] }, 3] },
+                                { $multiply: [{ $cond: ["$replied", 1, 0] }, 5] },
+                            ],
+                        },
+                    },
+                },
+            },
+            // Join contact info
+            {
+                $lookup: {
+                    from: "contacts",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "contactInfo",
+                },
+            },
+            { $unwind: { path: "$contactInfo", preserveNullAndEmptyArrays: true } },
+            // Sort and paginate
+            { $sort: { [sortField]: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $project: {
+                    _id: 0,
+                    contactId: "$_id",
+                    email: 1,
+                    contactName: {
+                        $concat: [
+                            { $ifNull: ["$contactInfo.firstName", ""] },
+                            " ",
+                            { $ifNull: ["$contactInfo.lastName", ""] },
+                        ],
+                    },
+                    company: "$contactInfo.company",
+                    totalSent: 1,
+                    totalOpened: 1,
+                    totalClicked: 1,
+                    totalReplied: 1,
+                    totalOpenCount: 1,
+                    lastOpenedAt: 1,
+                    lastRepliedAt: 1,
+                    engagementScore: 1,
+                    openRate: {
+                        $cond: [{ $gt: ["$totalSent", 0] }, { $round: [{ $multiply: [{ $divide: ["$totalOpened", "$totalSent"] }, 100] }, 0] }, 0],
+                    },
+                },
+            },
+        ]),
+
+        // Total unique contacts for pagination
+        EmailMessage.aggregate([
+            { $match: baseMatch },
+            { $group: { _id: "$contactId" } },
+            { $count: "total" },
+        ]),
+    ]);
+
+    // Enrich contacts with geo-location — batch query instead of N+1
+    const contactIds = contacts.map((c: any) => c.contactId).filter(Boolean);
+    const geoResults = contactIds.length > 0
+        ? await EmailMessage.find(
+            { workspaceId: wId, contactId: { $in: contactIds }, "opens.country": { $ne: null } },
+            { contactId: 1, opens: 1 }
+        ).sort({ "opens.openedAt": -1 }).lean()
+        : [];
+
+    // Build a map of contactId → most recent geo open
+    const geoMap = new Map<string, { country: string; countryCode?: string; city?: string; timezone?: string }>();
+    for (const doc of geoResults) {
+        const key = doc.contactId.toString();
+        if (geoMap.has(key)) continue; // already found most recent for this contact
+        const geoOpen = (doc.opens as any[] || [])
+            .filter((o: any) => !o.isBot && o.country)
+            .sort((a: any, b: any) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime())[0];
+        if (geoOpen) {
+            geoMap.set(key, {
+                country: geoOpen.country,
+                countryCode: geoOpen.countryCode,
+                city: geoOpen.city,
+                timezone: geoOpen.timezone,
+            });
+        }
+    }
+
+    const enrichedContacts = contacts.map((c: any) => ({
+        ...c,
+        contactName: c.contactName?.trim() || c.email,
+        location: geoMap.get(c.contactId?.toString()) || null,
+    }));
+
+    const total = totalCount[0]?.total || 0;
+
+    return {
+        contacts: enrichedContacts,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        },
+        summary: {
+            totalContacts: total,
+            avgEngagementScore: contacts.length > 0
+                ? Math.round(contacts.reduce((s: number, c: any) => s + c.engagementScore, 0) / contacts.length * 10) / 10
+                : 0,
+        },
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CROSS-ENTITY EMAIL INTELLIGENCE REPORTS
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── EMAIL → REVENUE ATTRIBUTION ─────────────────────────────────────
+// Which emails actually generate pipeline & revenue?
+
+async function getEmailRevenueAttribution(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const { start, end } = getDateRange(config.period || "30days");
+
+    // 1. Contacts who received emails → their opportunities
+    const [emailedContactsWithDeals, emailAttributionRevenue, topSubjects] = await Promise.all([
+        // Contacts who received emails AND have opportunities
+        EmailMessage.aggregate([
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            { $group: { _id: "$contactId" } },
+            {
+                $lookup: {
+                    from: "opportunities",
+                    localField: "_id",
+                    foreignField: "contactId",
+                    as: "opportunities",
+                },
+            },
+            { $unwind: { path: "$opportunities", preserveNullAndEmptyArrays: false } },
+            {
+                $group: {
+                    _id: "$opportunities.status",
+                    count: { $sum: 1 },
+                    totalValue: { $sum: "$opportunities.value" },
+                },
+            },
+        ]),
+
+        // Revenue from Attribution model where channel = email
+        Attribution.aggregate([
+            { $match: { workspaceId: wId, converted: true, convertedAt: { $gte: start, $lte: end } } },
+            { $unwind: "$touchpoints" },
+            { $match: { "touchpoints.channel": { $in: ["email", "cold_outreach"] } } },
+            {
+                $group: {
+                    _id: null,
+                    firstTouchValue: { $sum: { $multiply: ["$conversionValue", { $divide: ["$touchpoints.firstTouchCredit", 100] }] } },
+                    lastTouchValue: { $sum: { $multiply: ["$conversionValue", { $divide: ["$touchpoints.lastTouchCredit", 100] }] } },
+                    linearValue: { $sum: { $multiply: ["$conversionValue", { $divide: ["$touchpoints.linearCredit", 100] }] } },
+                    totalConversions: { $sum: 1 },
+                },
+            },
+        ]),
+
+        // Top-performing email subjects (by won deal count)
+        EmailMessage.aggregate([
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            {
+                $lookup: {
+                    from: "opportunities",
+                    localField: "contactId",
+                    foreignField: "contactId",
+                    as: "opportunities",
+                },
+            },
+            { $unwind: { path: "$opportunities", preserveNullAndEmptyArrays: false } },
+            { $match: { "opportunities.status": "won" } },
+            {
+                $group: {
+                    _id: "$subject",
+                    wonDeals: { $sum: 1 },
+                    revenue: { $sum: "$opportunities.value" },
+                    totalSent: { $sum: 1 },
+                },
+            },
+            { $sort: { revenue: -1 } },
+            { $limit: 10 },
+        ]),
+    ]);
+
+    // Email-to-deal conversion rate
+    const [totalEmailedContacts, totalContactsWithOpps] = await Promise.all([
+        EmailMessage.distinct("contactId", { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } }).then(c => c.length),
+        Opportunity.distinct("contactId", { workspaceId: wId, createdAt: { $gte: start, $lte: end } }).then(c => c.length),
+    ]);
+
+    const dealsByStatus = emailedContactsWithDeals.reduce((acc: any, item: any) => {
+        acc[item._id] = { count: item.count, value: item.totalValue };
+        return acc;
+    }, {});
+
+    const attribution = emailAttributionRevenue[0] || {};
+
+    return {
+        conversionRate: {
+            emailedContacts: totalEmailedContacts,
+            contactsWithOpportunities: totalContactsWithOpps,
+            conversionPct: totalEmailedContacts > 0 ? Math.round((totalContactsWithOpps / totalEmailedContacts) * 100) : 0,
+        },
+        dealsByStatus: {
+            won: dealsByStatus.won || { count: 0, value: 0 },
+            open: dealsByStatus.open || { count: 0, value: 0 },
+            lost: dealsByStatus.lost || { count: 0, value: 0 },
+        },
+        attributionModels: {
+            firstTouch: Math.round(attribution.firstTouchValue || 0),
+            lastTouch: Math.round(attribution.lastTouchValue || 0),
+            linear: Math.round(attribution.linearValue || 0),
+            totalConversions: attribution.totalConversions || 0,
+        },
+        topSubjects: topSubjects.map((s: any) => ({
+            subject: s._id,
+            wonDeals: s.wonDeals,
+            revenue: s.revenue,
+            avgRevenuePerDeal: s.wonDeals > 0 ? Math.round(s.revenue / s.wonDeals) : 0,
+        })),
+    };
+}
+
+// ─── EMAIL → LIFECYCLE ACCELERATION ──────────────────────────────────
+// Do emails actually move people through the lifecycle stages?
+
+async function getEmailLifecycleAcceleration(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const { start, end } = getDateRange(config.period || "90days"); // Longer period for lifecycle
+
+    // Get contacts who received emails
+    const emailedContacts = await EmailMessage.distinct("contactId", {
+        workspaceId: wId,
+        direction: "outbound",
+        sentAt: { $gte: start, $lte: end },
+    });
+
+    // Lifecycle transitions within period
+    const [emailedTransitions, allTransitions, engagementByStage] = await Promise.all([
+        // Transitions for emailed contacts
+        ContactLifecycleHistory.aggregate([
+            {
+                $match: {
+                    workspaceId: wId,
+                    contactId: { $in: emailedContacts.map(id => new Types.ObjectId(id)) },
+                    transitionedAt: { $gte: start, $lte: end },
+                },
+            },
+            {
+                $group: {
+                    _id: { from: "$transitionedFrom", to: "$transitionedTo" },
+                    count: { $sum: 1 },
+                    avgTimeInStage: { $avg: "$timeInStage" },
+                },
+            },
+        ]),
+
+        // Transitions for all contacts (comparison baseline)
+        ContactLifecycleHistory.aggregate([
+            { $match: { workspaceId: wId, transitionedAt: { $gte: start, $lte: end } } },
+            {
+                $group: {
+                    _id: { from: "$transitionedFrom", to: "$transitionedTo" },
+                    count: { $sum: 1 },
+                    avgTimeInStage: { $avg: "$timeInStage" },
+                },
+            },
+        ]),
+
+        // Email engagement by current lifecycle stage
+        Contact.aggregate([
+            { $match: { workspaceId: wId, _id: { $in: emailedContacts.map(id => new Types.ObjectId(id)) } } },
+            {
+                $lookup: {
+                    from: "emailmessages",
+                    let: { contactId: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ["$contactId", "$$contactId"] },
+                                direction: "outbound",
+                                sentAt: { $gte: start, $lte: end },
+                            },
+                        },
+                        {
+                            $group: {
+                                _id: null,
+                                opened: { $sum: { $cond: ["$opened", 1, 0] } },
+                                replied: { $sum: { $cond: ["$replied", 1, 0] } },
+                                total: { $sum: 1 },
+                            },
+                        },
+                    ],
+                    as: "emailStats",
+                },
+            },
+            { $unwind: { path: "$emailStats", preserveNullAndEmptyArrays: true } },
+            {
+                $group: {
+                    _id: "$lifecycleStage",
+                    contacts: { $sum: 1 },
+                    avgOpenRate: { $avg: { $cond: [{ $gt: ["$emailStats.total", 0] }, { $divide: ["$emailStats.opened", "$emailStats.total"] }, 0] } },
+                    avgReplyRate: { $avg: { $cond: [{ $gt: ["$emailStats.total", 0] }, { $divide: ["$emailStats.replied", "$emailStats.total"] }, 0] } },
+                },
+            },
+        ]),
+    ]);
+
+    // Calculate acceleration vs baseline
+    const accelerationMetrics = emailedTransitions.map((et: any) => {
+        const baseline = allTransitions.find((at: any) =>
+            at._id.from === et._id.from && at._id.to === et._id.to
+        );
+        const emailedTime = et.avgTimeInStage || 0;
+        const baselineTime = baseline?.avgTimeInStage || emailedTime;
+        const acceleration = baselineTime > 0 ? Math.round(((baselineTime - emailedTime) / baselineTime) * 100) : 0;
+
+        return {
+            from: et._id.from || "new",
+            to: et._id.to,
+            emailedContacts: et.count,
+            avgTimeEmailed: Math.round(emailedTime),
+            avgTimeBaseline: Math.round(baselineTime),
+            accelerationPct: acceleration,
+        };
+    });
+
+    return {
+        transitions: accelerationMetrics.sort((a, b) => b.accelerationPct - a.accelerationPct),
+        engagementByStage: engagementByStage.map((e: any) => ({
+            stage: e._id || "unknown",
+            contacts: e.contacts,
+            openRate: Math.round((e.avgOpenRate || 0) * 10000) / 100, // Convert to %
+            replyRate: Math.round((e.avgReplyRate || 0) * 10000) / 100,
+        })),
+        summary: {
+            emailedContacts: emailedContacts.length,
+            totalTransitions: emailedTransitions.reduce((s: number, t: any) => s + t.count, 0),
+            avgAcceleration: accelerationMetrics.length > 0
+                ? Math.round(accelerationMetrics.reduce((s, m) => s + m.accelerationPct, 0) / accelerationMetrics.length)
+                : 0,
+        },
+    };
+}
+
+// ─── CAMPAIGN A/B COMPARISON ─────────────────────────────────────────
+// Side-by-side campaign performance analysis
+
+async function getCampaignComparison(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const campaignIds = config.campaignIds || []; // Array of campaign IDs to compare
+
+    if (campaignIds.length === 0) {
+        // Return top 5 campaigns by enrollment if no IDs specified
+        const topCampaigns = await Campaign.find({ workspaceId: wId, status: { $ne: "draft" } })
+            .sort({ totalEnrolled: -1 })
+            .limit(5)
+            .select("_id");
+        campaignIds.push(...topCampaigns.map(c => c._id.toString()));
+    }
+
+    const campaigns = await Promise.all(
+        campaignIds.map(async (campaignId: string) => {
+            const cId = new Types.ObjectId(campaignId);
+            const [campaign, enrollmentStats, stepPerformance] = await Promise.all([
+                Campaign.findById(cId).lean(),
+
+                // Enrollment stats
+                CampaignEnrollment.aggregate([
+                    { $match: { campaignId: cId } },
+                    {
+                        $group: {
+                            _id: "$status",
+                            count: { $sum: 1 },
+                        },
+                    },
+                ]),
+
+                // Per-step performance
+                CampaignEnrollment.aggregate([
+                    { $match: { campaignId: cId } },
+                    { $unwind: "$emailsSent" },
+                    {
+                        $group: {
+                            _id: "$emailsSent.stepId",
+                            sent: { $sum: 1 },
+                            opened: { $sum: { $cond: ["$emailsSent.opened", 1, 0] } },
+                            clicked: { $sum: { $cond: ["$emailsSent.clicked", 1, 0] } },
+                            replied: { $sum: { $cond: ["$emailsSent.replied", 1, 0] } },
+                            bounced: { $sum: { $cond: ["$emailsSent.bounced", 1, 0] } },
+                        },
+                    },
+                    { $sort: { _id: 1 } },
+                ]),
+            ]);
+
+            if (!campaign) return null;
+
+            const statusDist = enrollmentStats.reduce((acc: any, s: any) => {
+                acc[s._id] = s.count;
+                return acc;
+            }, {});
+
+            return {
+                id: campaign._id.toString(),
+                name: campaign.name,
+                status: campaign.status,
+                totalEnrolled: campaign.totalEnrolled || 0,
+                completionRate: campaign.totalEnrolled > 0
+                    ? Math.round(((campaign.completedEnrollments || 0) / campaign.totalEnrolled) * 100)
+                    : 0,
+                stats: campaign.stats,
+                enrollmentsByStatus: statusDist,
+                stepPerformance: stepPerformance.map((step: any) => ({
+                    stepId: step._id,
+                    sent: step.sent,
+                    openRate: step.sent > 0 ? Math.round((step.opened / step.sent) * 100) : 0,
+                    clickRate: step.sent > 0 ? Math.round((step.clicked / step.sent) * 100) : 0,
+                    replyRate: step.sent > 0 ? Math.round((step.replied / step.sent) * 100) : 0,
+                    bounceRate: step.sent > 0 ? Math.round((step.bounced / step.sent) * 100) : 0,
+                })),
+            };
+        })
+    );
+
+    return {
+        campaigns: campaigns.filter(c => c !== null),
+        comparison: {
+            bestOpenRate: campaigns.reduce((max, c) => !c ? max : (c.stats?.opened || 0) / (c.stats?.sent || 1) > max.rate ? { name: c.name, rate: (c.stats?.opened || 0) / (c.stats?.sent || 1) } : max, { name: "", rate: 0 }),
+            bestReplyRate: campaigns.reduce((max, c) => !c ? max : (c.stats?.replied || 0) / (c.stats?.sent || 1) > max.rate ? { name: c.name, rate: (c.stats?.replied || 0) / (c.stats?.sent || 1) } : max, { name: "", rate: 0 }),
+        },
+    };
+}
+
+// ─── SEQUENCE STEP FUNNEL ────────────────────────────────────────────
+// Where exactly do contacts drop off in sequences?
+
+async function getSequenceStepFunnel(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const sequenceId = config.sequenceId ? new Types.ObjectId(config.sequenceId) : null;
+
+    if (!sequenceId) {
+        return { error: "sequenceId is required" };
+    }
+
+    const [sequence, funnelData, replyByStep] = await Promise.all([
+        Sequence.findById(sequenceId).lean(),
+
+        // Step-by-step funnel
+        Sequence.aggregate([
+            { $match: { _id: sequenceId } },
+            { $unwind: "$enrollments" },
+            {
+                $group: {
+                    _id: "$enrollments.currentStepIndex",
+                    contacts: { $sum: 1 },
+                    completed: { $sum: { $cond: [{ $eq: ["$enrollments.status", "completed"] }, 1, 0] } },
+                    replied: { $sum: { $cond: [{ $eq: ["$enrollments.status", "replied"] }, 1, 0] } },
+                    bounced: { $sum: { $cond: [{ $eq: ["$enrollments.status", "bounced"] }, 1, 0] } },
+                    unenrolled: { $sum: { $cond: [{ $eq: ["$enrollments.status", "unenrolled"] }, 1, 0] } },
+                },
+            },
+            { $sort: { _id: 1 } },
+        ]),
+
+        // Replies by step position
+        Sequence.aggregate([
+            { $match: { _id: sequenceId } },
+            { $unwind: "$enrollments" },
+            { $match: { "enrollments.status": "replied" } },
+            {
+                $group: {
+                    _id: "$enrollments.currentStepIndex",
+                    replies: { $sum: 1 },
+                    avgEmailsSent: { $avg: "$enrollments.emailsSent" },
+                },
+            },
+            { $sort: { _id: 1 } },
+        ]),
+    ]);
+
+    if (!sequence) {
+        return { error: "Sequence not found" };
+    }
+
+    const steps = funnelData.map((step: any, index: number) => {
+        const replyData = replyByStep.find((r: any) => r._id === step._id);
+        const previousStep = index > 0 ? funnelData[index - 1] : null;
+        const dropOff = previousStep ? previousStep.contacts - step.contacts : 0;
+
+        return {
+            stepIndex: step._id,
+            stepName: sequence.steps[step._id]?.subject || `Step ${step._id + 1}`,
+            contacts: step.contacts,
+            dropOff,
+            dropOffPct: previousStep && previousStep.contacts > 0 ? Math.round((dropOff / previousStep.contacts) * 100) : 0,
+            replied: step.replied,
+            replyRate: step.contacts > 0 ? Math.round((step.replied / step.contacts) * 100) : 0,
+            avgEmailsToReply: Math.round(replyData?.avgEmailsSent || 0),
+        };
+    });
+
+    return {
+        sequenceId: sequence._id.toString(),
+        sequenceName: sequence.name,
+        totalSteps: sequence.steps.length,
+        totalEnrolled: sequence.stats.totalEnrolled,
+        funnel: steps,
+        summary: {
+            completionRate: sequence.stats.totalEnrolled > 0
+                ? Math.round((sequence.stats.completed / sequence.stats.totalEnrolled) * 100)
+                : 0,
+            replyRate: sequence.stats.totalEnrolled > 0
+                ? Math.round((sequence.stats.replied / sequence.stats.totalEnrolled) * 100)
+                : 0,
+            avgStepsBeforeReply: replyByStep.length > 0
+                ? Math.round(replyByStep.reduce((s: number, r: any) => s + r._id, 0) / replyByStep.length)
+                : 0,
+        },
+    };
+}
+
+// ─── DELIVERABILITY HEALTH SCORE ─────────────────────────────────────
+// Track bounce rates, bot opens, domain reputation
+
+async function getDeliverabilityHealth(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const { start, end } = getDateRange(config.period || "30days");
+    const groupBy = config.groupBy || "day";
+    const format = groupBy === "day" ? "%Y-%m-%d" : groupBy === "week" ? "%Y-W%V" : "%Y-%m";
+
+    const [trendData, domainHealth, botAnalysis, engagementQuality] = await Promise.all([
+        // Bounce rate trend over time
+        EmailMessage.aggregate([
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            {
+                $group: {
+                    _id: { $dateToString: { format, date: "$sentAt" } },
+                    sent: { $sum: 1 },
+                    bounced: { $sum: { $cond: ["$bounced", 1, 0] } },
+                    opened: { $sum: { $cond: ["$opened", 1, 0] } },
+                    spamReported: { $sum: { $cond: ["$spamReported", 1, 0] } },
+                },
+            },
+            { $sort: { _id: 1 } },
+        ]),
+
+        // Health by sending domain/account
+        EmailMessage.aggregate([
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            {
+                $group: {
+                    _id: "$fromEmail",
+                    sent: { $sum: 1 },
+                    bounced: { $sum: { $cond: ["$bounced", 1, 0] } },
+                    opened: { $sum: { $cond: ["$opened", 1, 0] } },
+                    replied: { $sum: { $cond: ["$replied", 1, 0] } },
+                },
+            },
+            {
+                $project: {
+                    fromEmail: "$_id",
+                    sent: 1,
+                    bounceRate: { $cond: [{ $gt: ["$sent", 0] }, { $round: [{ $multiply: [{ $divide: ["$bounced", "$sent"] }, 100] }, 2] }, 0] },
+                    openRate: { $cond: [{ $gt: ["$sent", 0] }, { $round: [{ $multiply: [{ $divide: ["$opened", "$sent"] }, 100] }, 2] }, 0] },
+                    replyRate: { $cond: [{ $gt: ["$sent", 0] }, { $round: [{ $multiply: [{ $divide: ["$replied", "$sent"] }, 100] }, 2] }, 0] },
+                },
+            },
+            { $sort: { bounceRate: -1 } },
+        ]),
+
+        // Bot opens analysis
+        EmailMessage.aggregate([
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, opened: true } },
+            { $unwind: "$opens" },
+            {
+                $group: {
+                    _id: null,
+                    totalOpens: { $sum: 1 },
+                    botOpens: { $sum: { $cond: ["$opens.isBot", 1, 0] } },
+                    applePrivacyOpens: { $sum: { $cond: ["$opens.isApplePrivacy", 1, 0] } },
+                },
+            },
+        ]),
+
+        // Engagement quality (reply-to-open ratio)
+        EmailMessage.aggregate([
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            {
+                $group: {
+                    _id: null,
+                    totalOpened: { $sum: { $cond: ["$opened", 1, 0] } },
+                    totalReplied: { $sum: { $cond: ["$replied", 1, 0] } },
+                },
+            },
+        ]),
+    ]);
+
+    const trend = trendData.map((d: any) => ({
+        period: d._id,
+        sent: d.sent,
+        bounced: d.bounced,
+        opened: d.opened,
+        bounceRate: d.sent > 0 ? Math.round((d.bounced / d.sent) * 100 * 100) / 100 : 0,
+        openRate: d.sent > 0 ? Math.round((d.opened / d.sent) * 100 * 100) / 100 : 0,
+    }));
+
+    const botStats = botAnalysis[0] || { totalOpens: 0, botOpens: 0, applePrivacyOpens: 0 };
+    const engagementStats = engagementQuality[0] || { totalOpened: 0, totalReplied: 0 };
+
+    const overallBounceRate = trend.length > 0
+        ? trend.reduce((s, t) => s + t.bounceRate, 0) / trend.length
+        : 0;
+
+    // Health score: 100 - (bounce_rate * 10) - (bot_rate * 5)
+    const healthScore = Math.max(0, Math.min(100,
+        100 - (overallBounceRate * 10) - ((botStats.botOpens / (botStats.totalOpens || 1)) * 500)
+    ));
+
+    return {
+        healthScore: Math.round(healthScore),
+        trend,
+        domainHealth: domainHealth.map((d: any) => ({
+            fromEmail: d.fromEmail,
+            sent: d.sent,
+            bounceRate: d.bounceRate,
+            openRate: d.openRate,
+            replyRate: d.replyRate,
+            status: d.bounceRate > 5 ? "at_risk" : d.bounceRate > 2 ? "warning" : "healthy",
+        })),
+        botAnalysis: {
+            totalOpens: botStats.totalOpens,
+            botOpens: botStats.botOpens,
+            applePrivacyOpens: botStats.applePrivacyOpens,
+            botPct: botStats.totalOpens > 0 ? Math.round((botStats.botOpens / botStats.totalOpens) * 100) : 0,
+        },
+        engagementQuality: {
+            totalOpened: engagementStats.totalOpened,
+            totalReplied: engagementStats.totalReplied,
+            replyToOpenRatio: engagementStats.totalOpened > 0
+                ? Math.round((engagementStats.totalReplied / engagementStats.totalOpened) * 100 * 100) / 100
+                : 0,
+        },
+    };
+}
+
+// ─── ENGAGEMENT DECAY ANALYSIS ───────────────────────────────────────
+// Identify contacts losing interest & re-engagement candidates
+
+async function getEngagementDecay(workspaceId: string, config: any) {
+    const wId = new Types.ObjectId(workspaceId);
+    const { start, end } = getDateRange(config.period || "90days");
+    const midpoint = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2);
+
+    // Contacts with declining engagement
+    const decliningContacts = await EmailMessage.aggregate([
+        { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+        {
+            $group: {
+                _id: "$contactId",
+                firstHalfSent: { $sum: { $cond: [{ $lte: ["$sentAt", midpoint] }, 1, 0] } },
+                firstHalfOpened: { $sum: { $cond: [{ $and: [{ $lte: ["$sentAt", midpoint] }, "$opened"] }, 1, 0] } },
+                secondHalfSent: { $sum: { $cond: [{ $gt: ["$sentAt", midpoint] }, 1, 0] } },
+                secondHalfOpened: { $sum: { $cond: [{ $and: [{ $gt: ["$sentAt", midpoint] }, "$opened"] }, 1, 0] } },
+                lastEmailAt: { $max: "$sentAt" },
+                lastOpenedAt: { $max: "$openedAt" },
+            },
+        },
+        {
+            $project: {
+                contactId: "$_id",
+                firstHalfRate: { $cond: [{ $gt: ["$firstHalfSent", 0] }, { $divide: ["$firstHalfOpened", "$firstHalfSent"] }, 0] },
+                secondHalfRate: { $cond: [{ $gt: ["$secondHalfSent", 0] }, { $divide: ["$secondHalfOpened", "$secondHalfSent"] }, 0] },
+                lastEmailAt: 1,
+                lastOpenedAt: 1,
+            },
+        },
+        {
+            $addFields: {
+                decayPct: {
+                    $cond: [
+                        { $gt: ["$firstHalfRate", 0] },
+                        { $multiply: [{ $divide: [{ $subtract: ["$firstHalfRate", "$secondHalfRate"] }, "$firstHalfRate"] }, 100] },
+                        0,
+                    ],
+                },
+            },
+        },
+        { $match: { decayPct: { $gt: 20 } } }, // 20%+ decline
+        { $sort: { decayPct: -1 } },
+        { $limit: 100 },
+    ]);
+
+    // Enrich with contact & opportunity data
+    const enrichedDecaying = await Promise.all(
+        decliningContacts.slice(0, 25).map(async (dc: any) => {
+            const [contact, opportunities] = await Promise.all([
+                Contact.findById(dc.contactId).select("firstName lastName email company lifecycleStage engagementScore").lean(),
+                Opportunity.find({ contactId: dc.contactId, status: "open" }).select("value title").lean(),
+            ]);
+
+            return {
+                contactId: dc.contactId,
+                contactName: contact ? `${contact.firstName || ""} ${contact.lastName || ""}`.trim() || contact.email : "Unknown",
+                email: contact?.email,
+                company: contact?.company,
+                lifecycleStage: contact?.lifecycleStage,
+                engagementScore: (contact as any)?.engagementScore,
+                decayPct: Math.round(dc.decayPct),
+                lastEmailAt: dc.lastEmailAt,
+                lastOpenedAt: dc.lastOpenedAt,
+                daysSinceLastOpen: dc.lastOpenedAt ? Math.floor((Date.now() - new Date(dc.lastOpenedAt).getTime()) / 86400000) : null,
+                openOpportunities: opportunities.length,
+                pipelineValue: opportunities.reduce((s, o) => s + (o.value || 0), 0),
+                status: opportunities.length > 0 ? "at_risk_pipeline" : "churning",
+            };
+        })
+    );
+
+    // Ghost contacts (opened before, stopped)
+    const ghostContacts = await EmailMessage.aggregate([
+        { $match: { workspaceId: wId, direction: "outbound", opened: true } },
+        {
+            $group: {
+                _id: "$contactId",
+                lastOpenedAt: { $max: "$openedAt" },
+                totalOpens: { $sum: 1 },
+            },
+        },
+        { $match: { lastOpenedAt: { $lt: new Date(Date.now() - 30 * 86400000) } } }, // 30+ days ago
+        { $sort: { lastOpenedAt: 1 } },
+        { $limit: 50 },
+    ]);
+
+    return {
+        decliningEngagement: enrichedDecaying,
+        ghostContacts: ghostContacts.length,
+        summary: {
+            totalDeclining: decliningContacts.length,
+            withOpenDeals: enrichedDecaying.filter(c => c.openOpportunities > 0).length,
+            atRiskPipeline: enrichedDecaying.reduce((s, c) => s + c.pipelineValue, 0),
+            avgDecayRate: decliningContacts.length > 0
+                ? Math.round(decliningContacts.reduce((s: number, c: any) => s + c.decayPct, 0) / decliningContacts.length)
+                : 0,
         },
     };
 }
@@ -1901,6 +3237,19 @@ router.post(
 
                 // ── Outreach & Communication ──────────
                 case "email": data = await getEmailData(workspaceId, config); break;
+                case "email_engagement_deep_dive": data = await getEmailEngagementDeepDive(workspaceId, config); break;
+                case "email_reply_analysis": data = await getEmailReplyAnalysis(workspaceId, config); break;
+                case "email_open_heatmap": data = await getEmailOpenHeatmap(workspaceId, config); break;
+                case "email_contact_engagement": data = await getEmailContactEngagement(workspaceId, config); break;
+
+                // ── Cross-Entity Email Intelligence ──────
+                case "email_revenue_attribution": data = await getEmailRevenueAttribution(workspaceId, config); break;
+                case "email_lifecycle_acceleration": data = await getEmailLifecycleAcceleration(workspaceId, config); break;
+                case "campaign_comparison": data = await getCampaignComparison(workspaceId, config); break;
+                case "sequence_step_funnel": data = await getSequenceStepFunnel(workspaceId, config); break;
+                case "deliverability_health": data = await getDeliverabilityHealth(workspaceId, config); break;
+                case "engagement_decay": data = await getEngagementDecay(workspaceId, config); break;
+
                 case "campaign_performance": data = await getCampaignPerformanceData(workspaceId, config); break;
                 case "call_insights": data = await getCallInsightsData(workspaceId, config); break;
 

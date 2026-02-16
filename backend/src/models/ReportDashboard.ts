@@ -41,6 +41,7 @@ export interface IReportWidget {
     chartType: ChartType;
     config: Record<string, any>;  // type-specific configuration (legacy)
     definition?: ReportDefinition; // New: dynamic report definition
+    note?: string;                 // P2: optional user annotation
     position: {
         x: number;    // column (0-based)
         y: number;    // row (0-based)
@@ -84,6 +85,7 @@ const reportWidgetSchema = new Schema<IReportWidget>(
         },
         config: { type: Schema.Types.Mixed, default: {} },
         definition: { type: Schema.Types.Mixed, required: false },  // Dynamic report definition
+        note: { type: String, maxlength: 300 },  // P2: user annotation
         position: {
             x: { type: Number, default: 0 },
             y: { type: Number, default: 0 },
