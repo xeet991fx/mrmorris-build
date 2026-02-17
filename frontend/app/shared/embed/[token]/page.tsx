@@ -66,7 +66,7 @@ function EmbedWidget({ report }: EmbedWidgetProps) {
     );
 }
 
-export default function EmbedDashboardPage({ params }: { params: { token: string } }) {
+export default function EmbedDashboardPage({ params }: { params: Promise<{ token: string }> }) {
     const [dashboard, setDashboard] = useState<any>(null);
     const [error, setError] = useState<string>("");
     const [loading, setLoading] = useState(true);
@@ -74,7 +74,8 @@ export default function EmbedDashboardPage({ params }: { params: { token: string
     useEffect(() => {
         const load = async () => {
             try {
-                const result = await getEmbedDashboard(params.token);
+                const resolvedParams = await params;
+                const result = await getEmbedDashboard(resolvedParams.token);
                 setDashboard(result.dashboard);
             } catch (err: any) {
                 setError(err.response?.data?.error || "Dashboard not found");
@@ -83,7 +84,7 @@ export default function EmbedDashboardPage({ params }: { params: { token: string
             }
         };
         load();
-    }, [params.token]);
+    }, [params]);
 
     if (loading) {
         return (
