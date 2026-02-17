@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef, useId } from "react";
-import { getReportData } from "@/lib/api/reportDashboards";
+import React, { useEffect, useState, useMemo, useRef, useId, useCallback } from "react";
+import { getReportData, getWidgetComments, createWidgetComment, deleteWidgetComment } from "@/lib/api/reportDashboards";
 import { adaptReportData } from "@/lib/reportDataAdapters";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -17,9 +17,12 @@ import {
     ArrowsPointingOutIcon,
     CameraIcon,
     ArrowPathIcon,
+    ChatBubbleLeftIcon,
+    XMarkIcon,
 } from "@heroicons/react/24/outline";
 import DrillDownPanel from "./DrillDownPanel";
 import CalculatedValuesTable from "./CalculatedValuesTable";
+import MapChartWidget from "./MapChartWidget";
 
 // ... (existing imports)
 
@@ -34,6 +37,7 @@ interface ReportWidgetProps {
         definition?: any;
         note?: string;
         position: { x: number; y: number; w: number; h: number };
+        content?: string; // For text blocks
     };
     workspaceId: string;
     onEdit?: (report: any) => void;
@@ -49,9 +53,14 @@ interface ReportWidgetProps {
     // P1: Resize
     resizable?: boolean;
     onResize?: (reportId: string, newSize: { w: number; h: number }) => void;
+    // P1: Save as Template
+    onSaveAsTemplate?: () => void;
+    // P2: Comments
+    dashboardId?: string;
+    workspaceUsers?: { userId: { _id: string; name: string; email: string } }[];
 }
 
-export default function ReportWidget({ report, workspaceId, onEdit, onRemove, onDuplicate, onFullscreen, onNoteUpdate, dateRangeOverride, comparisonEnabled, refreshKey, dashboardFilters, resizable, onResize }: ReportWidgetProps) {
+export default function ReportWidget({ report, workspaceId, onEdit, onRemove, onDuplicate, onFullscreen, onNoteUpdate, onSaveAsTemplate, dateRangeOverride, comparisonEnabled, refreshKey, dashboardFilters, resizable, onResize, dashboardId, workspaceUsers }: ReportWidgetProps) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -64,6 +73,54 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
     const widgetId = useId();
     const [editingNote, setEditingNote] = useState(false);
     const [noteText, setNoteText] = useState(report.note || "");
+    // P2: Comments
+    const [showComments, setShowComments] = useState(false);
+    const [comments, setComments] = useState<any[]>([]);
+    const [commentText, setCommentText] = useState("");
+    const [commentCount, setCommentCount] = useState(0);
+    const [loadingComments, setLoadingComments] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState("");
+    const [showMentions, setShowMentions] = useState(false);
+    const commentInputRef = useRef<HTMLInputElement>(null);
+
+    const loadComments = useCallback(async () => {
+        if (!dashboardId || !report._id) return;
+        try {
+            setLoadingComments(true);
+            const result = await getWidgetComments(workspaceId, dashboardId, report._id);
+            setComments(result.comments || []);
+            setCommentCount((result.comments || []).length);
+        } catch (e) { /* silent */ }
+        finally { setLoadingComments(false); }
+    }, [workspaceId, dashboardId, report._id]);
+
+    useEffect(() => {
+        if (showComments) loadComments();
+    }, [showComments, loadComments]);
+
+    const handleAddComment = async () => {
+        if (!commentText.trim() || !dashboardId || !report._id) return;
+        // Extract mentions: @Name → find matching user ID
+        const mentionRegex = /@(\w+)/g;
+        const mentionNames = [...commentText.matchAll(mentionRegex)].map(m => m[1]);
+        const mentionIds = (workspaceUsers || []).filter(u => mentionNames.some(name => u.userId.name.toLowerCase().includes(name.toLowerCase()))).map(u => u.userId._id);
+
+        try {
+            await createWidgetComment(workspaceId, dashboardId, {
+                widgetId: report._id, text: commentText.trim(), mentions: mentionIds,
+            });
+            setCommentText("");
+            loadComments();
+        } catch (e) { /* silent */ }
+    };
+
+    const handleDeleteComment = async (commentId: string) => {
+        if (!dashboardId) return;
+        try {
+            await deleteWidgetComment(workspaceId, dashboardId, commentId);
+            loadComments();
+        } catch (e) { /* silent */ }
+    };
 
     const configKey = useMemo(() => JSON.stringify(report.config), [report.config]);
     const definitionKey = useMemo(() => JSON.stringify(report.definition), [report.definition]);
@@ -80,17 +137,19 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
     }, [report.config, dateRangeOverride, comparisonEnabled, dashboardFilters]);
     const effectiveConfigKey = useMemo(() => JSON.stringify(effectiveConfig), [effectiveConfig]);
 
+    const effectiveDefinition = report.definition;
+
     const loadData = async (showSpinner = true) => {
         try {
             if (showSpinner) setLoading(true);
             setIsRefreshing(true);
             setError(false);
-            const result = await getReportData(workspaceId, report.type, effectiveConfig, report.definition);
+            const result = await getReportData(workspaceId, report.type, effectiveConfig, effectiveDefinition);
             const adaptedData = adaptReportData(
                 result.data,
                 report.chartType,
                 report.type,
-                report.definition
+                effectiveDefinition
             );
             setData(adaptedData);
             setLastFetchedAt(new Date());
@@ -104,6 +163,11 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
     };
 
     useEffect(() => {
+        // Skip loading for non-data widgets
+        if (report.type === "divider" || report.type === "text_block") {
+            setLoading(false);
+            return;
+        }
         loadData();
     }, [workspaceId, report.type, effectiveConfigKey, definitionKey]);
 
@@ -163,6 +227,119 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
         }
     };
 
+    const extractExportData = () => {
+        if (!data) return [];
+
+        let exportData: any[] = [];
+
+        // Extract data based on chart type and data structure
+        if (report.chartType === "number") {
+            // For number cards, export the single value
+            exportData = [{
+                metric: report.title,
+                value: data.value,
+                ...(data.change !== undefined && { change: `${data.change}%` }),
+                ...(data.dealCount !== undefined && { dealCount: data.dealCount }),
+                ...(data.avgDealSize !== undefined && { avgDealSize: data.avgDealSize })
+            }];
+        } else if (data.data && Array.isArray(data.data)) {
+            exportData = data.data;
+        } else if (data.stages && Array.isArray(data.stages)) {
+            exportData = data.stages;
+        } else if (data.transitions && Array.isArray(data.transitions)) {
+            exportData = data.transitions;
+        } else if (data.periods && Array.isArray(data.periods)) {
+            exportData = data.periods;
+        } else if (data.sources && Array.isArray(data.sources)) {
+            exportData = data.sources;
+        } else if (Array.isArray(data)) {
+            exportData = data;
+        }
+
+        return exportData;
+    };
+
+    const handleDownloadAsCSV = () => {
+        setShowMenu(false);
+
+        try {
+            const csvData = extractExportData();
+            if (csvData.length === 0) return;
+
+            // Get all unique column names
+            const columns = Array.from(
+                new Set(csvData.flatMap(row => Object.keys(row)))
+            );
+
+            // Create CSV header
+            let csvContent = columns.join(",") + "\n";
+
+            // Create CSV rows
+            csvData.forEach(row => {
+                const values = columns.map(col => {
+                    const value = row[col];
+                    if (value === null || value === undefined) return "";
+                    // Escape commas and quotes
+                    const stringValue = String(value);
+                    if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+                        return `"${stringValue.replace(/"/g, '""')}"`;
+                    }
+                    return stringValue;
+                });
+                csvContent += values.join(",") + "\n";
+            });
+
+            // Create download
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `${report.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        } catch (err) {
+            console.error("Failed to export CSV:", err);
+        }
+    };
+
+    const handleDownloadAsExcel = async () => {
+        setShowMenu(false);
+
+        try {
+            const exportData = extractExportData();
+            if (exportData.length === 0) return;
+
+            // Dynamically import xlsx to reduce bundle size
+            const XLSX = await import("xlsx");
+
+            // Create worksheet from data
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+            // Auto-size columns
+            const maxWidths: { [key: string]: number } = {};
+            exportData.forEach(row => {
+                Object.entries(row).forEach(([key, value]) => {
+                    const valueStr = String(value || "");
+                    const currentMax = maxWidths[key] || key.length;
+                    maxWidths[key] = Math.max(currentMax, valueStr.length);
+                });
+            });
+
+            worksheet["!cols"] = Object.values(maxWidths).map(w => ({ wch: Math.min(w + 2, 50) }));
+
+            // Create workbook and append worksheet
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, report.title.substring(0, 31)); // Excel sheet name limit
+
+            // Generate filename
+            const filename = `${report.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.xlsx`;
+
+            // Save file
+            XLSX.writeFile(workbook, filename);
+        } catch (err) {
+            console.error("Failed to export Excel:", err);
+        }
+    };
+
     const handleDrillDown = (context: any) => {
         if (report.definition) {
             setDrillDownContext({ ...context, metricLabel: report.title });
@@ -170,6 +347,18 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
     };
 
     const renderChart = () => {
+        // Handle special widget types
+        if (report.type === "divider") {
+            return <div className="flex items-center justify-center h-full"><div className="w-full h-px bg-zinc-200 dark:bg-zinc-700" /></div>;
+        }
+        if (report.type === "text_block") {
+            return (
+                <div className="h-full overflow-auto px-2 py-2">
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{report.content || "Add your text here..."}</p>
+                </div>
+            );
+        }
+
         if (loading) return <div className="flex items-center justify-center h-full"><div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>;
         if (error) return <div className="flex items-center justify-center h-full text-xs text-red-400">Failed to load</div>;
         return renderReportChart(data, report, handleDrillDown);
@@ -227,6 +416,21 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
                             <ArrowsPointingOutIcon className="w-3.5 h-3.5" />
                         </button>
                     )}
+                    {/* P2: Comment toggle */}
+                    {dashboardId && report._id && (
+                        <button
+                            onClick={() => setShowComments(!showComments)}
+                            className="p-1 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-700/40 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors relative"
+                            title="Comments"
+                        >
+                            <ChatBubbleLeftIcon className="w-3.5 h-3.5" />
+                            {commentCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 text-[8px] text-white rounded-full flex items-center justify-center font-bold">
+                                    {commentCount}
+                                </span>
+                            )}
+                        </button>
+                    )}
                     <div className="relative" ref={menuRef}>
                         <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-700/40 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">
                             <EllipsisVerticalIcon className="w-3.5 h-3.5" />
@@ -241,6 +445,23 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
                                 <button onClick={handleDownloadAsImage} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors">
                                     <CameraIcon className="w-3.5 h-3.5" /> Download as image
                                 </button>
+                                <button onClick={handleDownloadAsCSV} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg> Download as CSV
+                                </button>
+                                <button onClick={handleDownloadAsExcel} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors">
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg> Download as Excel
+                                </button>
+                                {onSaveAsTemplate && (
+                                    <button onClick={() => { setShowMenu(false); onSaveAsTemplate(); }} className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                        </svg> Save as Template
+                                    </button>
+                                )}
                                 {onRemove && report._id && (
                                     <>
                                         <div className="border-t border-zinc-200 dark:border-zinc-700 my-1" />
@@ -335,6 +556,122 @@ export default function ReportWidget({ report, workspaceId, onEdit, onRemove, on
                     </button>
                 </div>
             )}
+
+            {/* P2: Comment Panel */}
+            {showComments && (
+                <div className="absolute inset-0 bg-white/95 dark:bg-zinc-800/95 backdrop-blur-sm z-30 rounded-xl flex flex-col">
+                    {/* Panel Header */}
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-200/50 dark:border-zinc-700/50">
+                        <h4 className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                            Comments {commentCount > 0 && `(${commentCount})`}
+                        </h4>
+                        <button onClick={() => setShowComments(false)} className="p-0.5 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-700/40 text-zinc-400">
+                            <XMarkIcon className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
+                    {/* Comment list */}
+                    <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 min-h-0">
+                        {loadingComments && (
+                            <div className="flex items-center justify-center py-4">
+                                <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        )}
+                        {!loadingComments && comments.length === 0 && (
+                            <p className="text-[11px] text-zinc-400 text-center py-4">No comments yet</p>
+                        )}
+                        {comments.map((comment: any) => (
+                            <div key={comment._id} className="group/comment">
+                                <div className="flex items-start gap-2">
+                                    <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                                            {(comment.userId?.name || "?")[0].toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
+                                                {comment.userId?.name || "Unknown"}
+                                            </span>
+                                            <span className="text-[9px] text-zinc-400 dark:text-zinc-500">
+                                                {comment.createdAt ? new Date(comment.createdAt).toLocaleDateString() : ""}
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-zinc-700 dark:text-zinc-300 mt-0.5 break-words">
+                                            {comment.text}
+                                        </p>
+                                        {comment.mentions?.length > 0 && (
+                                            <div className="flex gap-1 mt-0.5">
+                                                {comment.mentions.map((m: any) => (
+                                                    <span key={m._id || m} className="text-[9px] text-emerald-500 font-medium">
+                                                        @{m.name || m}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleDeleteComment(comment._id)}
+                                        className="opacity-0 group-hover/comment:opacity-100 p-0.5 rounded text-zinc-300 hover:text-red-400 transition-all"
+                                        title="Delete comment"
+                                    >
+                                        <TrashIcon className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Comment input */}
+                    <div className="px-3 py-2 border-t border-zinc-200/50 dark:border-zinc-700/50 relative">
+                        {showMentions && (workspaceUsers || []).length > 0 && (
+                            <div className="absolute bottom-full left-3 right-3 mb-1 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 py-1 max-h-32 overflow-y-auto">
+                                {(workspaceUsers || []).filter(u => !mentionQuery || u.userId.name.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 5).map((user) => (
+                                    <button
+                                        key={user.userId._id}
+                                        onClick={() => {
+                                            const before = commentText.lastIndexOf("@");
+                                            setCommentText(commentText.slice(0, before) + `@${user.userId.name.split(" ")[0]} `);
+                                            setShowMentions(false);
+                                            commentInputRef.current?.focus();
+                                        }}
+                                        className="w-full text-left px-3 py-1 text-[11px] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors"
+                                    >
+                                        {user.userId.name} <span className="text-zinc-400">({user.userId.email})</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex gap-1.5">
+                            <input
+                                ref={commentInputRef}
+                                type="text"
+                                value={commentText}
+                                onChange={(e) => {
+                                    setCommentText(e.target.value);
+                                    const lastAt = e.target.value.lastIndexOf("@");
+                                    if (lastAt >= 0 && !e.target.value.slice(lastAt).includes(" ")) {
+                                        setMentionQuery(e.target.value.slice(lastAt + 1));
+                                        setShowMentions(true);
+                                    } else {
+                                        setShowMentions(false);
+                                    }
+                                }}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleAddComment(); }}
+                                placeholder="Add a comment… (@ to mention)"
+                                className="flex-1 text-[11px] bg-zinc-100 dark:bg-zinc-700/50 border border-zinc-200 dark:border-zinc-600 rounded-md px-2 py-1 text-zinc-700 dark:text-zinc-300 placeholder-zinc-400 outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                            <button
+                                onClick={handleAddComment}
+                                disabled={!commentText.trim()}
+                                className="px-2 py-1 text-[10px] font-medium bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Post
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </motion.div>
     );
 }
@@ -389,6 +726,7 @@ export function renderReportChart(data: any, report: any, onDrillDown?: (context
         case "pie": return <PieChartWidget data={data} type={report.type} config={report.config} onDrillDown={onDrillDown ? handleDrillDown : undefined} />;
         case "funnel": return <FunnelWidget data={data} onDrillDown={onDrillDown ? handleDrillDown : undefined} />;
         case "table": return <TableWidget data={data} type={report.type} />;
+        case "map": return <MapChartWidget data={data?.data || []} />;
         default: return <EmptyState />;
     }
 }

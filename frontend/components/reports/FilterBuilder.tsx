@@ -34,6 +34,9 @@ export interface Relationship {
     entity: string;
     label: string;
     attributes: SourceAttribute[];
+    // P2: detailed join config
+    field?: string;        // localField (defaults to entityId)
+    foreignField?: string; // foreignField (defaults to _id)
 }
 
 interface FilterBuilderProps {

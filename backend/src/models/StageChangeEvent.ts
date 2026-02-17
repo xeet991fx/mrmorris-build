@@ -134,9 +134,10 @@ stageChangeEventSchema.statics.getTimeInStageMetrics = async function (
   workspaceId: Types.ObjectId,
   pipelineId?: Types.ObjectId,
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
+  additionalMatch?: any
 ) {
-  const matchStage: any = { workspaceId };
+  const matchStage: any = { workspaceId, ...additionalMatch };
 
   if (pipelineId) {
     matchStage.pipelineId = pipelineId;
@@ -205,9 +206,10 @@ stageChangeEventSchema.statics.getFunnelData = async function (
   workspaceId: Types.ObjectId,
   pipelineId: Types.ObjectId,
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
+  additionalMatch?: any
 ) {
-  const matchStage: any = { workspaceId, pipelineId };
+  const matchStage: any = { workspaceId, pipelineId, ...additionalMatch };
 
   if (startDate || endDate) {
     matchStage.timestamp = {};
@@ -245,13 +247,15 @@ interface IStageChangeEventModel extends Model<IStageChangeEvent> {
     workspaceId: Types.ObjectId,
     pipelineId?: Types.ObjectId,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    additionalMatch?: any
   ): Promise<any[]>;
   getFunnelData(
     workspaceId: Types.ObjectId,
     pipelineId: Types.ObjectId,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    additionalMatch?: any
   ): Promise<any[]>;
 }
 

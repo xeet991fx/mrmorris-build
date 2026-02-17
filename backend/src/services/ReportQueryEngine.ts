@@ -42,6 +42,20 @@ export interface ReportDefinition {
   pipelineId?: string; // For opportunity reports
   includedStages?: string[]; // For filtering specific stages
   periodComparison?: boolean; // Compare current vs previous period
+  // P2: Multi-object joins
+  joins?: {
+    entity: string;     // e.g. "company", "contact"
+    localField: string; // field on source entity
+    foreignField: string; // field on joined entity (usually "_id")
+    as: string;         // alias for joined doc
+  }[];
+  // P2: Calculated/formula fields
+  calculatedFields?: {
+    name: string;       // alias for the computed field
+    expression: string; // e.g. "value * probability / 100"
+  }[];
+  // P2: Dynamic "run as" user filter
+  runAsUserId?: string;
 }
 
 export interface FilterCondition {
@@ -118,10 +132,19 @@ export class ReportQueryEngine {
     // Add initial match stage
     pipeline.push({ $match: match });
 
+    // P2: Run-as user filter
+    this.applyRunAsFilter(pipeline, definition);
+
     // Insert $lookup stages for relational filters
     if (lookups.length > 0) {
       pipeline.push(...lookups);
     }
+
+    // P2: Multi-object joins
+    pipeline.push(...this.buildJoinStages(definition));
+
+    // P2: Calculated fields
+    pipeline.push(...this.buildCalculatedFieldStages(definition));
 
     // Apply date range if provided
     if (definition.dateRange) {
@@ -196,10 +219,19 @@ export class ReportQueryEngine {
     // Add initial match stage
     pipeline.push({ $match: match });
 
+    // P2: Run-as user filter
+    this.applyRunAsFilter(pipeline, definition);
+
     // Insert $lookup stages for relational filters
     if (lookups.length > 0) {
       pipeline.push(...lookups);
     }
+
+    // P2: Multi-object joins
+    pipeline.push(...this.buildJoinStages(definition));
+
+    // P2: Calculated fields
+    pipeline.push(...this.buildCalculatedFieldStages(definition));
 
     // Apply date range
     if (definition.dateRange) {
@@ -284,11 +316,18 @@ export class ReportQueryEngine {
       if (definition.dateRange.end) matchStage.timestamp.$lte = definition.dateRange.end;
     }
 
+    // Build filters (dashboard + definition)
+    const { match } = this.buildMatchStage(definition, workspaceId);
+    // Remove workspaceId/pipelineId to avoid collision/redundancy, or just pass it all
+    delete match.workspaceId;
+    delete match.pipelineId;
+
     const funnelData = await StageChangeEvent.getFunnelData(
       workspaceId,
       new Types.ObjectId(definition.pipelineId),
       definition.dateRange?.start,
-      definition.dateRange?.end
+      definition.dateRange?.end,
+      match
     );
 
     // Calculate conversion rates
@@ -310,11 +349,16 @@ export class ReportQueryEngine {
     definition: ReportDefinition,
     workspaceId: Types.ObjectId
   ): Promise<any> {
+    // Build filters (dashboard + definition)
+    const { match } = this.buildMatchStage(definition, workspaceId);
+    delete match.workspaceId;
+
     const metrics = await StageChangeEvent.getTimeInStageMetrics(
       workspaceId,
       definition.pipelineId ? new Types.ObjectId(definition.pipelineId) : undefined,
       definition.dateRange?.start,
-      definition.dateRange?.end
+      definition.dateRange?.end,
+      match
     );
 
     // Convert milliseconds to days/hours
@@ -374,6 +418,126 @@ export class ReportQueryEngine {
     ];
 
     return await StageChangeEvent.aggregate(pipeline);
+  }
+
+  // ─── P2: Helper Methods ──────────────────────────────────────
+
+  /**
+   * P2: Build $lookup + $unwind stages for multi-object joins
+   */
+  private buildJoinStages(definition: ReportDefinition): any[] {
+    if (!definition.joins || definition.joins.length === 0) return [];
+
+    const stages: any[] = [];
+    const entityToCollection: Record<string, string> = {
+      opportunity: "opportunities",
+      contact: "contacts",
+      company: "companies",
+      task: "tasks",
+      ticket: "tickets",
+      email: "emailmessages",
+      deal: "deals",
+      activity: "activities",
+      campaign: "campaigns",
+      lifecycle: "contactlifecyclehistories",
+      call: "callrecordings",
+      form: "formsubmissions",
+    };
+
+    for (const join of definition.joins) {
+      const collection = entityToCollection[join.entity];
+      if (!collection) continue;
+
+      stages.push({
+        $lookup: {
+          from: collection,
+          localField: join.localField,
+          foreignField: join.foreignField,
+          as: join.as,
+        },
+      });
+      stages.push({
+        $unwind: {
+          path: `$${join.as}`,
+          preserveNullAndEmptyArrays: true,
+        },
+      });
+    }
+
+    return stages;
+  }
+
+  /**
+   * P2: Build $addFields stage for calculated/formula fields
+   * Supports simple expressions: field1 [+|-|*|/] field2 [+|-|*|/] number
+   */
+  private buildCalculatedFieldStages(definition: ReportDefinition): any[] {
+    if (!definition.calculatedFields || definition.calculatedFields.length === 0) return [];
+
+    const addFields: Record<string, any> = {};
+
+    for (const calc of definition.calculatedFields) {
+      // Sanitize: only allow field names, numbers, and basic operators
+      const sanitized = calc.expression.replace(/[^a-zA-Z0-9_.+\-*/ ()]/g, "");
+      addFields[calc.name] = this.parseExpression(sanitized);
+    }
+
+    return Object.keys(addFields).length > 0 ? [{ $addFields: addFields }] : [];
+  }
+
+  /**
+   * Parse a simple math expression into MongoDB aggregation expression
+   * e.g. "value * probability / 100" → { $divide: [{ $multiply: ["$value", "$probability"] }, 100] }
+   */
+  private parseExpression(expr: string): any {
+    const tokens = expr.trim().split(/\s+/);
+
+    if (tokens.length === 1) {
+      const val = Number(tokens[0]);
+      return isNaN(val) ? `$${tokens[0]}` : val;
+    }
+
+    // Build left-to-right (no operator precedence — keeps it simple)
+    let result = this.parseExpression(tokens[0]);
+
+    for (let i = 1; i < tokens.length; i += 2) {
+      const operator = tokens[i];
+      const right = this.parseExpression(tokens[i + 1] || "0");
+
+      const opMap: Record<string, string> = {
+        "+": "$add",
+        "-": "$subtract",
+        "*": "$multiply",
+        "/": "$divide",
+      };
+
+      const mongoOp = opMap[operator];
+      if (mongoOp) {
+        result = { [mongoOp]: [result, right] };
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * P2: Apply "run as" user filter — scopes all data to a specific user
+   */
+  private applyRunAsFilter(pipeline: any[], definition: ReportDefinition): void {
+    if (!definition.runAsUserId) return;
+
+    const userId = new Types.ObjectId(definition.runAsUserId);
+    // Add a match stage that filters by owner/assignee fields
+    pipeline.push({
+      $match: {
+        $or: [
+          { assignedTo: userId },
+          { ownerId: userId },
+          { userId: userId },
+          { createdBy: userId },
+        ],
+      },
+    });
   }
 
   /**
@@ -674,6 +838,8 @@ export class ReportQueryEngine {
       segmentByValue?: any;
       page?: number;
       limit?: number;
+      sort?: { field: string; direction: "asc" | "desc" };
+      search?: string;
     }
   ): Promise<{ data: any[]; total: number; page: number; totalPages: number }> {
     const model = this.resolveModel(definition.source);
@@ -687,15 +853,48 @@ export class ReportQueryEngine {
 
     // 2. Apply Context Filters (Drill-down specifics)
     if (context.groupByValue !== undefined && definition.groupBy) {
-      // If groupBy is a date field in historical report, we need special handling
-      // But usually for drill-down on charts, the value passed back is generic
-      // For now, assume exact match or simple interaction
-      // TODO: Handle date buckets if groupByValue is a date string
       match[definition.groupBy] = context.groupByValue;
     }
 
     if (context.segmentByValue !== undefined && definition.segmentBy) {
       match[definition.segmentBy] = context.segmentByValue;
+    }
+
+    // 3. Search (Regex on common fields)
+    if (context.search) {
+      const searchRegex = { $regex: context.search, $options: "i" };
+      const searchOr: any[] = [];
+
+      // Smart field selection based on source entity
+      switch (definition.source) {
+        case "opportunity":
+        case "deal":
+          searchOr.push({ name: searchRegex });
+          break;
+        case "contact":
+          searchOr.push({ firstName: searchRegex }, { lastName: searchRegex }, { email: searchRegex });
+          break;
+        case "company":
+          searchOr.push({ name: searchRegex }, { domain: searchRegex });
+          break;
+        case "task":
+        case "ticket":
+          searchOr.push({ title: searchRegex });
+          break;
+        case "email":
+          searchOr.push({ subject: searchRegex }, { "to.email": searchRegex });
+          break;
+        case "campaign":
+          searchOr.push({ name: searchRegex });
+          break;
+        default:
+          // Fallback generic fields
+          searchOr.push({ name: searchRegex }, { title: searchRegex });
+      }
+
+      if (searchOr.length > 0) {
+        match.$or = [...(match.$or || []), ...searchOr];
+      }
     }
 
     // Add initial match
@@ -718,10 +917,17 @@ export class ReportQueryEngine {
     const countResult = await model.aggregate(countPipeline);
     const total = countResult[0]?.total || 0;
 
-    // Fetch paginated data with essential fields
-    // We'll project a standard set of fields based on the model if needed, 
-    // or just return the whole doc for now (lean)
-    pipeline.push({ $sort: { createdAt: -1 } });
+    // 4. Sort
+    const sortStage: any = {};
+    if (context.sort && context.sort.field) {
+      sortStage[context.sort.field] = context.sort.direction === "desc" ? -1 : 1;
+    } else {
+      // Default sort
+      sortStage.createdAt = -1;
+    }
+    pipeline.push({ $sort: sortStage });
+
+    // Pagination
     pipeline.push({ $skip: skip });
     pipeline.push({ $limit: limit });
 
@@ -729,19 +935,22 @@ export class ReportQueryEngine {
     // For now, just return raw docs. The UI can handle display.
 
     // Perform Lookups for easier display (e.g. assignedTo user)
-    pipeline.push(
-      {
-        $lookup: {
-          from: "users",
-          localField: "assignedTo",
-          foreignField: "_id",
-          as: "assignee"
+    // Only add if source supports assignedTo (most do)
+    if (["opportunity", "contact", "company", "task", "ticket", "deal"].includes(definition.source)) {
+      pipeline.push(
+        {
+          $lookup: {
+            from: "users",
+            localField: "assignedTo",
+            foreignField: "_id",
+            as: "assignee"
+          }
+        },
+        {
+          $unwind: { path: "$assignee", preserveNullAndEmptyArrays: true }
         }
-      },
-      {
-        $unwind: { path: "$assignee", preserveNullAndEmptyArrays: true }
-      }
-    );
+      );
+    }
 
     const data = await model.aggregate(pipeline);
 

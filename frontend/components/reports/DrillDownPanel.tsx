@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
     Sheet,
     SheetContent,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { getDrillDownData } from "@/lib/api/reportDashboards";
 import { format } from "date-fns";
+import { ArrowTopRightOnSquareIcon, ChevronUpIcon, ChevronDownIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 
 interface DrillDownPanelProps {
     isOpen: boolean;
@@ -30,11 +32,36 @@ export default function DrillDownPanel({
     definition,
     context,
 }: DrillDownPanelProps) {
+    const router = useRouter();
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [total, setTotal] = useState(0);
+    const [sortColumn, setSortColumn] = useState<string | null>(null);
+    const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+    const [filterText, setFilterText] = useState("");
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (isOpen) {
+                setPage(1);
+                setHasMore(true);
+                loadData(true);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [filterText]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Reload on sort change
+    useEffect(() => {
+        if (isOpen) {
+            setPage(1);
+            setHasMore(true);
+            loadData(true);
+        }
+    }, [sortColumn, sortDirection]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const loadData = useCallback(async (reset = false) => {
         if (!definition || !isOpen) return;
@@ -48,6 +75,8 @@ export default function DrillDownPanel({
                 segmentByValue: context.segmentByValue,
                 page: currentPage,
                 limit: 20,
+                sort: sortColumn ? { field: sortColumn, direction: sortDirection } : undefined,
+                search: filterText || undefined,
             });
 
             if (reset) {
@@ -66,7 +95,7 @@ export default function DrillDownPanel({
         } finally {
             setLoading(false);
         }
-    }, [isOpen, definition, workspaceId, context, page]);
+    }, [isOpen, definition, workspaceId, context, page, sortColumn, sortDirection, filterText]);
 
     // Reset and load on open/context change
     useEffect(() => {
@@ -94,6 +123,47 @@ export default function DrillDownPanel({
         return Object.keys(item).filter(k => common.includes(k) || k === "assignee");
     };
 
+    // Get record detail URL based on definition source
+    const getRecordUrl = (item: any) => {
+        if (!item._id || !definition?.source) return null;
+
+        const source = definition.source.toLowerCase();
+
+        if (source === "deals" || source === "deal") {
+            return `/projects/${workspaceId}/deals/${item._id}`;
+        } else if (source === "contacts" || source === "contact") {
+            return `/projects/${workspaceId}/contacts/${item._id}`;
+        } else if (source === "tasks" || source === "task") {
+            return `/projects/${workspaceId}/tasks/${item._id}`;
+        } else if (source === "activities" || source === "activity") {
+            return `/projects/${workspaceId}/activities/${item._id}`;
+        } else if (source === "emails" || source === "email") {
+            return `/projects/${workspaceId}/emails/${item._id}`;
+        }
+
+        return null;
+    };
+
+    const handleRowClick = (item: any) => {
+        const url = getRecordUrl(item);
+        if (url) {
+            router.push(url);
+        }
+    };
+
+    const handleSort = (column: string) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+        } else {
+            setSortColumn(column);
+            setSortDirection("asc");
+        }
+    };
+
+    // Server-side filtering/sorting is now used.
+    // We use 'data' directly.
+    const filteredAndSortedData = data;
+
     return (
         <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
@@ -112,33 +182,84 @@ export default function DrillDownPanel({
                 </SheetHeader>
 
                 <div className="space-y-4">
+                    {/* Filter input */}
+                    {data.length > 0 && (
+                        <div className="relative">
+                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                            <input
+                                type="text"
+                                placeholder="Filter records..."
+                                value={filterText}
+                                onChange={(e) => setFilterText(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 text-sm bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                            />
+                        </div>
+                    )}
+
                     {data.length > 0 ? (
                         <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
-                            <table className="w-full text-sm text-left">
-                                <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-xs uppercase text-zinc-500 font-medium">
-                                    <tr>
-                                        {getColumns(data[0]).map(col => (
-                                            <th key={col} className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50">
-                                                {col.replace(/([A-Z])/g, " $1").trim()}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
-                                    {data.map((item, i) => (
-                                        <tr key={item._id || i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-zinc-50 dark:bg-zinc-800/50 text-xs uppercase text-zinc-500 font-medium">
+                                        <tr>
                                             {getColumns(data[0]).map(col => (
-                                                <td key={`${i}-${col}`} className="px-4 py-3 truncate max-w-[200px]">
-                                                    {col === "assignee"
-                                                        ? (item.assignee?.name || "Unassigned")
-                                                        : formatValue(item[col])
-                                                    }
-                                                </td>
+                                                <th
+                                                    key={col}
+                                                    onClick={() => handleSort(col)}
+                                                    className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800/50 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors select-none"
+                                                >
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span>{col.replace(/([A-Z])/g, " $1").trim()}</span>
+                                                        {sortColumn === col && (
+                                                            sortDirection === "asc" ? (
+                                                                <ChevronUpIcon className="w-3 h-3" />
+                                                            ) : (
+                                                                <ChevronDownIcon className="w-3 h-3" />
+                                                            )
+                                                        )}
+                                                    </div>
+                                                </th>
                                             ))}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                                        {filteredAndSortedData.length > 0 ? (
+                                            filteredAndSortedData.map((item, i) => {
+                                                const recordUrl = getRecordUrl(item);
+                                                const isClickable = !!recordUrl;
+
+                                                return (
+                                                    <tr
+                                                        key={item._id || i}
+                                                        onClick={() => isClickable && handleRowClick(item)}
+                                                        className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors ${isClickable ? "cursor-pointer group" : ""}`}
+                                                    >
+                                                        {getColumns(data[0]).map((col, colIndex) => (
+                                                            <td key={`${i}-${col}`} className="px-4 py-3 truncate max-w-[200px]">
+                                                                <span className="inline-flex items-center gap-1.5">
+                                                                    {col === "assignee"
+                                                                        ? (item.assignee?.name || "Unassigned")
+                                                                        : formatValue(item[col])
+                                                                    }
+                                                                    {isClickable && colIndex === 0 && (
+                                                                        <ArrowTopRightOnSquareIcon className="w-3 h-3 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                    )}
+                                                                </span>
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                );
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={getColumns(data[0]).length} className="px-4 py-8 text-center text-zinc-500 text-sm">
+                                                    No records match your filter.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     ) : (
                         !loading && (

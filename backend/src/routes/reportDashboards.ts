@@ -579,4 +579,632 @@ router.post(
     }
 );
 
+// ─── P1: Saved Filter Presets ──────────────────────────────────
+
+/**
+ * POST /api/workspaces/:workspaceId/report-dashboards/:id/filter-presets
+ * Save current filters as a named preset.
+ */
+router.post(
+    "/:workspaceId/report-dashboards/:id/filter-presets",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const { name, filters, dateRange } = req.body;
+            if (!name || !filters) {
+                return res.status(400).json({ error: "name and filters are required" });
+            }
+
+            const dashboard = await ReportDashboard.findOneAndUpdate(
+                { _id: id, workspaceId },
+                { $push: { savedFilterPresets: { name, filters, dateRange } } },
+                { new: true }
+            ).lean();
+
+            if (!dashboard) {
+                return res.status(404).json({ error: "Dashboard not found" });
+            }
+
+            res.json({ dashboard });
+        } catch (error) {
+            console.error("Error saving filter preset:", error);
+            res.status(500).json({ error: "Failed to save filter preset" });
+        }
+    }
+);
+
+/**
+ * DELETE /api/workspaces/:workspaceId/report-dashboards/:id/filter-presets/:presetId
+ * Remove a saved filter preset.
+ */
+router.delete(
+    "/:workspaceId/report-dashboards/:id/filter-presets/:presetId",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id, presetId } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const dashboard = await ReportDashboard.findOneAndUpdate(
+                { _id: id, workspaceId },
+                { $pull: { savedFilterPresets: { _id: presetId } } },
+                { new: true }
+            ).lean();
+
+            if (!dashboard) {
+                return res.status(404).json({ error: "Dashboard not found" });
+            }
+
+            res.json({ dashboard });
+        } catch (error) {
+            console.error("Error removing filter preset:", error);
+            res.status(500).json({ error: "Failed to remove filter preset" });
+        }
+    }
+);
+
+// ─── P1: Report Templates ─────────────────────────────────────
+
+import ReportTemplate from "../models/ReportTemplate";
+
+/**
+ * GET /api/workspaces/:workspaceId/report-templates
+ * List all saved report templates.
+ */
+router.get(
+    "/:workspaceId/report-templates",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const templates = await ReportTemplate.find({ workspaceId })
+                .sort({ createdAt: -1 })
+                .lean();
+
+            res.json({ templates });
+        } catch (error) {
+            console.error("Error listing templates:", error);
+            res.status(500).json({ error: "Failed to list templates" });
+        }
+    }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/report-templates
+ * Save a widget configuration as a reusable template.
+ */
+router.post(
+    "/:workspaceId/report-templates",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const { name, description, type, chartType, config, definition } = req.body;
+            if (!name || !type || !chartType) {
+                return res.status(400).json({ error: "name, type, and chartType are required" });
+            }
+
+            const template = await ReportTemplate.create({
+                workspaceId,
+                name,
+                description,
+                type,
+                chartType,
+                config: config || {},
+                definition,
+                createdBy: userId,
+            });
+
+            res.status(201).json({ template });
+        } catch (error) {
+            console.error("Error creating template:", error);
+            res.status(500).json({ error: "Failed to create template" });
+        }
+    }
+);
+
+/**
+ * DELETE /api/workspaces/:workspaceId/report-templates/:templateId
+ * Delete a saved template.
+ */
+router.delete(
+    "/:workspaceId/report-templates/:templateId",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, templateId } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const deleted = await ReportTemplate.findOneAndDelete({
+                _id: templateId,
+                workspaceId,
+            });
+
+            if (!deleted) {
+                return res.status(404).json({ error: "Template not found" });
+            }
+
+            res.json({ success: true });
+        } catch (error) {
+            console.error("Error deleting template:", error);
+            res.status(500).json({ error: "Failed to delete template" });
+        }
+    }
+);
+
+// ─── P1: Shareable Dashboard Link ─────────────────────────────
+
+import { randomBytes } from "crypto";
+
+/**
+ * POST /api/workspaces/:workspaceId/report-dashboards/:id/share
+ * Generate or revoke a share token.
+ */
+router.post(
+    "/:workspaceId/report-dashboards/:id/share",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const { action } = req.body; // "generate" or "revoke"
+
+            if (action === "revoke") {
+                const dashboard = await ReportDashboard.findOneAndUpdate(
+                    { _id: id, workspaceId },
+                    { $unset: { shareToken: 1 }, isPublic: false },
+                    { new: true }
+                ).lean();
+                return res.json({ dashboard, shareToken: null });
+            }
+
+            // Generate new share token
+            const shareToken = randomBytes(24).toString("hex");
+            const dashboard = await ReportDashboard.findOneAndUpdate(
+                { _id: id, workspaceId },
+                { shareToken, isPublic: true },
+                { new: true }
+            ).lean();
+
+            if (!dashboard) {
+                return res.status(404).json({ error: "Dashboard not found" });
+            }
+
+            res.json({ dashboard, shareToken });
+        } catch (error) {
+            console.error("Error sharing dashboard:", error);
+            res.status(500).json({ error: "Failed to share dashboard" });
+        }
+    }
+);
+
+/**
+ * GET /api/shared/dashboards/:token
+ * Public access to a shared dashboard (no auth required).
+ */
+router.get(
+    "/shared/dashboards/:token",
+    async (req: any, res: Response) => {
+        try {
+            const { token } = req.params;
+
+            const dashboard = await ReportDashboard.findOne({
+                shareToken: token,
+                isPublic: true,
+            }).lean();
+
+            if (!dashboard) {
+                return res.status(404).json({ error: "Dashboard not found or link has been revoked" });
+            }
+
+            // Return read-only dashboard data
+            res.json({
+                dashboard: {
+                    _id: dashboard._id,
+                    name: dashboard.name,
+                    description: dashboard.description,
+                    reports: dashboard.reports,
+                },
+            });
+        } catch (error) {
+            console.error("Error accessing shared dashboard:", error);
+            res.status(500).json({ error: "Failed to access shared dashboard" });
+        }
+    }
+);
+
+// ─── P1: Dashboard Access Permissions ─────────────────────────
+
+/**
+ * PUT /api/workspaces/:workspaceId/report-dashboards/:id/access
+ * Update dashboard access permissions.
+ */
+router.put(
+    "/:workspaceId/report-dashboards/:id/access",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const { type, allowedUsers } = req.body;
+
+            // Validate access type
+            if (!["private", "team", "workspace"].includes(type)) {
+                return res.status(400).json({ error: "type must be private, team, or workspace" });
+            }
+
+            const dashboard = await ReportDashboard.findOneAndUpdate(
+                { _id: id, workspaceId },
+                { access: { type, allowedUsers: allowedUsers || [] } },
+                { new: true }
+            ).lean();
+
+            if (!dashboard) {
+                return res.status(404).json({ error: "Dashboard not found" });
+            }
+
+            res.json({ dashboard });
+        } catch (error) {
+            console.error("Error updating access:", error);
+            res.status(500).json({ error: "Failed to update access" });
+        }
+    }
+);
+
+// ─── P1: Report Custom Field Definitions for Filtering ────────
+
+/**
+ * GET /api/workspaces/:workspaceId/report-custom-fields
+ * Returns all custom field definitions across entity types for the filter picker.
+ */
+router.get(
+    "/:workspaceId/report-custom-fields",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId } = req.params;
+            const userId = (req.user?._id as any)?.toString();
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const CustomFieldDefinition = (await import("../models/CustomFieldDefinition")).default;
+            const fields = await CustomFieldDefinition.find({
+                workspaceId,
+                isActive: true,
+            })
+                .sort({ entityType: 1, order: 1 })
+                .lean();
+
+            res.json({
+                success: true,
+                data: fields.map((f: any) => ({
+                    _id: f._id,
+                    entityType: f.entityType,
+                    fieldKey: f.fieldKey,
+                    fieldLabel: f.fieldLabel,
+                    fieldType: f.fieldType,
+                    selectOptions: f.selectOptions || [],
+                })),
+            });
+        } catch (error) {
+            console.error("Error fetching custom field definitions:", error);
+            res.status(500).json({ error: "Failed to fetch custom fields" });
+        }
+    }
+);
+
+// ─── P1: Scheduled Email Subscriptions ─────────────────────────
+
+/**
+ * GET /api/workspaces/:workspaceId/report-dashboards/:id/subscriptions
+ * List all subscriptions for a dashboard.
+ */
+router.get(
+    "/:workspaceId/report-dashboards/:id/subscriptions",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = (req.user?._id as any)?.toString();
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const ReportSubscription = (await import("../models/ReportSubscription")).default;
+            const subscriptions = await ReportSubscription.find({
+                workspaceId,
+                dashboardId: id,
+            })
+                .sort({ createdAt: -1 })
+                .lean();
+
+            res.json({ success: true, data: subscriptions });
+        } catch (error) {
+            console.error("Error fetching subscriptions:", error);
+            res.status(500).json({ error: "Failed to fetch subscriptions" });
+        }
+    }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/report-dashboards/:id/subscriptions
+ * Create a new email subscription.
+ */
+router.post(
+    "/:workspaceId/report-dashboards/:id/subscriptions",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = (req.user?._id as any)?.toString();
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const { frequency, dayOfWeek, dayOfMonth, timeOfDay, timezone, recipients, subject, message, format } = req.body;
+
+            if (!frequency || !recipients || recipients.length === 0) {
+                return res.status(400).json({ error: "Frequency and at least one recipient are required" });
+            }
+
+            const ReportSubscription = (await import("../models/ReportSubscription")).default;
+
+            // Calculate next run
+            const now = new Date();
+            let nextRunAt = new Date(now);
+            const [hours, minutes] = (timeOfDay || "08:00").split(":").map(Number);
+            nextRunAt.setHours(hours, minutes, 0, 0);
+            if (nextRunAt <= now) {
+                nextRunAt.setDate(nextRunAt.getDate() + 1);
+            }
+
+            const subscription = await ReportSubscription.create({
+                workspaceId,
+                dashboardId: id,
+                createdBy: userId,
+                frequency,
+                dayOfWeek,
+                dayOfMonth,
+                timeOfDay: timeOfDay || "08:00",
+                timezone: timezone || "UTC",
+                recipients,
+                subject,
+                message,
+                format: format || "pdf",
+                isActive: true,
+                nextRunAt,
+            });
+
+            res.status(201).json({ success: true, data: subscription });
+        } catch (error) {
+            console.error("Error creating subscription:", error);
+            res.status(500).json({ error: "Failed to create subscription" });
+        }
+    }
+);
+
+/**
+ * PUT /api/workspaces/:workspaceId/report-dashboards/:id/subscriptions/:subId
+ * Update a subscription (toggle active, change schedule, etc.).
+ */
+router.put(
+    "/:workspaceId/report-dashboards/:id/subscriptions/:subId",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id, subId } = req.params;
+            const userId = (req.user?._id as any)?.toString();
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const ReportSubscription = (await import("../models/ReportSubscription")).default;
+            const subscription = await ReportSubscription.findOneAndUpdate(
+                { _id: subId, workspaceId, dashboardId: id },
+                { $set: req.body },
+                { new: true }
+            ).lean();
+
+            if (!subscription) {
+                return res.status(404).json({ error: "Subscription not found" });
+            }
+
+            res.json({ success: true, data: subscription });
+        } catch (error) {
+            console.error("Error updating subscription:", error);
+            res.status(500).json({ error: "Failed to update subscription" });
+        }
+    }
+);
+
+/**
+ * DELETE /api/workspaces/:workspaceId/report-dashboards/:id/subscriptions/:subId
+ * Delete a subscription.
+ */
+router.delete(
+    "/:workspaceId/report-dashboards/:id/subscriptions/:subId",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id, subId } = req.params;
+            const userId = (req.user?._id as any)?.toString();
+            if (!(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const ReportSubscription = (await import("../models/ReportSubscription")).default;
+            const deleted = await ReportSubscription.findOneAndDelete({
+                _id: subId,
+                workspaceId,
+                dashboardId: id,
+            });
+
+            if (!deleted) {
+                return res.status(404).json({ error: "Subscription not found" });
+            }
+
+            res.json({ success: true, message: "Subscription deleted" });
+        } catch (error) {
+            console.error("Error deleting subscription:", error);
+            res.status(500).json({ error: "Failed to delete subscription" });
+        }
+    }
+);
+
+// ─── P2: Embed Dashboard ──────────────────────────────────────
+
+/**
+ * GET /api/shared/embed/:token
+ * Public access to an embeddable dashboard (no auth required).
+ * Returns lightweight data optimized for iframe embedding.
+ */
+router.get(
+    "/shared/embed/:token",
+    async (req: any, res: Response) => {
+        try {
+            const { token } = req.params;
+
+            const dashboard = await ReportDashboard.findOne({
+                shareToken: token,
+                isPublic: true,
+            }).lean();
+
+            if (!dashboard) {
+                return res.status(404).json({ error: "Dashboard not found or link has been revoked" });
+            }
+
+            // Return read-only, embed-optimized dashboard data
+            res.json({
+                dashboard: {
+                    _id: dashboard._id,
+                    name: dashboard.name,
+                    description: dashboard.description,
+                    reports: dashboard.reports,
+                    tabs: dashboard.tabs,
+                },
+                embed: true,
+            });
+        } catch (error) {
+            console.error("Error accessing embed dashboard:", error);
+            res.status(500).json({ error: "Failed to access embed dashboard" });
+        }
+    }
+);
+
+// ─── P2: Widget Comments ──────────────────────────────────────
+
+import ReportComment from "../models/ReportComment";
+
+/**
+ * GET /api/workspaces/:workspaceId/report-dashboards/:id/comments
+ * List comments for a widget (pass ?widgetId=xxx).
+ */
+router.get(
+    "/:workspaceId/report-dashboards/:id/comments",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const { widgetId } = req.query;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const filter: any = { workspaceId, dashboardId: id };
+            if (widgetId) filter.widgetId = widgetId;
+
+            const comments = await ReportComment.find(filter)
+                .sort({ createdAt: -1 })
+                .limit(100)
+                .populate("userId", "name email avatar")
+                .populate("mentions", "name email")
+                .lean();
+
+            res.json({ comments });
+        } catch (error) {
+            console.error("Error listing comments:", error);
+            res.status(500).json({ error: "Failed to list comments" });
+        }
+    }
+);
+
+/**
+ * POST /api/workspaces/:workspaceId/report-dashboards/:id/comments
+ * Create a comment on a widget.
+ */
+router.post(
+    "/:workspaceId/report-dashboards/:id/comments",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const { widgetId, text, mentions } = req.body;
+            if (!widgetId || !text?.trim()) {
+                return res.status(400).json({ error: "widgetId and text are required" });
+            }
+
+            const comment = await ReportComment.create({
+                workspaceId,
+                dashboardId: id,
+                widgetId,
+                userId,
+                text: text.trim(),
+                mentions: mentions || [],
+            });
+
+            // Populate user info before returning
+            const populated = await ReportComment.findById(comment._id)
+                .populate("userId", "name email avatar")
+                .populate("mentions", "name email")
+                .lean();
+
+            res.status(201).json({ comment: populated });
+        } catch (error) {
+            console.error("Error creating comment:", error);
+            res.status(500).json({ error: "Failed to create comment" });
+        }
+    }
+);
+
+/**
+ * DELETE /api/workspaces/:workspaceId/report-dashboards/:id/comments/:commentId
+ * Delete own comment.
+ */
+router.delete(
+    "/:workspaceId/report-dashboards/:id/comments/:commentId",
+    authenticate,
+    async (req: AuthRequest, res: Response) => {
+        try {
+            const { workspaceId, id, commentId } = req.params;
+            const userId = req.user?._id?.toString();
+            if (!userId || !(await validateWorkspaceAccess(workspaceId, userId, res))) return;
+
+            const deleted = await ReportComment.findOneAndDelete({
+                _id: commentId,
+                dashboardId: id,
+                userId, // Only allow deleting own comments
+            });
+
+            if (!deleted) {
+                return res.status(404).json({ error: "Comment not found or not authorized" });
+            }
+
+            res.json({ success: true, message: "Comment deleted" });
+        } catch (error) {
+            console.error("Error deleting comment:", error);
+            res.status(500).json({ error: "Failed to delete comment" });
+        }
+    }
+);
+
 export default router;
+

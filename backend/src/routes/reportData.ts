@@ -83,16 +83,34 @@ function getDateRange(period: string = "30days"): { start: Date; end: Date } {
     const end = new Date();
     const start = new Date();
     switch (period) {
-        case "7days": start.setDate(end.getDate() - 7); break;
-        case "30days": start.setDate(end.getDate() - 30); break;
-        case "90days": start.setDate(end.getDate() - 90); break;
+        case "7days": case "7d": start.setDate(end.getDate() - 7); break;
+        case "30days": case "30d": start.setDate(end.getDate() - 30); break;
+        case "90days": case "90d": start.setDate(end.getDate() - 90); break;
         case "6months": start.setMonth(end.getMonth() - 6); break;
         case "1year": start.setFullYear(end.getFullYear() - 1); break;
         case "quarter":
             const q = Math.floor(end.getMonth() / 3);
             start.setMonth(q * 3, 1); start.setHours(0, 0, 0, 0);
             break;
-        default: start.setDate(end.getDate() - 30);
+        case "ytd":
+            start.setMonth(0, 1); start.setHours(0, 0, 0, 0);
+            break;
+        case "all":
+            start.setFullYear(2000, 0, 1); start.setHours(0, 0, 0, 0);
+            break;
+        default:
+            // Support custom date range: "custom_2025-01-01_2025-06-30"
+            if (period.startsWith("custom_")) {
+                const parts = period.replace("custom_", "").split("_");
+                if (parts.length === 2) {
+                    const customStart = new Date(parts[0]);
+                    const customEnd = new Date(parts[1]);
+                    if (!isNaN(customStart.getTime()) && !isNaN(customEnd.getTime())) {
+                        return { start: customStart, end: customEnd };
+                    }
+                }
+            }
+            start.setDate(end.getDate() - 30);
     }
     return { start, end };
 }
@@ -146,6 +164,70 @@ function trendDirection(slope: number): "up" | "down" | "flat" {
     return "flat";
 }
 
+// ─── Dashboard Filter → MongoDB Match ──────────────────────────
+
+/**
+ * Convert dashboard-level filters into MongoDB $match conditions.
+ * Filters come from the UI filter bar: pipeline, owner, status, source.
+ * Each filter has { key, value, label }.
+ */
+function buildDashboardFilterMatch(filters: { key: string; value: string }[]): Record<string, any> {
+    if (!filters || !Array.isArray(filters) || filters.length === 0) return {};
+
+    const match: Record<string, any> = {};
+
+    for (const f of filters) {
+        if (!f.key || !f.value) continue;
+        switch (f.key) {
+            case "pipeline":
+                match.pipelineId = new Types.ObjectId(f.value);
+                break;
+            case "owner":
+                // Owner can appear as assigneeId, ownerId, or userId depending on model
+                match.$or = [
+                    ...(match.$or || []),
+                    { assigneeId: new Types.ObjectId(f.value) },
+                    { ownerId: new Types.ObjectId(f.value) },
+                    { userId: new Types.ObjectId(f.value) },
+                ];
+                break;
+            case "status":
+                match.status = f.value;
+                break;
+            case "source":
+                match.source = f.value;
+                break;
+            case "stage":
+                match.stage = f.value;
+                break;
+            case "priority":
+                match.priority = f.value;
+                break;
+            default:
+                // Generic field match for custom filters
+                match[f.key] = f.value;
+                break;
+        }
+    }
+
+    return match;
+}
+
+/**
+ * Inject dashboard-level overrides into the config before passing to report functions.
+ * This ensures every legacy report function respects dashboard controls.
+ */
+function applyDashboardOverrides(config: any): any {
+    const enriched = { ...config };
+
+    // Build MongoDB $match from dashboardFilters
+    if (config.dashboardFilters && Array.isArray(config.dashboardFilters)) {
+        enriched._dashboardMatch = buildDashboardFilterMatch(config.dashboardFilters);
+    }
+
+    return enriched;
+}
+
 // ─── INSIGHT — Real-time KPIs with period comparison ───────────
 
 async function getInsightData(workspaceId: string, config: any) {
@@ -154,16 +236,18 @@ async function getInsightData(workspaceId: string, config: any) {
     const period = config.period || "30days";
     const { start, end } = getDateRange(period);
     const { prevStart, prevEnd } = getPreviousPeriod(start, end);
+    const dm = config._dashboardMatch || {}; // dashboard-level filters
+
 
     switch (metric) {
         case "pipeline_value": {
             const [current, previous] = await Promise.all([
                 Opportunity.aggregate([
-                    { $match: { workspaceId: wId, status: { $ne: "lost" } } },
+                    { $match: { workspaceId: wId, status: { $ne: "lost" }, ...dm } },
                     { $group: { _id: null, total: { $sum: "$value" }, count: { $sum: 1 }, avgDeal: { $avg: "$value" } } },
                 ]),
                 Opportunity.aggregate([
-                    { $match: { workspaceId: wId, status: { $ne: "lost" }, createdAt: { $lte: prevEnd } } },
+                    { $match: { workspaceId: wId, status: { $ne: "lost" }, createdAt: { $lte: prevEnd }, ...dm } },
                     { $group: { _id: null, total: { $sum: "$value" } } },
                 ]),
             ]);
@@ -178,10 +262,10 @@ async function getInsightData(workspaceId: string, config: any) {
         }
         case "win_rate": {
             const [curWon, curTotal, prevWon, prevTotal] = await Promise.all([
-                Opportunity.countDocuments({ workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end } }),
-                Opportunity.countDocuments({ workspaceId: wId, status: { $in: ["won", "lost"] }, updatedAt: { $gte: start, $lte: end } }),
-                Opportunity.countDocuments({ workspaceId: wId, status: "won", updatedAt: { $gte: prevStart, $lte: prevEnd } }),
-                Opportunity.countDocuments({ workspaceId: wId, status: { $in: ["won", "lost"] }, updatedAt: { $gte: prevStart, $lte: prevEnd } }),
+                Opportunity.countDocuments({ workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end }, ...dm }),
+                Opportunity.countDocuments({ workspaceId: wId, status: { $in: ["won", "lost"] }, updatedAt: { $gte: start, $lte: end }, ...dm }),
+                Opportunity.countDocuments({ workspaceId: wId, status: "won", updatedAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
+                Opportunity.countDocuments({ workspaceId: wId, status: { $in: ["won", "lost"] }, updatedAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
             ]);
             const curRate = curTotal > 0 ? Math.round((curWon / curTotal) * 100) : 0;
             const prevRate = prevTotal > 0 ? Math.round((prevWon / prevTotal) * 100) : 0;
@@ -193,8 +277,8 @@ async function getInsightData(workspaceId: string, config: any) {
         }
         case "open_deals": {
             const [current, previous] = await Promise.all([
-                Opportunity.countDocuments({ workspaceId: wId, status: { $nin: ["won", "lost"] } }),
-                Opportunity.countDocuments({ workspaceId: wId, status: { $nin: ["won", "lost"] }, createdAt: { $lte: prevEnd } }),
+                Opportunity.countDocuments({ workspaceId: wId, status: { $nin: ["won", "lost"] }, ...dm }),
+                Opportunity.countDocuments({ workspaceId: wId, status: { $nin: ["won", "lost"] }, createdAt: { $lte: prevEnd }, ...dm }),
             ]);
             return {
                 value: current, label: "Open Deals", format: "number",
@@ -204,11 +288,11 @@ async function getInsightData(workspaceId: string, config: any) {
         case "revenue_won": {
             const [curRevenue, prevRevenue] = await Promise.all([
                 Opportunity.aggregate([
-                    { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end } } },
+                    { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end }, ...dm } },
                     { $group: { _id: null, total: { $sum: "$value" }, count: { $sum: 1 } } },
                 ]),
                 Opportunity.aggregate([
-                    { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: prevStart, $lte: prevEnd } } },
+                    { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: prevStart, $lte: prevEnd }, ...dm } },
                     { $group: { _id: null, total: { $sum: "$value" } } },
                 ]),
             ]);
@@ -222,9 +306,9 @@ async function getInsightData(workspaceId: string, config: any) {
         }
         case "total_contacts": {
             const [cur, prev, newThisPeriod] = await Promise.all([
-                Contact.countDocuments({ workspaceId: wId }),
-                Contact.countDocuments({ workspaceId: wId, createdAt: { $lte: prevEnd } }),
-                Contact.countDocuments({ workspaceId: wId, createdAt: { $gte: start, $lte: end } }),
+                Contact.countDocuments({ workspaceId: wId, ...dm }),
+                Contact.countDocuments({ workspaceId: wId, createdAt: { $lte: prevEnd }, ...dm }),
+                Contact.countDocuments({ workspaceId: wId, createdAt: { $gte: start, $lte: end }, ...dm }),
             ]);
             return {
                 value: cur, label: "Total Contacts", format: "number",
@@ -234,24 +318,24 @@ async function getInsightData(workspaceId: string, config: any) {
         }
         case "total_companies": {
             const [cur, prev] = await Promise.all([
-                Company.countDocuments({ workspaceId: wId }),
-                Company.countDocuments({ workspaceId: wId, createdAt: { $lte: prevEnd } }),
+                Company.countDocuments({ workspaceId: wId, ...dm }),
+                Company.countDocuments({ workspaceId: wId, createdAt: { $lte: prevEnd }, ...dm }),
             ]);
             return { value: cur, label: "Total Companies", format: "number", change: percentChange(cur, prev) };
         }
         case "emails_sent": {
             const [cur, prev] = await Promise.all([
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd } }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
             ]);
             return { value: cur, label: "Emails Sent", format: "number", change: percentChange(cur, prev) };
         }
         case "open_rate": {
             const [opened, total, prevOpened, prevTotal] = await Promise.all([
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.opened": true, sentAt: { $gte: start, $lte: end } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.opened": true, sentAt: { $gte: prevStart, $lte: prevEnd } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd } }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.opened": true, sentAt: { $gte: start, $lte: end }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.opened": true, sentAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
             ]);
             const curRate = total > 0 ? Math.round((opened / total) * 100) : 0;
             const prevRate = prevTotal > 0 ? Math.round((prevOpened / prevTotal) * 100) : 0;
@@ -259,10 +343,10 @@ async function getInsightData(workspaceId: string, config: any) {
         }
         case "click_rate": {
             const [clicked, total, prevClicked, prevTotal] = await Promise.all([
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.clicked": true, sentAt: { $gte: start, $lte: end } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.clicked": true, sentAt: { $gte: prevStart, $lte: prevEnd } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd } }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.clicked": true, sentAt: { $gte: start, $lte: end }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.clicked": true, sentAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
             ]);
             const curRate = total > 0 ? Math.round((clicked / total) * 100) : 0;
             const prevRate = prevTotal > 0 ? Math.round((prevClicked / prevTotal) * 100) : 0;
@@ -270,10 +354,10 @@ async function getInsightData(workspaceId: string, config: any) {
         }
         case "reply_rate": {
             const [replied, total, prevReplied, prevTotal] = await Promise.all([
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.replied": true, sentAt: { $gte: start, $lte: end } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.replied": true, sentAt: { $gte: prevStart, $lte: prevEnd } }),
-                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd } }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.replied": true, sentAt: { $gte: start, $lte: end }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", "tracking.replied": true, sentAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
+                EmailMessage.countDocuments({ workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd }, ...dm }),
             ]);
             const curRate = total > 0 ? Math.round((replied / total) * 100) : 0;
             const prevRate = prevTotal > 0 ? Math.round((prevReplied / prevTotal) * 100) : 0;
@@ -281,15 +365,15 @@ async function getInsightData(workspaceId: string, config: any) {
         }
         case "open_tasks": {
             const [cur, prev] = await Promise.all([
-                Task.countDocuments({ workspaceId: wId, status: { $ne: "completed" } }),
-                Task.countDocuments({ workspaceId: wId, status: { $ne: "completed" }, createdAt: { $lte: prevEnd } }),
+                Task.countDocuments({ workspaceId: wId, status: { $ne: "completed" }, ...dm }),
+                Task.countDocuments({ workspaceId: wId, status: { $ne: "completed" }, createdAt: { $lte: prevEnd }, ...dm }),
             ]);
             return { value: cur, label: "Open Tasks", format: "number", change: percentChange(cur, prev) };
         }
         case "open_tickets": {
             const [cur, prev] = await Promise.all([
-                Ticket.countDocuments({ workspaceId: wId, status: { $in: ["open", "in_progress"] } }),
-                Ticket.countDocuments({ workspaceId: wId, status: { $in: ["open", "in_progress"] }, createdAt: { $lte: prevEnd } }),
+                Ticket.countDocuments({ workspaceId: wId, status: { $in: ["open", "in_progress"] }, ...dm }),
+                Ticket.countDocuments({ workspaceId: wId, status: { $in: ["open", "in_progress"] }, createdAt: { $lte: prevEnd }, ...dm }),
             ]);
             return { value: cur, label: "Open Tickets", format: "number", change: percentChange(cur, prev) };
         }
@@ -304,12 +388,13 @@ async function getHistoricalData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
     const { start, end } = getDateRange(config.period || "6months");
     const metric = config.metric || "revenue";
+    const dm = config._dashboardMatch || {};
 
     let rawData: any[] = [];
 
     if (metric === "revenue") {
         rawData = await Opportunity.aggregate([
-            { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end }, ...dm } },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m", date: "$updatedAt" } },
@@ -322,7 +407,7 @@ async function getHistoricalData(workspaceId: string, config: any) {
         ]);
     } else if (metric === "deals_created") {
         rawData = await Opportunity.aggregate([
-            { $match: { workspaceId: wId, createdAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, createdAt: { $gte: start, $lte: end }, ...dm } },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
@@ -334,7 +419,7 @@ async function getHistoricalData(workspaceId: string, config: any) {
         ]);
     } else if (metric === "contacts_created") {
         rawData = await Contact.aggregate([
-            { $match: { workspaceId: wId, createdAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, createdAt: { $gte: start, $lte: end }, ...dm } },
             {
                 $group: {
                     _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
@@ -372,14 +457,14 @@ async function getHistoricalData(workspaceId: string, config: any) {
     let prevTotal = 0;
     if (metric === "revenue") {
         const prev = await Opportunity.aggregate([
-            { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: prevStart, $lte: prevEnd } } },
+            { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: prevStart, $lte: prevEnd }, ...dm } },
             { $group: { _id: null, total: { $sum: "$value" } } },
         ]);
         prevTotal = prev[0]?.total || 0;
     } else if (metric === "deals_created") {
-        prevTotal = await Opportunity.countDocuments({ workspaceId: wId, createdAt: { $gte: prevStart, $lte: prevEnd } });
+        prevTotal = await Opportunity.countDocuments({ workspaceId: wId, createdAt: { $gte: prevStart, $lte: prevEnd }, ...dm });
     } else if (metric === "contacts_created") {
-        prevTotal = await Contact.countDocuments({ workspaceId: wId, createdAt: { $gte: prevStart, $lte: prevEnd } });
+        prevTotal = await Contact.countDocuments({ workspaceId: wId, createdAt: { $gte: prevStart, $lte: prevEnd }, ...dm });
     }
 
     return {
@@ -400,10 +485,11 @@ async function getHistoricalData(workspaceId: string, config: any) {
 
 async function getFunnelData(workspaceId: string, _config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = _config._dashboardMatch || {};
 
     // Get actual pipeline data with stage lookups (fixes C1)
     const pipeline = await Opportunity.aggregate([
-        { $match: { workspaceId: wId } },
+        { $match: { workspaceId: wId, ...dm } },
         {
             $lookup: {
                 from: "pipelines",
@@ -444,7 +530,7 @@ async function getFunnelData(workspaceId: string, _config: any) {
     const stageMap = new Map(pipeline.map((s) => [s._id, s]));
 
     // Also count lost deals separately
-    const lostCount = await Opportunity.countDocuments({ workspaceId: wId, status: "lost" });
+    const lostCount = await Opportunity.countDocuments({ workspaceId: wId, status: "lost", ...dm });
     const totalDeals = pipeline.reduce((s, p) => s + p.count, 0) + lostCount;
 
     // Use actual stage names from pipeline (not hardcoded)
@@ -469,7 +555,7 @@ async function getFunnelData(workspaceId: string, _config: any) {
 
     // Overall conversion (first stage → won status)
     const firstStageCount = stages.length > 0 ? (stageMap.get(stages[0])?.count || 0) : 0;
-    const wonCount = await Opportunity.countDocuments({ workspaceId: wId, status: "won" });
+    const wonCount = await Opportunity.countDocuments({ workspaceId: wId, status: "won", ...dm });
     const overallConversion = firstStageCount > 0 ? Math.round((wonCount / firstStageCount) * 100) : 0;
 
     return {
@@ -488,6 +574,7 @@ async function getFunnelData(workspaceId: string, _config: any) {
 
 async function getTimeInStageData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const aggregation = config.metric || "avg";
 
     // Query both Opportunity (primary) and Deal (legacy fallback) during transition
@@ -495,10 +582,12 @@ async function getTimeInStageData(workspaceId: string, config: any) {
         Opportunity.find({
             workspaceId: wId,
             stageHistory: { $exists: true, $not: { $size: 0 } },
+            ...dm
         }).select("stageHistory value").lean(),
         Deal.find({
             workspaceId: wId,
             stageHistory: { $exists: true, $not: { $size: 0 } },
+            ...dm
         }).select("stageHistory value").lean(),
     ]);
 
@@ -578,6 +667,7 @@ async function getTimeInStageData(workspaceId: string, config: any) {
 
 async function getStageChangedData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "30days");
     const { prevStart, prevEnd } = getPreviousPeriod(start, end);
 
@@ -586,18 +676,22 @@ async function getStageChangedData(workspaceId: string, config: any) {
         Opportunity.find({
             workspaceId: wId,
             "stageHistory.enteredAt": { $gte: start, $lte: end },
+            ...dm
         }).select("stageHistory value").lean(),
         Opportunity.find({
             workspaceId: wId,
             "stageHistory.enteredAt": { $gte: prevStart, $lte: prevEnd },
+            ...dm
         }).select("stageHistory value").lean(),
         Deal.find({
             workspaceId: wId,
             "stageHistory.changedAt": { $gte: start, $lte: end },
+            ...dm
         }).select("stageHistory value").lean(),
         Deal.find({
             workspaceId: wId,
             "stageHistory.changedAt": { $gte: prevStart, $lte: prevEnd },
+            ...dm
         }).select("stageHistory value").lean(),
     ]);
 
@@ -667,6 +761,7 @@ async function getStageChangedData(workspaceId: string, config: any) {
 
 async function getEmailData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "30days");
     const groupBy = config.groupBy || "day";
     const { prevStart, prevEnd } = getPreviousPeriod(start, end);
@@ -675,7 +770,7 @@ async function getEmailData(workspaceId: string, config: any) {
 
     const [currentData, prevData] = await Promise.all([
         EmailMessage.aggregate([
-            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm } },
             {
                 $group: {
                     _id: { $dateToString: { format, date: "$sentAt" } },
@@ -689,7 +784,7 @@ async function getEmailData(workspaceId: string, config: any) {
             { $sort: { _id: 1 } },
         ]),
         EmailMessage.aggregate([
-            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd } } },
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: prevStart, $lte: prevEnd }, ...dm } },
             {
                 $group: {
                     _id: null,
@@ -752,9 +847,10 @@ async function getEmailData(workspaceId: string, config: any) {
 
 async function getEmailEngagementDeepDive(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "30days");
 
-    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } };
+    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm };
 
     const [geoData, deviceData, openFrequency, responseTimeData, replySummary] = await Promise.all([
         // 1. Geo heatmap — where opens come from (country + city)
@@ -930,9 +1026,10 @@ async function getEmailEngagementDeepDive(workspaceId: string, config: any) {
 
 async function getEmailReplyAnalysis(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "30days");
 
-    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, replied: true };
+    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, replied: true, ...dm };
 
     const [replyGeo, replyTiming, timeToReply, replySentiment, recentReplies] = await Promise.all([
         // 1. Reply geo-location — where replies originated from
@@ -1137,9 +1234,10 @@ async function getEmailReplyAnalysis(workspaceId: string, config: any) {
 
 async function getEmailOpenHeatmap(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "30days");
 
-    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } };
+    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm };
 
     const [heatmapData, openVelocity, reOpeners, totalStats] = await Promise.all([
         // 1. Hour × Day of Week heatmap
@@ -1300,13 +1398,14 @@ async function getEmailOpenHeatmap(workspaceId: string, config: any) {
 
 async function getEmailContactEngagement(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "30days");
     const page = config.page || 1;
     const limit = Math.min(config.limit || 25, 100);
     const skip = (page - 1) * limit;
     const sortField = config.sortBy || "engagementScore";
 
-    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } };
+    const baseMatch = { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm };
 
     // Main per-contact aggregation
     const [contacts, totalCount] = await Promise.all([
@@ -1448,13 +1547,14 @@ async function getEmailContactEngagement(workspaceId: string, config: any) {
 
 async function getEmailRevenueAttribution(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "30days");
 
     // 1. Contacts who received emails → their opportunities
     const [emailedContactsWithDeals, emailAttributionRevenue, topSubjects] = await Promise.all([
         // Contacts who received emails AND have opportunities
         EmailMessage.aggregate([
-            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm } },
             { $group: { _id: "$contactId" } },
             {
                 $lookup: {
@@ -1560,6 +1660,7 @@ async function getEmailRevenueAttribution(workspaceId: string, config: any) {
 
 async function getEmailLifecycleAcceleration(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "90days"); // Longer period for lifecycle
 
     // Get contacts who received emails
@@ -1567,6 +1668,7 @@ async function getEmailLifecycleAcceleration(workspaceId: string, config: any) {
         workspaceId: wId,
         direction: "outbound",
         sentAt: { $gte: start, $lte: end },
+        ...dm
     });
 
     // Lifecycle transitions within period
@@ -1682,11 +1784,12 @@ async function getEmailLifecycleAcceleration(workspaceId: string, config: any) {
 
 async function getCampaignComparison(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const campaignIds = config.campaignIds || []; // Array of campaign IDs to compare
 
     if (campaignIds.length === 0) {
         // Return top 5 campaigns by enrollment if no IDs specified
-        const topCampaigns = await Campaign.find({ workspaceId: wId, status: { $ne: "draft" } })
+        const topCampaigns = await Campaign.find({ workspaceId: wId, status: { $ne: "draft" }, ...dm })
             .sort({ totalEnrolled: -1 })
             .limit(5)
             .select("_id");
@@ -1771,6 +1874,7 @@ async function getCampaignComparison(workspaceId: string, config: any) {
 
 async function getSequenceStepFunnel(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const sequenceId = config.sequenceId ? new Types.ObjectId(config.sequenceId) : null;
 
     if (!sequenceId) {
@@ -1859,6 +1963,7 @@ async function getSequenceStepFunnel(workspaceId: string, config: any) {
 
 async function getDeliverabilityHealth(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "30days");
     const groupBy = config.groupBy || "day";
     const format = groupBy === "day" ? "%Y-%m-%d" : groupBy === "week" ? "%Y-W%V" : "%Y-%m";
@@ -1866,7 +1971,7 @@ async function getDeliverabilityHealth(workspaceId: string, config: any) {
     const [trendData, domainHealth, botAnalysis, engagementQuality] = await Promise.all([
         // Bounce rate trend over time
         EmailMessage.aggregate([
-            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm } },
             {
                 $group: {
                     _id: { $dateToString: { format, date: "$sentAt" } },
@@ -1983,12 +2088,13 @@ async function getDeliverabilityHealth(workspaceId: string, config: any) {
 
 async function getEngagementDecay(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const { start, end } = getDateRange(config.period || "90days");
     const midpoint = new Date(start.getTime() + (end.getTime() - start.getTime()) / 2);
 
     // Contacts with declining engagement
     const decliningContacts = await EmailMessage.aggregate([
-        { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+        { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm } },
         {
             $group: {
                 _id: "$contactId",
@@ -2084,13 +2190,14 @@ async function getEngagementDecay(workspaceId: string, config: any) {
 
 async function getTopPerformersData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const metric = config.metric || "deals";
     const period = config.period || "30days";
     const { start, end } = getDateRange(period);
 
     if (metric === "deals" || metric === "revenue") {
         const performers = await Opportunity.aggregate([
-            { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end }, ...dm } },
             {
                 $group: {
                     _id: "$assignedTo",
@@ -2111,7 +2218,7 @@ async function getTopPerformersData(workspaceId: string, config: any) {
 
         // Also get lost deals for win rate calculation
         const lostByUser = await Opportunity.aggregate([
-            { $match: { workspaceId: wId, status: "lost", updatedAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, status: "lost", updatedAt: { $gte: start, $lte: end }, ...dm } },
             { $group: { _id: "$assignedTo", lostDeals: { $sum: 1 } } },
         ]);
         const lostMap = new Map(lostByUser.map((l) => [l._id?.toString(), l.lostDeals]));
@@ -2135,7 +2242,7 @@ async function getTopPerformersData(workspaceId: string, config: any) {
 
     if (metric === "emails") {
         const performers = await EmailMessage.aggregate([
-            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end } } },
+            { $match: { workspaceId: wId, direction: "outbound", sentAt: { $gte: start, $lte: end }, ...dm } },
             {
                 $group: {
                     _id: "$userId",
@@ -2172,10 +2279,11 @@ async function getTopPerformersData(workspaceId: string, config: any) {
 
 async function getLeadSourcesData(workspaceId: string, _config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = _config._dashboardMatch || {};
 
     // Get contacts by source (fixes B4: normalize source to lowercase/trim)
     const sources = await Contact.aggregate([
-        { $match: { workspaceId: wId, source: { $exists: true, $nin: [null, ""] } } },
+        { $match: { workspaceId: wId, source: { $exists: true, $nin: [null, ""] }, ...dm } },
         {
             $addFields: {
                 normalizedSource: {
@@ -2190,7 +2298,7 @@ async function getLeadSourcesData(workspaceId: string, _config: any) {
 
     // Get deals linked to contacts to calculate source → deal conversion
     const dealsBySource = await Opportunity.aggregate([
-        { $match: { workspaceId: wId } },
+        { $match: { workspaceId: wId, ...dm } },
         { $lookup: { from: "contacts", localField: "contactId", foreignField: "_id", as: "contact" } },
         { $unwind: { path: "$contact", preserveNullAndEmptyArrays: true } },
         {
@@ -2242,6 +2350,7 @@ async function getLeadSourcesData(workspaceId: string, _config: any) {
 
 async function getForecastData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const period = config.period || "quarter";
     const { start, end } = getDateRange(period);
     const target = config.target || 0; // Revenue target if provided
@@ -2250,11 +2359,12 @@ async function getForecastData(workspaceId: string, config: any) {
         workspaceId: wId,
         status: { $nin: ["lost"] },
         expectedCloseDate: { $gte: start, $lte: end },
+        ...dm
     }).select("value probability status stage expectedCloseDate title").lean();
 
     // Already won revenue this period
     const wonThisPeriod = await Opportunity.aggregate([
-        { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end } } },
+        { $match: { workspaceId: wId, status: "won", updatedAt: { $gte: start, $lte: end }, ...dm } },
         { $group: { _id: null, total: { $sum: "$value" } } },
     ]);
     const alreadyWon = wonThisPeriod[0]?.total || 0;
@@ -2312,6 +2422,7 @@ async function getForecastData(workspaceId: string, config: any) {
 
 async function getAtRiskData(workspaceId: string, config: any) {
     const wId = new Types.ObjectId(workspaceId);
+    const dm = config._dashboardMatch || {};
     const inactiveDays = config.inactiveDays || 14;
     const threshold = new Date();
     threshold.setDate(threshold.getDate() - inactiveDays);
@@ -2319,6 +2430,7 @@ async function getAtRiskData(workspaceId: string, config: any) {
     const deals = await Opportunity.find({
         workspaceId: wId,
         status: { $nin: ["won", "lost"] },
+        ...dm
     })
         .select("title value stage probability updatedAt createdAt expectedCloseDate stageId")
         .sort({ value: -1 })
@@ -2419,24 +2531,25 @@ async function getAtRiskData(workspaceId: string, config: any) {
  * Also: avg sales cycle by stage, by source, win/loss speed comparison
  */
 async function getDealVelocityData(workspaceId: string, config: any) {
-    const { periodDays = 90 } = config;
-    const now = new Date();
-    const periodStart = new Date(now.getTime() - periodDays * 86400000);
-    const prevStart = new Date(periodStart.getTime() - periodDays * 86400000);
+    const { start, end } = getDateRange(config.period || "90d");
+    const { prevStart, prevEnd } = getPreviousPeriod(start, end);
+    const dm = config._dashboardMatch || {};
     const wsId = new Types.ObjectId(workspaceId);
 
     // Closed deals in current period (fixes C3: use actualCloseDate)
     const closedDeals = await Opportunity.find({
         workspaceId: wsId,
         status: { $in: ["won", "lost"] },
-        actualCloseDate: { $gte: periodStart },
+        actualCloseDate: { $gte: start, $lte: end },
+        ...dm
     }).lean();
 
     // Previous period
     const prevClosedDeals = await Opportunity.find({
         workspaceId: wsId,
         status: { $in: ["won", "lost"] },
-        actualCloseDate: { $gte: prevStart, $lt: periodStart },
+        actualCloseDate: { $gte: prevStart, $lt: prevEnd },
+        ...dm
     }).lean();
 
     // Active pipeline
@@ -2567,15 +2680,14 @@ async function getDealVelocityData(workspaceId: string, config: any) {
  * response times, activities per deal, and period comparison.
  */
 async function getActivityBreakdownData(workspaceId: string, config: any) {
-    const { periodDays = 30 } = config;
-    const now = new Date();
-    const periodStart = new Date(now.getTime() - periodDays * 86400000);
-    const prevStart = new Date(periodStart.getTime() - periodDays * 86400000);
+    const { start, end } = getDateRange(config.period || "30d");
+    const { prevStart, prevEnd } = getPreviousPeriod(start, end);
+    const dm = config._dashboardMatch || {};
     const wsId = new Types.ObjectId(workspaceId);
 
     const [activities, prevActivities] = await Promise.all([
-        Activity.find({ workspaceId: wsId, createdAt: { $gte: periodStart } }).lean(),
-        Activity.find({ workspaceId: wsId, createdAt: { $gte: prevStart, $lt: periodStart } }).lean(),
+        Activity.find({ workspaceId: wsId, createdAt: { $gte: start, $lte: end }, ...dm }).lean(),
+        Activity.find({ workspaceId: wsId, createdAt: { $gte: prevStart, $lt: prevEnd }, ...dm }).lean(),
     ]);
 
     // By type
@@ -2650,7 +2762,7 @@ async function getActivityBreakdownData(workspaceId: string, config: any) {
         byUser,
         heatmapData,
         dailyTrend,
-        avgPerDay: Math.round((activities.length / periodDays) * 10) / 10,
+        avgPerDay: Math.round((activities.length / ((end.getTime() - start.getTime()) / 86400000)) * 10) / 10,
         callStats: {
             total: callActivities.length,
             avgDurationSec: avgCallDuration,
@@ -2663,7 +2775,7 @@ async function getActivityBreakdownData(workspaceId: string, config: any) {
         summary: {
             total: activities.length,
             change: percentChange(activities.length, prevActivities.length),
-            avgPerDay: Math.round((activities.length / periodDays) * 10) / 10,
+            avgPerDay: Math.round((activities.length / ((end.getTime() - start.getTime()) / 86400000)) * 10) / 10,
         },
     };
 }
@@ -2675,9 +2787,11 @@ async function getActivityBreakdownData(workspaceId: string, config: any) {
  * best/worst performing, A/B comparison, and time-series trends.
  */
 async function getCampaignPerformanceData(workspaceId: string, config: any) {
+    const { start, end } = getDateRange(config.period || "30d");
+    const dm = config._dashboardMatch || {};
     const wsId = new Types.ObjectId(workspaceId);
 
-    const campaigns = await Campaign.find({ workspaceId: wsId }).lean();
+    const campaigns = await Campaign.find({ workspaceId: wsId, createdAt: { $gte: start, $lte: end }, ...dm }).lean();
 
     if (campaigns.length === 0) {
         return { campaigns: [], summary: { totalCampaigns: 0, totalSent: 0 } };
@@ -2763,9 +2877,8 @@ async function getCampaignPerformanceData(workspaceId: string, config: any) {
  * With conversion rates between stages, avg time in stage, SLA breach tracking.
  */
 async function getLifecycleFunnelData(workspaceId: string, config: any) {
-    const { periodDays = 90 } = config;
-    const now = new Date();
-    const periodStart = new Date(now.getTime() - periodDays * 86400000);
+    const { start, end } = getDateRange(config.period || "90d");
+    const dm = config._dashboardMatch || {};
     const wsId = new Types.ObjectId(workspaceId);
 
     const STAGES = ["subscriber", "lead", "mql", "sql", "sal", "opportunity", "customer", "evangelist"];
@@ -2773,12 +2886,13 @@ async function getLifecycleFunnelData(workspaceId: string, config: any) {
     // Get all lifecycle records for this workspace in period
     const transitions = await ContactLifecycleHistory.find({
         workspaceId: wsId,
-        transitionedAt: { $gte: periodStart },
+        transitionedAt: { $gte: start, $lte: end },
+        ...dm
     }).lean();
 
     // Current stage distribution (fixes C4: use aggregation instead of loading all)
     const stageDistribution = await ContactLifecycleHistory.aggregate([
-        { $match: { workspaceId: wsId } },
+        { $match: { workspaceId: wsId, ...dm } },
         { $sort: { contactId: 1, transitionedAt: -1 } },
         {
             $group: {
@@ -2878,15 +2992,14 @@ async function getLifecycleFunnelData(workspaceId: string, config: any) {
  * BANT scoring across calls, key moments (objections vs commitments), and trends.
  */
 async function getCallInsightsData(workspaceId: string, config: any) {
-    const { periodDays = 30 } = config;
-    const now = new Date();
-    const periodStart = new Date(now.getTime() - periodDays * 86400000);
-    const prevStart = new Date(periodStart.getTime() - periodDays * 86400000);
+    const { start, end } = getDateRange(config.period || "30d");
+    const { prevStart, prevEnd } = getPreviousPeriod(start, end);
+    const dm = config._dashboardMatch || {};
     const wsId = new Types.ObjectId(workspaceId);
 
     const [calls, prevCalls] = await Promise.all([
-        CallRecording.find({ workspaceId: wsId, recordedAt: { $gte: periodStart } }).lean(),
-        CallRecording.find({ workspaceId: wsId, recordedAt: { $gte: prevStart, $lt: periodStart } }).lean(),
+        CallRecording.find({ workspaceId: wsId, recordedAt: { $gte: start, $lte: end }, ...dm }).lean(),
+        CallRecording.find({ workspaceId: wsId, recordedAt: { $gte: prevStart, $lt: prevEnd }, ...dm }).lean(),
     ]);
 
     // Duration stats
@@ -2988,14 +3101,14 @@ async function getCallInsightsData(workspaceId: string, config: any) {
  * win rate, revenue, avg cycle time, and how they compare across months.
  */
 async function getDealCohortData(workspaceId: string, config: any) {
-    const { months = 6 } = config;
-    const now = new Date();
-    const startDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+    const { start, end } = getDateRange(config.period || "6months");
+    const dm = config._dashboardMatch || {};
     const wsId = new Types.ObjectId(workspaceId);
 
     const deals = await Opportunity.find({
         workspaceId: wsId,
-        createdAt: { $gte: startDate },
+        createdAt: { $gte: start, $lte: end },
+        ...dm
     }).lean();
 
     // Group by creation month
@@ -3069,15 +3182,15 @@ async function getDealCohortData(workspaceId: string, config: any) {
  * tasks by priority, by assignee, and trends.
  */
 async function getTaskProductivityData(workspaceId: string, config: any) {
-    const { periodDays = 30 } = config;
-    const now = new Date();
-    const periodStart = new Date(now.getTime() - periodDays * 86400000);
-    const prevStart = new Date(periodStart.getTime() - periodDays * 86400000);
+    const { start, end } = getDateRange(config.period || "30d");
+    const { prevStart, prevEnd } = getPreviousPeriod(start, end);
+    const dm = config._dashboardMatch || {};
     const wsId = new Types.ObjectId(workspaceId);
+    const now = new Date();
 
     const [tasks, prevTasks] = await Promise.all([
-        Task.find({ workspaceId: wsId, createdAt: { $gte: periodStart } }).lean(),
-        Task.find({ workspaceId: wsId, createdAt: { $gte: prevStart, $lt: periodStart } }).lean(),
+        Task.find({ workspaceId: wsId, createdAt: { $gte: start, $lte: end }, ...dm }).lean(),
+        Task.find({ workspaceId: wsId, createdAt: { $gte: prevStart, $lt: prevEnd }, ...dm }).lean(),
     ]);
 
     // Also get all open tasks (regardless of creation date)
@@ -3195,7 +3308,8 @@ router.post(
             // Validate workspace access
             if (!(await validateAccess(workspaceId, userId, res))) return;
 
-            const { type, config = {}, definition } = req.body;
+            const { type, config: rawConfig = {}, definition } = req.body;
+            const config = applyDashboardOverrides(rawConfig);
 
             // New: Dynamic Report Query Engine
             if (definition) {
@@ -3268,7 +3382,7 @@ router.post(
     }
 );
 
-// ─── DRILL-DOWN ENDPOINT ────────────────────────────────
+// ─── DRILL-DOWN ENDPOINT (with sort/filter/search) ──────
 router.post(
     "/:workspaceId/report-data/drill-down",
     authenticate,
@@ -3280,7 +3394,7 @@ router.post(
             // Validate workspace access
             if (!(await validateAccess(workspaceId, userId, res))) return;
 
-            const { definition, context } = req.body;
+            const { definition, context, sort, search } = req.body;
 
             if (!definition) {
                 return res.status(400).json({ error: "Report definition is required" });
@@ -3293,7 +3407,14 @@ router.post(
             }
 
             const engine = new ReportQueryEngine();
-            const result = await engine.executeDrillDown(definition, new Types.ObjectId(workspaceId), context || {});
+            const drillContext = {
+                ...(context || {}),
+                // Sort: { field: "value", direction: "asc" | "desc" }
+                sort: sort || undefined,
+                // Search: free-text search across name/title/subject/email fields
+                search: search || undefined,
+            };
+            const result = await engine.executeDrillDown(definition, new Types.ObjectId(workspaceId), drillContext);
 
             res.json(result);
         } catch (error) {

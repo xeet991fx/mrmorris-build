@@ -132,9 +132,17 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
 
     // Chart options
     const [targetLine, setTargetLine] = useState<number | "">("");
+    const [goalValue, setGoalValue] = useState<number | "">("");
     const [stackedBars, setStackedBars] = useState<boolean>(true);
     const [showAxisLabels, setShowAxisLabels] = useState<boolean>(true);
     const [sortOrder, setSortOrder] = useState<"value_desc" | "value_asc" | "dimension_asc">("value_desc");
+    const [chartTypeOverride, setChartTypeOverride] = useState<string>("");
+
+    // P2: Cross-object joins
+    const [joins, setJoins] = useState<{ entity: string; localField: string; foreignField: string; as: string }[]>([]);
+
+    // P2: Calculated fields
+    const [calculatedFields, setCalculatedFields] = useState<{ name: string; expression: string }[]>([]);
 
     // Live preview
     const [previewData, setPreviewData] = useState<any>(null);
@@ -292,9 +300,13 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
             filters: validFilters.length > 0 ? validFilters : undefined,
             pipelineId: selectedPipeline || undefined,
             includedStages: includedStages.length > 0 ? includedStages : undefined,
-        };
+            // P2: multi-object joins
+            joins: joins.length > 0 ? joins : undefined,
+            // P2: calculated fields
+            calculatedFields: calculatedFields.length > 0 ? calculatedFields : undefined,
+        } as any;
 
-        const chartType = getSuggestedChartType();
+        const chartType = chartTypeOverride || getSuggestedChartType();
 
         // Build chart configuration
         const config: any = {
@@ -304,6 +316,10 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
 
         if (targetLine !== "") {
             config.targetLine = Number(targetLine);
+        }
+
+        if (goalValue !== "") {
+            config.goal = Number(goalValue);
         }
 
         // Only add stackedBars for bar charts with segments
@@ -343,10 +359,14 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
         setIncludedStages([]);
         setTitle("");
         setTargetLine("");
+        setGoalValue("");
         setStackedBars(true);
         setShowAxisLabels(true);
         setSortOrder("value_desc");
+        setChartTypeOverride("");
         setPreviewData(null);
+        setJoins([]);
+        setCalculatedFields([]);
     };
 
     const allAttributes = selectedSource
@@ -530,6 +550,45 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                             </div>
                                         )}
 
+                                        {/* P2: Cross-Object Join */}
+                                        {selectedSource && selectedSource.relationships && selectedSource.relationships.length > 0 && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    Join Another Object (Optional)
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {joins.map((join, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 flex-1">
+                                                                {join.entity} via {join.localField} → {join.foreignField}
+                                                            </span>
+                                                            <button onClick={() => setJoins(j => j.filter((_, i) => i !== idx))} className="text-blue-400 hover:text-red-500">
+                                                                <XMarkIcon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    {selectedSource.relationships
+                                                        .filter(rel => !joins.some(j => j.entity === rel.entity))
+                                                        .map((rel) => (
+                                                            <button
+                                                                key={rel.entity}
+                                                                onClick={() => setJoins(j => [...j, {
+                                                                    entity: rel.entity,
+                                                                    localField: rel.field || `${rel.entity}Id`,
+                                                                    foreignField: rel.foreignField || "_id",
+                                                                    as: rel.entity,
+                                                                }])}
+                                                                className="w-full p-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 text-left hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all"
+                                                            >
+                                                                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                                    + Join {rel.label || rel.entity}
+                                                                </span>
+                                                            </button>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Metric */}
                                         {selectedSource && (
                                             <div>
@@ -566,6 +625,40 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                             </button>
                                                         ))
                                                     )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* P2: Calculated Fields */}
+                                        {selectedSource && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    Calculated Fields (Optional)
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {calculatedFields.map((cf, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                                                            <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">{cf.name}</span>
+                                                            <span className="text-[10px] text-amber-500 font-mono flex-1">= {cf.expression}</span>
+                                                            <button onClick={() => setCalculatedFields(c => c.filter((_, i) => i !== idx))} className="text-amber-400 hover:text-red-500">
+                                                                <XMarkIcon className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    <button
+                                                        onClick={() => {
+                                                            const name = prompt("Field name (e.g. weightedValue):");
+                                                            if (!name) return;
+                                                            const expression = prompt("Expression (e.g. value * probability / 100):");
+                                                            if (!expression) return;
+                                                            setCalculatedFields(c => [...c, { name: name.replace(/\s/g, ""), expression }]);
+                                                        }}
+                                                        className="w-full p-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 text-left hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-all"
+                                                    >
+                                                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                            + Add Calculated Field
+                                                        </span>
+                                                    </button>
                                                 </div>
                                             </div>
                                         )}
@@ -720,7 +813,30 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                     Chart Options
                                                 </label>
                                                 <div className="space-y-3">
-                                                    {(getSuggestedChartType() === "bar" || getSuggestedChartType() === "line") && (
+                                                    {/* Chart Type Override */}
+                                                    <div>
+                                                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                                            Chart Type
+                                                        </label>
+                                                        <select
+                                                            value={chartTypeOverride}
+                                                            onChange={(e) => setChartTypeOverride(e.target.value)}
+                                                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                        >
+                                                            <option value="">Auto ({getSuggestedChartType()})</option>
+                                                            <option value="number">Number Card</option>
+                                                            <option value="bar">Bar Chart</option>
+                                                            <option value="line">Line / Area</option>
+                                                            <option value="pie">Pie / Donut</option>
+                                                            <option value="funnel">Funnel</option>
+                                                            <option value="table">Table</option>
+                                                            <option value="combo">Combo (Bar + Line)</option>
+                                                            <option value="gauge">Gauge / Radial</option>
+                                                            <option value="scatter">Scatter Plot</option>
+                                                            <option value="map">Geospatial Map</option>
+                                                        </select>
+                                                    </div>
+                                                    {((chartTypeOverride || getSuggestedChartType()) === "bar" || (chartTypeOverride || getSuggestedChartType()) === "line" || (chartTypeOverride || getSuggestedChartType()) === "combo") && (
                                                         <div>
                                                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
                                                                 Target Line (Optional)
@@ -734,7 +850,21 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                             />
                                                         </div>
                                                     )}
-                                                    {getSuggestedChartType() === "bar" && segmentBy && (
+                                                    {((chartTypeOverride || getSuggestedChartType()) === "number" || (chartTypeOverride || getSuggestedChartType()) === "gauge") && (
+                                                        <div>
+                                                            <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                                                Goal / Quota (Optional)
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                value={goalValue}
+                                                                onChange={(e) => setGoalValue(e.target.value === "" ? "" : Number(e.target.value))}
+                                                                placeholder="e.g., 100000"
+                                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {(chartTypeOverride || getSuggestedChartType()) === "bar" && segmentBy && (
                                                         <label className="flex items-center gap-2">
                                                             <input
                                                                 type="checkbox"
@@ -754,7 +884,7 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                         />
                                                         <span className="text-sm">Show axis labels</span>
                                                     </label>
-                                                    {(getSuggestedChartType() === "bar" || getSuggestedChartType() === "pie") && groupBy && (
+                                                    {((chartTypeOverride || getSuggestedChartType()) === "bar" || (chartTypeOverride || getSuggestedChartType()) === "pie") && groupBy && (
                                                         <div>
                                                             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
                                                                 Sort Order
@@ -800,12 +930,13 @@ export default function AddReportModal({ isOpen, onClose, onAdd, onUpdate, works
                                                     report={{
                                                         title: title || "Preview",
                                                         type: reportType,
-                                                        chartType: getSuggestedChartType(),
+                                                        chartType: chartTypeOverride || getSuggestedChartType(),
                                                         config: {
                                                             showAxisLabels,
                                                             sortOrder,
                                                             targetLine: targetLine !== "" ? Number(targetLine) : undefined,
-                                                            stackedBars: getSuggestedChartType() === "bar" && segmentBy ? stackedBars : undefined,
+                                                            goal: goalValue !== "" ? Number(goalValue) : undefined,
+                                                            stackedBars: (chartTypeOverride || getSuggestedChartType()) === "bar" && segmentBy ? stackedBars : undefined,
                                                         },
                                                         position: { x: 0, y: 0, w: 2, h: 2 },
                                                     }}

@@ -29,7 +29,11 @@ export type ChartType =
     | "line"     // Line/area chart
     | "pie"      // Pie/donut chart
     | "funnel"   // Funnel visualization
-    | "table";   // Data table
+    | "table"    // Data table
+    | "combo"    // Bar + Line dual-axis overlay
+    | "gauge"    // Radial/gauge chart for quotas
+    | "scatter"  // Scatter plot
+    | "map";     // Geospatial map
 
 // ─── Report Widget Interface ───────────────────────────────────
 // Note: ReportDefinition and FilterCondition are imported from ReportQueryEngine
@@ -41,6 +45,7 @@ export interface IReportWidget {
     chartType: ChartType;
     config: Record<string, any>;  // type-specific configuration (legacy)
     definition?: ReportDefinition; // New: dynamic report definition
+    tabId?: Types.ObjectId;        // P2: tab assignment
     note?: string;                 // P2: optional user annotation
     position: {
         x: number;    // column (0-based)
@@ -60,8 +65,24 @@ export interface IReportDashboard extends Document {
     isFavorite: boolean;
     isDefault: boolean;
     createdBy: Types.ObjectId;
+    // P1: Saved filter presets
+    savedFilterPresets?: {
+        name: string;
+        filters: { key: string; value: string; label: string }[];
+        dateRange?: string;
+    }[];
+    // P1: Public sharing
+    shareToken?: string;
+    isPublic?: boolean;
+    // P1: Access control
+    access?: {
+        type: "private" | "team" | "workspace";
+        allowedUsers?: Types.ObjectId[];
+    };
     createdAt: Date;
     updatedAt: Date;
+    // P2: Dashboard tabs
+    tabs?: { _id: Types.ObjectId; name: string; icon?: string }[];
 }
 
 const reportWidgetSchema = new Schema<IReportWidget>(
@@ -81,11 +102,12 @@ const reportWidgetSchema = new Schema<IReportWidget>(
         chartType: {
             type: String,
             required: true,
-            enum: ["number", "bar", "line", "pie", "funnel", "table"],
+            enum: ["number", "bar", "line", "pie", "funnel", "table", "combo", "gauge", "scatter", "map"],
         },
         config: { type: Schema.Types.Mixed, default: {} },
         definition: { type: Schema.Types.Mixed, required: false },  // Dynamic report definition
         note: { type: String, maxlength: 300 },  // P2: user annotation
+        tabId: { type: Schema.Types.ObjectId, required: false },    // P2: tab assignment
         position: {
             x: { type: Number, default: 0 },
             y: { type: Number, default: 0 },
@@ -122,6 +144,29 @@ const reportDashboardSchema = new Schema<IReportDashboard>(
             ref: "User",
             required: true,
         },
+        // P1: Saved filter presets
+        savedFilterPresets: [{
+            name: { type: String, required: true, maxlength: 50 },
+            filters: [{ key: String, value: String, label: String }],
+            dateRange: { type: String },
+        }],
+        // P1: Public sharing
+        shareToken: { type: String, unique: true, sparse: true },
+        isPublic: { type: Boolean, default: false },
+        // P1: Access control
+        access: {
+            type: {
+                type: String,
+                enum: ["private", "team", "workspace"],
+                default: "workspace",
+            },
+            allowedUsers: [{ type: Schema.Types.ObjectId, ref: "User" }],
+        },
+        // P2: Dashboard tabs
+        tabs: [{
+            name: { type: String, required: true },
+            icon: { type: String },
+        }],
     },
     { timestamps: true }
 );
