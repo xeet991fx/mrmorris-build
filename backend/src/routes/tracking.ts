@@ -14,6 +14,7 @@ import {
   trackCompanyVisitor,
 } from '../middleware/secureTracking';
 import { trackIntentSignal } from '../services/intentScoring';
+import { emitWorkflowEvent } from '../middleware/workflowTrigger';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
@@ -569,9 +570,14 @@ router.post('/public/track/identify',
         contactId: contact._id,
       });
 
-      // FIRE-AND-FORGET: Update visitor and backfill events
+      // Fire-AND-FORGET: Update visitor and backfill events
       setImmediate(async () => {
         try {
+          // Trigger Workflow for New Contacts
+          await emitWorkflowEvent('contact:created', contact, workspaceId).catch((err) => {
+            logger.error("Workflow trigger error in identify", { error: err.message });
+          });
+
           // Update visitor with contactId
           await Visitor.findOneAndUpdate(
             { workspaceId, visitorId },
